@@ -300,9 +300,9 @@ function handleCreatePublicBooking(PDO $pdo): void {
     $email = trim((string)($data['email'] ?? ''));
     $checkinDate = trim((string)($data['checkin_date'] ?? ''));
     $checkoutDate = trim((string)($data['checkout_date'] ?? ''));
-    $numGuests = max(1, (int)($data['num_guests'] ?? 1));
+    $numGuests = max(1, (int)($data['num_guests'] ?? 2));
     $specialRequests = trim((string)($data['special_requests'] ?? ''));
-    $paymentMethod = trim((string)($data['payment_method'] ?? 'Pay on Arrival (Cash / UPI)'));
+    $paymentMethod = trim((string)($data['payment_method'] ?? 'Payment requested'));
 
     if ($propertyId <= 0) {
         http_response_code(400);
@@ -310,10 +310,14 @@ function handleCreatePublicBooking(PDO $pdo): void {
         return;
     }
 
-    if (empty($guestName) || empty($phone)) {
+    if (empty($phone)) {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Guest name and phone number are required']);
+        echo json_encode(['status' => 'error', 'message' => 'Phone number is required']);
         return;
+    }
+
+    if (empty($guestName)) {
+        $guestName = 'Guest';
     }
 
     if (empty($checkinDate) || empty($checkoutDate) || $checkinDate >= $checkoutDate) {
@@ -494,15 +498,20 @@ function handleCreatePublicBooking(PDO $pdo): void {
             $notes .= "\nSpecial Requests: " . $specialRequests;
         }
 
+        // Self-heal payment_status column on guests if missing
+        try {
+            $pdo->exec("ALTER TABLE guests ADD COLUMN payment_status VARCHAR(50) DEFAULT 'Payment requested'");
+        } catch (Exception $e) {}
+
         $insertStmt = $pdo->prepare("
             INSERT INTO guests (
                 guest_name, phone_number, checkin_date, expected_checkout,
-                status, advance_paid, total_charge, pending_amount,
+                status, payment_status, advance_paid, total_charge, pending_amount,
                 base_room_rent, notes, booking_source, no_of_guests,
                 property_id, room_id
             ) VALUES (
                 ?, ?, ?, ?,
-                'Booked', 0, ?, ?,
+                'Booked', 'Payment requested', 0, ?, ?,
                 ?, ?, 'Direct Website', ?,
                 ?, ?
             )
@@ -557,7 +566,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
                            . "👤 *Guest:* {$guestName}\n"
                            . "📞 *Phone:* {$phone}\n"
                            . "📅 *Dates:* {$checkinDate} to {$checkoutDate} ({$nights} night" . ($nights > 1 ? 's' : '') . ")\n"
-                           . "💰 *Total Tariff:* ₹" . number_format($totalTariff, 0) . " (Pay on Arrival)\n"
+                           . "💰 *Total Tariff:* ₹" . number_format($totalTariff, 0) . " (Payment requested)\n"
                            . "🔖 *Ref:* `{$refNumber}`";
                     dispatchTelegramEvent($pdo, $propertyId, 'booking_created', $tgMsg);
                 }
@@ -581,7 +590,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
                 'total_tariff' => $totalTariff,
                 'charges' => $charges,
                 'payment_method' => $paymentMethod,
-                'payment_status' => 'Pending (Pay on Arrival)',
+                'payment_status' => 'Payment requested',
                 'upi_id' => $prop['upi_id'] ?? null,
                 'checkin_time' => $prop['checkin_time'] ?: '14:00',
                 'checkout_time' => $prop['checkout_time'] ?: '11:00',

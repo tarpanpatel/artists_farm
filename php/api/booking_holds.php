@@ -487,10 +487,14 @@ function handleConfirmBookingHold(PDO $pdo): void {
     $specialRequests = trim((string)($data['special_requests'] ?? ''));
     $paymentProofBase64 = trim((string)($data['payment_proof_base64'] ?? $data['payment_screenshot_base64'] ?? ''));
 
-    if (empty($token) || empty($guestName) || empty($phone)) {
+    if (empty($token) || empty($phone)) {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Guest name and phone number are required']);
+        echo json_encode(['status' => 'error', 'message' => 'Phone number is required']);
         return;
+    }
+
+    if (empty($guestName)) {
+        $guestName = 'Guest';
     }
 
     if (empty($paymentProofBase64)) {

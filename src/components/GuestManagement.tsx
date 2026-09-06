@@ -199,7 +199,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [notes, setNotes] = useState('');
   const [showGuestNotes, setShowGuestNotes] = useState(false);
   const [isForeignGuest, setIsForeignGuest] = useState(false);
-  const [noOfGuests, setNoOfGuests] = useState(1);
+  const [noOfGuests, setNoOfGuests] = useState(2);
 
   // "Inquiry -> Instant Quote" (5 Sep 2026) - lets staff send a guest who
   // called or messaged a WhatsApp link with the room/dates/price already
@@ -482,7 +482,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setNotes('');
     setShowGuestNotes(false);
     setIsForeignGuest(false);
-    setNoOfGuests(1);
+    setNoOfGuests(2);
     setBookingRoomTariff(0);
     setTariffManuallyEdited(false);
     setBookingAdvance(0);

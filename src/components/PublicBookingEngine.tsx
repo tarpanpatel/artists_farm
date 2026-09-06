@@ -362,8 +362,8 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const handleConfirmQuoteBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quoteHold || !quoteToken) return;
-    if (!quoteGuestName.trim() || !quotePhone.trim()) {
-      setQuoteFormError('Please enter your full name and phone number.');
+    if (!quotePhone.trim()) {
+      setQuoteFormError('Please enter your phone number.');
       return;
     }
 
@@ -377,7 +377,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     try {
       const result = await confirmBookingHoldDB({
         quote_token: quoteToken,
-        guest_name: quoteGuestName.trim(),
+        guest_name: quoteGuestName.trim() || 'Guest',
         phone: quotePhone.trim(),
         email: quoteEmail.trim() || undefined,
         num_guests: quoteNumGuests,
@@ -631,12 +631,26 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     setPendingStart(null);
   };
 
+  // Top row date header click (1st click checkin, 2nd click checkout)
+  const handleTopRowDateClick = (dateStr: string, past: boolean) => {
+    if (past) return;
+
+    if (!checkinDate || (checkinDate && checkoutDate) || dateStr <= checkinDate) {
+      setCheckinDate(dateStr);
+      setCheckoutDate('');
+      setPendingStart(null);
+    } else {
+      setCheckoutDate(dateStr);
+      setPendingStart(null);
+    }
+  };
+
   // Submit direct reservation
   const handleConfirmReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingDrawerRoom || !property) return;
-    if (!guestName.trim() || !phone.trim()) {
-      setFormError('Please enter your full name and phone number.');
+    if (!phone.trim()) {
+      setFormError('Please enter your phone number.');
       return;
     }
 
@@ -650,14 +664,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
         body: JSON.stringify({
           property_id: property.id,
           room_id: bookingDrawerRoom.roomId,
-          guest_name: guestName.trim(),
+          guest_name: guestName.trim() || 'Guest',
           phone: phone.trim(),
           email: email.trim(),
           checkin_date: bookingDrawerRoom.checkin,
           checkout_date: bookingDrawerRoom.checkout,
           num_guests: numGuests,
           special_requests: specialRequests.trim(),
-          payment_method: 'Pay on Arrival (Cash / UPI / Card)',
+          payment_method: 'Payment requested',
         }),
       });
 
@@ -686,9 +700,9 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
             <CheckCircle2 className="w-7 h-7" />
           </div>
-          <h3 className="text-base font-black text-gray-900 dark:text-white">Reservation Confirmed!</h3>
+          <h3 className="text-base font-black text-gray-900 dark:text-white">Reservation Submitted!</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            We've locked your room and notified the property manager.
+            We've held your room and notified the property manager for confirmation.
           </p>
           <div className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs font-mono font-bold text-gray-800 dark:text-gray-200">
             Ref: {confirmation.reference_number}
@@ -721,7 +735,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             <span className="text-gray-500">Payment Status</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
               <AlertCircle className="w-3 h-3" />
-              Pending Admin Verification
+              Payment requested
             </span>
           </div>
           {confirmation.address && (
@@ -1001,8 +1015,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
             <FloatingInput
               type="text"
-              required
-              label="Full Name *"
+              label="Full Name (Optional)"
               placeholder=" "
               value={quoteGuestName}
               onChange={(e) => setQuoteGuestName(e.target.value)}
@@ -1279,7 +1292,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 {property.phone}
               </a>
             )}
-            <Badge variant="success">Instant Confirmation</Badge>
+            <Badge variant="info">Direct Host Booking</Badge>
           </div>
         </div>
       </header>
@@ -1534,12 +1547,26 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         const dayDate = new Date(selectedYear, selectedMonth - 1, d);
                         const dayInitial = dayDate.toLocaleDateString('default', { weekday: 'narrow' });
                         const isToday = dStr === todayStr;
+                        const isPast = dStr < todayStr;
+                        const isSelected = checkinDate && checkoutDate && dStr >= checkinDate && dStr < checkoutDate;
+                        const isStart = dStr === checkinDate;
+                        const isEnd = dStr === checkoutDate;
 
                         return (
                           <th
                             key={d}
-                            className={`p-1.5 font-semibold text-2xs border-r border-gray-200 dark:border-gray-700 min-w-[34px] ${
-                              isToday ? 'bg-blue-100/70 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400' : ''
+                            onClick={() => handleTopRowDateClick(dStr, isPast)}
+                            title={isPast ? 'Past date' : `Click to select ${dStr}`}
+                            className={`p-1.5 font-semibold text-2xs border-r border-gray-200 dark:border-gray-700 min-w-[34px] select-none transition-colors ${
+                              isPast
+                                ? 'opacity-40 cursor-not-allowed bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600'
+                                : isStart || isSelected
+                                ? 'bg-blue-600 text-white font-bold cursor-pointer'
+                                : isEnd
+                                ? 'bg-blue-500 text-white font-bold cursor-pointer'
+                                : isToday
+                                ? 'bg-blue-100/70 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/60'
+                                : 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 dark:hover:text-blue-300'
                             }`}
                           >
                             <div className="text-3xs opacity-80">{dayInitial}</div>
@@ -1756,8 +1783,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
                   <FloatingInput
                     type="text"
-                    required
-                    label="Full Name *"
+                    label="Full Name (Optional)"
                     placeholder=" "
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
@@ -1822,10 +1848,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-gray-900 dark:text-white">
-                        Pay at Property (Cash / UPI / Card on Arrival)
+                        Payment requested
                       </p>
                       <p className="text-2xs text-gray-600 dark:text-gray-400">
-                        No advance payment needed right now. Your reservation will be immediately confirmed and dates locked on our calendar.
+                        No advance payment needed right now. Your booking request will be reviewed and confirmed by the host.
                       </p>
                       {property.upi_id && (
                         <p className="text-2xs text-emerald-700 dark:text-emerald-300 font-medium pt-1">
@@ -1858,11 +1884,11 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                      Locking...
+                      Submitting...
                     </>
                   ) : (
                     <>
-                      Confirm Reservation ({currencySym}{bookingDrawerRoom.totalTariff.toLocaleString('en-IN')})
+                      Submit Reservation ({currencySym}{bookingDrawerRoom.totalTariff.toLocaleString('en-IN')})
                       <ArrowRight className="w-4 h-4 ms-1.5" />
                     </>
                   )}
