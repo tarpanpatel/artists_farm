@@ -124,6 +124,7 @@ if ([string]::IsNullOrWhiteSpace($Branch)) {
 }
 
 $CustomCssFile = "assets/css/custom_css_override.css"
+$SwFile        = "sw.js"
 
 try {
     # 0. Auto-commit Custom CSS override if changed
@@ -210,6 +211,33 @@ try {
         throw "npm run build failed (exit $buildExitCode)"
     }
     Write-Ok "Build succeeded."
+
+    # 5b. Sync the service worker version produced by THIS build.
+    #     vite.config.ts stamps sw.js's CACHE_NAME with the entry bundle hash,
+    #     but sw.js reaches the server through the git checkout in step 2 - not
+    #     the dist tarball - and step 2 has already run by now, carrying the
+    #     PRE-build sw.js. Without this the stamp is permanently one deploy
+    #     behind: the server keeps serving the previous worker, browsers see no
+    #     byte change so they never install it, never run its activate handler,
+    #     and never wipe the stale cached HTML shells that make "switching
+    #     property hangs on a spinner forever" come back (6 Sep 2026).
+    if (-not $DryRun) {
+        $swChanged = git status --porcelain -- $SwFile
+        if ($swChanged) {
+            Write-Step "Service worker version changed this build - committing and re-syncing"
+            git add -- $SwFile
+            git commit -m "chore(pwa): stamp sw.js cache version for this build" -- $SwFile | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "git commit failed for $SwFile" }
+            git push origin $Branch
+            if ($LASTEXITCODE -ne 0) { throw "git push failed for $SwFile" }
+            if (-not $SkipPhpSync) {
+                Invoke-Ssh "cd $RemoteDir && git fetch origin && git checkout -f -B $Branch origin/$Branch"
+            }
+            Write-Ok "sw.js re-synced to staging."
+        } else {
+            Write-Ok "Service worker version unchanged - nothing to re-sync."
+        }
+    }
 
     if ($DryRun) {
         Write-Step "Dry run complete - build is clean."
