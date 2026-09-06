@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Dropdown } from 'flowbite-react';
 import { Button } from './Button';
-import { RateRule, saveRateRuleDB, deleteRateRuleDB, updatePricingModeDB, apiFetch } from '../services/api';
+import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
 import { Trash2, Plus, DollarSign, X, Loader2, Pencil, Send, ChevronDown } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
-import { useConfirm } from './ConfirmDialogContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
@@ -52,7 +51,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   propertyId: _propertyId,
   rooms = [],
   rateRules,
-  pricingMode,
   defaultTariff,
   onRulesUpdated,
   initialStartDate,
@@ -61,8 +59,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   initialRatePerNight,
 }) => {
   const { showToast } = useToast();
-  const { confirm } = useConfirm();
-  const [currentPricingMode, setCurrentPricingMode] = useState<'flat' | 'variable'>(pricingMode);
   const [startDate, setStartDate] = useState(initialStartDate || new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(initialEndDate || new Date().toISOString().split('T')[0]);
   const [ratePerNight, setRatePerNight] = useState<string>('');
@@ -107,10 +103,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [syncingRoomId, setSyncingRoomId] = useState<number | null>(null);
 
   useEffect(() => {
-    setCurrentPricingMode(pricingMode);
-  }, [pricingMode]);
-
-  useEffect(() => {
     if (rooms && rooms.length > 0) {
       setLocalRooms(rooms);
     }
@@ -137,35 +129,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     setRulesPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  const handleTogglePricingMode = async (newMode: 'flat' | 'variable') => {
-    if (newMode === currentPricingMode) return;
-
-    if (rateRules.length > 0) {
-      const confirmed = await confirm({
-        title: newMode === 'flat' ? 'Use one price for every date?' : 'Use different prices by date?',
-        message: newMode === 'flat'
-          ? `Every date goes back to the usual price straight away - on your own calendar, on Airbnb and Booking.com, and on your booking page. Any dates you had blocked will open up again for booking. Your rules aren't deleted; switch back and they return exactly as they were.`
-          : `Your saved rules start applying straight away - on your own calendar, on Airbnb and Booking.com, and on your booking page. Dates with a rule use that price and any limits you set; every other date keeps its usual price.`,
-        confirmText: newMode === 'flat' ? 'Use one price' : 'Use prices by date',
-        variant: 'warning',
-      });
-      if (!confirmed) return;
-    }
-
-    try {
-      const res = await updatePricingModeDB(newMode);
-      if (res.success) {
-        setCurrentPricingMode(newMode);
-        showToast(newMode === 'variable' ? 'Now using different prices by date.' : 'Now using one price for every date.', { type: 'success' });
-        onRulesUpdated();
-      } else {
-        showToast(res.message || 'Failed to update pricing mode', { type: 'error' });
-      }
-    } catch {
-      showToast('Network error updating pricing mode', { type: 'error' });
-    }
-  };
 
   const handleSyncSingleRoom = async (room: { id: number; name: string; default_tariff?: number }) => {
     setSyncingRoomId(room.id);
@@ -410,73 +373,29 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       </div>
 
       <div className="p-6 overflow-y-auto max-h-[82vh] space-y-6">
-        {/* Pricing Mode Toggle Card */}
-        <div className="bg-gray-50 dark:bg-gray-800/80 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Active Pricing Mode
-            </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {currentPricingMode === 'variable'
-                ? 'Dates with a rule use that rule’s price; every other date uses the usual price.'
-                : `Using flat base rate (₹${defaultTariff ? Math.round(defaultTariff) : '0'}/night) for all dates.`}
-            </p>
-          </div>
+        {/* ═══════════ 1. BASE PRICE ═══════════
 
-          <div className="flex items-center gap-1 bg-white dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700 shrink-0">
-            <button
-              type="button"
-              onClick={() => handleTogglePricingMode('flat')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                currentPricingMode === 'flat'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              One price always
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTogglePricingMode('variable')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                currentPricingMode === 'variable'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Price by date
-            </button>
-          </div>
-        </div>
+            One page, no mode tabs (6 Sep 2026, explicit request - "i dont want
+            2 tabs as it will be confusing").
 
-        {/* ═══════════ 1. FLAT BASE RATE VIEW ═══════════ */}
-        {currentPricingMode === 'flat' && (
-          <div className="space-y-5">
-            {/* Mode Info Banner */}
-            <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/30 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
-                <DollarSign className="w-4 h-4" />
-              </div>
-              <div>
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                  Standard Flat Pricing Active
-                </h5>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
-                  Your property operates on standard flat base rates across all calendar dates. Every booking, your public direct booking link, and connected OTA channels (Airbnb, Booking.com) use the default room tariffs below without seasonal surges or date-range overrides.
-                </p>
-              </div>
-            </div>
+            The old "One price always" / "Price by date" toggle presented these
+            as alternatives, which they never were: the base price below is the
+            fallback for any date without a rule, so it is in effect either way.
+            The toggle's only real job was deciding whether rules were allowed
+            to apply at all - and a mode where saved rules silently do nothing
+            is exactly the trap that hid a stray rule for a week.
 
-            {/* Room / Unit Base Tariffs Management */}
+            So: base price first, date rules layered on top, both always
+            visible. */}
+        <div className="space-y-5">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Default Base Tariffs ({localRooms.length > 0 ? `${localRooms.length} Rooms` : 'Standard Rate'})
+                    Base price {localRooms.length > 0 ? `(${localRooms.length} units)` : ''}
                   </h4>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Configure the constant nightly tariff charged per room across all standard dates.
+                    The usual nightly price. Any date you don't give a rule below is sold at this.
                   </p>
                 </div>
               </div>
@@ -595,34 +514,8 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               )}
             </div>
 
-            {/* Saved Standby Dynamic Rules Card (if any exist in database) */}
-            {rateRules.length > 0 && (
-              <div className="bg-amber-50/70 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800 p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div>
-                    <h5 className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                      {rateRules.length} saved rule{rateRules.length === 1 ? '' : 's'}, not in use
-                    </h5>
-                    <p className="text-xs text-amber-800/90 dark:text-amber-300 mt-0.5">
-                      You've saved {rateRules.length} rule{rateRules.length === 1 ? '' : 's'} for particular dates (weekend prices, minimum stays, and so on). They're switched off right now because every date is using one price.
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="xs"
-                    onClick={() => handleTogglePricingMode('variable')}
-                    className="shrink-0 bg-white dark:bg-gray-800 hover:bg-amber-100 dark:hover:bg-amber-900/60"
-                  >
-                    Start using these rules
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
-        )}
 
-        {/* ═══════════ 2. DYNAMIC RULES VIEW ═══════════ */}
-        {currentPricingMode === 'variable' && (
           <div className="space-y-6">
             {/* Dynamic Notice Banner */}
             <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-start gap-3">
@@ -1090,7 +983,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
               )}
             </div>
           </div>
-        )}
       </div>
     </Modal>
   );
