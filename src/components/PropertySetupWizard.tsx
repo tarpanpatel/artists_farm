@@ -270,48 +270,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     }
   };
 
-  /**
-   * Write the check-in/out times to every ROOM, one update_property call each.
-   *
-   * The times are almost always uniform across a building, so asking once and
-   * fanning out is the right shape - but they have to land on the rooms, since
-   * that is where a booking reads them from. Sequential rather than parallel:
-   * seven rooms is nothing, and a burst of writes racing each other is not worth
-   * the microseconds saved.
-   */
-  const [applyingTimes, setApplyingTimes] = useState(false);
-  const [timesApplied, setTimesApplied] = useState(false);
-  const applyTimesToAllRooms = async () => {
-    if (!editCheckinTime || !editCheckoutTime || roomReadiness.length === 0) return;
-    setApplyingTimes(true);
-    setError(null);
-    let failed = 0;
-    for (const room of roomReadiness) {
-      try {
-        const res = await fetch('/php/api/router.php?action=update_property', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            property_id: room.id,
-            checkin_time: editCheckinTime,
-            checkout_time: editCheckoutTime,
-          }),
-        });
-        const data = await res.json();
-        if (!data.success) failed++;
-      } catch {
-        failed++;
-      }
-    }
-    setApplyingTimes(false);
-    if (failed > 0) {
-      setError(`Could not update ${failed} of ${roomReadiness.length} rooms. Try again.`);
-    } else {
-      setTimesApplied(true);
-    }
-  };
-
   const handleNext = async () => {
     const ok = await persistCurrentStep();
     if (ok) setStepIndex((i) => Math.min(i + 1, steps.length - 1));
@@ -641,34 +599,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input type="time" label="Check-in Time" value={editCheckinTime} onChange={(e) => { setEditCheckinTime(e.target.value); setTimesApplied(false); }} />
-                    <Input type="time" label="Check-out Time" value={editCheckoutTime} onChange={(e) => { setEditCheckoutTime(e.target.value); setTimesApplied(false); }} />
-                  </div>
-                  <Button
-                    variant="secondary"
-                    className="w-full sm:w-auto"
-                    onClick={applyTimesToAllRooms}
-                    disabled={applyingTimes || !editCheckinTime || !editCheckoutTime}
-                  >
-                    {applyingTimes ? (
-                      <span className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Applying…
-                      </span>
-                    ) : timesApplied ? (
-                      <span className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Applied to all {roomReadiness.length}
-                      </span>
-                    ) : (
-                      `Apply these times to all ${roomReadiness.length} unit${roomReadiness.length === 1 ? '' : 's'}`
-                    )}
-                  </Button>
-                  <p className="text-2xs text-slate-500 dark:text-slate-400">
-                    Times are set per unit. This writes the same pair to all of them - change any
-                    one afterwards in that unit's own settings.
-                  </p>
-                </div>
               </>
             )}
 
