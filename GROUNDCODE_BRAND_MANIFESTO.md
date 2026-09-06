@@ -68,20 +68,20 @@
    - Exact staff names and times recorded.
    - Eliminates *"I didn't know"* excuses permanently.
 
-4. **Never Drop a Guest Request:**
-   - Extra towels, water, or tea alerts staff.
+4. **Never Miss a Guest Request (Happy Guest = More Income):**
+   - Extra towels, water, or tea alerts staff on phone.
    - Gentle reminders ring if staff forgets.
 
-5. **Photo Proof for Every Entry:**
+5. **Every Single Rupee Recorded:**
+   - No more guesses, you know what is draining your profits.
    - Staff snaps photos of receipts and bills.
-   - One-tap advance logs with attached proof.
 
 6. **Instant Guest ID Alerts:**
    - Clear alerts if photo ID is missing.
    - Keeps your homestay safe and compliant.
 
-7. **Every Meal & Tea Gets Billed:**
-   - Cook confirms food with one tap.
+7. **Kitchen Wastage is Recorded (Pull Maximum Profit Out of F&B):**
+   - Cook confirms food and logs kitchen wastage with one tap.
    - Automatically added to the guest bill.
 
 8. **Save 15–25% OTA Fees on Direct Bookings:**
