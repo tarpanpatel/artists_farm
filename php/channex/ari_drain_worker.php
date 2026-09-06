@@ -405,7 +405,27 @@ class AriDrainWorker {
             // Needs a real charge AND room above the included count for the extra
             // occupancies to mean anything - otherwise per_person is just per_room
             // with extra rows.
-            if ((float)$cfg['extra_guest_charge'] > 0 && $capacity > $included) {
+            // The REMOTE plan decides how it must be addressed, not the local
+            // config. Channex rejects a per-occupancy `rates` array on a plan that
+            // still declares per_room, so inferring this from the owner's
+            // extra_guest_charge would break every rate push for that property the
+            // moment they typed a charge - before the plan had been switched.
+            // content_sync records the plan's real sell_mode when it creates or
+            // updates it; until a plan is genuinely per_person this stays off and
+            // the scalar `rate` is pushed exactly as before.
+            $planSellMode = 'per_room';
+            try {
+                $smStmt = $this->pdo->prepare(
+                    "SELECT sell_mode FROM channex_mappings WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL)) LIMIT 1"
+                );
+                $smStmt->execute([$propertyId, $roomId, $roomId]);
+                $planSellMode = (string)($smStmt->fetchColumn() ?: 'per_room');
+            } catch (Exception $e) {
+                // Column not healed yet on this environment - treat as per_room,
+                // which is what every existing plan actually is.
+            }
+
+            if ($planSellMode === 'per_person' && (float)$cfg['extra_guest_charge'] > 0 && $capacity > $included) {
                 $occPricing = ['included' => $included, 'charge' => (float)$cfg['extra_guest_charge'], 'capacity' => $capacity];
             }
         }

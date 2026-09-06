@@ -10,10 +10,10 @@ require_once __DIR__ . '/../config/schema_cache.php';
 require_once __DIR__ . '/ChannexClient.php';
 
 function ensureChannexMappingsSchema(PDO $pdo): void {
-    if (isSchemaVerified('schema_channex_mappings')) {
-        return;
-    }
-
+    // No early return on the table marker any more: the sell_mode heal below has
+    // to run on environments where the table was created long before that column
+    // existed, which is every environment that has ever synced content.
+    if (!isSchemaVerified('schema_channex_mappings')) {
     try {
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS `channex_mappings` (
@@ -34,6 +34,29 @@ function ensureChannexMappingsSchema(PDO $pdo): void {
         ");
         markSchemaVerified('schema_channex_mappings');
     } catch (PDOException $e) {}
+    }
+
+    // Records what sell_mode the Channex rate plan actually declares (6 Sep 2026).
+    //
+    // AriDrainWorker must not send a per-occupancy `rates` array to a plan that is
+    // still per_room - Channex rejects it, so every rate push for that property
+    // fails until the plan is switched. Deriving "should this be per-person?" from
+    // the property's own extra_guest_charge (which is what the first version did)
+    // gets that backwards: it turns the array on the moment an owner types a
+    // charge, while the remote plan is still per_room.
+    //
+    // The remote plan is the only authority on how it must be addressed, so the
+    // answer is stored here when content sync creates or updates it, and read back
+    // by the worker rather than guessed.
+    if (!isSchemaVerified('schema_channex_mappings_sell_mode')) {
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM channex_mappings")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('sell_mode', $cols)) {
+                $pdo->exec("ALTER TABLE channex_mappings ADD COLUMN `sell_mode` VARCHAR(16) NOT NULL DEFAULT 'per_room'");
+            }
+        } catch (Exception $e) {}
+        markSchemaVerified('schema_channex_mappings_sell_mode');
+    }
 }
 
 class ChannexContentSyncer {
@@ -293,16 +316,16 @@ class ChannexContentSyncer {
                 if ($existingMappingId) {
                     $updateStmt = $this->pdo->prepare("
                         UPDATE channex_mappings 
-                        SET channex_property_id = ?, channex_room_type_id = ?, channex_rate_plan_id = ?, sync_status = 'active', last_synced_at = NOW()
+                        SET channex_property_id = ?, channex_room_type_id = ?, channex_rate_plan_id = ?, sell_mode = ?, sync_status = 'active', last_synced_at = NOW()
                         WHERE id = ?
                     ");
-                    $updateStmt->execute([$channexPropertyId, $channexRoomTypeId, $channexRatePlanId, $existingMappingId]);
+                    $updateStmt->execute([$channexPropertyId, $channexRoomTypeId, $channexRatePlanId, $ratePayload['rate_plan']['sell_mode'], $existingMappingId]);
                 } else {
                     $saveStmt = $this->pdo->prepare("
-                        INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sync_status, last_synced_at)
-                        VALUES (?, ?, ?, ?, ?, 'active', NOW())
+                        INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sell_mode, sync_status, last_synced_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())
                     ");
-                    $saveStmt->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId, $channexRatePlanId]);
+                    $saveStmt->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId, $channexRatePlanId, $ratePayload['rate_plan']['sell_mode']]);
                 }
             } catch (PDOException $e) {
                 $checkStmt->execute([$propertyId, $roomId, $roomId]);
