@@ -7,6 +7,95 @@
  * `pricing_mode` ('flat' | 'variable') toggle.
  */
 
+/**
+ * Audit trail for pricing changes (added 6 Sep 2026).
+ *
+ * Every other money-moving surface in this app already writes to `audit_logs`
+ * - bookings, property settings, finance, staff, kitchen - but rate rules did
+ * not, which made "who set this price, and when?" unanswerable. Proving where
+ * one stray Rs4,500 rule on Patel Colony came from took four separate queries
+ * and inference from auto-increment row ids, and the answer was still only a
+ * best guess. Pricing is the setting that most directly moves money; it needs
+ * a trail at least as good as the one a room booking already gets.
+ *
+ * Written SERVER-side, deliberately - not from the client's logAudit() the way
+ * bookings do it. A price can be changed by anything that can reach
+ * save_rate_rule, including a script or a direct API call, and an audit the
+ * caller can simply decline to write is not an audit. Same INSERT shape as
+ * router.php's 'property_settings' entries.
+ *
+ * Never allowed to break the save it is recording: a failed audit write is
+ * swallowed, exactly as at every other audit call site in this codebase.
+ */
+function logRateRuleAudit(PDO $pdo, int $propertyId, string $actionMsg): void {
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO audit_logs (property_id, action, timestamp, user_id, user, ip_address, user_agent, status, module)
+            VALUES (?, ?, NOW(), ?, ?, ?, ?, 'Success', 'pricing_rates')
+        ");
+        $stmt->execute([
+            $propertyId,
+            $actionMsg,
+            // audit_logs.user_id carries a column DEFAULT of 7, so omitting it
+            // silently attributes the change to that one staff member whoever
+            // actually made it. Pass an explicit NULL when there is no session
+            // to read, so an unattributed row reads as unknown rather than as
+            // a specific innocent person.
+            isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null,
+            $_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Unknown',
+            $_SERVER['REMOTE_ADDR'] ?? '',
+            $_SERVER['HTTP_USER_AGENT'] ?? '',
+        ]);
+    } catch (Exception $e) {
+        // Deliberately silent - see docblock.
+    }
+}
+
+/**
+ * Room list for an audit line: "Autumn Home, The Music Room", or the literal
+ * "whole property" for a rule carrying no room. That wording matters - a
+ * whole-property rule on a MULTI_KEY property is the shape that silently
+ * applies to nothing and syncs nowhere, so it should be visible as such in
+ * the log rather than reading like an ordinary rule.
+ */
+function describeRateRuleRooms(PDO $pdo, array $roomIds): string {
+    $ids = array_values(array_unique(array_filter(array_map(function ($r) { return (int)$r; }, $roomIds))));
+    if (!$ids) return 'whole property';
+    try {
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("SELECT name FROM properties WHERE id IN ($in) ORDER BY name");
+        $stmt->execute($ids);
+        $names = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $names ? implode(', ', $names) : ('room #' . implode(', #', $ids));
+    } catch (Exception $e) {
+        return 'room #' . implode(', #', $ids);
+    }
+}
+
+/**
+ * The rate/restriction half of an audit line, so a save and a delete describe
+ * the same rule in the same words.
+ */
+function describeRateRuleTerms(?float $rate, array $r): string {
+    $parts = [];
+    $parts[] = $rate !== null ? ('Rs' . number_format($rate, 2) . '/night') : 'no rate';
+    if (!empty($r['min_stay_arrival']))    $parts[] = 'min stay ' . (int)$r['min_stay_arrival'];
+    if (!empty($r['min_stay_through']))    $parts[] = 'min stay through ' . (int)$r['min_stay_through'];
+    if (!empty($r['max_stay']))            $parts[] = 'max stay ' . (int)$r['max_stay'];
+    if (!empty($r['stop_sell']))           $parts[] = 'STOP SELL';
+    if (!empty($r['closed_to_arrival']))   $parts[] = 'closed to arrival';
+    if (!empty($r['closed_to_departure'])) $parts[] = 'closed to departure';
+    if (!empty($r['days_of_week']))        $parts[] = 'days ' . $r['days_of_week'];
+    return implode(', ', $parts);
+}
+
+/** DD/MM/YYYY - the app's display format everywhere (see CLAUDE.md). */
+function formatRateRuleAuditDate(?string $d): string {
+    $d = (string)$d;
+    $t = strtotime($d);
+    return $t ? date('d/m/Y', $t) : $d;
+}
+
 function handleRateRuleRequests($pdo, $requestMethod, $action, $propertyId) {
     require_once __DIR__ . '/../config/schema_cache.php';
 
@@ -294,6 +383,27 @@ function saveRateRule($pdo, $propertyId) {
             }
         }
 
+        // Audit trail (6 Sep 2026) - see logRateRuleAudit() above. Recorded after
+        // the write actually succeeded, and before the outbox enqueue, so the log
+        // reflects what was stored even if the channel push later fails.
+        logRateRuleAudit($pdo, (int)$propertyId, sprintf(
+            'Rate rule %s: %s - %s - %s to %s - %s',
+            $ruleId ? 'updated' : 'created',
+            $ruleName !== '' ? chr(34) . $ruleName . chr(34) : 'unnamed rule',
+            describeRateRuleRooms($pdo, $ruleId ? [$targetRoomIds[0] ?? null] : $targetRoomIds),
+            formatRateRuleAuditDate($startDate),
+            formatRateRuleAuditDate($endDate),
+            describeRateRuleTerms($ratePerNight, [
+                'min_stay_arrival' => $minStayArrival,
+                'min_stay_through' => $minStayThrough,
+                'max_stay' => $maxStay,
+                'stop_sell' => $stopSell,
+                'closed_to_arrival' => $closedToArrival,
+                'closed_to_departure' => $closedToDeparture,
+                'days_of_week' => $daysOfWeek,
+            ])
+        ));
+
         // Channel Manager Outbox (30 Aug 2026): Enqueue rate & restriction changes
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
@@ -358,7 +468,8 @@ function deleteRateRule($pdo, $propertyId) {
 
         $lookup = $pdo->prepare("
             SELECT room_id, start_date, end_date, rate_per_night, min_stay_arrival, min_stay_through,
-                   max_stay, stop_sell, closed_to_arrival, closed_to_departure
+                   max_stay, stop_sell, closed_to_arrival, closed_to_departure,
+                   rule_name, days_of_week
             FROM room_rate_rules WHERE id = ? AND property_id = ?
         ");
         $lookup->execute([$ruleId, $propertyId]);
@@ -366,6 +477,23 @@ function deleteRateRule($pdo, $propertyId) {
 
         $stmt = $pdo->prepare("DELETE FROM room_rate_rules WHERE id = ? AND property_id = ?");
         $stmt->execute([$ruleId, $propertyId]);
+
+        // Audit trail (6 Sep 2026). Deleting a rule is the change most worth
+        // recording - it is what silently RESTORES a date to its base price, so
+        // "the price changed and nobody knows why" is usually a deletion.
+        if ($existingRule) {
+            logRateRuleAudit($pdo, (int)$propertyId, sprintf(
+                'Rate rule deleted: %s - %s - %s to %s - %s',
+                !empty($existingRule['rule_name']) ? chr(34) . $existingRule['rule_name'] . chr(34) : 'unnamed rule',
+                describeRateRuleRooms($pdo, [$existingRule['room_id'] ?? null]),
+                formatRateRuleAuditDate($existingRule['start_date'] ?? ''),
+                formatRateRuleAuditDate($existingRule['end_date'] ?? ''),
+                describeRateRuleTerms(
+                    isset($existingRule['rate_per_night']) ? (float)$existingRule['rate_per_night'] : null,
+                    $existingRule
+                )
+            ));
+        }
 
         if ($existingRule && !empty($existingRule['start_date']) && !empty($existingRule['end_date'])) {
             if (is_file(__DIR__ . '/../channex/outbox.php')) {
@@ -429,8 +557,29 @@ function updatePricingMode($pdo, $propertyId) {
             return;
         }
 
+        // Read the mode being replaced BEFORE the update, so the audit line can
+        // say what actually changed rather than only where it landed.
+        $prevModeStmt = $pdo->prepare("SELECT pricing_mode FROM properties WHERE id = ?");
+        $prevModeStmt->execute([$propertyId]);
+        $previousMode = (string)($prevModeStmt->fetchColumn() ?: 'flat');
+
         $stmt = $pdo->prepare("UPDATE properties SET pricing_mode = ? WHERE id = ?");
         $stmt->execute([$mode, $propertyId]);
+
+        // Audit trail (6 Sep 2026). This switch is the single highest-impact
+        // pricing change available: flipping to Flat Base Rate makes EVERY rate
+        // rule stop applying at once, with no rule itself being edited or
+        // deleted - so without this, prices appear to change on their own with
+        // nothing in the log to explain it.
+        if ($previousMode !== $mode) {
+            $modeLabel = function ($m) { return $m === 'variable' ? 'Dynamic Rules' : 'Flat Base Rate'; };
+            logRateRuleAudit($pdo, (int)$propertyId, sprintf(
+                'Pricing mode changed: %s -> %s%s',
+                $modeLabel($previousMode),
+                $modeLabel($mode),
+                $mode === 'flat' ? ' (every rate rule stops applying)' : ''
+            ));
+        }
 
         // Make the switch take effect on Airbnb/Booking.com and the public
         // page immediately, not just the next time an unrelated rule is
