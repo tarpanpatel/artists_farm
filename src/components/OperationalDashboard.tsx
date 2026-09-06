@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Datepicker } from 'flowbite-react';
 import { X, ChevronLeft, ChevronRight } from './icons/FlowbiteIcons';
@@ -21,7 +21,7 @@ import {
   Share2,
 } from './icons/FlowbiteIcons';
 import { RateRuleModal } from './RateRuleModal';
-import { useToast } from './ToastContext';
+import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -148,7 +148,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   onCheckout,
   minimalMode = false,
 }) => {
-  const { showToast } = useToast();
   const { orders } = useKitchenContext();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
@@ -164,12 +163,29 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
-  // Click-to-select-a-date-range on the month calendar (added 3 Sep 2026,
-  // same feature/behavior as TodayOverview.tsx's multi-room calendar - see
-  // that file's own pendingSelection comment for the full rationale). This
-  // view is already scoped to one room (roomName), so there's no room
-  // dimension to track here, just the pending check-in date.
-  const [pendingRangeDateStr, setPendingRangeDateStr] = useState<string | null>(null);
+  /**
+   * Airbnb-style drag selection on the month calendar (6 Sep 2026, explicit
+   * request: "make sure everything we do is also being done for single
+   * property page").
+   *
+   * Same model as TodayOverview.tsx's multi-unit grid - see that file's own
+   * selAnchor comment for why the Add Booking / Change Prices toggle went away
+   * - with one difference forced by the layout. That grid is units x dates, so
+   * a drag there is a RECTANGLE. This is a month grid of a single unit, so a
+   * drag here is a contiguous DATE RANGE that simply wraps across week rows,
+   * exactly as Airbnb's own single-listing calendar behaves. Anchor and focus
+   * are date strings rather than grid indices for that reason.
+   */
+  const [selAnchorDate, setSelAnchorDate] = useState<string | null>(null);
+  const [selFocusDate, setSelFocusDate] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isDragArmed, setIsDragArmed] = useState(false);
+  const dragRef = useRef<{
+    armed: boolean;
+    startX: number;
+    startY: number;
+    longPressTimer: number | null;
+  }>({ armed: false, startX: 0, startY: 0, longPressTimer: null });
   const [addBookingPrefillDates, setAddBookingPrefillDates] = useState<{ checkin: string; checkout: string } | null>(null);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
@@ -252,21 +268,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   }, [guests]);
 
 
-  // Dynamic Date-Range Pricing & Rates State
-  const [calendarViewMode, setCalendarViewModeState] = useState<'bookings' | 'pricing'>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('artists_farm_calendar_view_mode');
-      if (stored === 'pricing' || stored === 'bookings') return stored;
-    }
-    return 'bookings';
-  });
-
-  const setCalendarViewMode = (mode: 'bookings' | 'pricing') => {
-    setCalendarViewModeState(mode);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('artists_farm_calendar_view_mode', mode);
-    }
-  };
+  // Dynamic Date-Range Pricing & Rates State. The 'bookings' | 'pricing' view
+  // mode (and the sessionStorage key that remembered it across page loads) was
+  // removed 6 Sep 2026 - the calendar has no modes now, so there is nothing to
+  // remember. Bookings and prices are both always on screen.
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [propertyDefaultTariff, setPropertyDefaultTariff] = useState<number | null>(null);
@@ -291,19 +296,63 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // means the exact same thing when actually pushed to Airbnb/Booking.com.
   const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 
+  /**
+   * Rate rules in the SAME precedence order the server resolves them in
+   * (6 Sep 2026 fix, mirrored from TodayOverview.tsx's resolvedRateRules).
+   *
+   * get_rate_rules ships rows ordered `start_date ASC, created_at DESC` - a
+   * fine display order, wrong as a precedence order. Everything that decides
+   * what a night actually COSTS resolves `room_id DESC, created_at DESC` and
+   * takes the first hit (AriDrainWorker::computeCompressedRestrictions(),
+   * public_booking.php). Reading the shipped order instead let the
+   * earliest-STARTING rule win here, so this calendar could print a price the
+   * guest is never quoted and Airbnb never receives.
+   */
+  const resolvedRateRules = useMemo(() => {
+    return [...rateRules].sort((a, b) => {
+      const roomA = a.room_id ? Number(a.room_id) : 0;
+      const roomB = b.room_id ? Number(b.room_id) : 0;
+      if (roomA !== roomB) return roomB - roomA;
+      const timeA = a.created_at ? Date.parse(a.created_at.replace(' ', 'T')) : 0;
+      const timeB = b.created_at ? Date.parse(b.created_at.replace(' ', 'T')) : 0;
+      if (timeA !== timeB) return timeB - timeA;
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
+  }, [rateRules]);
+
   const getDayPrice = (dateStr: string): { rate: number; isRule: boolean; label?: string } => {
     if (pricingMode === 'variable') {
       const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
-      const match = rateRules.find((r) => {
+      const match = resolvedRateRules.find((r) => {
         const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
         const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
-        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr;
+        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
+          && r.rate_per_night != null;
       });
       if (match) {
         return { rate: Number(match.rate_per_night), isRule: true, label: match.rule_name };
       }
     }
     return { rate: propertyDefaultTariff || 0, isRule: false };
+  };
+
+  /**
+   * Is this night closed to bookings? ANY overlapping stop_sell rule closes it,
+   * deliberately not "the winning rule happens to carry stop_sell" - that
+   * mirrors AriDrainWorker's availability query exactly, which filters
+   * `stop_sell = 1` and marks every day of every match with no precedence pass
+   * and no days_of_week filter. Resolving it more cleverly here would draw
+   * nights as open that Airbnb is being told are closed.
+   */
+  const isNightBlocked = (dateStr: string): boolean => {
+    if (pricingMode !== 'variable') return false;
+    return rateRules.some(
+      (r) =>
+        !!r.stop_sell &&
+        (!r.room_id || (roomId && Number(r.room_id) === Number(roomId))) &&
+        r.start_date <= dateStr &&
+        r.end_date >= dateStr
+    );
   };
 
   // Every date already spoken for on this calendar (any other guest stay, or
@@ -412,52 +461,151 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const isDateOccupiedForRange = (dateStr: string): boolean =>
     guests.some((g) => dateStr >= g.checkinDate && dateStr < (g.checkoutDate || (g.expectedCheckout || '').split(' ')[0].split('T')[0]));
 
-  const handleRangeCellClick = (dateStr: string, isUnavailable: boolean) => {
-    if (isUnavailable) return;
+  // --- Airbnb-style drag selection (6 Sep 2026) - see selAnchorDate above. ---
 
-    if (!pendingRangeDateStr || dateStr <= pendingRangeDateStr) {
-      if (pendingRangeDateStr && dateStr === pendingRangeDateStr) {
-        setPendingRangeDateStr(null); // clicking the same cell again cancels
-        return;
+  const endDrag = () => {
+    if (dragRef.current.longPressTimer !== null) {
+      window.clearTimeout(dragRef.current.longPressTimer);
+      dragRef.current.longPressTimer = null;
+    }
+    dragRef.current.armed = false;
+    setIsDragArmed(false);
+  };
+
+  useEffect(() => () => {
+    if (dragRef.current.longPressTimer !== null) window.clearTimeout(dragRef.current.longPressTimer);
+  }, []);
+
+  const clearSelection = () => {
+    setSelAnchorDate(null);
+    setSelFocusDate(null);
+    setIsPanelOpen(false);
+  };
+
+  /**
+   * Which day cell is under the pointer. Coordinate hit-testing rather than
+   * onPointerEnter because touch takes implicit pointer capture on the cell the
+   * finger started on, so enter/leave never fire on the cells dragged across.
+   */
+  const dateFromPoint = (clientX: number, clientY: number): string | null => {
+    const el = document.elementFromPoint(clientX, clientY);
+    const cell = el && (el as HTMLElement).closest ? (el as HTMLElement).closest('[data-cal-date]') as HTMLElement | null : null;
+    if (!cell) return null;
+    // Past nights are hit-testable so a drag passing over them is not
+    // interrupted, but can never become an edge - Channex rejects past dates,
+    // so a range that reached backwards would save locally and fail silently at
+    // the channel.
+    if (cell.dataset.calPast === '1') return null;
+    return cell.dataset.calDate || null;
+  };
+
+  const handleDayPointerDown = (e: React.PointerEvent, dateStr: string) => {
+    const d = dragRef.current;
+    d.startX = e.clientX;
+    d.startY = e.clientY;
+    setSelAnchorDate(dateStr);
+    setSelFocusDate(dateStr);
+    setIsPanelOpen(false);
+
+    // A mouse is unambiguous, so it arms at once. A finger is not - a sideways
+    // swipe here is just as likely to be a page scroll - so touch needs a short
+    // long-press to arm, and a plain tap selects the single night.
+    if (e.pointerType === 'mouse') {
+      d.armed = true;
+      setIsDragArmed(true);
+    } else {
+      if (d.longPressTimer !== null) window.clearTimeout(d.longPressTimer);
+      d.longPressTimer = window.setTimeout(() => {
+        d.longPressTimer = null;
+        d.armed = true;
+        setIsDragArmed(true);
+      }, 280);
+    }
+  };
+
+  const handleDayPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!selAnchorDate) return;
+    if (!d.armed) {
+      if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 10) {
+        endDrag();
+        setSelAnchorDate(null);
+        setSelFocusDate(null);
       }
-      setPendingRangeDateStr(dateStr); // start a fresh selection here
       return;
     }
+    if (e.pointerType !== 'mouse') e.preventDefault();
+    const hit = dateFromPoint(e.clientX, e.clientY);
+    if (hit) setSelFocusDate(hit);
+  };
 
-    const startStr = pendingRangeDateStr;
-    setPendingRangeDateStr(null);
+  const handleDayPointerUp = () => {
+    if (!selAnchorDate) { endDrag(); return; }
+    endDrag();
+    setIsPanelOpen(true);
+  };
 
-    if (calendarViewMode === 'pricing') {
-      // Same click-a-range gesture as booking, but open the existing
-      // Pricing & Rates modal pre-scoped to this room + range (end date
-      // inclusive there = one night before the second click, so "5th then
-      // 9th" prices the 5th-8th).
-      const priceEndStr = `${(() => { const e = new Date(dateStr + 'T00:00:00'); e.setDate(e.getDate() - 1); return `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, '0')}-${String(e.getDate()).padStart(2, '0')}`; })()}`;
-      setSelectedRateRuleStartDate(startStr);
-      setSelectedRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
-      setShowRateRuleModal(true);
-      return;
-    }
+  // A drag can be released anywhere - off the grid, outside the window. Without
+  // this the range stays stuck to the cursor with no panel, which reads as the
+  // calendar having frozen.
+  useEffect(() => {
+    if (!isDragArmed) return;
+    const finish = () => handleDayPointerUp();
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+  });
 
-    // Valid candidate: startStr = check-in, dateStr = check-out -
-    // verify every night in between is actually free first.
-    let hasConflict = false;
-    const cur = new Date(startStr + 'T00:00:00');
-    const end = new Date(dateStr + 'T00:00:00');
-    while (cur < end) {
-      const curStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
-      if (isDateOccupiedForRange(curStr)) { hasConflict = true; break; }
+  const selectedRange = useMemo(() => {
+    if (!selAnchorDate || !selFocusDate) return null;
+    const startDate = selAnchorDate <= selFocusDate ? selAnchorDate : selFocusDate;
+    const endDate = selAnchorDate <= selFocusDate ? selFocusDate : selAnchorDate;
+    return { startDate, endDate };
+  }, [selAnchorDate, selFocusDate]);
+
+  /** Everything the editor panel needs about the selected date range. */
+  const selectionInfo = useMemo(() => {
+    if (!selectedRange) return null;
+    const days: string[] = [];
+    const cur = new Date(selectedRange.startDate + 'T00:00:00');
+    const end = new Date(selectedRange.endDate + 'T00:00:00');
+    while (cur <= end) {
+      days.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`);
       cur.setDate(cur.getDate() + 1);
     }
-
-    if (hasConflict) {
-      showToast('That range overlaps an existing booking - pick again.', { type: 'error' });
-      return;
-    }
-
-    setAddBookingPrefillDates({ checkin: startStr, checkout: dateStr });
-    setShowAddGuestModal(true);
-  };
+    let low = Infinity;
+    let high = -Infinity;
+    let blocked = 0;
+    let booked = 0;
+    days.forEach((dateStr) => {
+      if (isDateOccupiedForRange(dateStr)) { booked += 1; return; }
+      if (isNightBlocked(dateStr)) blocked += 1;
+      const rate = getDayPrice(dateStr).rate;
+      if (rate < low) low = rate;
+      if (rate > high) high = rate;
+    });
+    return {
+      selection: {
+        // roomId is set when this dashboard is one room of a MULTI_KEY
+        // property; a SINGLE property has no room rows at all, and an empty
+        // list is what the panel turns into the [null] "the property itself"
+        // scope that its channex_mappings row is keyed on.
+        roomIds: roomId ? [roomId] : [],
+        roomNames: [roomName || propertyName || 'This property'],
+        startDate: selectedRange.startDate,
+        endDate: selectedRange.endDate,
+      } as CalendarSelection,
+      priceLow: low === Infinity ? 0 : low,
+      priceHigh: high === -Infinity ? 0 : high,
+      blockedCells: blocked,
+      bookedCells: booked,
+      totalCells: days.length - booked,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRange, guests, rateRules, pricingMode, propertyDefaultTariff, roomId, roomName]);
 
   // --- Front-desk alerts: bookings needing attention, with no time cutoff so
   // stale/forgotten bookings from any point in the past still surface. ---
@@ -1197,74 +1345,48 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               </h3>
             </div>
             <div className="flex items-center gap-2">
-              {/* Add Booking / Change Prices interaction toggle. In "Change
-                  Prices" a click-a-range on the grid opens the same Pricing &
-                  Rates modal pre-scoped to that range (Airbnb Multi-Calendar
-                  style) instead of the Add Booking flow. */}
-              <div className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-700 p-0.5 rounded-lg border border-gray-200 dark:border-gray-600">
-                <button
-                  type="button"
-                  onClick={() => { setCalendarViewMode('bookings'); setPendingRangeDateStr(null); }}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                    calendarViewMode === 'bookings'
-                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                  }`}
-                >
-                  Add Booking
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setCalendarViewMode('pricing'); setPendingRangeDateStr(null); }}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
-                    calendarViewMode === 'pricing'
-                      ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                  }`}
-                >
-                  <DollarSign className="w-3 h-3" />
-                  Change Prices
-                </button>
-              </div>
-
-              {calendarViewMode === 'bookings' ? (
-                <button
-                  type="button"
-                  onClick={() => setShowAddGuestModal(true)}
-                  className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{t('new_booking_btn', 'New Booking')}</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRateRuleStartDate(undefined);
-                      setSelectedRateRuleEndDate(undefined);
-                      setShowRateRuleModal(true);
-                    }}
-                    className="text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Set Rate Rule</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const slug = getPropertySlug() || '';
-                      const url = `${window.location.origin}/${slug ? `${slug}/#book` : '#book'}`;
-                      window.open(url, '_blank');
-                    }}
-                    className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                    title="Open public direct booking engine & availability"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Booking Page</span>
-                  </button>
-                </div>
-              )}
+              {/* The Add Booking / Change Prices toggle was removed 6 Sep 2026
+                  - the calendar has no modes now. Drag a range of days and the
+                  editor panel offers whatever that range supports: price it,
+                  block it, or book it. Both actions used to be behind a switch
+                  that had to be set BEFORE picking dates, so getting it wrong
+                  meant re-picking them. See selAnchorDate above. */}
+              <span className="text-2xs text-gray-500 dark:text-gray-400 hidden lg:inline">
+                Drag across days to price or block them
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAddGuestModal(true)}
+                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t('new_booking_btn', 'New Booking')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRateRuleStartDate(undefined);
+                  setSelectedRateRuleEndDate(undefined);
+                  setShowRateRuleModal(true);
+                }}
+                className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              >
+                <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+                <span>Prices &amp; rules</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const slug = getPropertySlug() || '';
+                  const url = `${window.location.origin}/${slug ? `${slug}/#book` : '#book'}`;
+                  window.open(url, '_blank');
+                }}
+                className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                title="Open public direct booking engine & availability"
+              >
+                <Share2 className="w-3.5 h-3.5 text-blue-600" />
+                <span>Booking Page</span>
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-1 overflow-x-auto">
@@ -1459,29 +1581,36 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 flush(6);
 
                 return (
-                  <div key={`week-${weekIdx}`} className="relative grid grid-cols-7 divide-x divide-gray-200 dark:divide-gray-700">
+                  <div key={`week-${weekIdx}`} className={`relative grid grid-cols-7 divide-x divide-gray-200 dark:divide-gray-700${isDragArmed ? ' calendar--dragging' : ''}`}>
                     {week.map((slot, col) => {
                       if (!slot) {
                         return <div key={`blank-${col}`} className="min-h-[96px] sm:min-h-[110px] p-2 bg-gray-50/50 dark:bg-gray-800/40" />;
                       }
                       const { d, dateStr, dayBookingsForDate, dayBookingOverflowCount, isToday, isRangeUnavailable } = slot;
-                      const isPendingRangeStart = pendingRangeDateStr === dateStr;
+                      const isPastDay = dateStr < todayStr;
+                      const inSel = !!selectedRange && dateStr >= selectedRange.startDate && dateStr <= selectedRange.endDate;
+                      const isBlockedNight = !isRangeUnavailable && isNightBlocked(dateStr);
                       return (
                         <div
                           key={`day-${d}`}
-                          onClick={() => handleRangeCellClick(dateStr, isRangeUnavailable)}
-                          title={isRangeUnavailable ? undefined : calendarViewMode === 'pricing'
-                            ? (pendingRangeDateStr ? 'Click the last night to price' : 'Click the first night to price a range')
-                            : (pendingRangeDateStr ? 'Click to set check-out' : 'Click to start a new booking')}
-                          className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors ${
-                            !isRangeUnavailable ? 'cursor-pointer' : ''
+                          data-cal-date={dateStr}
+                          data-cal-past={isPastDay ? '1' : undefined}
+                          onPointerDown={isPastDay ? undefined : (e) => handleDayPointerDown(e, dateStr)}
+                          onPointerMove={isPastDay ? undefined : handleDayPointerMove}
+                          onPointerUp={isPastDay ? undefined : handleDayPointerUp}
+                          title={isPastDay ? undefined : 'Drag to select these nights'}
+                          className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors select-none ${
+                            !isPastDay ? 'cursor-pointer' : ''
                           } ${
-                            isPendingRangeStart
-                              ? 'bg-blue-100 dark:bg-blue-900/40 ring-2 ring-inset ring-blue-500'
+                            inSel
+                              ? 'bg-slate-900/[0.07] dark:bg-white/10 ring-2 ring-inset ring-slate-900 dark:ring-white'
+                              : isBlockedNight
+                              ? 'bg-gray-100 dark:bg-gray-800/70'
                               : isToday
                               ? 'bg-blue-50/40 dark:bg-blue-900/10'
                               : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
                           }`}
+                          style={inSel ? { touchAction: 'none' } : undefined}
                         >
                           <div className="flex items-center justify-between">
                             {isToday ? (
@@ -1494,98 +1623,87 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               </span>
                             )}
                           </div>
-                          {calendarViewMode === 'pricing' ? (
-                            <div
-                              className={`w-full text-left mt-2 p-1.5 rounded-md border transition-colors ${
-                                isRangeUnavailable
-                                  ? 'bg-slate-50/60 dark:bg-slate-700/40 border-slate-200/70 dark:border-slate-700'
-                                  : 'bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600'
-                              }`}
-                            >
-                              <div className="text-xs font-bold text-slate-900 dark:text-white">
+                            <div className="invisible px-2 py-1 text-xs" aria-hidden="true">
+                              <div>&nbsp;</div>
+                              <div className="text-2xs">&nbsp;</div>
+                            </div>
+                            {/* Small per-day price on unbooked dates (4 Sep
+                                2026, explicit request) - only when nothing
+                                else occupies this cell, so it never
+                                competes with a booking capsule or the
+                                overflow indicator below it. */}
+                            {!isRangeUnavailable && (
+                              <div
+                                className={`text-2xs font-medium text-right pr-0.5 select-none ${
+                                  isBlockedNight
+                                    ? 'text-gray-400 dark:text-gray-500 line-through'
+                                    : inSel
+                                    ? 'text-gray-900 dark:text-white font-bold'
+                                    : 'text-gray-400 dark:text-gray-500'
+                                }`}
+                              >
                                 ₹{Math.round(getDayPrice(dateStr).rate)}
                               </div>
-                              <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
-                                {getDayPrice(dateStr).isRule ? (getDayPrice(dateStr).label || 'Dynamic Rule') : 'Base Tariff'}
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="invisible px-2 py-1 text-xs" aria-hidden="true">
-                                <div>&nbsp;</div>
-                                <div className="text-2xs">&nbsp;</div>
-                              </div>
-                              {/* Small per-day price on unbooked dates (4 Sep
-                                  2026, explicit request) - only when nothing
-                                  else occupies this cell, so it never
-                                  competes with a booking capsule or the
-                                  overflow indicator below it. */}
-                              {!isRangeUnavailable && (
-                                <div className="text-2xs font-medium text-gray-400 dark:text-gray-500 text-right pr-0.5 select-none">
-                                  ₹{Math.round(getDayPrice(dateStr).rate)}
-                                </div>
-                              )}
-                              {dayBookingOverflowCount > 0 && (
-                                <Popover
-                                  trigger="click"
-                                  placement="auto"
-                                  open={openOverflowDateStr === dateStr}
-                                  onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
-                                  content={
-                                    <div className="w-60 p-2">
-                                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
-                                        {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
-                                      </div>
-                                      <div className="space-y-1 max-h-64 overflow-y-auto">
-                                        {dayBookingsForDate.map((g) => {
-                                          const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
-                                          const itemPendingReasons = getGuestPendingReasons(g);
-                                          const hasItemPending = itemPendingReasons.length > 0;
-                                          return (
-                                            <button
-                                              key={g.id}
-                                              type="button"
-                                              onClick={() => {
-                                                setSelectedBookingFocusSection(null);
-                                                setSelectedBooking(g);
-                                                setOpenOverflowDateStr(null);
-                                              }}
-                                              className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
-                                            >
-                                              <div className="min-w-0">
-                                                <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                                                  {hasItemPending && (
-                                                    <span
-                                                      className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
-                                                      title={`Action Pending: ${itemPendingReasons.join(', ')}`}
-                                                    />
-                                                  )}
-                                                  <span className="truncate">{g.guestName}</span>
-                                                </div>
-                                                <div className="text-2xs text-slate-500 dark:text-slate-400">
-                                                  {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
-                                                </div>
-                                              </div>
-                                              <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
-                                                {t('view_booking_button', 'View')} →
-                                              </span>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
+                            )}
+                            {dayBookingOverflowCount > 0 && (
+                              <Popover
+                                trigger="click"
+                                placement="auto"
+                                open={openOverflowDateStr === dateStr}
+                                onOpenChange={(isOpen) => setOpenOverflowDateStr(isOpen ? dateStr : null)}
+                                content={
+                                  <div className="w-60 p-2">
+                                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
+                                      {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
                                     </div>
-                                  }
+                                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                                      {dayBookingsForDate.map((g) => {
+                                        const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
+                                        const itemPendingReasons = getGuestPendingReasons(g);
+                                        const hasItemPending = itemPendingReasons.length > 0;
+                                        return (
+                                          <button
+                                            key={g.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setSelectedBookingFocusSection(null);
+                                              setSelectedBooking(g);
+                                              setOpenOverflowDateStr(null);
+                                            }}
+                                            className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-left transition-colors cursor-pointer"
+                                          >
+                                            <div className="min-w-0">
+                                              <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                                                {hasItemPending && (
+                                                  <span
+                                                    className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
+                                                    title={`Action Pending: ${itemPendingReasons.join(', ')}`}
+                                                  />
+                                                )}
+                                                <span className="truncate">{g.guestName}</span>
+                                              </div>
+                                              <div className="text-2xs text-slate-500 dark:text-slate-400">
+                                                {g.roomNumber}{amt > 0 ? ` · ₹${Math.round(amt)}` : ''}
+                                              </div>
+                                            </div>
+                                            <span className="text-2xs font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                                              {t('view_booking_button', 'View')} →
+                                            </span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
                                 >
-                                  <button
-                                    type="button"
-                                    className="text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline py-0.5 text-left cursor-pointer transition-colors block w-full truncate"
-                                  >
-                                    +{dayBookingOverflowCount} more
-                                  </button>
-                                </Popover>
-                              )}
-                            </>
-                          )}
+                                  +{dayBookingOverflowCount} more
+                                </button>
+                              </Popover>
+                            )}
                         </div>
                       );
                     })}
@@ -1599,157 +1717,155 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         its date-number row height (the w-6 h-6 today-circle,
                         24px) - verified against the invisible spacer above
                         via Playwright, not guessed. */}
-                    {calendarViewMode === 'bookings' && (
-                      <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
-                      {segments.map((seg, segIdx) => {
-                        const gridColumn = `${seg.startCol + 1} / span ${seg.endCol - seg.startCol + 1}`;
-                        if (seg.kind === 'booking') {
-                          const dayBooking = seg.info.dayBooking!;
-                          const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
-                          const dayPendingReasons = getGuestPendingReasons(dayBooking);
-                          const hasDayPending = dayPendingReasons.length > 0;
-                          const popoverKey = `${dayBooking.id}-${seg.info.dateStr}`;
-                          return (
-                            <div key={`seg-b-${weekIdx}-${segIdx}`} style={{ gridColumn }} className="pointer-events-auto px-0.5">
-                              <Popover
-                                trigger="click"
-                                placement="top"
-                                open={openBookingPopoverId === popoverKey}
-                                onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? popoverKey : null)}
-                                title={
-                                  <div className="flex items-center justify-between gap-2">
-                                    <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
-                                    {nightlyRate > 0 && (
-                                      <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                                        ₹{nightlyRate}/night
-                                      </span>
-                                    )}
-                                  </div>
-                                }
-                                content={
-                                  <div className="w-64 text-xs">
-                                    <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
-                                      {dayBooking.roomNumber && (
-                                        <div className="flex items-center justify-between text-2xs">
-                                          <span className="text-gray-500 dark:text-gray-400">Room:</span>
-                                          <span className="font-semibold text-gray-900 dark:text-white">{dayBooking.roomNumber}</span>
-                                        </div>
-                                      )}
-                                      <div className="flex items-center justify-between text-2xs">
-                                        <span className="text-gray-500 dark:text-gray-400">Dates:</span>
-                                        <span className="font-medium text-gray-700 dark:text-gray-200">
-                                          {formatDateDDMMYYYY(dayBooking.checkinDate)} → {formatDateDDMMYYYY(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
-                                        </span>
-                                      </div>
-                                      {hasDayPending && (
-                                        <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
-                                          <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
-                                          <span>Action Pending: {dayPendingReasons.join(', ')}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
-                                      <button
-                                        type="button"
-                                        data-tour="checkin-view-more"
-                                        onClick={() => {
-                                          setSelectedBookingFocusSection(null);
-                                          setSelectedBooking(dayBooking);
-                                          setOpenBookingPopoverId(null);
-                                        }}
-                                        className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
-                                      >
-                                        {t('view_more_button', 'View More')} →
-                                      </button>
-                                    </div>
-                                  </div>
-                                }
-                              >
-                                {/* data-tour (28 Aug 2026): additive-only attribute for the driver.js
-                                    feature tour rebuild - no logic/styling change to this protected
-                                    booking-calendar file, see CLAUDE.md's Protected Components note. */}
-                                <button
-                                  type="button"
-                                  data-tour="checkin-open-booking-bar"
-                                  className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
-                                >
-                                  {hasDayPending && (
-                                    <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
-                                  )}
-                                  {isOtaBooking && (() => {
-                                    const OtaIcon = getOtaIcon((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource);
-                                    return OtaIcon ? (
-                                      <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
-                                    ) : (
-                                      <Globe className="w-2.5 h-2.5 shrink-0" />
-                                    );
-                                  })()}
-                                  <span className="truncate font-semibold min-w-0">
-                                    {getFirstName(dayBooking.guestName)}
-                                    {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource)
-                                      ? ` (${(dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource})`
-                                      : ''}
-                                  </span>
-                                  {nightlyRate > 0 && <span className="text-2xs font-normal opacity-85 shrink-0 ml-auto">₹{nightlyRate}</span>}
-                                </button>
-                              </Popover>
-                            </div>
-                          );
-                        }
-                        // OTA-blocked segment - same popover-first pattern as
-                        // the guest-booking segment above (22 Aug 2026,
-                        // explicit request: clicking should show a popover
-                        // first with a button to proceed, not act
-                        // immediately - and a hover trigger has the same
-                        // stuck-open-on-mobile-tap problem documented on
-                        // Popover.tsx/CLAUDE.md mistake #15).
-                        const otaBlock = seg.info.otaBlock!;
-                        const otaPopoverKey = `${otaBlock.event_start}-${seg.info.dateStr}`;
-                        const handleConvert = () => {
-                          handleConvertOtaBlock(otaBlock);
-                          setOpenOtaPopoverId(null);
-                        };
+                    <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
+                    {segments.map((seg, segIdx) => {
+                      const gridColumn = `${seg.startCol + 1} / span ${seg.endCol - seg.startCol + 1}`;
+                      if (seg.kind === 'booking') {
+                        const dayBooking = seg.info.dayBooking!;
+                        const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
+                        const dayPendingReasons = getGuestPendingReasons(dayBooking);
+                        const hasDayPending = dayPendingReasons.length > 0;
+                        const popoverKey = `${dayBooking.id}-${seg.info.dateStr}`;
                         return (
-                          <div key={`seg-o-${weekIdx}-${segIdx}`} style={{ gridColumn }} className="pointer-events-auto px-0.5">
+                          <div key={`seg-b-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={{ gridColumn }} className="pointer-events-auto px-0.5">
                             <Popover
                               trigger="click"
                               placement="top"
-                              open={openOtaPopoverId === otaPopoverKey}
-                              onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
+                              open={openBookingPopoverId === popoverKey}
+                              onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? popoverKey : null)}
                               title={
-                                <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
-                                  {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
-                                </h4>
+                                <div className="flex items-center justify-between gap-2">
+                                  <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
+                                  {nightlyRate > 0 && (
+                                    <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                                      ₹{nightlyRate}/night
+                                    </span>
+                                  )}
+                                </div>
                               }
                               content={
                                 <div className="w-64 text-xs">
                                   <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
-                                    <div>
-                                      {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                                    {dayBooking.roomNumber && (
+                                      <div className="flex items-center justify-between text-2xs">
+                                        <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                                        <span className="font-semibold text-gray-900 dark:text-white">{dayBooking.roomNumber}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center justify-between text-2xs">
+                                      <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                                        {formatDateDDMMYYYY(dayBooking.checkinDate)} → {formatDateDDMMYYYY(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
+                                      </span>
                                     </div>
+                                    {hasDayPending && (
+                                      <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
+                                        <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
+                                        <span>Action Pending: {dayPendingReasons.join(', ')}</span>
+                                      </div>
+                                    )}
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={handleConvert}
-                                    className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
-                                  >
-                                    {t('convert_to_booking_button', 'Convert to Booking')} →
-                                  </button>
+                                  <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
+                                    <button
+                                      type="button"
+                                      data-tour="checkin-view-more"
+                                      onClick={() => {
+                                        setSelectedBookingFocusSection(null);
+                                        setSelectedBooking(dayBooking);
+                                        setOpenBookingPopoverId(null);
+                                      }}
+                                      className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                                    >
+                                      {t('view_more_button', 'View More')} →
+                                    </button>
+                                  </div>
                                 </div>
                               }
                             >
+                              {/* data-tour (28 Aug 2026): additive-only attribute for the driver.js
+                                  feature tour rebuild - no logic/styling change to this protected
+                                  booking-calendar file, see CLAUDE.md's Protected Components note. */}
                               <button
                                 type="button"
-                                className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors"
+                                data-tour="checkin-open-booking-bar"
+                                className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
                               >
-                                <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                                {hasDayPending && (
+                                  <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
+                                )}
+                                {isOtaBooking && (() => {
+                                  const OtaIcon = getOtaIcon((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource);
+                                  return OtaIcon ? (
+                                    <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
+                                  ) : (
+                                    <Globe className="w-2.5 h-2.5 shrink-0" />
+                                  );
+                                })()}
+                                <span className="truncate font-semibold min-w-0">
+                                  {getFirstName(dayBooking.guestName)}
+                                  {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource)
+                                    ? ` (${(dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource})`
+                                    : ''}
+                                </span>
+                                {nightlyRate > 0 && <span className="text-2xs font-normal opacity-85 shrink-0 ml-auto">₹{nightlyRate}</span>}
                               </button>
                             </Popover>
                           </div>
                         );
-                      })}
-                    </div>
-                    )}
+                      }
+                      // OTA-blocked segment - same popover-first pattern as
+                      // the guest-booking segment above (22 Aug 2026,
+                      // explicit request: clicking should show a popover
+                      // first with a button to proceed, not act
+                      // immediately - and a hover trigger has the same
+                      // stuck-open-on-mobile-tap problem documented on
+                      // Popover.tsx/CLAUDE.md mistake #15).
+                      const otaBlock = seg.info.otaBlock!;
+                      const otaPopoverKey = `${otaBlock.event_start}-${seg.info.dateStr}`;
+                      const handleConvert = () => {
+                        handleConvertOtaBlock(otaBlock);
+                        setOpenOtaPopoverId(null);
+                      };
+                      return (
+                        <div key={`seg-o-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={{ gridColumn }} className="pointer-events-auto px-0.5">
+                          <Popover
+                            trigger="click"
+                            placement="top"
+                            open={openOtaPopoverId === otaPopoverKey}
+                            onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
+                            title={
+                              <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
+                                {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
+                              </h4>
+                            }
+                            content={
+                              <div className="w-64 text-xs">
+                                <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
+                                  <div>
+                                    {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleConvert}
+                                  className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
+                                >
+                                  {t('convert_to_booking_button', 'Convert to Booking')} →
+                                </button>
+                              </div>
+                            }
+                          >
+                            <button
+                              type="button"
+                              className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors"
+                            >
+                              <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                            </button>
+                          </Popover>
+                        </div>
+                      );
+                    })}
+                  </div>
                   </div>
                 );
               })}
@@ -2013,6 +2129,44 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       </Drawer>
 
       {/* Dynamic Rate Rules & Pricing Mode Modal */}
+      {/* Airbnb-style editor for the selected days - same panel the multi-unit
+          calendar uses, so the two screens behave identically. */}
+      {isPanelOpen && selectionInfo && (
+        <CalendarEditorPanel
+          selection={selectionInfo.selection}
+          priceLow={selectionInfo.priceLow}
+          priceHigh={selectionInfo.priceHigh}
+          blockedCells={selectionInfo.blockedCells}
+          totalCells={selectionInfo.totalCells}
+          bookedCells={selectionInfo.bookedCells}
+          onChangeDates={(start, end) => { setSelAnchorDate(start); setSelFocusDate(end); }}
+          onClose={clearSelection}
+          onSaved={() => { loadRateRules(); clearSelection(); }}
+          onAddBooking={
+            selectionInfo.bookedCells === 0
+              ? () => {
+                  // The panel's range is NIGHTS (last night inclusive); a
+                  // booking's second date is its CHECK-OUT, the morning after
+                  // the last night - hence the +1.
+                  const co = new Date(selectionInfo.selection.endDate + 'T00:00:00');
+                  co.setDate(co.getDate() + 1);
+                  setAddBookingPrefillDates({
+                    checkin: selectionInfo.selection.startDate,
+                    checkout: `${co.getFullYear()}-${String(co.getMonth() + 1).padStart(2, '0')}-${String(co.getDate()).padStart(2, '0')}`,
+                  });
+                  setShowAddGuestModal(true);
+                  clearSelection();
+                }
+              : undefined
+          }
+          onOpenAllRules={() => {
+            setSelectedRateRuleStartDate(selectionInfo.selection.startDate);
+            setSelectedRateRuleEndDate(selectionInfo.selection.endDate);
+            setShowRateRuleModal(true);
+          }}
+        />
+      )}
+
       {showRateRuleModal && (
         <RateRuleModal
           isOpen={showRateRuleModal}

@@ -1,11 +1,11 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, DollarSign } from './icons/FlowbiteIcons';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
-import { useConfirm } from './ConfirmDialogContext';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { RateRuleModal } from './RateRuleModal';
+import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
 import { KpiCard } from './KpiCard';
 import { fetchRateRulesDB, RateRule } from '../services/api';
 import { Button } from './Button';
@@ -93,7 +93,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
-  const { confirmWithAlt } = useConfirm();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -103,218 +102,216 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
 
-  // Click-to-select-a-date-range (added 3 Sep 2026, explicit request): click
-  // an available cell to start a range, click a later available cell in the
-  // SAME room to open Add Booking pre-filled with that room + range. A
-  // second click on a DIFFERENT room restarts the pending selection there
-  // instead of erroring - the first click is just treated as abandoned.
-  const [pendingSelection, setPendingSelection] = useState<{ roomId: number; roomName: string; dateStr: string } | null>(null);
-
-  // Calendar interaction mode (4 Sep 2026). 'booking' = the click-a-range ->
-  // Add Booking flow above. 'pricing' = the same click-a-range gesture, but it
-  // opens the existing RateRuleModal ("Pricing & Rates") pre-scoped to that
-  // room + date range - the Airbnb Multi-Calendar "change prices for these
-  // dates" behaviour, reusing the one pricing modal rather than a new system.
-  const [calMode, setCalMode] = useState<'booking' | 'pricing'>('booking');
-  // Room the "Change Prices" range click landed on, passed to RateRuleModal.
+  /**
+   * Airbnb-Multi-Calendar-style rectangular selection (6 Sep 2026, explicit
+   * request: "make the whole system of prices and booking more like how airbnb
+   * does").
+   *
+   * This REPLACES the old two-mode calendar. Before, the grid had an "Add
+   * Booking" / "Change Prices" toggle, and each mode had its own two-click
+   * range gesture that opened a different screen. The owner had already called
+   * the two modes confusing, and the deeper problem was that the toggle had to
+   * be set BEFORE picking dates - so getting it wrong meant discovering the
+   * mistake only after the dates were chosen, and picking them all over again.
+   *
+   * Airbnb has no mode at all: you drag a rectangle across listings x dates and
+   * a panel appears offering the things you can do with that rectangle. The
+   * selection is the state; the mode question never comes up. That is what this
+   * is, plus one thing Airbnb has no equivalent for - "Add booking" - since on
+   * Airbnb guests do the booking, not the host.
+   *
+   * The rectangle is anchor + focus (grid indices, not dates), min/maxed on
+   * both axes, so dragging in any direction works and either corner can be the
+   * one you started from.
+   */
+  const [selAnchor, setSelAnchor] = useState<{ roomIdx: number; dateIdx: number } | null>(null);
+  const [selFocus, setSelFocus] = useState<{ roomIdx: number; dateIdx: number } | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  // Room scope for the "See all pricing rules" escape hatch into RateRuleModal.
   const [rateModalRoomIds, setRateModalRoomIds] = useState<number[] | undefined>(undefined);
-  // Pending "open the pricing modal for a completed range" timer (6 Sep 2026).
-  //
-  // Double-click was reported as not working, and this is why: if a range was
-  // already half-selected (a stray earlier click leaves a highlighted cell that
-  // is easy to miss), the FIRST click of the double-click completed that range
-  // and opened the modal - and the modal's own overlay then swallowed the
-  // second click, so the dblclick never reached the calendar at all. The user
-  // saw a two-night range appear instead of the single night they double-clicked.
-  //
-  // Completing a range therefore waits a moment before opening, and a dblclick
-  // arriving in that window cancels it and prices the single night instead. The
-  // delay is only on the range path, so it never slows the double-click itself.
-  const pendingRangeOpenRef = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (pendingRangeOpenRef.current !== null) window.clearTimeout(pendingRangeOpenRef.current);
-  }, []);
+
+  /**
+   * Drag bookkeeping, in a ref rather than state: a pointer drag fires on every
+   * move, and re-rendering the whole grid just to record "still dragging" would
+   * make the gesture stutter. Only anchor/focus are state, because only they
+   * are drawn.
+   *
+   * `armed` is what separates a drag from a scroll ON TOUCH. A finger moving
+   * horizontally across this grid is genuinely ambiguous - it is either drawing
+   * a range or scrolling the calendar sideways, and both are things people do
+   * here constantly. So touch requires a short long-press to arm the drag (the
+   * cell lights up to say so); a plain tap selects that one night, and an
+   * unarmed swipe scrolls as normal. A mouse has no such ambiguity and arms
+   * immediately.
+   */
+  const dragRef = useRef<{
+    armed: boolean;
+    pointerType: string;
+    startX: number;
+    startY: number;
+    moved: boolean;
+    longPressTimer: number | null;
+    columnMode: boolean;
+  }>({ armed: false, pointerType: 'mouse', startX: 0, startY: 0, moved: false, longPressTimer: null, columnMode: false });
+  const [isDragArmed, setIsDragArmed] = useState(false);
 
   const formatDateStr = (d: Date): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  /**
-   * Double-click a cell in Change Prices mode: price that ONE night, with no
-   * range gesture at all (6 Sep 2026, explicit request - "on calendar if i
-   * double click a date, i should open the modal to change price").
-   *
-   * Before this, a double-click was actively unhelpful: the two clicks landed
-   * on handleRangeCellClick, which reads a second click on the SAME cell as
-   * "cancel the pending selection" - so double-clicking selected and then
-   * immediately deselected, and looked like nothing happened at all.
-   *
-   * Pricing mode only, per the same request. In booking mode a double-click
-   * keeps its existing (select-then-cancel) behaviour rather than silently
-   * opening a pricing modal the user did not ask for.
-   */
-  const handleCellDoubleClick = (roomId: number, dateStr: string, isUnavailable: boolean) => {
-    if (calMode !== 'pricing' || isUnavailable) return;
-    // Beat the range-completion this same gesture's first click may have
-    // started - see pendingRangeOpenRef.
-    if (pendingRangeOpenRef.current !== null) {
-      window.clearTimeout(pendingRangeOpenRef.current);
-      pendingRangeOpenRef.current = null;
+  /** Cancel any pending long-press and disarm. */
+  const endDrag = () => {
+    if (dragRef.current.longPressTimer !== null) {
+      window.clearTimeout(dragRef.current.longPressTimer);
+      dragRef.current.longPressTimer = null;
     }
-    setPendingSelection(null);
-    setPendingColumn(null);
-    setRateRuleStartDate(dateStr);
-    setRateRuleEndDate(dateStr);
-    setRateModalRoomIds([roomId]);
-    setShowRateRuleModal(true);
+    dragRef.current.armed = false;
+    dragRef.current.columnMode = false;
+    setIsDragArmed(false);
   };
 
-  const handleRangeCellClick = async (
-    roomId: number,
-    roomName: string,
-    dateStr: string,
-    isUnavailable: boolean,
-    roomOccupiedDateStrings: string[],
-  ) => {
-    // Occupied/past cells are never a valid start or end point - true for
-    // both modes for now (a booked night's capsule owns that click; repricing
-    // already-booked dates is a later, separate concern).
-    if (isUnavailable) return;
+  useEffect(() => () => {
+    if (dragRef.current.longPressTimer !== null) window.clearTimeout(dragRef.current.longPressTimer);
+  }, []);
 
-    if (!pendingSelection || pendingSelection.roomId !== roomId || dateStr <= pendingSelection.dateStr) {
-      // No pending selection, a different room (restart here instead of
-      // erroring - see comment above), or this date isn't strictly after the
-      // pending start (also treated as "start over here", so clicking the
-      // same cell twice cancels the pending selection rather than needing a
-      // separate cancel action).
-      if (pendingSelection && pendingSelection.roomId === roomId && dateStr === pendingSelection.dateStr) {
-        setPendingSelection(null); // clicking the same cell again cancels
-        return;
+  const clearSelection = () => {
+    setSelAnchor(null);
+    setSelFocus(null);
+    setIsPanelOpen(false);
+  };
+
+  /**
+   * Resolve whichever grid cell is under a pointer. Used instead of
+   * onPointerEnter because touch takes IMPLICIT POINTER CAPTURE on the element
+   * the finger went down on - every later move event is delivered there, and
+   * enter/leave never fire on the cells being dragged across. Hit-testing the
+   * real coordinates is the one approach that behaves identically for a mouse
+   * and for a finger.
+   */
+  const cellFromPoint = (clientX: number, clientY: number): { roomIdx: number; dateIdx: number } | null => {
+    const el = document.elementFromPoint(clientX, clientY);
+    const cell = el && (el as HTMLElement).closest ? (el as HTMLElement).closest('[data-cal-room-idx]') as HTMLElement | null : null;
+    if (!cell) return null;
+    const roomIdx = Number(cell.dataset.calRoomIdx);
+    const dateIdx = Number(cell.dataset.calDateIdx);
+    if (isNaN(roomIdx) || isNaN(dateIdx)) return null;
+    // Past nights carry the attributes (so a drag passing over them still
+    // hit-tests cleanly) but can never become the selection's edge - Channex
+    // rejects past dates outright, so a rectangle that reached backwards would
+    // save locally and fail at the channel with nothing said.
+    if (cell.dataset.calPast === '1') return null;
+    return { roomIdx, dateIdx };
+  };
+
+  const handleGridPointerDown = (e: React.PointerEvent, roomIdx: number, dateIdx: number) => {
+    // Booking capsules sit above the cells and own their own click (they open
+    // the booking details drawer), so a press that starts on one is not a
+    // selection.
+    if ((e.target as HTMLElement).closest('[data-cal-capsule]')) return;
+
+    const d = dragRef.current;
+    d.pointerType = e.pointerType;
+    d.startX = e.clientX;
+    d.startY = e.clientY;
+    d.moved = false;
+    d.columnMode = false;
+
+    setSelAnchor({ roomIdx, dateIdx });
+    setSelFocus({ roomIdx, dateIdx });
+    setIsPanelOpen(false);
+
+    if (e.pointerType === 'mouse') {
+      d.armed = true;
+      setIsDragArmed(true);
+    } else {
+      if (d.longPressTimer !== null) window.clearTimeout(d.longPressTimer);
+      d.longPressTimer = window.setTimeout(() => {
+        d.longPressTimer = null;
+        d.armed = true;
+        setIsDragArmed(true);
+      }, 280);
+    }
+  };
+
+  const handleGridPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!selAnchor) return;
+
+    if (!d.armed) {
+      // A finger that has already travelled before the long-press fired is
+      // scrolling, not selecting - stand down and let the scroller have it.
+      const dist = Math.hypot(e.clientX - d.startX, e.clientY - d.startY);
+      if (dist > 10) {
+        endDrag();
+        setSelAnchor(null);
+        setSelFocus(null);
       }
-      setPendingSelection({ roomId, roomName, dateStr });
       return;
     }
 
-    // Valid candidate: pendingSelection.dateStr = start, dateStr = end.
-    const startStr = pendingSelection.dateStr;
-    setPendingSelection(null);
+    d.moved = true;
+    // Once armed on touch the gesture belongs to the grid, not the scroller.
+    if (e.pointerType !== 'mouse') e.preventDefault();
 
-    if (calMode === 'pricing') {
-      // Starting a row selection abandons any half-finished column one, so the
-      // two gestures can't leave two conflicting highlights on screen at once.
-      setPendingColumn(null);
-      // Open the existing Pricing & Rates modal, pre-scoped to this room and
-      // the picked range. End date is inclusive there, and the modal treats
-      // the range as "the nights this rule covers", so a click on the 5th and
-      // then the 9th sets a rate for the 5th-8th inclusive - one fewer than
-      // the booking flow's checkout-exclusive reading, which is what "price
-      // these dates" means.
-      const priceEndStr = formatDateStr(new Date(new Date(dateStr + 'T00:00:00').getTime() - 86400000));
-      // Deferred so a double-click can overrule it - see pendingRangeOpenRef.
-      if (pendingRangeOpenRef.current !== null) window.clearTimeout(pendingRangeOpenRef.current);
-      pendingRangeOpenRef.current = window.setTimeout(() => {
-        pendingRangeOpenRef.current = null;
-        setRateRuleStartDate(startStr);
-        setRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
-        setRateModalRoomIds([roomId]);
-        setShowRateRuleModal(true);
-      }, 260);
+    const hit = cellFromPoint(e.clientX, e.clientY);
+    if (!hit) return;
+    if (d.columnMode) {
+      setSelFocus({ roomIdx: Math.max(0, gridRooms.length - 1), dateIdx: hit.dateIdx });
       return;
     }
-
-    // --- booking mode ---
-    // Verify every night in between is actually free before opening the form.
-    const cur = new Date(startStr + 'T00:00:00');
-    const end = new Date(dateStr + 'T00:00:00');
-    let hasConflict = false;
-    while (cur < end) {
-      if (roomOccupiedDateStrings.includes(formatDateStr(cur))) { hasConflict = true; break; }
-      cur.setDate(cur.getDate() + 1);
-    }
-
-    // Clear the pending highlight immediately regardless of what happens
-    // next (confirmed, declined, or rejected below) - a stale highlighted
-    // cell sitting there through an async confirm() dialog reads as still
-    // "waiting for a click" when it isn't.
-    setPendingSelection(null);
-
-    if (hasConflict) {
-      showToast('That range overlaps an existing booking or block - pick again.', { type: 'error' });
-      return;
-    }
-
-    // Confirmation prompt before opening the form (4 Sep 2026, explicit
-    // request) - the two clicks alone don't clearly signal "this is a real
-    // action about to happen", so a third, deliberate step asks first.
-    const nights = Math.round((end.getTime() - new Date(startStr + 'T00:00:00').getTime()) / 86400000);
-    // Third action added 6 Sep 2026: the Change Prices / Add Booking toggle is
-    // easy to forget, and this prompt was where people discovered they were in
-    // the wrong one - after picking the dates. Offering the switch here means
-    // the picked room and dates carry straight over instead of being thrown
-    // away and re-picked.
-    const result = await confirmWithAlt({
-      title: 'Add Booking?',
-      message: `Create a new booking for ${roomName} from ${formatDateDDMMYYYY(startStr)} to ${formatDateDDMMYYYY(dateStr)} (${nights} night${nights === 1 ? '' : 's'})?`,
-      confirmText: 'Add Booking',
-      altText: 'Change Prices Instead',
-      variant: 'info',
-    });
-
-    if (result === 'alt') {
-      // A booking's second click is its CHECKOUT, but a price range's last
-      // date is the last night - so drop a day, exactly as the pricing branch
-      // of this same handler already does.
-      const priceEndStr = formatDateStr(new Date(end.getTime() - 86400000));
-      setCalMode('pricing');
-      setRateRuleStartDate(startStr);
-      setRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
-      setRateModalRoomIds([roomId]);
-      setShowRateRuleModal(true);
-      return;
-    }
-    if (result !== 'confirm') return;
-
-    onAddBooking?.({ roomName, checkin: startStr, checkout: dateStr });
+    // roomIdx -1 is a date header. Reachable only by dragging up out of the
+    // grid onto the header strip; there is no row there to anchor a rectangle
+    // to, so hold the current focus rather than collapsing it.
+    if (hit.roomIdx < 0) return;
+    setSelFocus(hit);
   };
 
+  const handleGridPointerUp = () => {
+    if (!selAnchor) { endDrag(); return; }
+    endDrag();
+    setIsPanelOpen(true);
+  };
+
+  // A drag can end anywhere - over the sticky room-name column, past the last
+  // row, outside the window entirely. Without a global release listener those
+  // all leave the rectangle stuck to the cursor with no panel, which reads as
+  // the grid having frozen.
+  useEffect(() => {
+    if (!isDragArmed) return;
+    const finish = () => handleGridPointerUp();
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+    return () => {
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+  });
+
   /**
-   * Click on a DATE HEADER while in Change Prices mode: price that date (or a
-   * range of dates) across every room at once.
-   *
-   * Unlike the row flow above, both ends are inclusive here and no -1 day is
-   * applied. A column click means "this date", not "a stay starting here", so
-   * clicking the 13th alone must price the 13th - the row flow subtracts a day
-   * because it reads its second click as a checkout.
+   * Press (or drag across) the date headers: select that whole date column,
+   * i.e. every unit on that date. A festival weekend is a column, not a row,
+   * and it is the single most common thing an owner reprices - worth its own
+   * gesture rather than a seven-row drag.
    */
-  const handleColumnClick = (dateStr: string) => {
-    if (calMode !== 'pricing') return;
+  const handleHeaderPointerDown = (e: React.PointerEvent, dateIdx: number) => {
+    if (gridRooms.length === 0) return;
+    const d = dragRef.current;
+    d.pointerType = e.pointerType;
+    d.startX = e.clientX;
+    d.startY = e.clientY;
+    d.moved = false;
+    d.columnMode = true;
+    d.armed = true;
+    setIsDragArmed(true);
+    setSelAnchor({ roomIdx: 0, dateIdx });
+    setSelFocus({ roomIdx: gridRooms.length - 1, dateIdx });
+    setIsPanelOpen(false);
+  };
 
-    // A column selection abandons any half-finished row one, mirroring the
-    // reverse case above.
-    setPendingSelection(null);
-
-    if (!pendingColumn) {
-      setPendingColumn(dateStr);
-      return;
-    }
-    if (pendingColumn === dateStr) {
-      setPendingColumn(null); // same header twice = cancel, as with a cell
-      return;
-    }
-
-    // Second click completes the range. Accept the two clicks in either
-    // order - dragging right-to-left across a calendar is just as natural,
-    // and silently doing nothing would read as a broken click.
-    const startStr = pendingColumn < dateStr ? pendingColumn : dateStr;
-    const endStr = pendingColumn < dateStr ? dateStr : pendingColumn;
-    setPendingColumn(null);
-
-    setRateRuleStartDate(startStr);
-    setRateRuleEndDate(endStr);
-    // Every room, pre-ticked rather than left as a property-wide rule: the
-    // modal shows the room checkboxes, so the owner can immediately see which
-    // rooms this will change and untick any that shouldn't be included.
-    setRateModalRoomIds((rooms || []).filter((r) => r.id !== undefined).map((r) => r.id as number));
-    setShowRateRuleModal(true);
+  const handleHeaderPointerMove = (dateIdx: number) => {
+    const d = dragRef.current;
+    if (!d.armed || !d.columnMode || !selAnchor) return;
+    d.moved = true;
+    setSelFocus({ roomIdx: Math.max(0, gridRooms.length - 1), dateIdx });
   };
 
   // "Share Food Menu" and "Direct Booking Link" moved off this page header
@@ -346,15 +343,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const [showRateRuleModal, setShowRateRuleModal] = useState(false);
   const [rateRuleStartDate, setRateRuleStartDate] = useState<string | undefined>(undefined);
   const [rateRuleEndDate, setRateRuleEndDate] = useState<string | undefined>(undefined);
-  // Column (whole-date) price selection, 4 Sep 2026. The row flow prices ONE
-  // room over a date range; this prices ONE date range across EVERY room -
-  // which is what a festival or a peak weekend actually is. Same two-click
-  // range gesture as the row flow so there is only one interaction to learn,
-  // and clicking the same header twice cancels, exactly like a cell.
-  //
-  // Deliberately pricing-mode only: "book every room at once" is not a real
-  // operation, so a column click does nothing in booking mode.
-  const [pendingColumn, setPendingColumn] = useState<string | null>(null);
   const [rateRules, setRateRules] = useState<RateRule[]>([]);
   const [pricingMode, setPricingMode] = useState<'flat' | 'variable'>('flat');
   const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
@@ -371,18 +359,50 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, []);
 
   // Small per-day price shown on unbooked cells (4 Sep 2026, explicit
-  // request). Same day-of-week matching as OperationalDashboard.tsx's
-  // getDayPrice() and availability.php/AriDrainWorker - a rule only claims
-  // a date if it has no days_of_week restriction, or that date's weekday is
-  // in it (Channex's own 2-letter codes).
+  // request). Day-of-week matching follows Channex's own 2-letter codes - a
+  // rule only claims a date if it has no days_of_week restriction, or that
+  // date's weekday is in it.
   const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+
+  /**
+   * Rate rules in the SAME precedence order the server resolves them in
+   * (6 Sep 2026 fix).
+   *
+   * get_rate_rules returns rows ordered `start_date ASC, created_at DESC` -
+   * fine for listing them in a table, wrong as a precedence order. Every place
+   * that decides what a night actually COSTS resolves `room_id DESC,
+   * created_at DESC` and takes the first hit: a room-specific rule outranks a
+   * property-wide one, and among equals the newest wins (see
+   * AriDrainWorker::computeCompressedRestrictions() and public_booking.php).
+   *
+   * Reading the list in its display order instead meant the earliest-starting
+   * rule won here, so the number printed on the calendar could differ from what
+   * a guest is quoted on the booking page and from what is pushed to Airbnb -
+   * two sources of price truth, with the owner's own screen being the one that
+   * lies. Sorted once per rules load rather than per cell; there can be
+   * thousands of rules after a PriceLabs import and this runs for every visible
+   * cell.
+   */
+  const resolvedRateRules = useMemo(() => {
+    return [...rateRules].sort((a, b) => {
+      const roomA = a.room_id ? Number(a.room_id) : 0;
+      const roomB = b.room_id ? Number(b.room_id) : 0;
+      if (roomA !== roomB) return roomB - roomA;
+      const timeA = a.created_at ? Date.parse(a.created_at.replace(' ', 'T')) : 0;
+      const timeB = b.created_at ? Date.parse(b.created_at.replace(' ', 'T')) : 0;
+      if (timeA !== timeB) return timeB - timeA;
+      return Number(b.id || 0) - Number(a.id || 0);
+    });
+  }, [rateRules]);
+
   const getDayPrice = (dateStr: string, room: { id: number; default_tariff?: number }): number => {
     if (pricingMode === 'variable') {
       const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
-      const match = rateRules.find((r) => {
+      const match = resolvedRateRules.find((r) => {
         const roomMatch = !r.room_id || Number(r.room_id) === Number(room.id);
         const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
-        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr;
+        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
+          && r.rate_per_night != null;
       });
       if (match && match.rate_per_night != null) return Number(match.rate_per_night);
     }
@@ -610,6 +630,159 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   );
   const windowEnd = daysArray[daysArray.length - 1];
 
+  // ------------------------------------------------------------------
+  // Selection maths for the Airbnb-style grid editor (6 Sep 2026).
+  // ------------------------------------------------------------------
+
+  // The rows the grid actually draws, in draw order. Selection is stored as
+  // indices into THIS array (and into daysArray), not as room ids and dates,
+  // because a rectangle is naturally expressed in grid coordinates - converting
+  // to ids/dates once, at the edge, is far less error-prone than min/maxing
+  // dates and room ids on every pointer move.
+  const gridRooms = useMemo(
+    () => (rooms || []).filter((r) => r.id !== undefined),
+    [rooms]
+  );
+
+  const selRect = useMemo(() => {
+    if (!selAnchor || !selFocus || gridRooms.length === 0) return null;
+    const roomFrom = Math.min(selAnchor.roomIdx, selFocus.roomIdx);
+    const roomTo = Math.max(selAnchor.roomIdx, selFocus.roomIdx);
+    const dateFrom = Math.min(selAnchor.dateIdx, selFocus.dateIdx);
+    const dateTo = Math.max(selAnchor.dateIdx, selFocus.dateIdx);
+    return {
+      roomFrom,
+      roomTo,
+      dateFrom,
+      dateTo,
+      spansAllRooms: roomFrom === 0 && roomTo === gridRooms.length - 1,
+    };
+  }, [selAnchor, selFocus, gridRooms.length]);
+
+  const expandStayToNights = (startVal: any, endVal: any): string[] => {
+    const out: string[] = [];
+    const toDate = (v: any) => {
+      const str = String(v || '').split(' ')[0].split('T')[0];
+      const parts = str.split('-');
+      return parts.length === 3
+        ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 0, 0, 0, 0)
+        : new Date(NaN);
+    };
+    const cur = toDate(startVal);
+    const end = toDate(endVal);
+    if (isNaN(cur.getTime()) || isNaN(end.getTime())) return out;
+    // Half-open: a checkout date is not a night slept. Same convention as the
+    // row renderer's own expandRangeToDayStrings.
+    while (cur < end) {
+      out.push(formatDateStr(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  };
+
+  /** roomId -> every night that room is already sold. */
+  const occupiedNightsByRoom = useMemo(() => {
+    const map = new Map<number, Set<string>>();
+    gridRooms.forEach((room) => {
+      const nights = new Set<string>();
+      getGuestsForRoom(room.id, room.name).forEach((g: any) => {
+        expandStayToNights(g.checkinDate, g.expectedCheckout || g.checkoutDate || g.checkinDate)
+          .forEach((d) => nights.add(d));
+      });
+      map.set(room.id, nights);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridRooms, guests]);
+
+  /**
+   * Is this night currently closed to bookings for this unit?
+   *
+   * Gated on the same `pricing_mode === 'variable'` check getDayPrice uses, and
+   * for the same reason: "Flat Base Rate" suspends every rate rule for a scope,
+   * a stop_sell block included, both here and in what gets pushed to the OTAs
+   * (see AriDrainWorker::isDynamicPricingMode()). Drawing a night as blocked
+   * that Airbnb is still happily selling would be worse than not drawing it.
+   */
+  const isNightBlocked = (dateStr: string, roomId: number): boolean => {
+    if (pricingMode !== 'variable') return false;
+    // ANY overlapping stop_sell rule closes the night - deliberately not "the
+    // winning rule happens to carry stop_sell". That mirrors the server
+    // exactly: AriDrainWorker's availability query filters `stop_sell = 1` and
+    // marks every day in every matching range, with no precedence pass and no
+    // days_of_week filter at all. Resolving it more cleverly here would draw
+    // nights as open that Airbnb is actually being told are closed.
+    return rateRules.some(
+      (r) =>
+        !!r.stop_sell &&
+        (!r.room_id || Number(r.room_id) === Number(roomId)) &&
+        r.start_date <= dateStr &&
+        r.end_date >= dateStr
+    );
+  };
+
+  /**
+   * Everything the editor panel needs about the current rectangle, computed in
+   * one pass: which units, which nights, the price spread to show as the
+   * placeholder ("1514-1802", exactly like Airbnb), how many cells are blocked,
+   * and how many are already sold.
+   */
+  const selectionInfo = useMemo(() => {
+    if (!selRect) return null;
+    const selectedRooms = gridRooms.slice(selRect.roomFrom, selRect.roomTo + 1);
+    const selectedDays = daysArray.slice(selRect.dateFrom, selRect.dateTo + 1).map(formatDateStr);
+    if (selectedRooms.length === 0 || selectedDays.length === 0) return null;
+
+    let low = Infinity;
+    let high = -Infinity;
+    let blocked = 0;
+    let booked = 0;
+    selectedRooms.forEach((room) => {
+      const occupied = occupiedNightsByRoom.get(room.id) || new Set<string>();
+      selectedDays.forEach((d) => {
+        if (occupied.has(d)) { booked += 1; return; }
+        if (isNightBlocked(d, room.id)) blocked += 1;
+        const price = getDayPrice(d, room);
+        if (price < low) low = price;
+        if (price > high) high = price;
+      });
+    });
+
+    const totalCells = selectedRooms.length * selectedDays.length;
+    return {
+      selection: {
+        roomIds: selectedRooms.map((r) => r.id as number),
+        roomNames: selectedRooms.map((r) => r.name),
+        startDate: selectedDays[0],
+        endDate: selectedDays[selectedDays.length - 1],
+      } as CalendarSelection,
+      priceLow: low === Infinity ? 0 : low,
+      priceHigh: high === -Infinity ? 0 : high,
+      blockedCells: blocked,
+      bookedCells: booked,
+      totalCells: totalCells - booked,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selRect, gridRooms, daysArray, occupiedNightsByRoom, rateRules, pricingMode, defaultTariff]);
+
+  /**
+   * Move the selection to an explicit date range (the panel's own date inputs).
+   * Snapped back into the visible window, since the rectangle is drawn from
+   * grid indices - a date outside the window has no column to highlight.
+   */
+  const setSelectionDates = (startStr: string, endStr: string) => {
+    if (!selRect) return;
+    const idxOf = (dateStr: string) => daysArray.findIndex((d) => formatDateStr(d) === dateStr);
+    const a = idxOf(startStr);
+    const b = idxOf(endStr);
+    if (a < 0 || b < 0) {
+      showToast('Pick a date inside the visible calendar, or scroll to it first.', { type: 'info' });
+      return;
+    }
+    setSelAnchor({ roomIdx: selRect.roomFrom, dateIdx: Math.min(a, b) });
+    setSelFocus({ roomIdx: selRect.roomTo, dateIdx: Math.max(a, b) });
+  };
+
   // Column that should sit at the left edge on initial view: "today - 2
   // days" (only meaningful right after mount/paging, while today is still
   // inside the buffer - falls back to the very start of the window
@@ -713,50 +886,22 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </Button>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
-            {/* Booking / Pricing interaction toggle. In Pricing mode a
-                click-a-range on the grid opens the same Pricing & Rates modal
-                pre-scoped to that room + dates (Airbnb Multi-Calendar style). */}
-            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600 shrink-0">
-              <button
-                type="button"
-                onClick={() => { setCalMode('booking'); setPendingSelection(null); setPendingColumn(null); }}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                  calMode === 'booking'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                Add Booking
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCalMode('pricing'); setPendingSelection(null); setPendingColumn(null); }}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
-                  calMode === 'pricing'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                }`}
-              >
-                <DollarSign className="w-3 h-3" />
-                Change Prices
-              </button>
-            </div>
-            {/* "Pricing & Rates" and "Share Availability" buttons removed here
-                4 Sep 2026 (explicit request): repricing is now the "Change
-                Prices" toggle + click-a-range gesture above, and Share
-                Availability moved to the sidebar's Quick Actions next to
-                Share Menu (see Navigation.tsx). */}
-            {/* Change Prices is a two-gesture mode and neither is guessable
-                from looking at the grid, so say both out loud while it's on
-                (4 Sep 2026). The column gesture especially - nothing about a
-                date header suggests it can be clicked. */}
-            {calMode === 'pricing' && (
-              <span className="text-2xs text-amber-700 dark:text-amber-400 hidden md:inline">
-                {pendingColumn
-                  ? 'Now click another date — or the same one to cancel'
-                  : 'Click a date at the top to price every room · click cells in a row to price one room'}
-              </span>
-            )}
+            {/* No mode toggle any more (6 Sep 2026) - the selection IS the
+                mode. Drag a rectangle on the grid and the editor panel offers
+                whatever that rectangle supports: price it, block it, or book it.
+                See the selAnchor/selFocus block above for why the old
+                Add Booking / Change Prices pair was removed. */}
+            <span className="text-2xs text-slate-500 dark:text-slate-400 hidden md:inline">
+              Drag across the grid to price or block dates &middot; tap a date at the top for every unit
+            </span>
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => { setRateModalRoomIds(undefined); setShowRateRuleModal(true); }}
+              className="h-7 text-xs font-semibold px-2.5 shrink-0"
+            >
+              Prices &amp; rules
+            </Button>
             <div className="flex items-center gap-1 ms-auto sm:ms-0">
               <button
                 onClick={() => navigateWindow(-1)}
@@ -777,7 +922,13 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       <div
         ref={scrollRef}
         onScroll={() => updateVisibleMonthLabel(daysArray)}
-        className="today-overview__scroll-container overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg"
+        // Once a touch drag is armed the grid owns the gesture; letting the
+        // horizontal scroller keep it too would mean the calendar slides away
+        // underneath the rectangle being drawn.
+        style={isDragArmed ? { touchAction: 'none' } : undefined}
+        className={`today-overview__scroll-container overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg${
+          isDragArmed ? ' calendar--dragging' : ''
+        }`}
       >
         <div className="min-w-max">
           <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
@@ -796,11 +947,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
               const isToday = isSameDate(day, today);
-              // Column price selection (4 Sep 2026). Only offered in Change
-              // Prices mode - see handleColumnClick.
-              const dayStr = formatDateStr(day);
-              const isColumnPickable = calMode === 'pricing';
-              const isColumnPending = pendingColumn === dayStr;
+              // Whole-column selection - see handleHeaderPointerDown.
+              const isColumnPickable = gridRooms.length > 0;
+              const isColumnPending =
+                !!selRect && selRect.dateFrom <= idx && idx <= selRect.dateTo && selRect.spansAllRooms;
 
               return (
                 <div
@@ -809,17 +959,23 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                     if (idx === scrollTargetIdx) scrollTargetRef.current = el;
                     if (idx === 0) columnWidthRef.current = el;
                   }}
-                  onClick={isColumnPickable ? () => handleColumnClick(dayStr) : undefined}
+                  data-cal-room-idx={-1}
+                  data-cal-date-idx={idx}
+                  onPointerDown={isColumnPickable ? (e) => handleHeaderPointerDown(e, idx) : undefined}
+                  onPointerEnter={isColumnPickable ? () => handleHeaderPointerMove(idx) : undefined}
+                  onPointerMove={isColumnPickable ? handleGridPointerMove : undefined}
+                  onPointerUp={isColumnPickable ? handleGridPointerUp : undefined}
                   role={isColumnPickable ? 'button' : undefined}
                   tabIndex={isColumnPickable ? 0 : undefined}
                   onKeyDown={isColumnPickable ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleColumnClick(dayStr); }
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelAnchor({ roomIdx: 0, dateIdx: idx });
+                      setSelFocus({ roomIdx: gridRooms.length - 1, dateIdx: idx });
+                      setIsPanelOpen(true);
+                    }
                   } : undefined}
-                  title={isColumnPickable
-                    ? (pendingColumn
-                        ? 'Click another date to price the whole range across every room'
-                        : 'Price this date across every room')
-                    : undefined}
+                  title={isColumnPickable ? 'Select this date across every unit - drag for a range' : undefined}
                   className={`w-16 min-w-16 shrink-0 px-1 py-1.5 text-center border-r transition-all ${
                     isColumnPickable ? 'cursor-pointer' : ''
                   } ${
@@ -844,7 +1000,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
           {/* Room Rows */}
           {rooms && rooms.length > 0 ? (
-            rooms.filter((r) => r.id !== undefined).map((room) => {
+            gridRooms.map((room, roomIdx) => {
               const roomGuests = getGuestsForRoom(room.id, room.name);
 
               const parseLocalDate = (dateVal: any): Date => {
@@ -995,30 +1151,51 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                   {/* Days Grid - Background with diagonal stripes */}
                   <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * columnWidth}px`, minWidth: `${daysArray.length * columnWidth}px` }}>
-                    {daysArray.map((day) => {
+                    {daysArray.map((day, dateIdx) => {
                       const isToday = isSameDate(day, today);
                       const dateStr = formatDateStr(day);
                       const isPast = day < today;
                       const isOccupied = roomOccupiedDateStrings.includes(dateStr);
                       const isUnavailable = isPast || isOccupied;
-                      const isPendingStart = pendingSelection?.roomId === room.id && pendingSelection?.dateStr === dateStr;
+                      const isBlockedNight = !isOccupied && isNightBlocked(dateStr, room.id);
+                      // Airbnb draws the selection as one outlined rectangle
+                      // over the whole block, not a border per cell - so each
+                      // cell contributes only the edges that are on the outside
+                      // of the rectangle.
+                      const inSel =
+                        !!selRect &&
+                        selRect.roomFrom <= roomIdx && roomIdx <= selRect.roomTo &&
+                        selRect.dateFrom <= dateIdx && dateIdx <= selRect.dateTo;
+                      const selEdge = inSel && selRect
+                        ? [
+                            roomIdx === selRect.roomFrom ? 'border-t-2 border-t-slate-900 dark:border-t-white' : '',
+                            roomIdx === selRect.roomTo ? 'border-b-2 border-b-slate-900 dark:border-b-white' : '',
+                            dateIdx === selRect.dateFrom ? 'border-l-2 border-l-slate-900 dark:border-l-white' : '',
+                            dateIdx === selRect.dateTo ? 'border-r-2 border-r-slate-900 dark:border-r-white' : '',
+                          ].join(' ')
+                        : '';
                       return (
                         <div
                           key={`bg-${day.toISOString()}`}
-                          onClick={() => handleRangeCellClick(room.id, room.name, dateStr, isUnavailable, roomOccupiedDateStrings)}
-                          onDoubleClick={() => handleCellDoubleClick(room.id, dateStr, isUnavailable)}
-                          title={isUnavailable ? undefined : calMode === 'pricing'
-                            ? (pendingSelection ? 'Click the last night to price' : 'Double-click to price this night, or click the first night to price a range')
-                            : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
-                          className={`w-16 min-w-16 shrink-0 border-r transition flex items-center justify-center ${
-                            isUnavailable ? '' : 'cursor-pointer'
+                          data-cal-room-idx={roomIdx}
+                          data-cal-date-idx={dateIdx}
+                          data-cal-past={isPast ? '1' : undefined}
+                          onPointerDown={isPast ? undefined : (e) => handleGridPointerDown(e, roomIdx, dateIdx)}
+                          onPointerMove={isPast ? undefined : handleGridPointerMove}
+                          onPointerUp={isPast ? undefined : handleGridPointerUp}
+                          title={isPast ? undefined : 'Drag to select these nights'}
+                          className={`w-16 min-w-16 shrink-0 border-r transition flex items-center justify-center select-none ${
+                            isPast ? '' : 'cursor-pointer'
                           } ${
-                            isPendingStart
-                              ? 'bg-blue-200 dark:bg-blue-800/60 border-blue-400 dark:border-blue-600 ring-2 ring-inset ring-blue-500'
+                            inSel
+                              ? 'bg-slate-900/[0.07] dark:bg-white/10'
+                              : isBlockedNight
+                              ? 'bg-slate-100 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700'
                               : isToday
                               ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40'
                               : 'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30'
-                          } ${!isUnavailable && !isPendingStart ? 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20' : ''}`}
+                          } ${!isPast && !inSel ? 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20' : ''} ${selEdge}`}
+                          style={inSel ? { touchAction: 'none' } : undefined}
                         >
                           {/* Small per-day price on unbooked dates (4 Sep
                               2026, explicit request) - z-10 to sit above the
@@ -1026,7 +1203,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               in practice a capsule never actually reaches an
                               unavailable/unbooked cell in the first place. */}
                           {!isUnavailable && (
-                            <span className="relative z-10 text-[9px] leading-none font-medium text-slate-400 dark:text-slate-500 select-none pointer-events-none">
+                            <span
+                              className={`relative z-10 text-[9px] leading-none font-medium select-none pointer-events-none ${
+                                isBlockedNight
+                                  ? 'text-slate-400 dark:text-slate-500 line-through'
+                                  : inSel
+                                  ? 'text-slate-900 dark:text-white font-bold'
+                                  : 'text-slate-400 dark:text-slate-500'
+                              }`}
+                            >
                               ₹{Math.round(getDayPrice(dateStr, room))}
                             </span>
                           )}
@@ -1074,6 +1259,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                     blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
                                   });
                                 }}
+                                data-cal-capsule="1"
                                 className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
                                 style={commonStyle}
                               >
@@ -1132,6 +1318,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                   ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
                                   : getGuestColor(guest.id, guest.status)
                               } pointer-events-auto shadow-md flex items-center justify-between gap-1.5 z-20 overflow-hidden`}
+                              data-cal-capsule="1"
                               style={commonStyle}
                               onClick={() => setSelectedGuest(guest)}
                             >
@@ -1239,6 +1426,52 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {/* Convert OTA Block to Booking - removed 3 Sep 2026, iCal sync retired
           (ConvertOtaBookingModal.tsx archived to _unwanted/ical/). otaConversionTarget
           can never actually be set any more (see the blockedDates comment above). */}
+
+      {/* Airbnb-style editor for whatever rectangle is selected on the grid.
+          Deliberately backdrop-free so the calendar stays visible and the
+          selection can still be adjusted underneath it - see the component's
+          own header comment. */}
+      {isPanelOpen && selectionInfo && (
+        <CalendarEditorPanel
+          selection={selectionInfo.selection}
+          priceLow={selectionInfo.priceLow}
+          priceHigh={selectionInfo.priceHigh}
+          blockedCells={selectionInfo.blockedCells}
+          totalCells={selectionInfo.totalCells}
+          bookedCells={selectionInfo.bookedCells}
+          onChangeDates={setSelectionDates}
+          onClose={clearSelection}
+          onSaved={() => { loadRateRules(); clearSelection(); }}
+          // Offered only when the rectangle is one unit with nothing already
+          // sold in it - a booking is one guest in one room, so a multi-unit
+          // selection has no single booking to create, and a selection with a
+          // sold night in it would collide with that stay.
+          onAddBooking={
+            selectionInfo.selection.roomIds.length === 1 && selectionInfo.bookedCells === 0
+              ? () => {
+                  const checkoutDate = new Date(selectionInfo.selection.endDate + 'T00:00:00');
+                  checkoutDate.setDate(checkoutDate.getDate() + 1);
+                  // The panel's range is NIGHTS (last night inclusive); a
+                  // booking's second date is its CHECK-OUT, the morning after
+                  // the last night. Hence the +1 - the same conversion the old
+                  // two-click flow did in reverse.
+                  onAddBooking?.({
+                    roomName: selectionInfo.selection.roomNames[0],
+                    checkin: selectionInfo.selection.startDate,
+                    checkout: formatDateStr(checkoutDate),
+                  });
+                  clearSelection();
+                }
+              : undefined
+          }
+          onOpenAllRules={() => {
+            setRateModalRoomIds(selectionInfo.selection.roomIds);
+            setRateRuleStartDate(selectionInfo.selection.startDate);
+            setRateRuleEndDate(selectionInfo.selection.endDate);
+            setShowRateRuleModal(true);
+          }}
+        />
+      )}
 
       {showRateRuleModal && (
         <RateRuleModal

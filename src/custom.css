@@ -2265,3 +2265,22 @@ html.dark .whatsapp-editor-surface blockquote {
 html.dark .whatsapp-editor-surface code {
   background-color: #1e293b;
 }
+
+
+/* --------------------------------------------------------------------------
+   Calendar drag-selection: let a drag pass straight through booking capsules
+   (6 Sep 2026, the Airbnb-style selection in TodayOverview.tsx's unit x date
+   grid and OperationalDashboard.tsx's single-unit month grid - both use it).
+
+   The capsules are NOT children of the day cells - they live in their own
+   absolutely-positioned overlay above the grid - so while a rectangle is being
+   dragged, document.elementFromPoint() hits the capsule, .closest('[data-cal-
+   room-idx]') finds nothing, and the selection edge silently stops moving the
+   moment the pointer crosses an existing booking. Dropping their hit-testing
+   for the duration of the drag is what makes "drag across a booked week" work;
+   they get their own click back the instant the drag ends, because the class is
+   only present while one is armed.
+   -------------------------------------------------------------------------- */
+.calendar--dragging [data-cal-capsule] {
+  pointer-events: none !important;
+}

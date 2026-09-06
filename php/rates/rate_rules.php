@@ -383,6 +383,42 @@ function saveRateRule($pdo, $propertyId) {
             }
         }
 
+        // Turn dated pricing on the first time a date price is ever set
+        // (6 Sep 2026). `pricing_mode` defaults to 'flat', and 'flat' does not
+        // merely hide rate rules on the owner's own calendar - it SUSPENDS
+        // them, including what gets pushed to Airbnb/Booking.com (see
+        // AriDrainWorker::isDynamicPricingMode() and availability.php). Since
+        // the "One price always / Price by date" tab pair was merged away there
+        // is no control left that can flip it, so a brand-new property could
+        // save prices on the calendar forever and have every one of them do
+        // nothing, silently.
+        //
+        // Deliberately gated on this being the property's FIRST rule. The
+        // dangerous version of this flip is the one that wakes a BACKLOG of
+        // dormant rules all at once and pushes stale prices to a live channel -
+        // exactly the 3 Sep 2026 incident where a dormant rule outranked
+        // PriceLabs. With no other rule in existence there is nothing dormant to
+        // wake, so this case is provably safe; a property that somehow holds
+        // rules while still on 'flat' is left alone for a human to decide.
+        if (!$ruleId) {
+            $priorStmt = $pdo->prepare("SELECT COUNT(*) FROM room_rate_rules WHERE property_id = ?");
+            $priorStmt->execute([$propertyId]);
+            // The rows just inserted above are the only ones that should exist.
+            if ((int)$priorStmt->fetchColumn() <= count($targetRoomIds)) {
+                // Both scopes matter: isDynamicPricingMode() reads the ROOM's own
+                // properties row for a room-scoped rule, and the parent's for a
+                // property-scoped one.
+                $scopeIds = [(int)$propertyId];
+                foreach ($targetRoomIds as $rId) {
+                    if (!empty($rId)) $scopeIds[] = (int)$rId;
+                }
+                $modeStmt = $pdo->prepare("UPDATE properties SET pricing_mode = 'variable' WHERE id = ? AND (pricing_mode IS NULL OR pricing_mode = 'flat')");
+                foreach (array_unique($scopeIds) as $sid) {
+                    $modeStmt->execute([$sid]);
+                }
+            }
+        }
+
         // Audit trail (6 Sep 2026) - see logRateRuleAudit() above. Recorded after
         // the write actually succeeded, and before the outbox enqueue, so the log
         // reflects what was stored even if the channel push later fails.
@@ -420,6 +456,24 @@ function saveRateRule($pdo, $propertyId) {
                 $changedFields = function_exists('computeChannexFieldDiff')
                     ? computeChannexFieldDiff($oldRuleState, $newRuleState)
                     : array_keys($newRuleState);
+
+                // Fields the CALLER deliberately asserted (6 Sep 2026). The diff
+                // above exists so a price edit doesn't also push stop_sell just
+                // because the row stores it - correct for a form where every
+                // field rides along, wrong for a control whose entire purpose is
+                // to state a value. The calendar panel's Availability radio is
+                // exactly that: "Available" is stop_sell = 0, byte-identical to
+                // the neutral baseline, so it diffed as unchanged and the unblock
+                // never reached Airbnb - the dates read open here and stayed shut
+                // there. Union rather than replace, so this can only ever add to
+                // what the diff already found.
+                $explicitFields = array_values(array_intersect(
+                    array_keys($neutralRuleState),
+                    is_array($input['explicit_fields'] ?? null) ? $input['explicit_fields'] : []
+                ));
+                if (!empty($explicitFields)) {
+                    $changedFields = array_values(array_unique(array_merge($changedFields, $explicitFields)));
+                }
 
                 foreach ($targetRoomIds as $rId) {
                     $roomId = !empty($rId) ? (int)$rId : null;

@@ -3087,6 +3087,10 @@ export interface RateRule {
   // means every day of the week (4 Sep 2026, "Monday to Friday 3000,
   // Saturday and Sunday 4000").
   days_of_week?: string | null;
+  // MySQL DATETIME string. Load-bearing, not just metadata: rule precedence is
+  // `room_id DESC, created_at DESC` everywhere the server resolves a nightly
+  // price (see resolvedRateRules in TodayOverview.tsx).
+  created_at?: string;
 }
 
 export async function fetchRateRulesDB(): Promise<{ rules: RateRule[]; pricing_mode: 'flat' | 'variable'; default_tariff: number | null }> {
@@ -3125,6 +3129,14 @@ export async function saveRateRuleDB(rule: {
   // both mean "every day" (4 Sep 2026, "Monday to Friday 3000, Saturday and
   // Sunday 4000").
   days_of_week?: string[];
+  // Fields the caller is stating DELIBERATELY, so they push to the channels
+  // even when their value happens to match the neutral baseline (6 Sep 2026).
+  // save_rate_rule normally scopes its Channex push to fields that actually
+  // changed, which is right for a form where every field rides along - but
+  // wrong for a control whose whole purpose is to assert a value. "Make these
+  // dates Available again" is stop_sell = 0, identical to the baseline, so it
+  // was computing as no change and never reaching Airbnb.
+  explicit_fields?: string[];
 }): Promise<{ success: boolean; message: string }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=save_rate_rule`, {
