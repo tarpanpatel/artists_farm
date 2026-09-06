@@ -75,7 +75,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white';
 
     const disabledClasses = disabled
-      ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
+      ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600'
       : '';
 
     return (

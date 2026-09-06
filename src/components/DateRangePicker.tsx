@@ -914,19 +914,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
             } ${
               disabled
-                ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
+                ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600'
                 : ''
             }`}
             placeholder=" "
           />
           <label
             htmlFor="daterange-start-input"
-            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
+            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${
               disabled
-                ? 'text-gray-400 dark:text-gray-500'
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
                 : hasError
-                ? 'text-red-600 dark:text-red-500'
-                : 'text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
+                ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-500'
+                : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
             }`}
           >
             {startLabel}
@@ -951,19 +951,19 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 : 'border-gray-300 dark:border-gray-600 focus:border-blue-600 dark:focus:border-blue-500 text-gray-900 dark:text-white'
             } ${
               disabled
-                ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
+                ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600'
                 : ''
             }`}
             placeholder=" "
           />
           <label
             htmlFor="daterange-end-input"
-            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none bg-white dark:bg-gray-800 transition-all ${
+            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${
               disabled
-                ? 'text-gray-400 dark:text-gray-500'
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
                 : hasError
-                ? 'text-red-600 dark:text-red-500'
-                : 'text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
+                ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-500'
+                : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
             }`}
           >
             {endLabel}

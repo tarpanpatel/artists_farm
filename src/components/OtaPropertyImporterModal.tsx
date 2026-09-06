@@ -12,23 +12,12 @@ import { Input } from './Input';
 import { useToast } from './ToastContext';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 
-/** One row of an Airbnb host profile's listing list, as built by
- *  PropertyImporter::fetchPreview - {id, url, name}, nothing more. */
-interface HostListing {
-  id: string;
-  url: string;
-  name: string;
-}
-
 /** Shape returned by router.php's `fetch_ota_listing_preview` /
  *  `apply_ota_listing_to_property` (see PropertyImporter::fetchPreview and
- *  ::applyToProperty). A host-profile URL comes back as a listing LIST
- *  (is_host_profile + listings); a single listing URL comes back as `data`. */
+ *  ::applyToProperty). */
 interface ImporterResponse {
   success?: boolean;
   message?: string;
-  is_host_profile?: boolean;
-  listings?: HostListing[];
   data?: ImportedPropertyData;
   /** Set by the extractors when the page yielded no real content (Airbnb
    *  serving a login wall or a soft 404) and `data` is therefore placeholder
@@ -98,7 +87,6 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportedPropertyData | null>(null);
-  const [hostListings, setHostListings] = useState<HostListing[] | null>(null);
 
   // Checkboxes for selective update on edit_property
   // Re-fetch mode. Off = first import (keep photos/amenities already here and add
@@ -119,7 +107,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
     // describes ONE unit, so importing its title renamed a 7-room property from
     // "Patel Colony" to "Guest suite in Jaipur" - the parent is the building, not
     // any single listing. Still offered, just never the default there.
-    name: propertyType !== 'MULTI_KEY',
+    name: propertyType !== 'MULTI_KEY',  // never for a parent - see CLAUDE.md
     description: true,
     address: true,
     checkin_checkout: true,
@@ -130,14 +118,13 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
 
   const handleFetch = async () => {
     if (!identifier.trim()) {
-      setError(`Please enter an ${source === 'airbnb' ? 'Airbnb listing URL, Host profile URL, or listing ID' : 'Booking.com hotel link or hotel ID'}`);
+      setError(`Please enter ${source === 'airbnb' ? 'the Airbnb listing link' : 'your Booking.com property ID'}`);
       return;
     }
 
     setError(null);
     setFetching(true);
     setPreview(null);
-    setHostListings(null);
 
     try {
       const res = await importerCall('fetch_ota_listing_preview', {
@@ -145,23 +132,18 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
         identifier: identifier.trim(),
       });
 
-      if (res && res.success) {
-        if (res.is_host_profile && res.listings && res.listings.length > 0) {
-          setHostListings(res.listings);
-          showToast(`Found ${res.listings.length} listings for this Host on Airbnb! Select one to import.`, { type: 'success' });
-        } else if (res.data) {
-          setPreview(res.data);
-          if (res.partial) {
-            showToast(
-              res.message || 'Only basic details could be read from that page - please review and fill in the fields below.',
-              { type: 'warning' }
-            );
-          } else {
-            showToast(`Successfully extracted listing metadata from ${source === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
-          }
+      if (res && res.success && res.data) {
+        setPreview(res.data);
+        if (res.partial) {
+          showToast(
+            res.message || 'Only basic details could be read from that page - please review and fill in the fields below.',
+            { type: 'warning' }
+          );
+        } else {
+          showToast(`Successfully extracted listing metadata from ${source === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
         }
       } else {
-        const msg = res?.message || 'Unable to fetch listing details. Please check the URL or ID and try again.';
+        const msg = res?.message || 'Unable to fetch listing details. Please check the link/ID and try again.';
         setError(msg);
         showToast(msg, { type: 'error' });
       }
@@ -170,29 +152,6 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
       const msg = err?.message || 'Failed to connect to listing importer';
       setError(msg);
       showToast(msg, { type: 'error' });
-    } finally {
-      setFetching(false);
-    }
-  };
-
-  const handleSelectListingFromHost = async (listingId: string) => {
-    setIdentifier(listingId);
-    setHostListings(null);
-    setFetching(true);
-    setError(null);
-    try {
-      const res = await importerCall('fetch_ota_listing_preview', {
-        channel: 'airbnb',
-        identifier: listingId,
-      });
-      if (res && res.success && res.data) {
-        setPreview(res.data);
-        showToast(`Extracted details for listing #${listingId}`, { type: 'success' });
-      } else {
-        setError(res?.message || 'Failed to extract listing');
-      }
-    } catch (err: any) {
-      setError(err?.message || 'Failed to fetch listing');
     } finally {
       setFetching(false);
     }
@@ -376,7 +335,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                     <span>Airbnb</span>
                     {source === 'airbnb' && <CheckCircle2 className="w-4 h-4 text-[#FF5A5F]" />}
                   </div>
-                  <div className="text-2xs text-gray-500 dark:text-gray-400">Import via Listing URL or Listing ID</div>
+                  <div className="text-2xs text-gray-500 dark:text-gray-400">Import via Listing Link</div>
                 </div>
               </button>
 
@@ -401,7 +360,7 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                     <span>Booking.com</span>
                     {source === 'booking_com' && <CheckCircle2 className="w-4 h-4 text-[#003580]" />}
                   </div>
-                  <div className="text-2xs text-gray-500 dark:text-gray-400">Import via Hotel ID or Link</div>
+                  <div className="text-2xs text-gray-500 dark:text-gray-400">Import via Property ID</div>
                 </div>
               </button>
             </div>
@@ -412,11 +371,11 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input
-                  label={source === 'airbnb' ? 'Airbnb Listing URL, Host Profile Link, or ID' : 'Booking.com Property Link or Hotel ID'}
+                  label={source === 'airbnb' ? 'Airbnb Listing Link' : 'Booking.com Property ID'}
                   placeholder={
                     source === 'airbnb'
-                      ? 'e.g. airbnb.com/rooms/12345678 or host link airbnb.com/users/show/34816822'
-                      : 'e.g. https://www.booking.com/hotel/in/my-hotel.html or hotel ID'
+                      ? 'e.g. https://www.airbnb.com/rooms/12345678'
+                      : 'e.g. 123456'
                   }
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
@@ -428,8 +387,8 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                   }}
                   helperText={
                     source === 'airbnb'
-                      ? 'Supports individual listing links, listing IDs, and host profile pages with multiple listings.'
-                      : 'Paste the full link from your browser or your numeric property ID'
+                      ? 'Paste the full link to the listing, copied from Airbnb.'
+                      : 'Paste the numeric Property ID from your Booking.com Extranet.'
                   }
                 />
               </div>
@@ -454,37 +413,35 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
             </div>
 
             {/* How to find link guide for Airbnb */}
-            {source === 'airbnb' && !preview && !hostListings && (
+            {source === 'airbnb' && !preview && (
               <details className="text-2xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-lg border border-gray-200 dark:border-gray-700/80 cursor-pointer group">
                 <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
                   <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                    💡 How do I find my Airbnb Host Profile or Listing Link?
+                    💡 How do I find my Airbnb listing link?
                   </span>
                   <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
-                <div className="mt-2.5 space-y-2.5 pt-2 border-t border-gray-200 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
-                  <div>
-                    <div className="font-bold text-gray-900 dark:text-white mb-0.5">👤 For Standard / Non-Professional Hosts (Imports all listings):</div>
-                    <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
-                      <li><strong className="text-gray-800 dark:text-gray-200">Via Desktop:</strong> Log in to airbnb.com ➔ Click avatar (top-right) ➔ Click <strong className="text-gray-800 dark:text-gray-200">Account</strong> ➔ Click <strong className="text-gray-800 dark:text-gray-200">Go to profile</strong> ➔ Copy URL (<code className="text-indigo-600 dark:text-indigo-400">airbnb.com/users/show/12345</code>).</li>
-                      <li><strong className="text-gray-800 dark:text-gray-200">From Any Listing:</strong> Open your listing ➔ Scroll to <strong className="text-gray-800 dark:text-gray-200">&quot;Hosted by...&quot;</strong> ➔ Click your photo/name ➔ Copy browser URL.</li>
-                      <li><strong className="text-gray-800 dark:text-gray-200">Via Mobile App:</strong> Tap <strong className="text-gray-800 dark:text-gray-200">Profile</strong> (bottom-right) ➔ Tap your name/photo ➔ Tap <strong className="text-gray-800 dark:text-gray-200">Share</strong> (top-right) ➔ <strong className="text-gray-800 dark:text-gray-200">Copy Link</strong>.</li>
-                    </ul>
-                  </div>
+                <div className="mt-2.5 space-y-1 pt-2 border-t border-gray-200 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
+                  <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
+                    <li>Go to your <strong className="text-gray-800 dark:text-gray-200">Listings</strong> tab ➔ click your property ➔ click <strong className="text-gray-800 dark:text-gray-200">Preview / Share</strong> ➔ copy the link (<code className="text-indigo-600 dark:text-indigo-400">airbnb.com/rooms/12345678</code>).</li>
+                    <li>Or, from the live listing page itself, copy it straight out of your browser's address bar.</li>
+                  </ul>
+                </div>
+              </details>
+            )}
 
-                  <div>
-                    <div className="font-bold text-gray-900 dark:text-white mb-0.5">🏢 For Professional Hosts (Custom Brand URL):</div>
-                    <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
-                      <li>Go to <strong className="text-gray-800 dark:text-gray-200">Account Settings ➔ Professional hosting tools</strong> ➔ Copy your custom profile URL (<code className="text-indigo-600 dark:text-indigo-400">airbnb.co.in/p/your-brand</code>).</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <div className="font-bold text-gray-900 dark:text-white mb-0.5">🏠 For Single Listing Only:</div>
-                    <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
-                      <li>Go to <strong className="text-gray-800 dark:text-gray-200">Listings</strong> tab ➔ Click your property ➔ Click <strong className="text-gray-800 dark:text-gray-200">Preview / Share</strong> ➔ Copy link (<code className="text-indigo-600 dark:text-indigo-400">airbnb.com/rooms/12345678</code>) or enter just the numerical Listing ID.</li>
-                    </ul>
-                  </div>
+            {source === 'booking_com' && !preview && (
+              <details className="text-2xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 p-3 rounded-lg border border-gray-200 dark:border-gray-700/80 cursor-pointer group">
+                <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
+                  <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                    💡 How do I find my Booking.com Property ID?
+                  </span>
+                  <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div className="mt-2.5 space-y-1 pt-2 border-t border-gray-200 dark:border-gray-700/80 text-gray-600 dark:text-gray-300">
+                  <ul className="list-disc list-inside space-y-1 ml-1 text-3xs text-gray-600 dark:text-gray-300">
+                    <li>Log in to the <strong className="text-gray-800 dark:text-gray-200">Booking.com Extranet</strong> ➔ the numeric Property ID is shown in the page URL and in your account settings.</li>
+                  </ul>
                 </div>
               </details>
             )}
@@ -493,48 +450,6 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
               <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
-              </div>
-            )}
-
-            {/* Host Profile Multi-Listing Picker */}
-            {hostListings && hostListings.length > 0 && (
-              <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AirbnbIcon className="w-5 h-5" />
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      Found {hostListings.length} Listings for this Host on Airbnb
-                    </span>
-                  </div>
-                  <span className="text-2xs text-gray-500 dark:text-gray-400">Click a listing to import:</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1">
-                  {hostListings.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all shadow-2xs"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1">
-                          {item.name}
-                        </div>
-                        <div className="text-3xs text-gray-500 dark:text-gray-400 font-mono">
-                          ID: {item.id}
-                        </div>
-                      </div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleSelectListingFromHost(item.id)}
-                        disabled={fetching}
-                        className="text-xs shrink-0"
-                      >
-                        Select &amp; Import
-                      </Button>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </div>
@@ -648,15 +563,21 @@ export const OtaPropertyImporterModal: React.FC<OtaPropertyImporterModalProps> =
                     Select Fields to Apply to Property #{propertyId}
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={applyFields.name}
-                        onChange={() => toggleField('name')}
-                        className="rounded text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
-                      />
-                      <span className="text-gray-800 dark:text-gray-200">Property Name</span>
-                    </label>
+                    {/* Never offered for a MULTI_KEY parent - a listing names ONE
+                        unit, the parent names the building. The server refuses it
+                        outright too (see applyToProperty); this just stops the
+                        owner ticking something that cannot be applied. */}
+                    {propertyType !== 'MULTI_KEY' && (
+                      <label className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={applyFields.name}
+                          onChange={() => toggleField('name')}
+                          className="rounded text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
+                        />
+                        <span className="text-gray-800 dark:text-gray-200">Property Name</span>
+                      </label>
+                    )}
 
                     <label className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 cursor-pointer">
                       <input

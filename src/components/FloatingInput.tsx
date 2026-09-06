@@ -76,7 +76,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       : 'text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500';
 
     const disabledClasses = disabled
-      ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-800/90 disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-200 dark:disabled:border-gray-700'
+      ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600'
       : '';
 
     // Date/time inputs have native browser glyphs/placeholders (--:--, dd/mm/yyyy)
@@ -121,8 +121,8 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             className={twMerge(
               'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-2 pointer-events-none transition-all z-10',
               labelTransform,
-              disabled ? 'bg-gray-100 dark:bg-gray-800/90' : bgToken,
-              disabled ? 'text-gray-400 dark:text-gray-500' : labelColor,
+              disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken,
+              disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor,
               leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-2' : 'start-2'
             )}
           >

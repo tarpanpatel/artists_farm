@@ -50,7 +50,6 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [otaFetching, setOtaFetching] = useState(false);
   const [otaPreview, setOtaPreview] = useState<ImportedPropertyData | null>(null);
   const [otaError, setOtaError] = useState<string | null>(null);
-  const [hostListings, setHostListings] = useState<Array<{ id: string; url: string; name: string }> | null>(null);
 
   // --- Step 3: Property Setup ---
   const [propertyName, setPropertyName] = useState('');
@@ -80,13 +79,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
 
   const handleFetchOta = async () => {
     if (!otaIdentifier.trim()) {
-      setOtaError(`Please enter an ${creationMode === 'airbnb' ? 'Airbnb listing URL, Host profile URL, or listing ID' : 'Booking.com hotel link or hotel ID'}`);
+      setOtaError(`Please enter ${creationMode === 'airbnb' ? 'the Airbnb listing link' : 'your Booking.com property ID'}`);
       return;
     }
 
     setOtaError(null);
     setOtaFetching(true);
-    setHostListings(null);
     try {
       const response = await fetch('/php/api/router.php?action=fetch_ota_listing_preview', {
         method: 'POST',
@@ -98,53 +96,6 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       });
 
       const data = await response.json();
-      if (data && data.success) {
-        if (data.is_host_profile && data.listings && data.listings.length > 0) {
-          setHostListings(data.listings);
-          showToast(`Found ${data.listings.length} listings for this Host on Airbnb! Select one to import.`, { type: 'success' });
-        } else if (data.data) {
-          const preview = data.data as ImportedPropertyData;
-          setOtaPreview(preview);
-          setHostListings(null);
-          if (preview.name) setPropertyName(preview.name);
-          if (preview.property_type) setPropertyType(preview.property_type);
-          if (preview.room_count) setRoomCount(preview.room_count);
-          if (preview.default_tariff) setDefaultTariff(String(preview.default_tariff));
-          if (preview.checkin_time) setCheckinTime(preview.checkin_time);
-          if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
-          if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
-          showToast(`Listing details & photos imported from ${creationMode === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
-        }
-      } else {
-        const msg = data?.message || 'Unable to fetch listing details. You can enter details manually.';
-        setOtaError(msg);
-        showToast(msg, { type: 'error' });
-      }
-    } catch (err: any) {
-      console.error('Fetch OTA listing failed:', err);
-      const msg = 'Network error fetching listing. You can enter details manually.';
-      setOtaError(msg);
-      showToast(msg, { type: 'error' });
-    } finally {
-      setOtaFetching(false);
-    }
-  };
-
-  const handleSelectListingFromHost = async (listingId: string) => {
-    setOtaIdentifier(listingId);
-    setHostListings(null);
-    setOtaFetching(true);
-    setOtaError(null);
-    try {
-      const response = await fetch('/php/api/router.php?action=fetch_ota_listing_preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channel: 'airbnb',
-          identifier: listingId,
-        }),
-      });
-      const data = await response.json();
       if (data && data.success && data.data) {
         const preview = data.data as ImportedPropertyData;
         setOtaPreview(preview);
@@ -155,12 +106,17 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
         if (preview.checkin_time) setCheckinTime(preview.checkin_time);
         if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
         if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
-        showToast(`Listing #${listingId} details & photos imported!`, { type: 'success' });
+        showToast(`Listing details & photos imported from ${creationMode === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
       } else {
-        setOtaError(data?.message || 'Failed to extract listing');
+        const msg = data?.message || 'Unable to fetch listing details. You can enter details manually.';
+        setOtaError(msg);
+        showToast(msg, { type: 'error' });
       }
     } catch (err: any) {
-      setOtaError('Failed to extract listing');
+      console.error('Fetch OTA listing failed:', err);
+      const msg = 'Network error fetching listing. You can enter details manually.';
+      setOtaError(msg);
+      showToast(msg, { type: 'error' });
     } finally {
       setOtaFetching(false);
     }
@@ -484,8 +440,8 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                     <Input
                       placeholder={
                         creationMode === 'airbnb'
-                          ? 'Paste Airbnb link (e.g. airbnb.com/rooms/12345678)'
-                          : 'Paste Booking.com link or enter Hotel ID'
+                          ? 'Paste Airbnb listing link (e.g. airbnb.com/rooms/12345678)'
+                          : 'Enter Booking.com Property ID (e.g. 123456)'
                       }
                       value={otaIdentifier}
                       onChange={(e) => setOtaIdentifier(e.target.value)}
@@ -515,38 +471,36 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   </Button>
                 </div>
 
-                {/* How to find link guide for Airbnb */}
-                {creationMode === 'airbnb' && !otaPreview && !hostListings && (
+                {/* How to find link guide */}
+                {creationMode === 'airbnb' && !otaPreview && (
                   <details className="text-2xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer group">
                     <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
                       <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                        💡 How do I find my Airbnb Host Profile or Listing Link?
+                        💡 How do I find my Airbnb listing link?
                       </span>
                       <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                     </summary>
-                    <div className="mt-2 space-y-2 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                      <div>
-                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5">👤 For Standard / Non-Professional Hosts (Imports all listings):</div>
-                        <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
-                          <li><strong className="text-slate-800 dark:text-slate-200">Via Desktop:</strong> airbnb.com ➔ Click avatar (top-right) ➔ <strong>Account</strong> ➔ <strong>Go to profile</strong> ➔ Copy URL (<code>airbnb.com/users/show/12345</code>).</li>
-                          <li><strong className="text-slate-800 dark:text-slate-200">From Any Listing:</strong> Open your listing ➔ Scroll to <strong>&quot;Hosted by...&quot;</strong> ➔ Click host name ➔ Copy browser URL.</li>
-                          <li><strong className="text-slate-800 dark:text-slate-200">Via Mobile App:</strong> Tap <strong>Profile</strong> ➔ Tap photo ➔ <strong>Share</strong> (top-right) ➔ <strong>Copy Link</strong>.</li>
-                        </ul>
-                      </div>
+                    <div className="mt-2 space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                      <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
+                        <li>Go to <strong>Listings</strong> tab ➔ Click your property ➔ <strong>Preview / Share</strong> ➔ Copy link (<code>airbnb.com/rooms/12345678</code>).</li>
+                        <li>Or copy it straight out of your browser's address bar on the live listing page.</li>
+                      </ul>
+                    </div>
+                  </details>
+                )}
 
-                      <div>
-                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5">🏢 For Professional Hosts (Custom Brand URL):</div>
-                        <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
-                          <li>Go to <strong>Account Settings ➔ Professional hosting tools</strong> ➔ Copy custom profile URL (<code>airbnb.co.in/p/your-brand</code>).</li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <div className="font-bold text-slate-800 dark:text-slate-200 mb-0.5">🏠 For Single Listing Only:</div>
-                        <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
-                          <li>Go to <strong>Listings</strong> tab ➔ Click your property ➔ <strong>Preview / Share</strong> ➔ Copy link (<code>airbnb.com/rooms/12345678</code>) or enter just numerical Listing ID.</li>
-                        </ul>
-                      </div>
+                {creationMode === 'booking_com' && !otaPreview && (
+                  <details className="text-2xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer group">
+                    <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
+                      <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
+                        💡 How do I find my Booking.com Property ID?
+                      </span>
+                      <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="mt-2 space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                      <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
+                        <li>Log in to the <strong>Booking.com Extranet</strong> ➔ the numeric Property ID is shown in the page URL and your account settings.</li>
+                      </ul>
                     </div>
                   </details>
                 )}
@@ -555,48 +509,6 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   <div className="flex items-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-2xs text-red-700 dark:text-red-300">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span>{otaError}</span>
-                  </div>
-                )}
-
-                {/* Host Profile Multi-Listing Picker */}
-                {hostListings && hostListings.length > 0 && (
-                  <div className="p-3 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <AirbnbIcon className="w-4 h-4" />
-                        <span className="text-xs font-bold text-gray-900 dark:text-white">
-                          Found {hostListings.length} Listings for this Host
-                        </span>
-                      </div>
-                      <span className="text-3xs text-gray-500 dark:text-gray-400">Click to import:</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
-                      {hostListings.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-2.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all shadow-2xs"
-                        >
-                          <div className="min-w-0 pr-1.5">
-                            <div className="text-2xs font-bold text-gray-900 dark:text-white line-clamp-1">
-                              {item.name}
-                            </div>
-                            <div className="text-3xs text-gray-500 dark:text-gray-400 font-mono">
-                              ID: {item.id}
-                            </div>
-                          </div>
-                          <Button
-                            variant="primary"
-                            size="xs"
-                            onClick={() => handleSelectListingFromHost(item.id)}
-                            disabled={otaFetching}
-                            className="text-3xs shrink-0 px-2 py-1"
-                          >
-                            Import
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
 

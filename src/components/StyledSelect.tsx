@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { twMerge } from 'tailwind-merge';
 import { Check, ChevronDown, Search, AlertTriangle } from './icons/FlowbiteIcons';
 import { Dropdown, DropdownItem, DropdownHeader } from 'flowbite-react';
 import { t } from '../i18n/en';
@@ -114,17 +115,18 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
             type="button"
             id={id}
             disabled={disabled}
-            className={`app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none ${
-              isFloating ? 'pb-2.5 pt-4 bg-transparent text-sm' : 'h-10 bg-white dark:bg-gray-800 text-xs px-3'
-            } ${
+            className={twMerge(
+              'app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none',
+              isFloating ? 'pb-2.5 pt-4 text-sm' : 'h-10 text-xs px-3',
               disabled
-                ? 'bg-gray-100 dark:bg-gray-800/90 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-300 border-gray-300 dark:border-gray-600 cursor-not-allowed'
                 : error
-                ? 'border-red-600 dark:border-red-500 text-red-900 dark:text-white cursor-pointer'
-                : 'border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:border-blue-600 focus:border-blue-600 cursor-pointer'
-            } ${buttonClassName}`}
+                ? 'bg-white dark:bg-gray-800 border-red-600 dark:border-red-500 text-red-900 dark:text-white cursor-pointer'
+                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:border-blue-600 focus:border-blue-600 cursor-pointer',
+              buttonClassName
+            )}
           >
-            <span className={`truncate text-inherit ${disabled ? 'text-gray-400 dark:text-gray-500' : selected ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+            <span className={`truncate text-inherit ${disabled ? 'text-gray-900 dark:text-white font-normal' : selected ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
               {selected ? selected.label : (isFloating ? ' ' : placeholder)}
             </span>
             <ChevronDown className={`w-4 h-4 shrink-0 transition-transform group-focus:rotate-180 ${disabled ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400 dark:text-gray-500'}`} />
@@ -174,12 +176,10 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
       </Dropdown>
       {isFloating && label && (
         <label
-          className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${bgToken} ${
+          className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${
             disabled
-              ? 'text-gray-400 dark:text-gray-500'
-              : error
-              ? 'text-red-600 dark:text-red-500'
-              : 'text-gray-500 dark:text-gray-400'
+              ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
+              : `${bgToken} ${error ? 'text-red-600 dark:text-red-500' : 'text-gray-500 dark:text-gray-400'}`
           }`}
         >
           {label}
