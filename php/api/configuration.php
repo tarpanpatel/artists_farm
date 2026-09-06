@@ -713,6 +713,13 @@ function registerTenantTrial($pdo) {
             'message' => 'Trial registered successfully',
             'property_slug' => $propertySlug,
             'redirect_url' => '/' . $propertySlug,
+            // The onboarding wizard connects Airbnb in a later step, and every
+            // channel endpoint is addressed by property id, not slug (6 Sep 2026).
+            // Registration already logs the owner in ($_SESSION['username'] above),
+            // so the wizard can go straight on to connecting without a round trip
+            // to resolve the id it just created.
+            'property_id' => $propertyId,
+            'tenant_id' => $tenantId,
         ]);
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {

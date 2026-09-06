@@ -3,15 +3,13 @@ import { Drawer } from 'flowbite-react';
 import {
   User, Home, Layers, ChefHat,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck, X, AlertCircle,
-  Smartphone, Share, PlusSquare, MoreVertical, RefreshCw,
+  Smartphone, Share, PlusSquare, MoreVertical,
 } from './icons/FlowbiteIcons';
-import { AirbnbIcon } from './icons/AirbnbIcon';
-import { BookingComIcon } from './icons/BookingComIcon';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
-import type { ImportedPropertyData } from './OtaPropertyImporterModal';
+import { OnboardingChannelStep } from './OnboardingChannelStep';
 
 interface SelfOnboardingWizardProps {
   isOpen: boolean;
@@ -19,7 +17,7 @@ interface SelfOnboardingWizardProps {
   onSuccess: (redirectUrl: string) => void;
 }
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   isOpen,
@@ -44,12 +42,9 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [phone, setPhone] = useState('');
   const [passcode, setPasscode] = useState('');
 
-  // --- Step 3: Creation Mode & OTA Import ---
-  const [creationMode, setCreationMode] = useState<'manual' | 'airbnb' | 'booking_com'>('manual');
-  const [otaIdentifier, setOtaIdentifier] = useState('');
-  const [otaFetching, setOtaFetching] = useState(false);
-  const [otaPreview, setOtaPreview] = useState<ImportedPropertyData | null>(null);
-  const [otaError, setOtaError] = useState<string | null>(null);
+  // Step 4 needs the id of the property registration just created - every
+  // channel endpoint is addressed by id, not slug.
+  const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(null);
 
   // --- Step 3: Property Setup ---
   const [propertyName, setPropertyName] = useState('');
@@ -77,50 +72,6 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const propertyNameError = step3Attempted && !propertyName.trim() ? 'Property name is required' : undefined;
   const defaultTariffError = step3Attempted && !(Number(defaultTariff) > 0) ? 'Enter your standard room rate' : undefined;
 
-  const handleFetchOta = async () => {
-    if (!otaIdentifier.trim()) {
-      setOtaError(`Please enter ${creationMode === 'airbnb' ? 'the Airbnb listing link' : 'your Booking.com property ID'}`);
-      return;
-    }
-
-    setOtaError(null);
-    setOtaFetching(true);
-    try {
-      const response = await fetch('/php/api/router.php?action=fetch_ota_listing_preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channel: creationMode,
-          identifier: otaIdentifier.trim(),
-        }),
-      });
-
-      const data = await response.json();
-      if (data && data.success && data.data) {
-        const preview = data.data as ImportedPropertyData;
-        setOtaPreview(preview);
-        if (preview.name) setPropertyName(preview.name);
-        if (preview.property_type) setPropertyType(preview.property_type);
-        if (preview.room_count) setRoomCount(preview.room_count);
-        if (preview.default_tariff) setDefaultTariff(String(preview.default_tariff));
-        if (preview.checkin_time) setCheckinTime(preview.checkin_time);
-        if (preview.checkout_time) setCheckoutTime(preview.checkout_time);
-        if (preview.has_kitchen !== undefined) setHasKitchen(preview.has_kitchen === 1);
-        showToast(`Listing details & photos imported from ${creationMode === 'airbnb' ? 'Airbnb' : 'Booking.com'}!`, { type: 'success' });
-      } else {
-        const msg = data?.message || 'Unable to fetch listing details. You can enter details manually.';
-        setOtaError(msg);
-        showToast(msg, { type: 'error' });
-      }
-    } catch (err: any) {
-      console.error('Fetch OTA listing failed:', err);
-      const msg = 'Network error fetching listing. You can enter details manually.';
-      setOtaError(msg);
-      showToast(msg, { type: 'error' });
-    } finally {
-      setOtaFetching(false);
-    }
-  };
 
   const handleNextStepClick = () => {
     if (step === 1 && !isStep1Valid) {
@@ -167,7 +118,6 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
           checkin_time: checkinTime,
           checkout_time: checkoutTime,
           has_kitchen: hasKitchen ? 1 : 0,
-          imported_data: otaPreview,
         }),
       });
 
@@ -176,6 +126,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       if (data.success) {
         const targetUrl = data.redirect_url || `/${data.property_slug}`;
         setRegisteredRedirectUrl(targetUrl);
+        setCreatedPropertyId(Number(data.property_id) || null);
         showToast('Account & Property created successfully! 30-Day trial active.', { type: 'success' });
         setStep(4);
       } else {
@@ -209,7 +160,9 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             <Sparkles className="w-5 h-5 text-amber-500" />
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Start Your 30-Day Free Trial</h2>
           </div>
-          <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">Step {step} of 3 • Full access, no credit card required</p>
+          {/* Said "of 3" while the stepper below showed 4 - already wrong before
+              the Channels step was added, now correct at 5. */}
+          <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">Step {step} of 5 • Full access, no credit card required</p>
         </div>
         <button
           type="button"
@@ -232,14 +185,17 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
           <span className={step === 3 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : step > 3 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
             3. Add Property
           </span>
-          <span className={step === 4 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}>
-            4. Add App
+          <span className={step === 4 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : step > 4 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+            4. Channels
+          </span>
+          <span className={step === 5 ? 'text-indigo-600 dark:text-indigo-400 font-bold' : ''}>
+            5. Add App
           </span>
         </div>
         <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
           <div
             className="bg-indigo-600 h-full transition-all duration-300 rounded-full"
-            style={{ width: `${(step / 4) * 100}%` }}
+            style={{ width: `${(step / 5) * 100}%` }}
           />
         </div>
       </div>
@@ -363,186 +319,17 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             </div>
 
             {/* Creation Source Mode Switcher */}
-            <div>
-              <label className="block text-2xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                Setup Method
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreationMode('manual');
-                    setOtaError(null);
-                  }}
-                  className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 text-center transition-all ${
-                    creationMode === 'manual'
-                      ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-bold shadow-xs'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <Home className="w-4 h-4 text-indigo-600 mb-1" />
-                  <span className="text-xs">Manual Entry</span>
-                </button>
+            {/* The "import from a listing URL" option that used to live here is
+                gone (6 Sep 2026). It scraped the public Airbnb page - og:title,
+                og:description, JSON-LD - which is how a 7-room property once got
+                renamed to "Guest suite in Jaipur", a string off a meta tag. A
+                scraped page is also missing everything that actually matters:
+                guests included, extra-guest charge, fees, bed layout.
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreationMode('airbnb');
-                    setOtaError(null);
-                  }}
-                  className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 text-center transition-all ${
-                    creationMode === 'airbnb'
-                      ? 'border-[#FF5A5F] bg-red-50/50 dark:bg-red-950/30 text-gray-900 dark:text-white font-bold shadow-xs'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <AirbnbIcon className="w-4 h-4 mb-1" />
-                  <span className="text-xs">Airbnb Import</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreationMode('booking_com');
-                    setOtaError(null);
-                  }}
-                  className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 text-center transition-all ${
-                    creationMode === 'booking_com'
-                      ? 'border-[#003580] bg-blue-50/50 dark:bg-blue-950/30 text-gray-900 dark:text-white font-bold shadow-xs'
-                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <BookingComIcon className="w-4 h-4 mb-1" />
-                  <span className="text-xs">Booking.com</span>
-                </button>
-              </div>
-            </div>
-
-            {/* OTA Import Input Section */}
-            {creationMode !== 'manual' && (
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    {creationMode === 'airbnb' ? <AirbnbIcon className="w-4 h-4" /> : <BookingComIcon className="w-4 h-4" />}
-                    <span>{creationMode === 'airbnb' ? 'Import from Airbnb' : 'Import from Booking.com'}</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCreationMode('manual')}
-                    className="text-2xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                  >
-                    Skip &amp; Type Manually
-                  </button>
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Input
-                      placeholder={
-                        creationMode === 'airbnb'
-                          ? 'Paste Airbnb listing link (e.g. airbnb.com/rooms/12345678)'
-                          : 'Enter Booking.com Property ID (e.g. 123456)'
-                      }
-                      value={otaIdentifier}
-                      onChange={(e) => setOtaIdentifier(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleFetchOta();
-                        }
-                      }}
-                    />
-                  </div>
-                  <Button
-                    variant="primary"
-                    onClick={handleFetchOta}
-                    disabled={otaFetching || !otaIdentifier.trim()}
-                    className="h-10 shrink-0"
-                  >
-                    {otaFetching ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-1" /> Fetching...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-1" /> Fetch
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* How to find link guide */}
-                {creationMode === 'airbnb' && !otaPreview && (
-                  <details className="text-2xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer group">
-                    <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
-                      <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                        💡 How do I find my Airbnb listing link?
-                      </span>
-                      <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
-                    </summary>
-                    <div className="mt-2 space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                      <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
-                        <li>Go to <strong>Listings</strong> tab ➔ Click your property ➔ <strong>Preview / Share</strong> ➔ Copy link (<code>airbnb.com/rooms/12345678</code>).</li>
-                        <li>Or copy it straight out of your browser's address bar on the live listing page.</li>
-                      </ul>
-                    </div>
-                  </details>
-                )}
-
-                {creationMode === 'booking_com' && !otaPreview && (
-                  <details className="text-2xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer group">
-                    <summary className="font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between list-none">
-                      <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold">
-                        💡 How do I find my Booking.com Property ID?
-                      </span>
-                      <span className="text-3xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
-                    </summary>
-                    <div className="mt-2 space-y-0.5 pt-1.5 border-t border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                      <ul className="list-disc list-inside space-y-0.5 ml-1 text-3xs">
-                        <li>Log in to the <strong>Booking.com Extranet</strong> ➔ the numeric Property ID is shown in the page URL and your account settings.</li>
-                      </ul>
-                    </div>
-                  </details>
-                )}
-
-                {otaError && (
-                  <div className="flex items-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-2xs text-red-700 dark:text-red-300">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{otaError}</span>
-                  </div>
-                )}
-
-                {/* Fetched Preview Strip */}
-                {otaPreview && (
-                  <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center justify-between text-2xs text-slate-600 dark:text-slate-300">
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Details &amp; Photos Extracted
-                      </span>
-                      {otaPreview.photos && otaPreview.photos.length > 0 && (
-                        <span>{otaPreview.photos.length} photos ready</span>
-                      )}
-                    </div>
-
-                    {otaPreview.photos && otaPreview.photos.length > 0 && (
-                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                        {otaPreview.photos.slice(0, 5).map((imgUrl, idx) => (
-                          <div key={idx} className="relative w-20 h-14 rounded-md overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700">
-                            <img src={imgUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                            {idx === 0 && (
-                              <span className="absolute bottom-0.5 left-0.5 bg-black/70 text-white text-3xs px-1 rounded">
-                                Cover
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
+                There are now exactly two paths: fill this in by hand, or connect
+                Airbnb on the next step and pull the real values through the API.
+                Nothing in between pretending to be the second while being the
+                first. */}
             <Input
               label="Property Name"
               value={propertyName}
@@ -629,7 +416,27 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
         )}
 
         {/* STEP 4: Add App to Mobile Guidance */}
-        {step === 4 && (
+        {/* No property id came back (an older backend that predates registration
+            returning it) - there is nothing to connect a channel to, so move on
+            rather than showing an empty step with no way forward. */}
+        {step === 4 && !createdPropertyId && (
+          <div className="p-4 text-xs text-slate-500 dark:text-slate-400">
+            Skipping channel setup - you can connect Airbnb from Channel Connections once inside.
+            <div className="mt-3">
+              <Button variant="primary" onClick={() => setStep(5)}>Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && createdPropertyId && (
+          <OnboardingChannelStep
+            propertyId={createdPropertyId}
+            onSkip={() => setStep(5)}
+            onDone={() => setStep(5)}
+          />
+        )}
+
+        {step === 5 && (
           <div className="space-y-4">
             <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl text-center space-y-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
@@ -718,7 +525,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
               </>
             )}
           </Button>
-        ) : (
+        ) : step === 5 ? (
           <Button
             variant="primary"
             onClick={() => onSuccess(registeredRedirectUrl || '/')}
@@ -727,6 +534,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
             <span>Launch Property Dashboard Now</span>
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
+        ) : (
+          // Step 4 (Channels) carries its own Skip / Continue pair, because
+          // "skip" is a real decision there rather than plain navigation. A
+          // second Continue down here would be two buttons competing to mean
+          // the same thing.
+          <div />
         )}
       </div>
     </Drawer>

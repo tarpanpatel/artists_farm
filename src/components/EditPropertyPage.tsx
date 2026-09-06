@@ -6,7 +6,7 @@ import { RoomsManagement } from './RoomsManagement';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Sparkles } from './icons/FlowbiteIcons';
-import { OtaPropertyImporterModal } from './OtaPropertyImporterModal';
+import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
 
 interface EditPropertyPageProps {
   onNavigateToRoom?: (roomSlug: string, initialTab?: string) => void;
@@ -63,18 +63,24 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
               className="flex items-center gap-1.5"
             >
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span>Import from Airbnb / Booking.com</span>
+              <span>{t('import_from_airbnb_button', 'Import from Airbnb')}</span>
             </Button>
           )}
         </PageHeader>
       </div>
 
-      <OtaPropertyImporterModal
-        propertyType={property.property_type}
+      {/* The listing-URL scraper this replaced is gone (6 Sep 2026). It read the
+          public Airbnb page, which is how a 7-room property once took its name
+          from an og:title meta tag - and a scraped page never carried the things
+          that actually matter (guests included, extra-guest charge, fees, bed
+          layout) because they are not on it. This reads the same values through
+          the connected channel instead, and shows them against what is stored
+          before writing anything. */}
+      <AirbnbConfigImportDrawer
         isOpen={showImporterModal}
         onClose={() => setShowImporterModal(false)}
         propertyId={property.id}
-        onImportSuccess={() => window.location.reload()}
+        onImported={() => window.location.reload()}
       />
 
       <div className="edit-property-page__grid grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

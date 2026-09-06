@@ -8,7 +8,6 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../services/api';
-import { OtaPropertyImporterModal, type ImportedPropertyData } from './OtaPropertyImporterModal';
 
 interface Room {
   id: number;
@@ -147,24 +146,12 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
     loadData();
   }, [isAuthenticated, authChecked, propertyId]);
 
-  const [showUnitImporter, setShowUnitImporter] = useState(false);
 
   // Fills the Add-New-Unit form from a scraped listing. Deliberately only the two
   // fields this form actually has - a room's photos/amenities/address belong to
   // the parent property, and the room does not exist yet to attach them to. The
   // slug is re-derived from the imported name exactly as typing it would, so an
   // imported unit is addressable the same way as a hand-made one.
-  const applyImportedUnit = (data: ImportedPropertyData) => {
-    const name = (data.name || '').trim();
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    setNewRoom((prev) => ({
-      name: name || prev.name,
-      slug: slug || prev.slug || `unit-${Date.now()}`,
-      default_tariff: data.default_tariff ? String(data.default_tariff) : prev.default_tariff,
-    }));
-    setShowUnitImporter(false);
-    showToast(`Imported "${name || 'listing'}" - review the details and click Add Room.`, { type: 'success' });
-  };
 
   const handleAddRoom = async () => {
     // Only the name is asked for now - the slug is derived from it (with a
@@ -509,34 +496,17 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
             </Alert>
           )}
 
-          {/* Import one unit straight from its own OTA listing. In a multi-key
-              property each room is typically its own Airbnb/Booking.com listing,
-              so this fills the name and nightly rate from that listing instead of
-              retyping them. Rendered in callback mode (no propertyId): the room
-              does not exist yet, so the modal hands the scraped data back rather
-              than writing it to a property. Added 4 Sep 2026. */}
-          <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white m-0">
-                  {t('import_unit_from_ota_title', 'Have this unit listed online?')}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 mb-0">
-                  {t('import_unit_from_ota_hint', 'Fill the details from its Airbnb or Booking.com page instead of typing them.')}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                className="shrink-0"
-                onClick={() => setShowUnitImporter(true)}
-                leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-500" />}
-              >
-                {t('import_button', 'Import')}
-              </Button>
-            </div>
-          </div>
+          {/* The per-room "import from its OTA listing" shortcut that used to
+              sit here is gone (6 Sep 2026). It ran the public-page scraper in
+              callback mode - the room does not exist yet, so it handed scraped
+              text back to prefill the form. That is precisely the path that put
+              an og:title meta tag into a property name, and it could never carry
+              the fields that matter (guests included, extra-guest charge, fees),
+              which are not on the public page.
+
+              A real import needs the room to exist AND a connected channel, so
+              the order is: add the room, connect Airbnb, then import from Edit
+              Property. */}
 
           {/* The Room Link / slug input was removed 4 Sep 2026 at the user's
               request: it is derived from the name below and nobody needs to
@@ -610,11 +580,6 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
 
       {/* No propertyId: the unit is not saved yet, so this returns the scraped
           data to applyImportedUnit() instead of writing it to a property. */}
-      <OtaPropertyImporterModal
-        isOpen={showUnitImporter}
-        onClose={() => setShowUnitImporter(false)}
-        onImportSuccess={applyImportedUnit}
-      />
     </div>
   );
 };
