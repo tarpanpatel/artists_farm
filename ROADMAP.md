@@ -98,11 +98,56 @@ tagging real properties as "protected" and refusing to run test-triggering actio
 them in code) is wanted later - that was discussed as a further-out, bigger option, not part of
 this planned fix.
 
-### Security & Architecture Follow-ups
+### 🛡️ Codebase Audit & System Hardening Roadmap (Sep 2026)
 
-- **Input Validator Expansion**: Core operational modules (Guests, Petty Cash, Staff, Licenses, Receipts, Walk-in Tabs, Inventory, Rates) are 100% wired and verified. Minor admin/theme settings can be extended as needed.
+Comprehensive architectural, security, database, and frontend audit conducted September 2026 across all 91 MySQL tables, PHP backend APIs, and React/Flowbite components.
+
+#### Phase 1: P0 Security & Data Protection
+- [ ] **Block Web Access to Sensitive Files (`.htaccess`)**:
+  - Add deny rules for `.json`, `.sql`, `.log`, `.env`, `.key`, `.pem`, and `id_rsa`. Block direct web downloads of `sftp-config.json`, `id_rsa`, and `php/errors/logs.json`.
+- [ ] **Purge Plaintext Credentials from Document Root**:
+  - Remove `sftp-config.json` and `id_rsa` from root, rotate compromised credentials, and migrate secrets to protected storage / environment variables.
+- [ ] **Delete / Secure Unauthenticated Debug & Reset Scripts**:
+  - `php/admin/reset_staging_jaipur.php` (unauthenticated remote table wipe).
+  - `php/api/debug_guests.php` & `php/api/diagnostic.php` (unauthenticated sensitive guest data exposure).
+  - `php/api/test_nav_menu.php` (hardcodes platform_admin session).
+
+#### Phase 2: P1 Reliability, RBAC & API Error Handling
+- [ ] **Enforce Staff Management RBAC (`php/staff/staff.php:200-337`)**:
+  - Add caller role validation in `handleStaffRequests` so low-privilege `Staff` cannot escalate their own role to `Admin`, grant `accessAllProperties`, or alter salaries.
+- [ ] **Fix Kitchen Order Transactions & Silent Failure Swallowing (`php/kitchen/orders.php:203-254`)**:
+  - Wrap `create_order` in `$pdo->beginTransaction() ... commit()`.
+  - Remove fake KOT ID generation on `catch (PDOException $e)` that falsely reports success on DB write failures.
+- [ ] **Fix Cross-Tenant IDOR on Kitchen Items (`php/kitchen/orders.php:415-419`)**:
+  - Scope `update_order_item_status` query via join with `orders` to ensure `o.property_id = ?`.
+- [ ] **Asynchronous Webhook & Alert Dispatch**:
+  - Decouple synchronous Meta WhatsApp call in `php/guests/guests.php:877-881` and Telegram call in `php/kitchen/orders.php:250` so slow external APIs do not block user HTTP requests.
+- [ ] **Validate Telegram Webhook Secret Token (`php/telegram/telegram_webhook.php`)**:
+  - Verify `X-Telegram-Bot-Api-Secret-Token` on inbound bot webhooks.
+
+#### Phase 3: Database & Indexing Optimization
+- [ ] **Execute Performance Indexing Migration**:
+  - `ALTER TABLE guests ADD INDEX idx_guests_room_lookup (property_id, room_id, status, checkin_date, expected_checkout);`
+  - `ALTER TABLE property_modules ADD INDEX idx_module_slug_enabled (module_slug, is_enabled);`
+  - `ALTER TABLE service_requests ADD INDEX idx_svc_req_prop_status_created (property_id, status, created_at);`
+  - `ALTER TABLE service_requests ADD INDEX idx_svc_req_room (property_id, room_id);`
+  - `ALTER TABLE billing_receipts ADD INDEX idx_receipts_prop_created (property_id, created_at);`
+  - `ALTER TABLE financial_ledger ADD INDEX idx_ledger_prop_occurred (property_id, occurred_at);`
+  - `ALTER TABLE financial_ledger ADD INDEX idx_ledger_source (property_id, source_type, source_id);`
+- [ ] **Fix SARGability Anti-Pattern in Financial Ledger (`php/finance/petty_cash.php:963`)**:
+  - Replace `DATE_FORMAT(occurred_at, '%Y-%m') = ?` with date range boundaries (`occurred_at BETWEEN ? AND ?`) to leverage index.
+- [ ] **Atomic Claim Locks in Telegram Outbox (`php/telegram/sender.php`)**:
+  - Introduce `FOR UPDATE` or atomic status update to `sending` in `drainTelegramOutbox` to prevent duplicate message dispatch across concurrent workers.
+
+#### Phase 4: Frontend UI/UX & Flowbite Polish
+- [ ] **Eliminate Residual Native `title="..."` Attributes (11 instances)**:
+  - Replace with Flowbite `<Popover>` in `AIChatWidget.tsx`, `CashDrawerManager.tsx`, `ChannelManager.tsx`, `InventoryManagement.tsx`, `MiscChargesManagement.tsx`, `OperationalDashboard.tsx`, `PageHeader.tsx`, `PlatformPropertyManagement.tsx`, `ServiceRequestsManagement.tsx`, and `TodayOverview.tsx`.
+- [ ] **Add Border Tokens to Unbordered Badges (7 instances)**:
+  - Add explicit borders (e.g. `border border-amber-200 dark:border-amber-800`, `border border-gray-200 dark:border-gray-600`) to badge chips in `AnalyticsDashboard.tsx`, `AuditLogsView.tsx`, `KitchenManagement.tsx`, `PettyCashManagement.tsx`, `TelegramConnectionStatus.tsx`, and `TelegramNotificationModal.tsx`.
+
 ---
 
-*Last Updated: 2026-09-03*
+*Last Updated: 2026-09-07*
+
 
 

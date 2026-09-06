@@ -46,6 +46,9 @@ interface TodayOverviewProps {
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  /** Refundable deposit for a SINGLE property. A MULTI_KEY room carries its
+   *  own on the room object, so this is only the single-unit fallback. */
+  propertySecurityDeposit?: number | string | null;
   propertyAddress?: string;
   propertyInstructions?: string;
   propertyGuestInfo?: PropertyGuestInfo;
@@ -84,6 +87,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertySecurityDeposit,
   propertyAddress = '',
   propertyInstructions = '',
   propertyGuestInfo,
@@ -1399,6 +1403,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           propertyWhatsappTemplate={propertyWhatsappTemplate}
           propertyUpiId={propertyUpiId}
           propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+          propertySecurityDeposit={propertySecurityDeposit}
           propertyAddress={propertyAddress}
           propertyInstructions={propertyInstructions}
           propertyGuestInfo={propertyGuestInfo}

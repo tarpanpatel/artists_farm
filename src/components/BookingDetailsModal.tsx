@@ -48,6 +48,9 @@ interface BookingDetailsModalProps {
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  /** Refundable deposit for a SINGLE property. A MULTI_KEY room carries its
+   *  own on the room object, so this is only the single-unit fallback. */
+  propertySecurityDeposit?: number | string | null;
   propertyCheckinTime?: string;
   propertyCheckoutTime?: string;
   propertyInstructions?: string;
@@ -109,9 +112,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // the ~7 call sites that still thread this prop down from App.tsx don't
   // all need editing - see PropertyEditForm.tsx for where the (now
   // non-editable) live preview of this exact message moved to instead.
-  propertyWhatsappTemplate: _propertyWhatsappTemplate = '',
+  propertyWhatsappTemplate = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertySecurityDeposit,
   propertyCheckinTime = '',
   propertyCheckoutTime = '',
   propertyInstructions = '',
@@ -687,8 +691,54 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const checkoutTimeVal = propertyCheckoutTime || '11:00';
     const notesVal = propertyInstructions || g.instructions || g.notes || '';
 
-    return renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+    // Nights: computed from the dates rather than read from guests.total_days,
+    // which the frontend Guest object does not carry. Checkout is exclusive -
+    // the morning after the last night - so this is a plain difference, not +1.
+    const checkinDateOnly = (guest.checkinDate || '').split(' ')[0].split('T')[0];
+    const checkoutDateOnly = (guest.expectedCheckout || guest.checkoutDate || '').split(' ')[0].split('T')[0];
+    const nightsVal = (() => {
+      const a = new Date(checkinDateOnly + 'T00:00:00').getTime();
+      const b = new Date(checkoutDateOnly + 'T00:00:00').getTime();
+      if (isNaN(a) || isNaN(b) || b <= a) return 1;
+      return Math.round((b - a) / 86400000);
+    })();
+
+    // Refundable deposit. A MULTI_KEY room carries its own (getMultiKeyProperty
+    // returns security_deposit per room); a SINGLE property carries it on the
+    // property itself, which arrives as the propertySecurityDeposit prop. Zero
+    // or unset drops the line entirely - no property has one configured today,
+    // so this stays invisible until somebody sets one.
+    const depositVal = Number(
+      (matchedRoom as any)?.security_deposit ?? propertySecurityDeposit ?? 0
+    );
+
+    // The tenant's own template if they have written one, otherwise the
+    // shipped default (7 Sep 2026). This prop was threaded through ten
+    // components to reach here and then ignored - it arrived as
+    // `_propertyWhatsappTemplate`, so a property could be given a custom
+    // template that the backend saved, the payload returned, and nothing on
+    // earth ever sent. Already resolved property-override -> tenant-default by
+    // the caller, so only the built-in fallback is left to apply here.
+    const activeTemplate = propertyWhatsappTemplate.trim() || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE;
+
+    return renderWhatsappVoucherTemplate(activeTemplate, {
+      booking_id: String(guest.id ?? ''),
+      // Empty unless children were actually recorded on this booking - see the
+      // optionalTokens note in whatsappVoucherTemplate.ts.
+      guest_breakdown: (() => {
+        const kids = Number((guest as any).children ?? 0);
+        if (kids <= 0) return '';
+        const grown = Math.max(0, Number(noOfGuests) - kids);
+        return `${grown} adult${grown === 1 ? '' : 's'}, ${kids} child${kids === 1 ? '' : 'ren'}`;
+      })(),
       guest_name: guest.guestName,
+      guest_phone: guest.phoneNumber || '',
+      nights: String(nightsVal),
+      // Already computed above for the modal's own money panel - reusing it
+      // means the balance a guest is told matches the balance staff see, rather
+      // than a second derivation that can drift from it.
+      balance_due: pendingDisplay > 0 ? pendingDisplay.toFixed(2) : '',
+      security_deposit: depositVal > 0 ? depositVal.toFixed(2) : '',
       room_name: unitName,
       room_number: unitName,
       property_name: propertyName || 'our property',

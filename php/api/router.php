@@ -101,6 +101,7 @@ require_once __DIR__ . '/../kitchen/menu.php';
 require_once __DIR__ . '/../inventory/inventory.php';
 require_once __DIR__ . '/../finance/ledger.php';
 require_once __DIR__ . '/../finance/petty_cash.php';
+require_once __DIR__ . '/../finance/booking_payments.php';
 require_once __DIR__ . '/../staff/staff.php';
 require_once __DIR__ . '/../audit/audit.php';
 require_once __DIR__ . '/../uploads/image_cleanup.php';
@@ -509,6 +510,21 @@ if (!isSchemaVerified('schema_tenants_table_v3')) {
         }
     } catch (Exception $e) {}
     markSchemaVerified('schema_tenants_table_v3');
+}
+
+// Account-wide WhatsApp voucher template (7 Sep 2026). A property's own
+// whatsapp_voucher_template (properties table, already existed) overrides this;
+// this is the fallback a tenant edits ONCE for every property they own. Added
+// because the product now explicitly targets hosts running many properties -
+// per-property-only customization means editing the same template 80 times.
+if (!isSchemaVerified('schema_tenants_voucher_template')) {
+    try {
+        $tenantsColsTpl = $pdo->query("SHOW COLUMNS FROM tenants")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('whatsapp_voucher_template', $tenantsColsTpl)) {
+            $pdo->exec("ALTER TABLE tenants ADD COLUMN `whatsapp_voucher_template` TEXT DEFAULT NULL AFTER `notes`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_tenants_voucher_template');
 }
 
 // Renewal history for manual/offline billing (27 Aug 2026, see PRODUCT_STRATEGY.md).
@@ -4170,6 +4186,38 @@ switch ($action) {
     // --- GUESTS ---
     case 'get_guests':
     case 'get_guest_extra_charges':
+    // --- BOOKING PAYMENTS (7 Sep 2026) - see php/finance/booking_payments.php ---
+    case 'get_booking_payments': {
+        $bookingId = (int)($_GET['booking_id'] ?? $_POST['booking_id'] ?? 0);
+        if (!$bookingId) { http_response_code(400); echo json_encode(['status' => 'error', 'message' => 'booking_id is required.']); break; }
+        echo json_encode(['status' => 'success', 'data' => getBookingPayments($pdo, (int)$propertyId, $bookingId)]);
+        break;
+    }
+    case 'add_booking_payment': {
+        $in = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $bookingId = (int)($in['booking_id'] ?? 0);
+        // Scoped to the resolved property, so a booking id from another tenant
+        // simply is not found rather than being written to.
+        $own = $pdo->prepare("SELECT id FROM guests WHERE id = ? AND property_id = ? LIMIT 1");
+        $own->execute([$bookingId, $propertyId]);
+        if (!$own->fetchColumn()) { http_response_code(404); echo json_encode(['status' => 'error', 'message' => 'Booking not found for this property.']); break; }
+        if (round((float)($in['amount'] ?? 0), 2) <= 0) { http_response_code(400); echo json_encode(['status' => 'error', 'message' => 'Enter an amount greater than zero.']); break; }
+        $paymentId = recordBookingPayment($pdo, (int)$propertyId, $bookingId, $in);
+        $totals = recalcBookingPaymentTotals($pdo, $bookingId, (int)$propertyId);
+        echo json_encode(['status' => 'success', 'id' => $paymentId, 'totals' => $totals,
+                          'data' => getBookingPayments($pdo, (int)$propertyId, $bookingId)]);
+        break;
+    }
+    case 'delete_booking_payment': {
+        $in = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $paymentId = (int)($in['payment_id'] ?? 0);
+        if (!$paymentId || !deleteBookingPayment($pdo, (int)$propertyId, $paymentId)) {
+            http_response_code(404); echo json_encode(['status' => 'error', 'message' => 'Payment not found for this property.']); break;
+        }
+        echo json_encode(['status' => 'success']);
+        break;
+    }
+
     case 'add_guest':
     case 'update_guest':
     case 'checkout_guest':
@@ -4422,7 +4470,7 @@ switch ($action) {
             // scoped strictly to this property's own tenant_id.
             if (!empty($currentProperty['tenant_id'])) {
                 try {
-                    $tstmt = $pdo->prepare("SELECT plan_type, subscription_status, subscription_expires_at, is_demo FROM tenants WHERE id = ? LIMIT 1");
+                    $tstmt = $pdo->prepare("SELECT plan_type, subscription_status, subscription_expires_at, is_demo, whatsapp_voucher_template FROM tenants WHERE id = ? LIMIT 1");
                     $tstmt->execute([$currentProperty['tenant_id']]);
                     if ($trow = $tstmt->fetch(PDO::FETCH_ASSOC)) {
                         $currentProperty['tenant_plan_type'] = $trow['plan_type'];
@@ -4434,6 +4482,15 @@ switch ($action) {
                         // OWNER account is a sales/QA demo tenant" (see tenants.is_demo /
                         // schema_tenants_table_v3), a tenant-level concept, not a property-level one.
                         $currentProperty['tenant_is_demo'] = !empty($trow['is_demo']);
+                        // Tenant-level voucher template (7 Sep 2026). Deliberately
+                        // NOT merged into whatsapp_voucher_template here - the
+                        // editor must be able to distinguish "inherits from the
+                        // account" from "overrides with the same text", or saving
+                        // any unrelated field on the property would silently turn
+                        // an inherited template into a frozen per-property copy.
+                        // A tenant with 80 properties would then have 80 templates
+                        // to maintain the first time anybody edited anything.
+                        $currentProperty['tenant_whatsapp_voucher_template'] = $trow['whatsapp_voucher_template'] ?? null;
                     }
                 } catch (Exception $eTenantSub) {}
             }

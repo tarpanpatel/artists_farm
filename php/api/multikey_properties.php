@@ -687,6 +687,13 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
                 // for why both of these were silently missing from this endpoint's response.
                 'is_public_demo' => (bool)($property['is_public_demo'] ?? false),
                 'tenant_is_demo' => getTenantIsDemo($pdo, (int)$property['tenant_id']),
+                // Account-wide voucher template the property falls back to when it
+                // has no override of its own (7 Sep 2026). DataLoader REPLACES
+                // currentProperty wholesale with this endpoint's response for a
+                // MULTI_KEY property, so omitting it here would make every
+                // multi-key property silently ignore its tenant default - the
+                // exact class of bug the tenant_is_demo comment above records.
+                'tenant_whatsapp_voucher_template' => getTenantVoucherTemplate($pdo, (int)$property['tenant_id']),
                 'room_count' => count($rooms),
                 'rooms' => $rooms,
                 'shared_data' => $shared_data

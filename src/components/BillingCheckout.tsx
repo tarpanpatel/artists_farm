@@ -71,6 +71,9 @@ interface BillingCheckoutProps {
   propertyCheckoutTime?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  /** Refundable deposit for a SINGLE property. A MULTI_KEY room carries its
+   *  own on the room object, so this is only the single-unit fallback. */
+  propertySecurityDeposit?: number | string | null;
   focusGuestId?: string | null;
 }
 
@@ -113,6 +116,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   propertyCheckoutTime = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertySecurityDeposit,
   focusGuestId = null,
 }) => {
   const { showToast } = useToast();
@@ -1235,6 +1239,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       {/* Standard Booking Details & Editing Modal */}
       {selectedGuestForDetails && (
         <BookingDetailsModal
+          propertySecurityDeposit={propertySecurityDeposit}
           guest={selectedGuestForDetails}
           initialFocusSection={detailsModalFocusSection}
           onClose={() => { setSelectedGuestForDetails(null); setDetailsModalFocusSection(null); }}

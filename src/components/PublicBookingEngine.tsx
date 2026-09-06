@@ -13,7 +13,9 @@ import {
   Copy,
   Check,
   Upload,
+  MessageCircle,
 } from './icons/FlowbiteIcons';
+import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from './Button';
@@ -173,23 +175,63 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Month Navigation State (Default to current month & year)
+  // Toast notification helper (safely fall back if rendered standalone)
+  let showToast: ((msg: string, opts?: any) => void) | null = null;
+  try {
+    const toastCtx = useToast();
+    showToast = toastCtx?.showToast || null;
+  } catch {
+    // Graceful fallback
+  }
+
+  // Read initial date range from URL hash or query params (?checkin=YYYY-MM-DD&checkout=YYYY-MM-DD)
+  const urlDates = useMemo(() => {
+    if (typeof window === 'undefined') return { checkin: '', checkout: '' };
+    const hashQuery = window.location.hash.split('?')[1] || '';
+    const hashParams = new URLSearchParams(hashQuery);
+    const searchParams = new URLSearchParams(window.location.search);
+    const cIn = hashParams.get('checkin') || searchParams.get('checkin') || '';
+    const cOut = hashParams.get('checkout') || searchParams.get('checkout') || '';
+    const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (isoRegex.test(cIn) && isoRegex.test(cOut) && cIn < cOut) {
+      return { checkin: cIn, checkout: cOut };
+    }
+    return { checkin: '', checkout: '' };
+  }, []);
+
+  // Month Navigation State (Default to current month & year, or jump to checkin month if in URL)
   const now = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => formatDateISO(now), [now]);
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // 1-12
 
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
+  const initialYear = useMemo(() => {
+    if (urlDates.checkin) {
+      const y = parseInt(urlDates.checkin.split('-')[0], 10);
+      if (!isNaN(y) && y >= currentYear) return y;
+    }
+    return currentYear;
+  }, [urlDates.checkin, currentYear]);
+
+  const initialMonth = useMemo(() => {
+    if (urlDates.checkin) {
+      const m = parseInt(urlDates.checkin.split('-')[1], 10);
+      if (!isNaN(m) && m >= 1 && m <= 12) return m;
+    }
+    return currentMonth;
+  }, [urlDates.checkin, currentMonth]);
+
+  const [selectedYear, setSelectedYear] = useState<number>(initialYear);
+  const [selectedMonth, setSelectedMonth] = useState<number>(initialMonth);
 
   // Check if we are at the minimum selectable month (current month)
   const isAtCurrentMonth = useMemo(() => {
     return selectedYear === currentYear && selectedMonth === currentMonth;
   }, [selectedYear, selectedMonth, currentYear, currentMonth]);
 
-  // Date Range Selection State in Toolbar
-  const [checkinDate, setCheckinDate] = useState<string>('');
-  const [checkoutDate, setCheckoutDate] = useState<string>('');
+  // Date Range Selection State in Toolbar (initialized from URL if present)
+  const [checkinDate, setCheckinDate] = useState<string>(() => urlDates.checkin);
+  const [checkoutDate, setCheckoutDate] = useState<string>(() => urlDates.checkout);
   const [filterRoomId, setFilterRoomId] = useState<number | 'all'>('all');
 
   // Calendar click range selection
@@ -357,6 +399,36 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     }, 1000);
     return () => clearInterval(iv);
   }, [quoteState]);
+
+  const availableOptionsRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll to available options if deep-linked with checkin dates
+  useEffect(() => {
+    if (urlDates.checkin && urlDates.checkout && !loading) {
+      const timer = setTimeout(() => {
+        availableOptionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [urlDates.checkin, urlDates.checkout, loading]);
+
+  // Keep URL in sync with selected dates so hosts can copy/share directly from browser
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (quoteToken) return; // Preserve quote token in URL
+    const currentHash = window.location.hash;
+    const baseHash = currentHash.split('?')[0] || '#book';
+    if (baseHash !== '#book') return;
+
+    if (checkinDate && checkoutDate && checkinDate < checkoutDate) {
+      const newHash = `${baseHash}?checkin=${checkinDate}&checkout=${checkoutDate}${filterRoomId !== 'all' ? `&room=${filterRoomId}` : ''}`;
+      if (window.location.hash !== newHash) {
+        window.history.replaceState(null, '', newHash);
+      }
+    } else if (!checkinDate && !checkoutDate && currentHash.includes('checkin=')) {
+      window.history.replaceState(null, '', baseHash);
+    }
+  }, [checkinDate, checkoutDate, filterRoomId, quoteToken]);
 
   const handleConfirmQuoteBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -554,6 +626,31 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
     return results;
   }, [checkinDate, checkoutDate, filterRoomId, rooms, occupiedBlocks, dailyRatesMap, property]);
+
+  // Share all available room options and rates for selected dates via WhatsApp
+  const handleShareAvailability = () => {
+    if (!checkinDate || !checkoutDate || availableRoomResults.length === 0) return;
+    const cIn = new Date(checkinDate + 'T00:00:00');
+    const cOut = new Date(checkoutDate + 'T00:00:00');
+    const nights = Math.max(1, Math.round((cOut.getTime() - cIn.getTime()) / (1000 * 60 * 60 * 24)));
+    const propName = property?.name || 'our property';
+    const shareUrl = `${window.location.origin}${window.location.pathname}#book?checkin=${checkinDate}&checkout=${checkoutDate}`;
+
+    let waText = `Namaste! Here are the available options for ${formatDateDisplay(checkinDate)} to ${formatDateDisplay(checkoutDate)} (${nights} night${nights > 1 ? 's' : ''}) at ${propName}:\n\n`;
+    availableRoomResults.forEach(({ room, totalTariff, avgNightlyRate }, idx) => {
+      waText += `${idx + 1}. *${room.name}* — ${currencySym}${avgNightlyRate.toLocaleString('en-IN')}/night (Total: ${currencySym}${totalTariff.toLocaleString('en-IN')})\n`;
+    });
+    waText += `\nTap here to view room details, photos, and book directly:\n${shareUrl}`;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(waText).catch(() => {});
+    }
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank');
+    if (showToast) {
+      showToast('Available options and rates ready to share on WhatsApp!', { type: 'success' });
+    }
+  };
 
   // Open booking drawer for a specific room and dates
   const handleOpenBookingDrawer = (room: PublicRoom, cIn: string, cOut: string) => {
@@ -1372,15 +1469,29 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
           {/* REAL-TIME AVAILABLE ROOM CARDS SECTION (Horizontal Space-Saving Layout per DESIGN.md) */}
           {checkinDate && checkoutDate && checkinDate < checkoutDate && (
-            <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  Available Options for {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
-                </h3>
-                <Badge variant="success">
-                  {availableRoomResults.length} {availableRoomResults.length === 1 ? 'room' : 'rooms'} available
-                </Badge>
+            <div ref={availableOptionsRef} className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    Available Options for {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
+                  </h3>
+                  <Badge variant="success">
+                    {availableRoomResults.length} {availableRoomResults.length === 1 ? 'room' : 'rooms'} available
+                  </Badge>
+                </div>
+                {availableRoomResults.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    onClick={handleShareAvailability}
+                    className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0 self-start sm:self-auto"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Share Options via WhatsApp</span>
+                  </Button>
+                )}
               </div>
 
               {availableRoomResults.length === 0 ? (

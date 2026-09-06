@@ -274,6 +274,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <>
               {activeTab === 'dashboard' && (
                 <OperationalDashboard
+                  propertySecurityDeposit={(property as any).security_deposit ?? null}
                   guests={roomGuests}
                   receipts={receipts}
                   menu={menu}
@@ -296,7 +297,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyName={property.name}
                   propertyMapsLink={property.google_maps_link || ''}
                   propertyPhone={property.phone || ''}
-                  propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
+                  propertyWhatsappTemplate={property.whatsapp_voucher_template
+                    || (property as any).tenant_whatsapp_voucher_template || ''}
                   propertyUpiId={property.upi_id || ''}
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}
@@ -336,6 +338,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
 
               {activeTab === 'guests' && (
                 <GuestManagement
+                  propertySecurityDeposit={(property as any).security_deposit ?? null}
                   guests={roomGuests}
                   isLoading={guestsLoading}
                   receipts={roomReceipts}
@@ -351,7 +354,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyName={property.name}
                   propertyMapsLink={property.google_maps_link || ''}
                   propertyPhone={property.phone || ''}
-                  propertyWhatsappTemplate={property.whatsapp_voucher_template || ''}
+                  propertyWhatsappTemplate={property.whatsapp_voucher_template
+                    || (property as any).tenant_whatsapp_voucher_template || ''}
                   propertyUpiId={property.upi_id || ''}
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}

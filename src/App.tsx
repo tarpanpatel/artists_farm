@@ -1872,6 +1872,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
         notes: newGuest.notes || '',
         booking_source: newGuest.bookingSource || '',
         no_of_guests: newGuest.numberOfGuests || 0,
+        // Adults is derived from the total rather than entered, so the two can
+        // never disagree - see GuestManagement's Children field.
+        adults: Math.max(0, (newGuest.numberOfGuests || 0) - (newGuest.children || 0)),
+        children: newGuest.children || 0,
         base_room_rent: newGuest.roomRate || 0,
         // total_charge was never sent here despite the column existing - it stayed 0 for
         // every new booking, which silently zeroed the TodayOverview calendar chip's
@@ -2579,9 +2583,11 @@ ${itemsStr}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
-                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
+                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                        propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
                         propertyGuestInfo={{
@@ -2662,9 +2668,11 @@ ${itemsStr}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
-                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
+                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                        propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
@@ -2691,6 +2699,7 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'guests' && (
                 <ErrorBoundary section="Guest Management">
                   <GuestManagement
+                    propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
                     guests={guests}
                     receipts={receipts}
                     isLoading={guestsLoading}
@@ -2712,7 +2721,8 @@ ${itemsStr}
                     propertyName={preloadedData.currentProperty?.name || ''}
                     propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                     propertyPhone={preloadedData.currentProperty?.phone || ''}
-                    propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+                    propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
+                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                     propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                     propertyAddress={preloadedData.currentProperty?.address || ''}
@@ -3007,6 +3017,7 @@ ${itemsStr}
           </div>
           <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
             <GuestManagement
+              propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
               guests={guests}
               receipts={receipts}
               menu={menu}
@@ -3040,7 +3051,8 @@ ${itemsStr}
               propertyName={preloadedData.currentProperty?.name || ''}
               propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
               propertyPhone={preloadedData.currentProperty?.phone || ''}
-              propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template || ''}
+              propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
+                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
               propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
               propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
             />
@@ -3312,11 +3324,13 @@ export function App() {
 
   if (isPublicBookingPage) {
     return (
-      <ErrorBoundary section="Public Booking Engine">
-        <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
-          <PublicBookingEngine propertySlug={propertySlug} />
-        </Suspense>
-      </ErrorBoundary>
+      <ToastProvider>
+        <ErrorBoundary section="Public Booking Engine">
+          <Suspense fallback={<LoadingScreen message="Loading live availability..." />}>
+            <PublicBookingEngine propertySlug={propertySlug} />
+          </Suspense>
+        </ErrorBoundary>
+      </ToastProvider>
     );
   }
 

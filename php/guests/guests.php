@@ -763,7 +763,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     } else {
                         $status = GUEST_STATUS_BOOKED;
                     }
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, property_id, is_foreign_guest, room_id, ota_source, ota_source_label, ical_external_event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, adults, children, property_id, is_foreign_guest, room_id, ota_source, ota_source_label, ical_external_event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
@@ -779,6 +779,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $input['notes'] ?? '',
                         $input['booking_source'] ?? '',
                         intval($input['no_of_guests'] ?? 1),
+                        // adults/children (7 Sep 2026). Both columns existed from the
+                        // start but nothing ever wrote them - children was 0 on every
+                        // booking in the database, which is why a confirmation could never
+                        // say "3 adults, 2 children". adults falls back to the whole party,
+                        // so a caller that sends neither still records a sane split rather
+                        // than zero adults.
+                        max(0, intval($input['adults'] ?? ($input['no_of_guests'] ?? 1))),
+                        max(0, intval($input['children'] ?? 0)),
                         $propertyId,
                         !empty($input['is_foreign_guest']) ? 1 : 0,
                         $roomId,
@@ -813,6 +821,30 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
                     $advance = floatval($input['advance_paid'] ?? 0);
                     if ($advance > 0) {
+                        // Also record it as a real payment row (7 Sep 2026), so a
+                        // booking created the normal way starts with a dated,
+                        // attributed payment instead of only a scalar - otherwise
+                        // the payments list would be empty for every existing flow
+                        // and only fill up for payments added afterwards.
+                        //
+                        // recordBookingPayment() posts its own ledger entry under
+                        // source_type 'booking_payment', so this one is left as the
+                        // 'guest_registration' entry it always was rather than being
+                        // replaced - the two use different entry_keys and INSERT
+                        // IGNORE, but they would still double-count the same money.
+                        // The opening advance therefore records the payment row
+                        // WITHOUT a second ledger post.
+                        if (function_exists('recordBookingPaymentRowOnly')) {
+                            recordBookingPaymentRowOnly($pdo, (int)$propertyId, (int)$newId, [
+                                'amount' => $advance,
+                                'method' => $input['payment_method'] ?? 'Cash',
+                                'kind' => 'advance',
+                                'received_by_name' => $input['advance_received_by'] ?? '',
+                                'received_at' => date('Y-m-d H:i:s'),
+                                'note' => 'Advance collected at booking',
+                            ]);
+                        }
+
                         postFinancialLedger($pdo, [
                             'entry_key' => 'guest_advance:' . $newId,
                             'direction' => 'credit',
@@ -1097,7 +1129,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $notes = $input['notes'] ?? '';
 
                     if ($roomId !== null) {
-                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, advance_received_by = ?, pending_amount = ?, pending_received_by = ?, booking_source = ?, notes = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, room_id = ?, no_of_guests = ?, adults = ?, children = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, advance_received_by = ?, pending_amount = ?, pending_received_by = ?, booking_source = ?, notes = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['guest_name'] ?? $input['name'] ?? '',
                             $input['phone_number'] ?? $input['contact'] ?? '',
@@ -1105,6 +1137,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
                             $roomId,
                             intval($input['no_of_guests'] ?? 1),
+                            max(0, intval($input['adults'] ?? ($input['no_of_guests'] ?? 1))),
+                            max(0, intval($input['children'] ?? 0)),
                             floatval($input['base_room_rent'] ?? 0),
                             $totalCharge,
                             $advancePaid,
@@ -1118,13 +1152,15 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             $propertyId,
                         ]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, advance_received_by = ?, pending_amount = ?, pending_received_by = ?, booking_source = ?, notes = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
+                        $stmt = $pdo->prepare("UPDATE guests SET guest_name = ?, phone_number = ?, checkin_date = ?, expected_checkout = ?, no_of_guests = ?, adults = ?, children = ?, base_room_rent = ?, total_charge = ?, advance_paid = ?, advance_received_by = ?, pending_amount = ?, pending_received_by = ?, booking_source = ?, notes = ?, is_foreign_guest = ? WHERE id = ? AND property_id = ?");
                         $stmt->execute([
                             $input['guest_name'] ?? $input['name'] ?? '',
                             $input['phone_number'] ?? $input['contact'] ?? '',
                             $input['checkin_date'] ?? date('Y-m-d'),
                             $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
                             intval($input['no_of_guests'] ?? 1),
+                            max(0, intval($input['adults'] ?? ($input['no_of_guests'] ?? 1))),
+                            max(0, intval($input['children'] ?? 0)),
                             floatval($input['base_room_rent'] ?? 0),
                             $totalCharge,
                             $advancePaid,

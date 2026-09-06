@@ -185,6 +185,32 @@ function getCurrentProperty(PDO $pdo, ?int $knownId = null): array {
     return $stmt->fetch() ?: [];
 }
 
+/**
+ * The tenant's account-wide WhatsApp voucher template, or null (7 Sep 2026).
+ *
+ * Resolution order for what a guest actually receives is:
+ *   properties.whatsapp_voucher_template  (this one property's override)
+ *   -> tenants.whatsapp_voucher_template  (the account default, this function)
+ *   -> DEFAULT_WHATSAPP_VOUCHER_TEMPLATE  (shipped in the frontend)
+ *
+ * Returned alongside the property's own value rather than merged into it, so
+ * the editor can tell "inherits" from "overrides with identical text". See the
+ * comment at router.php's get_current_property for why that distinction matters.
+ *
+ * Column is self-healed by schema_tenants_voucher_template in router.php; the
+ * try/catch keeps this safe on an environment that has not run that yet.
+ */
+function getTenantVoucherTemplate(PDO $pdo, int $tenantId): ?string {
+    try {
+        $stmt = $pdo->prepare("SELECT whatsapp_voucher_template FROM tenants WHERE id = ? LIMIT 1");
+        $stmt->execute([$tenantId]);
+        $val = $stmt->fetchColumn();
+        return ($val !== false && $val !== null && trim((string)$val) !== '') ? (string)$val : null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
 // Shared by router.php's get_current_property case AND getMultiKeyProperty() (28 Aug 2026 -
 // the latter previously hand-built its own response array with no tenant_is_demo/is_public_demo
 // at all, so any MULTI_KEY property's currentProperty - which DataLoader.tsx REPLACES wholesale

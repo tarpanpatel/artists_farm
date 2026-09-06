@@ -1048,6 +1048,8 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           notes: g.notes || g.guestNotes || g.guest_notes || g.miscArrangements || g.misc_arrangements || '',
           bookingSource: g.bookingSource || g.booking_source || '',
           numberOfGuests: Number(g.noOfGuests || g.no_of_guests || g.total_guests || g.adults || 0),
+          adults: Number(g.adults ?? 0),
+          children: Number(g.children ?? 0),
           // add_guest/update_guest only ever write base_room_rent - per_night_charges
           // is a legacy column nothing populates, so it's always the string "0.00".
           // A plain `||` chain treats that as truthy (non-empty string) and masks the
@@ -1096,6 +1098,8 @@ export async function addGuestToDB(guest: {
   notes?: string;
   booking_source?: string;
   no_of_guests?: number;
+  adults?: number;
+  children?: number;
   base_room_rent?: number;
   advance_paid?: number;
   advance_received_by?: string;
@@ -1158,6 +1162,8 @@ export async function updateGuestInDB(guest: {
   expected_checkout?: string;
   room_id?: number;
   no_of_guests?: number;
+  adults?: number;
+  children?: number;
   base_room_rent?: number;
   total_charge?: number;
   advance_paid?: number;
@@ -3148,6 +3154,77 @@ export async function fetchRateRulesDB(): Promise<{ rules: RateRule[]; pricing_m
   } catch (err) {
     console.error('Failed to fetch rate rules:', err);
     return { rules: [], pricing_mode: 'flat', default_tariff: null };
+  }
+}
+
+/**
+ * One recorded payment against a booking (7 Sep 2026). See
+ * php/finance/booking_payments.php for why these are rows rather than the
+ * advance_paid / advance_received_by scalars they roll up into.
+ */
+export interface BookingPayment {
+  id: number;
+  amount: number;
+  method: string;
+  kind: string;
+  received_by_staff_id: number | null;
+  received_by_name: string;
+  received_at: string;
+  note: string | null;
+}
+
+export async function fetchBookingPaymentsDB(bookingId: number | string): Promise<BookingPayment[]> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_booking_payments&booking_id=${encodeURIComponent(String(bookingId))}`);
+    const json = await res.json();
+    return json.status === 'success' && Array.isArray(json.data) ? json.data : [];
+  } catch (err) {
+    console.error('Failed to fetch booking payments:', err);
+    return [];
+  }
+}
+
+export async function addBookingPaymentDB(payment: {
+  booking_id: number | string;
+  amount: number;
+  method?: string;
+  kind?: string;
+  received_by_staff_id?: number | null;
+  received_by_name?: string;
+  /** 'YYYY-MM-DD' or a full datetime. Defaults to now on the server. */
+  received_at?: string;
+  note?: string;
+}): Promise<{ success: boolean; message: string; payments: BookingPayment[] }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_booking_payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payment),
+    });
+    const json = await res.json();
+    return {
+      success: json.status === 'success',
+      message: json.message || '',
+      payments: Array.isArray(json.data) ? json.data : [],
+    };
+  } catch (err) {
+    console.error('Failed to add booking payment:', err);
+    return { success: false, message: 'Network error recording the payment', payments: [] };
+  }
+}
+
+export async function deleteBookingPaymentDB(paymentId: number): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_booking_payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_id: paymentId }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message || '' };
+  } catch (err) {
+    console.error('Failed to delete booking payment:', err);
+    return { success: false, message: 'Network error removing the payment' };
   }
 }
 

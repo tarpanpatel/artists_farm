@@ -10,13 +10,19 @@
 export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
   `🏨 *BOOKING CONFIRMATION VOUCHER*
 ━━━━━━━━━━━━━━━━━
+🔖 *Booking ID:* {booking_id}
 👤 *Guest:* {guest_name}
+📱 *Mobile:* {guest_phone}
 🏠 *Unit / Room:* {room_name}
 📅 *Check-In:* {checkin_date} from {checkin_time}
 📅 *Check-Out:* {checkout_date} until {checkout_time}
+🌙 *Nights:* {nights}
 👥 *Number of Guests:* {guest_count}
+👨‍👩‍👧 *Party:* {guest_breakdown}
 💰 *Room Tariff:* ₹{room_tariff}
 💰 *Advance Paid:* ₹{advance_paid}
+💰 *Balance Due:* ₹{balance_due}
+🔐 *Security Deposit (refundable):* ₹{security_deposit}
 📍 *Address:* {address}
 📞 *Contact / Phone:* {contact_phone}
 🧭 *Google Maps:* {maps_link}
@@ -28,6 +34,16 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 🏡 *House Manual:* {house_manual}
 ━━━━━━━━━━━━━━━━━
 We look forward to welcoming you to {property_name}!`;
+
+/**
+ * Every token the default template uses, in the order it uses them - shown as
+ * the help text under the wording editor in PropertyEditForm. Derived from the
+ * template itself rather than hand-listed, so the help can never drift from
+ * what actually substitutes (7 Sep 2026).
+ */
+export const VOUCHER_TOKENS: string[] = Array.from(
+  new Set(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
+);
 
 /**
  * Substitute {token} values into a template. Optional tokens whose value is
@@ -57,6 +73,18 @@ export function renderWhatsappVoucherTemplate(
     '{wifi_network}',
     '{wifi_password}',
     '{house_manual}',
+    // Booking-level money and identity (7 Sep 2026). All optional for the same
+    // reason as the property fields above - a fully-paid booking should not
+    // send "Balance Due: ₹0.00", and a property with no deposit configured
+    // should not send a deposit line at all. The caller passes '' and the whole
+    // line disappears.
+    // Only rendered when children were actually recorded - "3 adults, 0
+    // children" is noise, and a booking that never captured a split has
+    // nothing honest to say here at all.
+    '{guest_breakdown}',
+    '{guest_phone}',
+    '{balance_due}',
+    '{security_deposit}',
   ]
 ): string {
   const lines = template.split('\n');

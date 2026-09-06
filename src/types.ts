@@ -2,6 +2,9 @@ export interface Guest {
   id: string;
   guestName: string;
   phoneNumber: string;
+  /** Split of numberOfGuests. children defaults to 0; adults is derived. */
+  adults?: number;
+  children?: number;
   checkinDate: string;
   expectedCheckout: string;
   checkoutDate?: string;

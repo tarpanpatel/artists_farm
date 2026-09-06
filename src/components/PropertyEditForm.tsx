@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
-import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, VOUCHER_TOKENS, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { MessageQrPreview } from './MessageQrPreview';
 
 /**
@@ -48,6 +48,10 @@ interface PropertyEditFormProps {
     security_deposit?: number | null;
     checkin_time?: string | null;
     checkout_time?: string | null;
+    /** This property's own voucher wording. Empty/absent = inherit the account's. */
+    whatsapp_voucher_template?: string | null;
+    /** The account-wide default this property falls back to. Read-only here. */
+    tenant_whatsapp_voucher_template?: string | null;
   };
   onCancel?: () => void;
   onSaved?: () => void;
@@ -93,6 +97,14 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [address, setAddress] = useState(property.address || '');
   const [mapsLink, setMapsLink] = useState(property.google_maps_link || '');
   const [instructions, setInstructions] = useState(property.instructions || '');
+  // Voucher wording (7 Sep 2026). Empty string means "inherit" - it is not the
+  // same as a property whose override happens to equal the inherited text, and
+  // the two must stay distinguishable or every save would freeze a copy.
+  const [voucherTemplate, setVoucherTemplate] = useState(property.whatsapp_voucher_template || '');
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const inheritedTemplate = property.tenant_whatsapp_voucher_template || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE;
+  const inheritedFrom = property.tenant_whatsapp_voucher_template ? 'your account' : 'the Ground Code default';
+  const effectiveTemplate = voucherTemplate.trim() || inheritedTemplate;
   // Guest-facing arrival info (6 Sep 2026). NOT gated on !isRoom like the
   // contact/address block below: in a multi-key property each room is its own
   // Airbnb listing with its own network and its own house manual, so these are
@@ -160,14 +172,19 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   // fill in for real; nothing here is guest- or booking-specific data this
   // page has any business editing.
   const previewSampleValues = {
+    booking_id: '1042',
     guest_name: 'Tarpan Patel',
+    guest_phone: '98765 43210',
     room_name: isRoom ? name.trim() || 'Room 101' : 'Room 101',
     room_number: isRoom ? name.trim() || 'Room 101' : 'Room 101',
     checkin_date: '08 Aug 2026',
     checkout_date: '11 Aug 2026',
-    guest_count: '2',
+    nights: '3',
+    guest_count: '5',
+    guest_breakdown: '3 adults, 2 children',
     room_tariff: '4,500.00',
     advance_paid: '2,000.00',
+    balance_due: '2,500.00',
   };
 
   // Same template + substitution logic BookingDetailsModal.tsx's real "Share
@@ -178,7 +195,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     const upiPaymentDeepLink = `upi://pay?pa=${encodeURIComponent(finalUpi)}&pn=${encodeURIComponent(name.trim() || 'Your Property')}&cu=INR`;
     const finalQr = upiQrCodeUrl.trim() || `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiPaymentDeepLink)}`;
 
-    return renderWhatsappVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+    return renderWhatsappVoucherTemplate(effectiveTemplate, {
       ...previewSampleValues,
       property_name: name.trim() || 'Your Property',
       address: address.trim(),
@@ -198,6 +215,10 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       house_manual: houseManual.trim(),
       checkin_time: checkinTime,
       checkout_time: checkoutTime,
+      // Not a sample: this form owns the deposit field, so the preview shows
+      // what is actually typed in it. Empty or zero and the line vanishes,
+      // which is exactly what a real voucher would do.
+      security_deposit: Number(securityDeposit) > 0 ? Number(securityDeposit).toFixed(2) : '',
     });
   };
 
@@ -237,6 +258,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         bathrooms: bathrooms,
       };
       if (!isRoom) {
+        // '' clears the override and returns the property to the inherited
+        // template - the backend stores empty as NULL, so this round-trips.
+        payload.whatsapp_voucher_template = voucherTemplate.trim();
         payload.email = email.trim();
         payload.phone = phone.trim();
         payload.gstin = gstin.trim().toUpperCase();
@@ -666,10 +690,62 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                 {t('whatsapp_preview_heading', 'Guest booking confirmation message/email')}
               </h4>
               <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {t('whatsapp_preview_subtitle', "Updates live as you edit the fields above - this is exactly what guests receive, wording isn't customizable.")}
+                {t('whatsapp_preview_subtitle', 'Updates live as you edit the fields above - this is exactly what guests receive.')}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowTemplateEditor((prev) => !prev)}
+              className="ms-auto text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+            >
+              {showTemplateEditor
+                ? t('whatsapp_template_hide', 'Done editing')
+                : t('whatsapp_template_edit', 'Edit wording')}
+            </button>
           </div>
+
+          {showTemplateEditor && (
+            <div className="mb-3 space-y-2">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                {voucherTemplate.trim()
+                  ? t('whatsapp_template_overridden', 'This property has its own wording.')
+                  : `${t('whatsapp_template_inherited', 'Currently using')} ${inheritedFrom}. ${t('whatsapp_template_inherited_hint', 'Type below to give this property its own wording.')}`}
+              </p>
+              <textarea
+                value={voucherTemplate}
+                onChange={(e) => setVoucherTemplate(e.target.value)}
+                placeholder={inheritedTemplate}
+                rows={12}
+                spellCheck={false}
+                className="w-full px-3 py-2 text-[11px] font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+              />
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                  {t('whatsapp_template_tokens_heading', 'Available tokens - each is replaced with the real value:')}
+                </p>
+                {/* A line whose token has no value is dropped ENTIRELY rather than
+                    sent with an empty label - see renderWhatsappVoucherTemplate's
+                    optionalTokens. That is what lets one template serve clients
+                    with different policies: a property that takes no deposit
+                    simply never fills it in and never shows the line. */}
+                <p className="font-mono break-words leading-relaxed">
+                  {VOUCHER_TOKENS.join('  ')}
+                </p>
+                <p>
+                  {t('whatsapp_template_optional_note', 'A line whose value is empty is removed automatically, so you can keep lines you only sometimes use.')}
+                </p>
+              </div>
+              {voucherTemplate.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setVoucherTemplate('')}
+                  className="text-[10px] font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                >
+                  {t('whatsapp_template_reset', 'Remove this property\'s wording and go back to')} {inheritedFrom}
+                </button>
+              )}
+            </div>
+          )}
           <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
             <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
               <MessageQrPreview

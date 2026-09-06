@@ -24,7 +24,7 @@
          (mirrors the old inline tailwind.config's fontFamily/brand-color
          extension via Tailwind v4 @theme). Regenerate after editing classes
          here via `npm run build:landing`. -->
-    <link rel="stylesheet" href="./assets/css/landing.css?v=20260907-1200">
+    <link rel="stylesheet" href="./assets/css/landing.css?v=20260907-1600">
 
     <!-- Google Fonts (non-render-blocking, 25 Aug 2026 - see index.html for
          the full writeup: a plain stylesheet <link> here would hold this
@@ -52,7 +52,7 @@
             </a>
 
             <!-- Feature Links (Flowbite Clean Nav) -->
-            <nav class="hidden lg:flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-400">
+            <nav class="hidden lg:flex items-center gap-6 text-xs font-medium text-gray-600 dark:text-gray-400">
                 <a href="#booking-lifecycle" class="hover:text-blue-700 dark:hover:text-white transition-colors">How Guests Book</a>
                 <a href="#channel-manager" class="hover:text-blue-700 dark:hover:text-white transition-colors">Sync All Sites</a>
                 <a href="#booking-engine" class="hover:text-blue-700 dark:hover:text-white transition-colors">Direct Web Link</a>
@@ -63,10 +63,10 @@
 
             <!-- Right CTAs (Flowbite Default Buttons) -->
             <div class="flex items-center gap-2.5">
-                <a href="/login" class="py-2 px-3.5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 transition-colors">
+                <a href="/login" class="py-2 px-3.5 text-xs font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 transition-colors">
                     Log In
                 </a>
-                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 flex items-center gap-1.5 transition-colors">
+                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 flex items-center gap-1.5 transition-colors">
                     <span>Try Demo</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"/></svg>
                 </a>
@@ -78,7 +78,7 @@
         </div>
 
         <!-- Mobile Dropdown Menu -->
-        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-gray-200 px-6 py-4 space-y-2 font-medium text-sm text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 shadow-md">
+        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-gray-200 px-6 py-4 space-y-2 font-medium text-xs text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 shadow-md">
             <a href="#booking-lifecycle" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1.5 hover:text-blue-700">How Guests Book (5 Steps)</a>
             <a href="#channel-manager" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1.5 hover:text-blue-700">Sync All Sites (Airbnb & Booking.com)</a>
             <a href="#booking-engine" onclick="document.getElementById('mobile-menu').classList.add('hidden')" class="block py-1.5 hover:text-blue-700">Direct Web Link (0% Fees)</a>
@@ -94,12 +94,12 @@
             <span>Everyday Resort & Homestay Operating Suite</span>
         </div>
 
-        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-5 max-w-4xl mx-auto text-gray-900 dark:text-white tracking-tight">
+        <h1 class="text-3xl sm:text-4xl font-extrabold leading-tight mb-5 max-w-4xl mx-auto text-gray-900 dark:text-white tracking-tight">
             See everything at your homestay.<br>
             <span class="text-gray-500 font-semibold dark:text-gray-400">Without being stuck there all day.</span>
         </h1>
 
-        <div class="text-base sm:text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed mb-6 font-normal space-y-1">
+        <div class="text-xs text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed mb-6 font-normal space-y-1">
             <p>Booking apps only find you guests.</p>
             <p>GroundCode runs your everyday property work:</p>
             <p class="font-semibold text-gray-900 dark:text-white">Rooms, hot chai, food bills, cash in hand, and staff jobs.</p>
@@ -132,10 +132,10 @@
             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300">
                 Inside The Gate
             </span>
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
+            <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
                 Getting bookings is the easy 10%
             </h2>
-            <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
+            <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
                 The real work starts once guests step inside.
             </p>
         </div>
@@ -148,8 +148,8 @@
                         <span class="text-xs font-semibold uppercase tracking-wider text-blue-200">The 90% Reality</span>
                         <span class="bg-blue-600 text-white text-xs font-medium px-2.5 py-0.5 rounded border border-blue-500">Total Control</span>
                     </div>
-                    <h3 class="text-xl sm:text-2xl font-bold tracking-tight text-white mb-2">Your Everyday Property Work</h3>
-                    <p class="text-sm text-blue-100 mb-4 leading-relaxed">
+                    <h3 class="text-xl font-bold tracking-tight text-white mb-2">Your Everyday Property Work</h3>
+                    <p class="text-xs text-blue-100 mb-4 leading-relaxed">
                         What happens during stays. Where your profits are protected.
                     </p>
 
@@ -184,7 +184,6 @@
 
         <!-- Question Chips: The Daily Floor Reality -->
         <div class="mt-10 text-center max-w-4xl mx-auto px-4">
-            <img src="assets/images/illustrations/man-working-question-mark.svg" alt="" aria-hidden="true" class="w-32 sm:w-40 h-auto mx-auto mb-4">
             <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Everyday questions booking apps can never answer:</p>
             <div class="flex flex-wrap justify-center gap-2 sm:gap-2.5 mb-6">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-800 text-xs font-medium dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
@@ -205,9 +204,9 @@
             </div>
 
             <!-- Big Stat Strip (Flowbite Alert) -->
-            <div class="p-4 sm:p-5 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800 flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left">
-                <div class="text-4xl sm:text-5xl font-extrabold text-yellow-600 dark:text-yellow-400 tracking-tight shrink-0">90%</div>
-                <div class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-snug">
+            <div class="p-4 sm:p-5 text-xs text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-800 flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left">
+                <div class="text-3xl sm:text-4xl font-extrabold text-yellow-600 dark:text-yellow-400 tracking-tight shrink-0">90%</div>
+                <div class="text-xs text-gray-700 dark:text-gray-300 leading-snug">
                     <span class="font-bold text-gray-900 dark:text-white">of a homestay's daily money and headache happens inside the gate.</span><br>
                     That is why GroundCode protects your peace of mind.
                 </div>
@@ -225,15 +224,15 @@
             </span>
 
             <!-- Main Section Heading -->
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
+            <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mb-4">
                 From first "Hi" message to confirmed booking in 5 steps
             </h2>
-            <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 mb-8 max-w-3xl font-sans">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-8 max-w-3xl font-sans">
                 Move guests from WhatsApp inquiry to instant UPI payment and direct calendar sync in under 1 minute.
             </p>
 
             <!-- Flowbite Alert: Elapsed Time Highlight -->
-            <div class="p-4 mb-8 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" role="alert">
+            <div class="p-4 mb-8 text-xs text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" role="alert">
                 <div class="flex items-center">
                     <svg class="shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
@@ -261,69 +260,69 @@
                 <!-- Step 1 -->
                 <li class="relative mb-6 lg:mb-0 flex-1">
                     <div class="flex items-center">
-                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full ring-0 ring-white dark:bg-blue-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-sm text-blue-800 dark:text-blue-300 border border-blue-300">
+                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full ring-0 ring-white dark:bg-blue-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-xs text-blue-800 dark:text-blue-300 border border-blue-300">
                             1
                         </div>
                         <div class="hidden lg:flex w-full bg-gray-200 h-0.5 dark:bg-gray-700"></div>
                     </div>
                     <div class="mt-3 lg:pe-4">
                         <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-300 dark:bg-gray-700 dark:text-blue-400 inline-block mb-1.5">WhatsApp / Call</span>
-                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">Guest Inquires</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Guest Inquires</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Guest asks for dates, photos, or rates.</p>
                     </div>
                 </li>
                 <!-- Step 2 -->
                 <li class="relative mb-6 lg:mb-0 flex-1">
                     <div class="flex items-center">
-                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full ring-0 ring-white dark:bg-blue-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-sm text-blue-800 dark:text-blue-300 border border-blue-300">
+                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full ring-0 ring-white dark:bg-blue-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-xs text-blue-800 dark:text-blue-300 border border-blue-300">
                             2
                         </div>
                         <div class="hidden lg:flex w-full bg-gray-200 h-0.5 dark:bg-gray-700"></div>
                     </div>
                     <div class="mt-3 lg:pe-4">
                         <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-300 dark:bg-gray-700 dark:text-blue-400 inline-block mb-1.5">Takes 5s</span>
-                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">Send Direct Link</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Send Direct Link</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Share direct booking link in 5 seconds.</p>
                     </div>
                 </li>
                 <!-- Step 3 -->
                 <li class="relative mb-6 lg:mb-0 flex-1">
                     <div class="flex items-center">
-                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full ring-0 ring-white dark:bg-purple-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-sm text-purple-800 dark:text-purple-300 border border-purple-300">
+                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full ring-0 ring-white dark:bg-purple-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-xs text-purple-800 dark:text-purple-300 border border-purple-300">
                             3
                         </div>
                         <div class="hidden lg:flex w-full bg-gray-200 h-0.5 dark:bg-gray-700"></div>
                     </div>
                     <div class="mt-3 lg:pe-4">
                         <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded border border-purple-300 dark:bg-gray-700 dark:text-purple-400 inline-block mb-1.5">0% Commission</span>
-                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">Guest Pays Direct</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Guest Pays Direct</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Guest pays UPI QR or bank. No passwords.</p>
                     </div>
                 </li>
                 <!-- Step 4 -->
                 <li class="relative mb-6 lg:mb-0 flex-1">
                     <div class="flex items-center">
-                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-green-100 rounded-full ring-0 ring-white dark:bg-green-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-sm text-green-800 dark:text-green-300 border border-green-300">
+                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-green-100 rounded-full ring-0 ring-white dark:bg-green-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-xs text-green-800 dark:text-green-300 border border-green-300">
                             4
                         </div>
                         <div class="hidden lg:flex w-full bg-gray-200 h-0.5 dark:bg-gray-700"></div>
                     </div>
                     <div class="mt-3 lg:pe-4">
                         <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded border border-green-300 dark:bg-gray-700 dark:text-green-400 inline-block mb-1.5">Auto Delivery</span>
-                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">Instant Voucher</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Instant Voucher</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Confirmed voucher with map sent instantly.</p>
                     </div>
                 </li>
                 <!-- Step 5 -->
                 <li class="relative mb-6 lg:mb-0 flex-1">
                     <div class="flex items-center">
-                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full ring-0 ring-white dark:bg-yellow-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-sm text-yellow-800 dark:text-yellow-300 border border-yellow-300">
+                        <div class="z-10 flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full ring-0 ring-white dark:bg-yellow-900 lg:ring-8 dark:ring-gray-800 shrink-0 font-bold text-xs text-yellow-800 dark:text-yellow-300 border border-yellow-300">
                             5
                         </div>
                     </div>
                     <div class="mt-3 lg:pe-4">
                         <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded border border-yellow-300 dark:bg-gray-700 dark:text-yellow-400 inline-block mb-1.5">Zero Overbookings</span>
-                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">Dates Blocked</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Dates Blocked</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Airbnb &amp; Booking.com auto-blocked in real-time.</p>
                     </div>
                 </li>
@@ -333,58 +332,58 @@
             <ol class="lg:hidden relative border-s-2 border-solid border-gray-200 dark:border-gray-700 ms-6 my-6">
                 <!-- Step 1 -->
                 <li class="mb-8 ms-8">
-                    <span class="absolute flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-blue-900 text-sm font-bold text-blue-800 dark:text-blue-300 border border-blue-300">
+                    <span class="absolute flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-blue-900 text-xs font-bold text-blue-800 dark:text-blue-300 border border-blue-300">
                         1
                     </span>
                     <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white">Guest Inquires</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Guest Inquires</h4>
                         <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-300 dark:bg-gray-700 dark:text-blue-400">WhatsApp / Call</span>
                     </div>
-                    <p class="text-sm font-normal text-gray-500 dark:text-gray-400">Guest asks for dates, photos, or rates.</p>
+                    <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Guest asks for dates, photos, or rates.</p>
                 </li>
                 <!-- Step 2 -->
                 <li class="mb-8 ms-8">
-                    <span class="absolute flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-blue-900 text-sm font-bold text-blue-800 dark:text-blue-300 border border-blue-300">
+                    <span class="absolute flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-blue-900 text-xs font-bold text-blue-800 dark:text-blue-300 border border-blue-300">
                         2
                     </span>
                     <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white">Send Direct Link</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Send Direct Link</h4>
                         <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-300 dark:bg-gray-700 dark:text-blue-400">Takes 5s</span>
                     </div>
-                    <p class="text-sm font-normal text-gray-500 dark:text-gray-400">Share direct booking link in 5 seconds.</p>
+                    <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Share direct booking link in 5 seconds.</p>
                 </li>
                 <!-- Step 3 -->
                 <li class="mb-8 ms-8">
-                    <span class="absolute flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-purple-900 text-sm font-bold text-purple-800 dark:text-purple-300 border border-purple-300">
+                    <span class="absolute flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-purple-900 text-xs font-bold text-purple-800 dark:text-purple-300 border border-purple-300">
                         3
                     </span>
                     <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white">Guest Pays Direct</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Guest Pays Direct</h4>
                         <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded border border-purple-300 dark:bg-gray-700 dark:text-purple-400">0% Commission</span>
                     </div>
-                    <p class="text-sm font-normal text-gray-500 dark:text-gray-400">Guest pays UPI QR or bank. No passwords.</p>
+                    <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Guest pays UPI QR or bank. No passwords.</p>
                 </li>
                 <!-- Step 4 -->
                 <li class="mb-8 ms-8">
-                    <span class="absolute flex items-center justify-center w-8 h-8 bg-green-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-green-900 text-sm font-bold text-green-800 dark:text-green-300 border border-green-300">
+                    <span class="absolute flex items-center justify-center w-8 h-8 bg-green-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-green-900 text-xs font-bold text-green-800 dark:text-green-300 border border-green-300">
                         4
                     </span>
                     <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white">Instant Voucher</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Instant Voucher</h4>
                         <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded border border-green-300 dark:bg-gray-700 dark:text-green-400">Auto Delivery</span>
                     </div>
-                    <p class="text-sm font-normal text-gray-500 dark:text-gray-400">Confirmed voucher with map sent instantly.</p>
+                    <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Confirmed voucher with map sent instantly.</p>
                 </li>
                 <!-- Step 5 -->
                 <li class="ms-8">
-                    <span class="absolute flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-yellow-900 text-sm font-bold text-yellow-800 dark:text-yellow-300 border border-yellow-300">
+                    <span class="absolute flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full -inset-s-4 ring-8 ring-white dark:ring-gray-800 dark:bg-yellow-900 text-xs font-bold text-yellow-800 dark:text-yellow-300 border border-yellow-300">
                         5
                     </span>
                     <div class="flex flex-wrap items-center gap-2 mb-1">
-                        <h4 class="text-base font-bold text-gray-900 dark:text-white">Dates Blocked</h4>
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white">Dates Blocked</h4>
                         <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded border border-yellow-300 dark:bg-gray-700 dark:text-yellow-400">Zero Overbookings</span>
                     </div>
-                    <p class="text-sm font-normal text-gray-500 dark:text-gray-400">Airbnb &amp; Booking.com auto-blocked in real-time.</p>
+                    <p class="text-xs font-normal text-gray-500 dark:text-gray-400">Airbnb &amp; Booking.com auto-blocked in real-time.</p>
                 </li>
             </ol>
 
@@ -393,14 +392,13 @@
                  ========================================== -->
             <div id="booking-engine" class="mt-12 pt-10 border-t border-gray-200 dark:border-gray-700">
                 <div class="text-center mb-8 max-w-2xl mx-auto">
-                    <img src="assets/images/illustrations/wallet-money.svg" alt="" aria-hidden="true" class="w-28 sm:w-36 h-auto mx-auto mb-3">
                     <span class="bg-green-100 text-green-800 text-xs font-medium inline-flex items-center px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-green-400 border border-green-400 mb-3">
                         Direct Booking Savings Calculator
                     </span>
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
                         See how much money you keep
                     </h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 font-sans">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 font-sans">
                         Adjust the sliders to see what OTAs take from your property every year versus keeping 100% direct.
                     </p>
                 </div>
@@ -409,15 +407,15 @@
                     
                     <!-- Left Card: Flowbite Range Sliders Form Card -->
                     <div class="lg:col-span-6 p-6 sm:p-8 bg-white border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 shadow-sm flex flex-col justify-between space-y-5">
-                        <h4 class="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">
+                        <h4 class="text-xs font-bold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-3">
                             Your property
                         </h4>
 
                         <!-- Slider 1 -->
                         <div>
                             <div class="flex justify-between mb-2">
-                                <label for="calc-rate-input" class="text-sm font-medium text-gray-900 dark:text-white">Average nightly rate</label>
-                                <span id="calc-rate-val" class="text-sm font-bold text-blue-600 dark:text-blue-400">₹3,000</span>
+                                <label for="calc-rate-input" class="text-xs font-medium text-gray-900 dark:text-white">Average nightly rate</label>
+                                <span id="calc-rate-val" class="text-xs font-bold text-blue-600 dark:text-blue-400">₹3,000</span>
                             </div>
                             <input id="calc-rate-input" type="range" min="1000" max="25000" step="500" value="3000" oninput="updateSavingsCalc()"
                                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600">
@@ -426,8 +424,8 @@
                         <!-- Slider 2 -->
                         <div>
                             <div class="flex justify-between mb-2">
-                                <label for="calc-rooms-input" class="text-sm font-medium text-gray-900 dark:text-white">Number of rooms</label>
-                                <span id="calc-rooms-val" class="text-sm font-bold text-blue-600 dark:text-blue-400">4</span>
+                                <label for="calc-rooms-input" class="text-xs font-medium text-gray-900 dark:text-white">Number of rooms</label>
+                                <span id="calc-rooms-val" class="text-xs font-bold text-blue-600 dark:text-blue-400">4</span>
                             </div>
                             <input id="calc-rooms-input" type="range" min="1" max="25" step="1" value="4" oninput="updateSavingsCalc()"
                                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600">
@@ -436,8 +434,8 @@
                         <!-- Slider 3 -->
                         <div>
                             <div class="flex justify-between mb-2">
-                                <label for="calc-occ-input" class="text-sm font-medium text-gray-900 dark:text-white">Average occupancy</label>
-                                <span id="calc-occ-val" class="text-sm font-bold text-blue-600 dark:text-blue-400">60%</span>
+                                <label for="calc-occ-input" class="text-xs font-medium text-gray-900 dark:text-white">Average occupancy</label>
+                                <span id="calc-occ-val" class="text-xs font-bold text-blue-600 dark:text-blue-400">60%</span>
                             </div>
                             <input id="calc-occ-input" type="range" min="10" max="100" step="5" value="60" oninput="updateSavingsCalc()"
                                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600">
@@ -446,8 +444,8 @@
                         <!-- Slider 4 -->
                         <div>
                             <div class="flex justify-between mb-2">
-                                <label for="calc-share-input" class="text-sm font-medium text-gray-900 dark:text-white">Share of bookings via OTAs</label>
-                                <span id="calc-share-val" class="text-sm font-bold text-blue-600 dark:text-blue-400">70%</span>
+                                <label for="calc-share-input" class="text-xs font-medium text-gray-900 dark:text-white">Share of bookings via OTAs</label>
+                                <span id="calc-share-val" class="text-xs font-bold text-blue-600 dark:text-blue-400">70%</span>
                             </div>
                             <input id="calc-share-input" type="range" min="10" max="100" step="5" value="70" oninput="updateSavingsCalc()"
                                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600">
@@ -456,8 +454,8 @@
                         <!-- Slider 5 -->
                         <div>
                             <div class="flex justify-between mb-2">
-                                <label for="calc-comm-input" class="text-sm font-medium text-gray-900 dark:text-white">Average OTA commission</label>
-                                <span id="calc-comm-val" class="text-sm font-bold text-blue-600 dark:text-blue-400">18%</span>
+                                <label for="calc-comm-input" class="text-xs font-medium text-gray-900 dark:text-white">Average OTA commission</label>
+                                <span id="calc-comm-val" class="text-xs font-bold text-blue-600 dark:text-blue-400">18%</span>
                             </div>
                             <input id="calc-comm-input" type="range" min="10" max="25" step="1" value="18" oninput="updateSavingsCalc()"
                                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600">
@@ -468,11 +466,11 @@
                     <div class="lg:col-span-6 p-6 sm:p-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm text-gray-900 dark:text-white flex flex-col justify-between space-y-6">
                         <div>
                             <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">You currently pay OTAs about</span>
-                            <div id="calc-ota-loss" class="text-4xl sm:text-5xl font-extrabold text-red-600 dark:text-red-400 tracking-tight my-2">₹3,31,128</div>
+                            <div id="calc-ota-loss" class="text-3xl sm:text-4xl font-extrabold text-red-600 dark:text-red-400 tracking-tight my-2">₹3,31,128</div>
                             <span class="text-xs text-gray-500 dark:text-gray-400">in commission every year</span>
 
                             <!-- Metrics List -->
-                            <ul class="space-y-3 pt-5 border-t border-gray-200 dark:border-gray-700 mt-5 text-sm">
+                            <ul class="space-y-3 pt-5 border-t border-gray-200 dark:border-gray-700 mt-5 text-xs">
                                 <li class="flex justify-between text-gray-600 dark:text-gray-300">
                                     <span>Annual booking revenue</span>
                                     <span id="calc-annual-rev" class="font-bold text-gray-900 dark:text-white">₹26,28,000</span>
@@ -488,16 +486,16 @@
                             </ul>
 
                             <!-- Flowbite Alert Box -->
-                            <div class="p-4 mt-6 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-700 dark:text-green-300 border border-green-200 dark:border-green-800">
+                            <div class="p-4 mt-6 text-xs text-green-800 rounded-lg bg-green-50 dark:bg-gray-700 dark:text-green-300 border border-green-200 dark:border-green-800">
                                 <div class="font-bold text-xs uppercase tracking-wider mb-1">If you shifted those bookings to direct:</div>
-                                <div id="calc-saved-amount" class="text-2xl sm:text-3xl font-extrabold text-green-700 dark:text-green-300">₹3,31,128 <span class="text-xs font-normal text-green-600 dark:text-green-400">/ year kept</span></div>
+                                <div id="calc-saved-amount" class="text-3xl sm:text-4xl font-extrabold text-green-700 dark:text-green-300">₹3,31,128 <span class="text-xs font-normal text-green-600 dark:text-green-400">/ year kept</span></div>
                                 <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">Set that against zero commissions on GroundCode direct bookings and you come out well ahead.</p>
                             </div>
                         </div>
 
                         <div>
                             <!-- Flowbite Button -->
-                            <a href="#pricing" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-3 text-center dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 flex items-center justify-center gap-2">
+                            <a href="#pricing" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-5 py-3 text-center dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 flex items-center justify-center gap-2">
                                 <span>Start Keeping That Money</span>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                             </a>
@@ -510,10 +508,10 @@
 
         <!-- Tagline Banner Below Flowbite Container -->
         <div class="text-center pt-10 pb-4 max-w-4xl mx-auto px-4">
-            <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+            <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                 <span class="text-blue-700 dark:text-blue-400">GroundCode helps you from first inquiry</span> — and runs your whole day.
             </h3>
-            <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-2 font-sans">
+            <p class="text-gray-500 dark:text-gray-400 text-xs mt-2 font-sans">
                 Zero middleman fees. Total clarity on rooms and cash.
             </p>
         </div>
@@ -525,10 +523,10 @@
             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300">
                 Everyday Reliability
             </span>
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
+            <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
                 What GroundCode Fixes For You
             </h2>
-            <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
+            <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
                 Simple everyday tools so you never feel stressed.
             </p>
         </div>
@@ -541,9 +539,9 @@
                         <div class="w-9 h-9 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded-lg flex items-center justify-center border border-blue-200 dark:border-blue-800 shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">No more staff arguments</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">No more staff arguments</h3>
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed mb-4">Every task saves staff name. Zero excuses or guessing.</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed mb-4">Every task saves staff name. Zero excuses or guessing.</p>
 
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600 space-y-2">
                         <div class="flex items-center justify-between text-xs">
@@ -568,9 +566,9 @@
                         <div class="w-9 h-9 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 rounded-lg flex items-center justify-center border border-purple-200 dark:border-purple-800 shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Never miss a guest request</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Never miss a guest request</h3>
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed mb-3">Happy Guest = More Income. Alerts staff instantly on phone.</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed mb-3">Happy Guest = More Income. Alerts staff instantly on phone.</p>
 
                     <div class="relative rounded-lg overflow-hidden mb-1 border border-gray-200 dark:border-gray-700">
                         <img src="assets/images/housekeeping-tasks.jpg" alt="Housekeeping staff receiving guest request" class="w-full h-32 object-cover object-center">
@@ -590,9 +588,9 @@
                         <div class="w-9 h-9 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 rounded-lg flex items-center justify-center border border-green-200 dark:border-green-800 shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Every single rupee recorded</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Every single rupee recorded</h3>
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed mb-4">No more guesses, you know what you are spending on.</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed mb-4">No more guesses, you know what you are spending on.</p>
 
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600 space-y-2">
                         <div class="flex items-center justify-between text-xs">
@@ -614,9 +612,9 @@
                         <div class="w-9 h-9 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 rounded-lg flex items-center justify-center border border-yellow-200 dark:border-yellow-800 shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Instant guest ID alerts</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Instant guest ID alerts</h3>
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed mb-4">Instant alert for missing IDs. Keep stays safe.</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed mb-4">Instant alert for missing IDs. Keep stays safe.</p>
 
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600 space-y-2">
                         <div class="flex items-center justify-between text-xs">
@@ -638,9 +636,9 @@
                         <div class="w-9 h-9 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 rounded-lg flex items-center justify-center border border-red-200 dark:border-red-800 shrink-0">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 009-9H3a9 9 0 009 9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 8V3m5 5V3m5 5V3"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Kitchen Wastage is recorded</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Kitchen Wastage is recorded</h3>
                     </div>
-                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed mb-4">Pull maximum profit out of F&B.</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed mb-4">Pull maximum profit out of F&B.</p>
 
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-200 dark:border-gray-600 space-y-2">
                         <div class="flex items-center justify-between text-xs">
@@ -663,8 +661,8 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17h6l3 3v-3h2V9h-2M4 4h11v8H9l-3 3v-3H4z"/></svg>
                 </div>
                 <div>
-                    <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Staff uses only Telegram with zero new apps to learn</h4>
-                    <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">No onboarding stress. Cleaners and staff stay in loop.</p>
+                    <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-1">Staff uses only Telegram with zero new apps to learn</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">No onboarding stress. Cleaners and staff stay in loop.</p>
                 </div>
             </div>
             <span class="text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 border border-green-300 dark:border-green-700 px-3.5 py-1.5 rounded-lg whitespace-nowrap">
@@ -682,7 +680,7 @@
                         Channel Manager Integration
                     </span>
 
-                    <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                    <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                         2-Way OTA Price &amp; Calendar Sync
                     </h2>
 
@@ -692,7 +690,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </div>
                             <div>
-                                <h4 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">Instant 2-Way ARI Outbox Sync</h4>
+                                <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-0.5">Instant 2-Way ARI Outbox Sync</h4>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Change rates anytime. Syncs across all sites right away.</p>
                             </div>
                         </div>
@@ -702,7 +700,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                             </div>
                             <div>
-                                <h4 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">Zero Double-Bookings Guarantee</h4>
+                                <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-0.5">Zero Double-Bookings Guarantee</h4>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">When guests book, dates lock everywhere. Zero double-bookings.</p>
                             </div>
                         </div>
@@ -712,7 +710,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
                             <div>
-                                <h4 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">0% Commission Direct Booking Engine</h4>
+                                <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-0.5">0% Commission Direct Booking Engine</h4>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Share direct links. Guests pay UPI with 0% fees.</p>
                             </div>
                         </div>
@@ -766,14 +764,14 @@
                                 </div>
                                 <!-- Channel: Agoda -->
                                 <div class="flex flex-col items-center gap-1">
-                                    <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-[#5392f9] text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-sm border-2 border-white dark:border-gray-700 ring-2 ring-indigo-100 dark:ring-indigo-900">
+                                    <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-[#5392f9] text-white flex items-center justify-center font-bold text-xs shadow-sm border-2 border-white dark:border-gray-700 ring-2 ring-indigo-100 dark:ring-indigo-900">
                                         agoda
                                     </div>
                                     <span class="text-2xs sm:text-xs font-semibold text-gray-800 dark:text-gray-200 truncate w-full">Agoda</span>
                                 </div>
                                 <!-- Channel: Direct Booking (0% Fee) -->
                                 <div class="flex flex-col items-center gap-1">
-                                    <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-sm border-2 border-white dark:border-gray-700 ring-2 ring-emerald-100 dark:ring-emerald-900">
+                                    <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-sm border-2 border-white dark:border-gray-700 ring-2 ring-emerald-100 dark:ring-emerald-900">
                                         0%
                                     </div>
                                     <span class="text-2xs sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 truncate w-full">Direct Web</span>
@@ -841,10 +839,10 @@
             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300">
                 Simple Operations
             </span>
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
+            <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
                 Simple Screens For You &amp; Your Team
             </h2>
-            <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
+            <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
                 Straightforward tools built for homestays:
             </p>
         </div>
@@ -871,10 +869,10 @@
                 </div>
                 <!-- Text Column -->
                 <div class="lg:col-span-5 space-y-4">
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                         Everything today in one easy view
                     </h3>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
                         Arrivals, checkouts, and cash.<br>
                         See full status in seconds.
                     </p>
@@ -903,10 +901,10 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
                 <!-- Text Column -->
                 <div class="lg:col-span-5 order-2 lg:order-1 space-y-4">
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                         Real profits without Excel sheets
                     </h3>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
                         Track room and food sales.<br>
                         See take-home profit anytime.
                     </p>
@@ -1011,10 +1009,10 @@
                 </div>
                 <!-- Text Column -->
                 <div class="lg:col-span-5 space-y-4">
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                         Kitchen orders go straight to cook's phone
                     </h3>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
                         Cook taps when ready.<br>
                         Items add to guest bill.
                     </p>
@@ -1043,10 +1041,10 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
                 <!-- Text Column -->
                 <div class="lg:col-span-5 order-2 lg:order-1 space-y-4">
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                         Daily staff attendance &amp; easy payroll
                     </h3>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
                         Mark attendance in seconds.<br>
                         Advances deducted on payday.
                     </p>
@@ -1087,15 +1085,15 @@
                             <div class="grid grid-cols-3 gap-2 text-center">
                                 <div class="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs">
                                     <div class="text-2xs text-gray-500 dark:text-gray-400">Total Staff</div>
-                                    <div class="font-bold text-gray-900 dark:text-white tabular-nums text-xs sm:text-sm">4 Members</div>
+                                    <div class="font-bold text-gray-900 dark:text-white tabular-nums text-xs">4 Members</div>
                                 </div>
                                 <div class="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs">
                                     <div class="text-2xs text-gray-500 dark:text-gray-400">Advances Taken</div>
-                                    <div class="font-bold text-red-600 dark:text-red-400 tabular-nums text-xs sm:text-sm">₹2,300.00</div>
+                                    <div class="font-bold text-red-600 dark:text-red-400 tabular-nums text-xs">₹2,300.00</div>
                                 </div>
                                 <div class="bg-white dark:bg-gray-800 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-xs">
                                     <div class="text-2xs text-gray-500 dark:text-gray-400">Net Month Payout</div>
-                                    <div class="font-bold text-green-600 dark:text-green-400 tabular-nums text-xs sm:text-sm">₹43,700.00</div>
+                                    <div class="font-bold text-green-600 dark:text-green-400 tabular-nums text-xs">₹43,700.00</div>
                                 </div>
                             </div>
 
@@ -1204,10 +1202,10 @@
                 </div>
                 <!-- Text Column -->
                 <div class="lg:col-span-5 space-y-4">
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
                         Staff already knows how to use it
                     </h3>
-                    <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-normal">
                         Zero new apps needed.<br>
                         Staff runs tasks in Telegram.
                     </p>
@@ -1241,10 +1239,10 @@
             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300">
                 Ground Reality
             </span>
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
+            <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
                 Effortless Daily Operations
             </h2>
-            <p class="text-sm sm:text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
+            <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-normal">
                 Every floor question answered at a glance:
             </p>
         </div>
@@ -1258,9 +1256,9 @@
                         <div class="w-10 h-10 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded-lg flex items-center justify-center border border-blue-200 dark:border-blue-800 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Guest Arrival & Stay</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Guest Arrival & Stay</h3>
                     </div>
-                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                    <ul class="space-y-3 text-xs text-gray-600 dark:text-gray-300">
                         <li class="flex items-start gap-2.5">
                             <svg class="w-4 h-4 text-green-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg>
                             <div>Exact check-in time recorded</div>
@@ -1285,9 +1283,9 @@
                         <div class="w-10 h-10 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 rounded-lg flex items-center justify-center border border-yellow-200 dark:border-yellow-800 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 009-9H3a9 9 0 009 9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 8V3m5 5V3m5 5V3"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Kitchen & Meal Orders</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Kitchen & Meal Orders</h3>
                     </div>
-                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                    <ul class="space-y-3 text-xs text-gray-600 dark:text-gray-300">
                         <li class="flex items-start gap-2.5">
                             <svg class="w-4 h-4 text-green-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"></path><path d="M8 7h8M8 11h8M8 15h5"></path></svg>
                             <div>Meals added to bill instantly</div>
@@ -1312,9 +1310,9 @@
                         <div class="w-10 h-10 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 rounded-lg flex items-center justify-center border border-green-200 dark:border-green-800 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Staff Shifts & Advances</h3>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">Staff Shifts & Advances</h3>
                     </div>
-                    <ul class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                    <ul class="space-y-3 text-xs text-gray-600 dark:text-gray-300">
                         <li class="flex items-start gap-2.5">
                             <svg class="w-4 h-4 text-green-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"></rect><line x1="8" x2="16" y1="6" y2="6"></line><line x1="16" x2="16" y1="14" y2="18"></line><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"></path></svg>
                             <div>Shift cash reconciled accurately</div>
@@ -1341,10 +1339,10 @@
                 <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300 mb-2 inline-block">
                     Versatile Architecture
                 </span>
-                <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">
+                <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">
                     Made for every kind of stay
                 </h2>
-                <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base font-normal">
+                <p class="text-gray-500 dark:text-gray-400 text-xs font-normal">
                     For small stays or villas. Work simple and calm.
                 </p>
             </div>
@@ -1373,8 +1371,8 @@
                                 </div>
                                 <div class="lg:col-span-6 space-y-2 sm:space-y-3">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">Vacation Homes & Villas</span>
-                                    <h3 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Whole villas & apartments</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">
+                                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Whole villas & apartments</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
                                         Rent whole homes simply. Send link, keep full money.
                                     </p>
                                     <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
@@ -1399,8 +1397,8 @@
                                 </div>
                                 <div class="lg:col-span-6 space-y-2 sm:space-y-3">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">Boutique Hotels</span>
-                                    <h3 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Small boutique hotels</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">
+                                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Small boutique hotels</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
                                         Sync all rooms automatically. Print bills and send orders.
                                     </p>
                                     <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
@@ -1425,8 +1423,8 @@
                                 </div>
                                 <div class="lg:col-span-6 space-y-2 sm:space-y-3">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">Homestays & B&Bs</span>
-                                    <h3 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Homestays & bed and breakfasts</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">
+                                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Homestays & bed and breakfasts</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
                                         Warmest welcome, zero paper books. Track orders and cash.
                                     </p>
                                     <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
@@ -1451,8 +1449,8 @@
                                 </div>
                                 <div class="lg:col-span-6 space-y-2 sm:space-y-3">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">Guest Houses</span>
-                                    <h3 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Guest houses & family rooms</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">
+                                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Guest houses & family rooms</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
                                         Fast check-ins. Snap IDs, take cash, track clean rooms.
                                     </p>
                                     <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
@@ -1477,8 +1475,8 @@
                                 </div>
                                 <div class="lg:col-span-6 space-y-2 sm:space-y-3">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">Tents & Glamping</span>
-                                    <h3 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Tents, camps & glamping</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">
+                                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Tents, camps & glamping</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
                                         Runs on weak internet. Collect advance money before arrival.
                                     </p>
                                     <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
@@ -1503,8 +1501,8 @@
                                 </div>
                                 <div class="lg:col-span-6 space-y-2 sm:space-y-3">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-sm bg-blue-100 text-blue-800 text-xs font-medium border border-blue-300">Farm Stays</span>
-                                    <h3 class="text-lg sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Farm stays & nature retreats</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-relaxed">
+                                    <h3 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white leading-snug">Farm stays & nature retreats</h3>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
                                         Note down meals, track cash, spend days with nature.
                                     </p>
                                     <div class="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
@@ -1544,16 +1542,16 @@
                     TAKE BACK YOUR DAY
                 </span>
 
-                <h2 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4 leading-tight">
+                <h2 class="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4 leading-tight">
                     Ready to take 80% work load off your shoulders?
                 </h2>
 
-                <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base max-w-xl mx-auto mb-6">
+                <p class="text-gray-500 dark:text-gray-400 text-xs max-w-xl mx-auto mb-6">
                     Runs your rooms, orders, cash, and team alerts. Free 14-day trial with zero setup fees.
                 </p>
 
                 <div class="flex items-center justify-center mb-3">
-                    <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-6 py-3.5 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm transition-colors shadow-sm">
+                    <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center px-6 py-3.5 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs transition-colors shadow-sm">
                         <span>Try Sandbox For Free</span>
                     </a>
                 </div>
@@ -1571,7 +1569,7 @@
             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300">
                 Transparent Pricing • No Hidden Fees
             </span>
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
+            <h2 class="text-xl font-bold tracking-tight text-gray-900 dark:text-white mt-3 mb-2">
                 One Simple Price. All Features Included.
             </h2>
         </div>
@@ -1584,7 +1582,7 @@
             <div>
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 pb-6">
                     <div>
-                        <h3 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">GroundCode Pro</h3>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">GroundCode Pro</h3>
                     </div>
                     <span class="inline-flex items-center px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-sm border border-blue-300 w-fit">Full Operating Suite</span>
                 </div>
@@ -1592,7 +1590,7 @@
                 <div class="my-6">
                     <div class="flex items-baseline gap-2">
                         <span class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white">₹1,499</span>
-                        <span class="text-gray-500 dark:text-gray-400 text-sm font-medium">/ month (Includes 1st Villa or Room Key)</span>
+                        <span class="text-gray-500 dark:text-gray-400 text-xs font-medium">/ month (Includes 1st Villa or Room Key)</span>
                     </div>
                 </div>
 
@@ -1603,7 +1601,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0v-5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v5m-4 0h4"/></svg>
                         </div>
                         <div>
-                            <h4 class="text-base font-bold text-gray-900 dark:text-white mb-0.5">Need extra rooms or expanding your resort?</h4>
+                            <h4 class="text-xs font-bold text-gray-900 dark:text-white mb-0.5">Need extra rooms or expanding your resort?</h4>
                             <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                                 Add extra rooms anytime. Zero property surcharge — we charge purely for keys.
                             </p>
@@ -1619,7 +1617,7 @@
                 <!-- Portfolio Cost Example Box (From competitor.html) -->
                 <div class="p-4 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg my-5 text-xs">
                     <div class="text-blue-900 dark:text-blue-200 font-medium">Effective Cost (e.g. 3 Properties, 10 Total Keys):</div>
-                    <div class="text-base font-extrabold text-blue-900 dark:text-white mt-0.5">₹3,299 / month</div>
+                    <div class="text-xs font-extrabold text-blue-900 dark:text-white mt-0.5">₹3,299 / month</div>
                     <div class="text-emerald-700 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                         <span>Strictly 100% Month-to-Month • ₹0 Property Surcharge • Channex 2-Way OTA Pipe Included</span>
@@ -1628,7 +1626,7 @@
 
                 <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
                     <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">Everything You Get In One Box:</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
                         <div class="flex items-start gap-2.5 font-semibold text-gray-900 dark:text-white">
                             <svg class="w-4 h-4 text-green-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                             <span>Personal 1-on-1 setup call with our team</span>
@@ -1666,7 +1664,7 @@
             </div>
 
             <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 text-center">
-                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-3 text-center dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none flex items-center justify-center gap-2 transition-colors">
+                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-5 py-3 text-center dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none flex items-center justify-center gap-2 transition-colors">
                     <span>Start Your Free Trial</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </a>
@@ -1677,24 +1675,23 @@
     <!-- BOTTOM CTA BANNER (Flowbite Light Card) -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div class="p-8 sm:p-12 bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-white shadow-sm">
-            <img src="assets/images/illustrations/man-adjusting-settings.svg" alt="" aria-hidden="true" class="w-32 sm:w-40 h-auto mx-auto mb-4">
             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-sm dark:bg-gray-700 dark:text-blue-400 border border-blue-300 mb-4 inline-block">
                 Let's Talk Operations
             </span>
             
-            <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 tracking-tight text-gray-900 dark:text-white">
+            <h2 class="text-xl font-bold mb-3 tracking-tight text-gray-900 dark:text-white">
                 Want help setting up your homestay?
             </h2>
-            <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base max-w-xl mx-auto mb-8 font-normal leading-relaxed">
+            <p class="text-gray-500 dark:text-gray-400 text-xs max-w-xl mx-auto mb-8 font-normal leading-relaxed">
                 Message on WhatsApp. Set up in 10 minutes.
             </p>
 
             <div class="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
-                <a href="https://wa.me/918928700200?text=Hi%2C%20I%20want%20to%20set%20up%20GroundCode%20for%20my%20property" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-3 text-center flex items-center justify-center gap-2 transition-colors">
+                <a href="https://wa.me/918928700200?text=Hi%2C%20I%20want%20to%20set%20up%20GroundCode%20for%20my%20property" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-xs px-5 py-3 text-center flex items-center justify-center gap-2 transition-colors">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 00-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1012 2zm0 18a8 8 0 01-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1112 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.5 6.5 0 01-1.9-1.2 7.2 7.2 0 01-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.3.2-.4 0-.1 0-.3-.1-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 00-.7.3A2.8 2.8 0 006 9.4c0 1.7 1.2 3.3 1.4 3.5.2.2 2.4 3.7 5.8 5 .8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.4-.6 1.6-1.2.2-.6.2-1.1.1-1.2 0-.1-.2-.2-.4-.3z"/></svg>
                     <span>Message on WhatsApp</span>
                 </a>
-                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-3 text-center flex items-center justify-center gap-2 transition-colors">
+                <a href="https://ground-code.com/rivera-resorts/luxe-stays/" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-5 py-3 text-center flex items-center justify-center gap-2 transition-colors">
                     <span>Try Live Sandbox</span>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5m14 0-4 4m4-4-4-4"/></svg>
                 </a>
@@ -1715,7 +1712,6 @@
 
             <div class="text-xs text-gray-500 dark:text-gray-400 text-center md:text-left">
                 &copy; 2026 GroundCode. All rights reserved. &bull; <a href="https://ground-code.in" class="text-blue-700 dark:text-blue-500 hover:underline">ground-code.in</a>
-                <span class="block mt-1 text-gray-400 dark:text-gray-500">Illustrations by <a href="https://flowbite.com/illustrations/" target="_blank" rel="noopener noreferrer" class="hover:underline">Flowbite</a></span>
             </div>
 
             <div class="flex items-center gap-6 text-xs font-semibold text-gray-600 dark:text-gray-400">

@@ -87,6 +87,9 @@ interface GuestManagementProps {
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  /** Refundable deposit for a SINGLE property. A MULTI_KEY room carries its
+   *  own on the room object, so this is only the single-unit fallback. */
+  propertySecurityDeposit?: number | string | null;
   propertyAddress?: string;
   propertyInstructions?: string;
   propertyGuestInfo?: PropertyGuestInfo;
@@ -153,6 +156,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertySecurityDeposit,
   propertyAddress = '',
   propertyInstructions = '',
   propertyGuestInfo,
@@ -200,6 +204,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [showGuestNotes, setShowGuestNotes] = useState(false);
   const [isForeignGuest, setIsForeignGuest] = useState(false);
   const [noOfGuests, setNoOfGuests] = useState(2);
+  // Optional split of noOfGuests, not an addition to it (7 Sep 2026). Guests
+  // stays the total that occupancy pricing reads; this only says how many of
+  // them are children, so the confirmation can say "3 adults, 2 children".
+  const [childrenCount, setChildrenCount] = useState(0);
 
   // "Inquiry -> Instant Quote" (5 Sep 2026) - lets staff send a guest who
   // called or messaged a WhatsApp link with the room/dates/price already
@@ -546,6 +554,67 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   };
 
+  const handleShareAllAvailableRooms = () => {
+    if (!checkinDate || !expectedCheckout) {
+      showToast('Pick check-in and check-out dates first.', { type: 'error' });
+      return;
+    }
+    if (checkinDate >= expectedCheckout) {
+      showToast('Check-out date must be after check-in date.', { type: 'error' });
+      return;
+    }
+
+    const cIn = new Date(checkinDate + 'T00:00:00');
+    const cOut = new Date(expectedCheckout + 'T00:00:00');
+    const nights = Math.max(1, Math.round((cOut.getTime() - cIn.getTime()) / (1000 * 60 * 60 * 24)));
+
+    // Filter available rooms for these dates
+    const availableRooms = rooms.filter((r) => {
+      return !guests.some((g) => {
+        if (g.status === 'CheckedOut' || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return false;
+        const gRoomId = (g as any).roomId || (g as any).room_id;
+        const matchesRoom = (gRoomId && r.id && Number(gRoomId) === Number(r.id)) ||
+          (g.roomNumber && r.name && g.roomNumber.toLowerCase().trim() === r.name.toLowerCase().trim());
+        if (!matchesRoom) return false;
+        const gIn = (g.checkinDate || '').split(' ')[0];
+        const gOut = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0];
+        return gIn < expectedCheckout && gOut > checkinDate;
+      });
+    });
+
+    if (availableRooms.length === 0) {
+      showToast('No rooms are available for the selected dates.', { type: 'warning' });
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}${window.location.pathname}#book?checkin=${checkinDate}&checkout=${expectedCheckout}`;
+    const greeting = guestName.trim() ? `Hi ${guestName.trim()}, ` : 'Hi, ';
+    let waText = `${greeting}here are our available rooms for ${checkinDate} to ${expectedCheckout} (${nights} night${nights > 1 ? 's' : ''}):\n\n`;
+
+    availableRooms.forEach((r, idx) => {
+      const perNight = (r as any).baseRate || r.default_tariff || (r as any).roomTariff || (r as any).price || 0;
+      const totalTariff = perNight * nights;
+      waText += `${idx + 1}. *${r.name}* — ₹${perNight.toLocaleString('en-IN')}/night (Total: ₹${totalTariff.toLocaleString('en-IN')})\n`;
+    });
+
+    waText += `\nTap here to view room details, photos, and book directly:\n${shareUrl}`;
+
+    // Target specific guest phone if entered
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    const waUrl = cleanPhone.length === 10
+      ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
+      : cleanPhone.length > 10
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
+      : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(waText).catch(() => {});
+    }
+
+    window.open(waUrl, '_blank');
+    showToast('Available rooms and rates ready to send on WhatsApp!', { type: 'success' });
+  };
+
   if (activeMenuItemKey === 'guest_registration') {
     return (
       <div className={`guest-management w-full flex justify-center items-center ${onClose ? '' : 'min-h-[calc(100vh-120px)] my-auto'}`}>
@@ -676,6 +745,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               status: 'Booked',
               bookingSource: bookingSourceLocal,
               numberOfGuests: noOfGuests,
+              children: childrenCount,
+              adults: Math.max(0, noOfGuests - childrenCount),
               roomRate: bookingRoomTariff,
               advanceAmount: bookingAdvance,
               advanceReceivedBy: bookingAdvance > 0 ? advanceReceivedBy : '',
@@ -778,7 +849,25 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       type="number"
                       min="1"
                       value={noOfGuests}
-                      onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => {
+                        const next = Math.max(1, Number(e.target.value));
+                        setNoOfGuests(next);
+                        // Children can never exceed the total it is a subset of.
+                        setChildrenCount((prev) => Math.min(prev, next));
+                      }}
+                      helperText={childrenCount > 0
+                        ? `${Math.max(0, noOfGuests - childrenCount)} adult${noOfGuests - childrenCount === 1 ? '' : 's'}, ${childrenCount} child${childrenCount === 1 ? '' : 'ren'}`
+                        : undefined}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={t('children_count_label', 'Of which children')}
+                      type="number"
+                      min="0"
+                      max={noOfGuests}
+                      value={childrenCount}
+                      onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
                     />
                   </div>
                 </div>
@@ -812,7 +901,25 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       type="number"
                       min="1"
                       value={noOfGuests}
-                      onChange={(e) => setNoOfGuests(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => {
+                        const next = Math.max(1, Number(e.target.value));
+                        setNoOfGuests(next);
+                        // Children can never exceed the total it is a subset of.
+                        setChildrenCount((prev) => Math.min(prev, next));
+                      }}
+                      helperText={childrenCount > 0
+                        ? `${Math.max(0, noOfGuests - childrenCount)} adult${noOfGuests - childrenCount === 1 ? '' : 's'}, ${childrenCount} child${childrenCount === 1 ? '' : 'ren'}`
+                        : undefined}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={t('children_count_label', 'Of which children')}
+                      type="number"
+                      min="0"
+                      max={noOfGuests}
+                      value={childrenCount}
+                      onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
                     />
                   </div>
                 </div>
@@ -1147,6 +1254,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </>
               )}
             </Button>
+            {isMultiKeyProperty && rooms && rooms.length > 1 && (
+              <Button
+                type="button"
+                color="light"
+                onClick={handleShareAllAvailableRooms}
+                className="w-full mt-2 font-semibold flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              >
+                <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span>Share All Available Keys & Rates</span>
+              </Button>
+            )}
           </form>
         </div>
       </div>
@@ -1154,6 +1272,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   }
   return (
     <BillingCheckout
+      propertySecurityDeposit={propertySecurityDeposit}
       guests={guests}
       receipts={receipts}
       isLoading={isLoading}

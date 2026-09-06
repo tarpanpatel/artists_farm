@@ -83,6 +83,9 @@ interface OperationalDashboardProps {
   propertyWhatsappTemplate?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  /** Refundable deposit for a SINGLE property. A MULTI_KEY room carries its
+   *  own on the room object, so this is only the single-unit fallback. */
+  propertySecurityDeposit?: number | string | null;
   propertyAddress?: string;
   propertyGoogleMapsLink?: string;
   propertyInstructions?: string;
@@ -136,6 +139,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   propertyWhatsappTemplate = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  propertySecurityDeposit,
   propertyAddress = '',
   propertyGoogleMapsLink = '',
   propertyInstructions = '',
@@ -1917,6 +1921,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Booking Details Modal - Editable */}
       {selectedBooking && !showCheckinVerification && (
         <BookingDetailsModal
+          propertySecurityDeposit={propertySecurityDeposit}
           guest={selectedBooking}
           initialFocusSection={selectedBookingFocusSection}
           onClose={() => { setSelectedBooking(null); setSelectedBookingFocusSection(null); }}
@@ -2003,6 +2008,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           <GuestManagement
+            propertySecurityDeposit={propertySecurityDeposit}
             guests={guests}
             receipts={receipts}
             menu={menu}
