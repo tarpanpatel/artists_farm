@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Drawer } from 'flowbite-react';
-import { Check, AlertTriangle, X } from './icons/FlowbiteIcons';
+import { Check, AlertTriangle, X, Plug } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { t } from '../i18n/en';
+import { ChannelConnectWizard } from './ChannelConnectWizard';
+import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
 
 /**
  * Confirm-before-write import of a property's own Airbnb listing configuration.
@@ -96,6 +98,42 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [takeAddress, setTakeAddress] = useState(false);
   const [takeMaps, setTakeMaps] = useState(false);
+
+  // "Connect Airbnb" from right here (6 Sep 2026) - the load() call below fails
+  // with "No connected Airbnb channel for this property" for any property that
+  // hasn't gone through Connect Channels yet, which used to be a dead end: the
+  // owner had to cancel out, find Connect Channels in the sidebar themselves,
+  // connect there, then come back and reopen this drawer. Reuses the same
+  // ChannelConnectWizard Connect Channels itself renders rather than building a
+  // second connect flow - only the entry point (this error state) is new.
+  const [connections, setConnections] = useState<ChannexChannelConnection[]>([]);
+  const [localRooms, setLocalRooms] = useState<ChannexLocalRoom[]>([]);
+  const [connectWizardOpen, setConnectWizardOpen] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(false);
+
+  const handleConnectAirbnb = async () => {
+    setConnectLoading(true);
+    try {
+      const res = await apiFetch(
+        `${API_ROOT_BASE}/php/api/router.php?action=channex_channel_connection_status`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ property_id: propertyId }),
+        }
+      );
+      const json = await res.json();
+      if (json?.status === 'success') {
+        setConnections(json.data?.connections || []);
+        setLocalRooms(json.data?.local_rooms || []);
+      }
+      setConnectWizardOpen(true);
+    } catch (err) {
+      showToast(t('airbnb_import_load_failed', 'Could not read your Airbnb listings.'), { type: 'error' });
+    } finally {
+      setConnectLoading(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -232,9 +270,14 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
   };
 
   const hasAnything = !!data && (data.proposals?.length > 0 || !!data.property);
+  // Matches router.php's exact wording for this one case (both
+  // channex_import_airbnb_room_config and channex_airbnb_listing_details use
+  // the identical string) - everything else stays a plain, non-actionable error.
+  const notConnected = loadError === 'No connected Airbnb channel for this property';
 
   return (
-    <Drawer open={isOpen} onClose={onClose} position="right" className="w-full max-w-xl p-0">
+    <>
+    <Drawer open={isOpen && !connectWizardOpen} onClose={onClose} position="right" className="w-full max-w-xl p-0">
       <div className="flex h-full flex-col bg-white dark:bg-gray-900">
         <div className="flex items-start justify-between gap-3 border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6">
           <div>
@@ -271,7 +314,20 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
           {!loading && loadError && (
             <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
-              <p className="text-sm text-red-800 dark:text-red-300">{loadError}</p>
+              <div className="flex-1">
+                <p className="text-sm text-red-800 dark:text-red-300">{loadError}</p>
+                {notConnected && (
+                  <Button
+                    size="sm"
+                    onClick={handleConnectAirbnb}
+                    disabled={connectLoading}
+                    className="mt-3"
+                    leftIcon={<Plug className="h-4 w-4" />}
+                  >
+                    {t('airbnb_import_connect_button', 'Connect Airbnb')}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -455,5 +511,19 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
         </div>
       </div>
     </Drawer>
+
+    <ChannelConnectWizard
+      isOpen={connectWizardOpen}
+      propertyId={propertyId}
+      resumeChannelCode="AirBNB"
+      existingConnections={connections}
+      localRooms={localRooms}
+      onClose={() => setConnectWizardOpen(false)}
+      onConnected={() => {
+        setConnectWizardOpen(false);
+        load();
+      }}
+    />
+    </>
   );
 };
