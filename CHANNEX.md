@@ -392,39 +392,30 @@ channel isn't disturbed. Never probe against production.
      `PASS_THROUGH_CLEANING_FEE` entry when the flat `cleaning_fee` field is null. Zero-amount
      entries are ignored: that means "no fee configured", and adopting it would propose
      "Cleaning fee: 0" against a stored 0 on every listing.
-  6. **Photos — open, and BLOCKED ON A LICENSING QUESTION, not on engineering.**
-     `images[]` carries ~34 per listing with four URL sizes, a caption, a category and a
-     `room_id`. Deferred 6 Sep 2026 at the owner's request ("skip photos for now, but keep
-     chasing it"), not dropped.
+  6. **Photos — CLOSED 6 Sep 2026. Decision: we do NOT import Airbnb photos. Do not reopen.**
+     Raised, chased, and settled the same day. The owner's ruling was final and unambiguous:
+     *"no it cant so close this."* No import path is to be built — not download, not hotlink,
+     not "just the URLs". Treat `images[]` as read-only reference data at most.
 
-     **Do not build either import path until this is settled with Channex.** Airbnb's API
-     Terms of Service (https://www.airbnb.com/help/article/3418) define "Content" in §1.1 as
-     "text, photos, audio, video, or other materials or information" — listing photos are
-     squarely Content — and §2.2(A) prohibits using the API to "scrape, collect, or use the
-     Scopes or any Content" for "retaining static copies or building databases", as well as
-     "copying, modifying, or creating derivative works of any Scopes or Content". §2.2(V)
-     separately prohibits anything that "rebrands or repackages Content accessed through the
-     API", and on termination all Content must be destroyed within 30 days.
+     The reasoning, kept so nobody re-litigates it from scratch: `images[]` carries ~34 per
+     listing with four URL sizes, a caption, a category and a `room_id`. Airbnb's API Terms of
+     Service (https://www.airbnb.com/help/article/3418) define "Content" in §1.1 as "text,
+     photos, audio, video, or other materials or information" — listing photos are squarely
+     Content — and §2.2(A) prohibits using the API to "scrape, collect, or use the Scopes or
+     any Content" for "retaining static copies or building databases", as well as "copying,
+     modifying, or creating derivative works". §2.2(V) separately prohibits anything that
+     "rebrands or repackages Content accessed through the API", and on termination all Content
+     must be destroyed within 30 days. That reads against downloading and storing them, and
+     hotlinking onto a Ground Code-branded booking page is arguably the "repackages Content"
+     case, so neither route was clearly safe.
 
-     That reads directly against **downloading and storing** the images — which was this
-     file's own recommendation earlier the same day, now withdrawn. Hotlinking creates no
-     static copy, but rendering Airbnb-served photos on a Ground Code-branded booking page is
-     arguably the "repackages Content" case, so it is not obviously safe either.
+     **The supported way a property gets pictures is the owner uploading their own.** That is
+     not a workaround — it is the correct route: the photos are the host's own copyrighted
+     work, and what the terms govern is the ROUTE, not the image. The same photo supplied from
+     the owner's own files carries no API obligation at all. The importer may still *report*
+     what the listing holds ("your Airbnb listing has 34 photos") purely to prompt that upload.
 
-     **Two things make this genuinely unsettled rather than simply prohibited:**
-     (a) Ground Code is not Airbnb's API partner — **Channex** is, and holds the agreement;
-     our obligations run through our contract with Channex, so Channex is the authority on
-     what its partners may do with listing Content, not our reading of Airbnb's partner terms.
-     (b) The photos are the **host's own copyrighted work**. What the terms govern is the
-     ROUTE, not the image: the same photo obtained from the host's own files carries no API
-     obligation at all.
-
-     **Therefore the recommended design sidesteps the question entirely**: let the owner
-     upload their own photos, and have the importer merely *report* what the listing holds
-     ("your Airbnb listing has 34 photos") to prompt it. No API-sourced image is copied,
-     stored, or displayed, and the booking page still ends up with real pictures.
-
-     Not legal advice; the licensing question is for the owner and Channex to answer.
+     Not legal advice; this records a product decision the owner has made and closed.
 
   **Never import:** identity (`name`/`slug`), capacity as a write, reputation, reviews and
   messages, Airbnb pricing rules / weekly-monthly factors / pass-through taxes, promotions.
