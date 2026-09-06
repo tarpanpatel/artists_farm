@@ -4219,10 +4219,16 @@ switch ($action) {
         }
         exit;
 
-    // --- GUESTS ---
-    case 'get_guests':
-    case 'get_guest_extra_charges':
     // --- BOOKING PAYMENTS (7 Sep 2026) - see php/finance/booking_payments.php ---
+    //
+    // These MUST stay above the guest fall-through chain that follows, not
+    // inside it. They were originally inserted just before `case 'add_guest'`,
+    // which is in the MIDDLE of the `get_guests` / `get_guest_extra_charges` /
+    // `add_guest` / ... list that all share one handler body - so `get_guests`
+    // fell straight into get_booking_payments and every request for the guest
+    // list returned 400 "booking_id is required." Adding a case to a switch
+    // full of deliberate fall-through means checking what is directly above the
+    // insertion point, not only what is below it.
     case 'get_booking_payments': {
         $bookingId = (int)($_GET['booking_id'] ?? $_POST['booking_id'] ?? 0);
         if (!$bookingId) { http_response_code(400); echo json_encode(['status' => 'error', 'message' => 'booking_id is required.']); break; }
@@ -4254,6 +4260,12 @@ switch ($action) {
         break;
     }
 
+    // --- GUESTS ---
+    // Every case from here to handleGuestRequests() shares one body by
+    // deliberate fall-through. Do not insert a new case with its own body
+    // anywhere inside this run.
+    case 'get_guests':
+    case 'get_guest_extra_charges':
     case 'add_guest':
     case 'update_guest':
     case 'checkout_guest':
