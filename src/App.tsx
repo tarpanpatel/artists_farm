@@ -2382,6 +2382,7 @@ ${itemsStr}
                     defaultTariff={preloadedData.currentProperty?.default_tariff}
                     walkInTableCount={preloadedData.currentProperty?.walk_in_table_count}
                     instructions={preloadedData.currentProperty?.instructions || ''}
+                    rooms={(preloadedData.currentProperty as any)?.rooms || []}
                     onSaved={() => window.location.reload()}
                   />
                 </Suspense>

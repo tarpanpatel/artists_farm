@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
-  Home, Phone, Wallet, Clock, FileText,
+  Home, Phone, Wallet, Clock, FileText, Building,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
@@ -50,19 +50,61 @@ interface PropertySetupWizardProps {
   defaultTariff?: number | string | null;
   walkInTableCount?: number | string | null;
   instructions?: string;
+  /** The parent's rooms, for the multi-key Rooms step. Empty/absent is fine -
+   *  the step then just says there are no rooms yet. */
+  rooms?: any[];
   /** Called after any step saves successfully - reloads to pick up fresh data everywhere. */
   onSaved: () => void;
 }
 
-type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'notes';
+type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'notes';
 
-const STEP_DEFS: { key: StepKey; label: string; icon: React.ElementType }[] = [
+/**
+ * A MULTI_KEY parent gets a Rooms step where a single-unit property gets
+ * Operations (6 Sep 2026).
+ *
+ * The Operations step asks for check-in/out time and a nightly tariff and saves
+ * them to the property row. On a multi-key parent that row is a BUILDING, not a
+ * bookable unit: every booking reads its own room's times and its own tariff, so
+ * answering those questions here changed nothing a guest would ever see. Patel
+ * Colony made it obvious - the parent held NULL times and a 3500 tariff while
+ * its seven rooms held real times and their own 2400/3111 rates.
+ *
+ * The old code already half-knew this (`default_tariff` was hidden for
+ * multi-key, and the whole step was auto-marked done) - it just kept rendering
+ * the step and writing to the wrong row. And the real setup work for a 7-room
+ * property is per room, which the checklist never mentioned at all: it could
+ * read "complete" with every room still empty.
+ */
+const buildStepDefs = (isMultiKey: boolean): { key: StepKey; label: string; icon: React.ElementType }[] => [
   { key: 'basics', label: 'Basics', icon: Home },
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
-  { key: 'operations', label: 'Operations', icon: Clock },
+  isMultiKey
+    ? { key: 'rooms', label: 'Rooms', icon: Building }
+    : { key: 'operations', label: 'Operations', icon: Clock },
   { key: 'notes', label: 'Notes', icon: FileText },
 ];
+
+/** One room's readiness, as shown in the Rooms step. */
+interface RoomReadiness {
+  id: number;
+  name: string;
+  missing: string[];
+}
+
+/**
+ * What still needs filling in for one room. Deliberately only the things that
+ * change what a GUEST sees or pays - not every column that happens to be null.
+ */
+function roomGaps(r: any): string[] {
+  const missing: string[] = [];
+  if (!(Number(r?.default_tariff) > 0)) missing.push('rate');
+  if (!(Number(r?.max_capacity) > 0)) missing.push('capacity');
+  if (!r?.checkin_time || !r?.checkout_time) missing.push('times');
+  if (!String(r?.description || '').trim()) missing.push('description');
+  return missing;
+}
 
 // "Do it later" (added 27 Aug 2026, explicit request): the drawer used to auto-reopen on
 // every single page load/navigation with no way to say "not now, but don't nag me again
@@ -103,6 +145,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   defaultTariff,
   walkInTableCount,
   instructions = '',
+  rooms = [],
   onSaved,
 }) => {
   const isMultiKey = propertyType === 'MULTI_KEY';
@@ -136,17 +179,35 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const contactDone = !!(editEmail.trim() || editPhone.trim() || email.trim() || phone.trim());
   const paymentsDone = !!(editUpiId.trim() || editGstin.trim() || upiId.trim() || upiQrCodeUrl.trim() || gstin.trim());
   const operationsDone = isMultiKey || !!editCheckinTime || !!checkinTime || (editDefaultTariff.trim() !== '') || (defaultTariff != null && String(defaultTariff).trim() !== '');
+
+  // Rooms readiness. This step used to be auto-marked done for every multi-key
+  // property (`operationsDone = isMultiKey || ...`), which is why a 7-room
+  // property could report "complete" with every room still blank. Now it is
+  // done when the rooms can actually take a booking: a rate and a check-in/out
+  // time on each. Capacity and description are surfaced as gaps but do not
+  // block - a room without them still sells correctly, it just reads thinner
+  // on the booking page.
+  const roomReadiness: RoomReadiness[] = (rooms || []).map((r: any) => ({
+    id: Number(r?.id),
+    name: String(r?.name || 'Room'),
+    missing: roomGaps(r),
+  }));
+  const blockingRooms = roomReadiness.filter(
+    (r) => r.missing.includes('rate') || r.missing.includes('times')
+  );
+  const roomsDone = roomReadiness.length > 0 && blockingRooms.length === 0;
   const notesDone = !!(editInstructions.trim() || instructions.trim());
 
-  const doneMap: Record<StepKey, boolean> = {
+  const doneMap: Partial<Record<StepKey, boolean>> = {
     basics: basicsDone,
     contact: contactDone,
     payments: paymentsDone,
     operations: operationsDone,
+    rooms: roomsDone,
     notes: notesDone,
   };
 
-  const steps = STEP_DEFS.map((s) => ({ ...s, isDone: doneMap[s.key] }));
+  const steps = buildStepDefs(isMultiKey).map((s) => ({ ...s, isDone: !!doneMap[s.key] }));
   const totalSteps = steps.length;
   const stepsDone = steps.filter((s) => s.isDone).length;
 
@@ -182,6 +243,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               walk_in_table_count: editWalkInTableCount,
               ...(isMultiKey ? {} : { default_tariff: editDefaultTariff }),
             }
+          : activeStep.key === 'rooms'
+          ? // Only the genuinely property-level field. Times reach the ROOMS via
+            // "Apply to all rooms" below, never the parent - writing them here is
+            // what made the old Operations step a no-op for multi-key.
+            { walk_in_table_count: editWalkInTableCount }
           : { instructions: editInstructions };
 
       const res = await fetch('/php/api/router.php?action=update_property', {
@@ -201,6 +267,48 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * Write the check-in/out times to every ROOM, one update_property call each.
+   *
+   * The times are almost always uniform across a building, so asking once and
+   * fanning out is the right shape - but they have to land on the rooms, since
+   * that is where a booking reads them from. Sequential rather than parallel:
+   * seven rooms is nothing, and a burst of writes racing each other is not worth
+   * the microseconds saved.
+   */
+  const [applyingTimes, setApplyingTimes] = useState(false);
+  const [timesApplied, setTimesApplied] = useState(false);
+  const applyTimesToAllRooms = async () => {
+    if (!editCheckinTime || !editCheckoutTime || roomReadiness.length === 0) return;
+    setApplyingTimes(true);
+    setError(null);
+    let failed = 0;
+    for (const room of roomReadiness) {
+      try {
+        const res = await fetch('/php/api/router.php?action=update_property', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            property_id: room.id,
+            checkin_time: editCheckinTime,
+            checkout_time: editCheckoutTime,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) failed++;
+      } catch {
+        failed++;
+      }
+    }
+    setApplyingTimes(false);
+    if (failed > 0) {
+      setError(`Could not update ${failed} of ${roomReadiness.length} rooms. Try again.`);
+    } else {
+      setTimesApplied(true);
     }
   };
 
@@ -474,6 +582,96 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 helperText="Pre-fills the rate when creating a new booking - still editable per booking."
               />
             )}
+            <Input
+              type="number"
+              min={1}
+              max={200}
+              label="Number of Tables (Walk-in Orders)"
+              value={editWalkInTableCount}
+              onChange={(e) => setEditWalkInTableCount(e.target.value)}
+              placeholder="10"
+            />
+          </div>
+        )}
+
+        {activeStep.key === 'rooms' && (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              This property is a building with {roomReadiness.length || 'no'} unit
+              {roomReadiness.length === 1 ? '' : 's'}. Each one carries its own rate, capacity and
+              times - that's what a guest actually books.
+            </p>
+
+            {roomReadiness.length === 0 ? (
+              <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  No units yet. Add them from Edit Property, then come back here.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
+                  {roomReadiness.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                      <span className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">{r.name}</span>
+                      {r.missing.length === 0 ? (
+                        <span className="flex shrink-0 items-center gap-1 text-2xs font-semibold text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Ready
+                        </span>
+                      ) : (
+                        <span className="shrink-0 text-2xs font-medium text-amber-600 dark:text-amber-400">
+                          needs {r.missing.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* The single biggest lever, and previously invisible from here:
+                    connecting Airbnb fills every room's rate, capacity, times and
+                    description in one pass instead of retyping them per room. */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
+                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                    Already listed on Airbnb?
+                  </p>
+                  <p className="mt-0.5 text-2xs text-blue-800 dark:text-blue-300">
+                    Connect it and import - rates, times, capacity, descriptions and amenities come
+                    across for every unit at once. Channel Manager → Connect Channels.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input type="time" label="Check-in Time" value={editCheckinTime} onChange={(e) => { setEditCheckinTime(e.target.value); setTimesApplied(false); }} />
+                    <Input type="time" label="Check-out Time" value={editCheckoutTime} onChange={(e) => { setEditCheckoutTime(e.target.value); setTimesApplied(false); }} />
+                  </div>
+                  <Button
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                    onClick={applyTimesToAllRooms}
+                    disabled={applyingTimes || !editCheckinTime || !editCheckoutTime}
+                  >
+                    {applyingTimes ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Applying…
+                      </span>
+                    ) : timesApplied ? (
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Applied to all {roomReadiness.length}
+                      </span>
+                    ) : (
+                      `Apply these times to all ${roomReadiness.length} unit${roomReadiness.length === 1 ? '' : 's'}`
+                    )}
+                  </Button>
+                  <p className="text-2xs text-slate-500 dark:text-slate-400">
+                    Times are set per unit. This writes the same pair to all of them - change any
+                    one afterwards in that unit's own settings.
+                  </p>
+                </div>
+              </>
+            )}
+
             <Input
               type="number"
               min={1}

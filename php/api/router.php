@@ -1291,12 +1291,35 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
         $suggested = (int)($byId[$listingId]['capacity'] ?? 0);
 
         $fields = [];
-        // Capacity is deliberately NOT proposed (5 Sep 2026, owner's call). Airbnb
-        // disagreed with the owner on 5 of 10 rooms here, so the owner's own
-        // numbers are the authoritative ones and re-offering Airbnb's would only
-        // invite them back in. Reported as read-only context so a UI can show the
-        // mismatch without offering to write it; applyAirbnbRoomConfig() still
-        // accepts the column if a future screen deliberately asks for it.
+        // Capacity is offered ONLY when nothing is stored (6 Sep 2026, refining
+        // the 5 Sep rule rather than reversing it).
+        //
+        // The original rule - never propose capacity - came from Airbnb
+        // disagreeing with the owner on 5 of 10 rooms here. That reasoning holds
+        // exactly where the owner has ALREADY answered: their number is the
+        // authoritative one and re-offering Airbnb's would only invite a wrong
+        // value back in. So a room with a real capacity keeps the old behaviour,
+        // read-only context, no tick box.
+        //
+        // But a brand-new room stores 0, and 0 is not an answer being protected -
+        // it means nobody has been asked yet. There Airbnb's number is the only
+        // one in existence, and refusing to offer it leaves the room at zero,
+        // which now silently degrades the booking page's "sleeps N" line, the
+        // guest-count picker (capped at capacity) and the extra-guest charge,
+        // which has no ceiling to work against. Protecting a value that does not
+        // exist from one that might be slightly wrong is the wrong trade - a
+        // proposal the owner can untick beats a blank.
+        if ($current <= 0 && $suggested > 0) {
+            $fields['max_capacity'] = [
+                'label' => 'Sleeps (guests)',
+                'current' => null,
+                'airbnb' => $suggested,
+                'differs' => false,
+                'is_new' => true,
+            ];
+        }
+        // Always reported, whether or not it was offered above, so a UI can show
+        // a mismatch it deliberately will not write.
         $out['capacity_context'][] = [
             'room' => $row['name'],
             'stored' => $current ?: null,

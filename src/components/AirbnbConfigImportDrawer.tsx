@@ -383,11 +383,19 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
             </div>
           )}
 
-          {/* Capacity is shown but never offered for import - the owner's own
-              numbers are authoritative here, and Airbnb's disagreed with them on
-              half this account's rooms. Surfacing the mismatch is still useful:
-              a listing that claims MORE guests than the room holds is live on
-              Airbnb right now and only the owner can correct it there. */}
+          {/* This panel is the DISAGREEMENT case only: a room that already has a
+              capacity, where Airbnb says something else. Those are never offered
+              for import - the owner's own number is authoritative, and Airbnb's
+              disagreed with it on half this account's rooms. Surfacing it is
+              still useful, because a listing claiming MORE guests than the room
+              holds is live right now and only the owner can fix it there.
+
+              A room with NO capacity stored is a different case and DOES get a
+              normal tick box in its proposal above (6 Sep 2026): 0 is not an
+              answer being protected, it just means nobody has been asked, and
+              leaving it at 0 degrades the booking page's "sleeps N", the guest
+              picker and the extra-guest ceiling. It never reaches this panel,
+              since `differs` requires a stored value. */}
           {!loading && !loadError && !!data?.capacity_context?.some((c) => c.differs) && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
               <p className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
