@@ -65,7 +65,7 @@ const CHANNEL_PREREQUISITES: Record<string, { title: string; steps: string[] }> 
 const AirbnbSwitchSoftwareGuide: React.FC = () => {
   const [open, setOpen] = useState(false);
   return (
-    <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl space-y-2.5 text-left transition-all">
+    <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-lg space-y-2.5 text-left transition-all">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -180,6 +180,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   const [airbnbNote, setAirbnbNote] = useState('');
   const [startingAirbnb, setStartingAirbnb] = useState(false);
   const [airbnbSubmitted, setAirbnbSubmitted] = useState(false);
+  const [staffAssistOpen, setStaffAssistOpen] = useState(false);
 
   const resetState = () => {
     setStep(1);
@@ -603,7 +604,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         {/* Airbnb Direct OAuth Flow */}
         {step === 2 && !loadingAdapterDetail && isAirbnb && (
           <div className="space-y-4">
-            <div className="p-4 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/60 rounded-xl space-y-3">
+            <div className="p-4 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/60 rounded-lg space-y-3">
               <div className="flex items-center gap-2">
                 <AirbnbIcon className="w-5 h-5 shrink-0" />
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">
@@ -616,7 +617,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
             </div>
 
             {airbnbAuthOpened ? (
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl space-y-3 text-center">
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3 text-center">
                 <CheckCircle2 className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto" />
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                   {t('airbnb_auth_window_opened', "Sign in to your Airbnb host account in the new tab and click 'Allow'. Once authorized, click Continue below.")}
@@ -657,7 +658,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4 text-center">
+              <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 text-center">
                 <p className="text-sm text-slate-600 dark:text-slate-300">
                   Click the button below to sign in to your Airbnb host account on Airbnb's secure login portal:
                 </p>
@@ -677,11 +678,21 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
             {/* Switching Software & Troubleshooting Callout */}
             <AirbnbSwitchSoftwareGuide />
 
-            {/* Optional note or assistance toggle */}
-            <div className="pt-2">
-              <details className="text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
-                <summary className="hover:text-slate-700 dark:hover:text-slate-200">Need staff assistance with your Airbnb listing?</summary>
-                <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2">
+            {/* Optional note or assistance toggle - matches AirbnbSwitchSoftwareGuide's
+                chevron-button pattern above rather than a raw <details>/<summary>, which
+                rendered with the browser's own native disclosure marker/typography and
+                looked out of place next to it (found 7 Sep 2026, explicit report). */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg space-y-2.5 text-left transition-all">
+              <button
+                type="button"
+                onClick={() => setStaffAssistOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between text-slate-700 dark:text-slate-200 font-semibold text-xs cursor-pointer gap-2"
+              >
+                <span>Need staff assistance with your Airbnb listing?</span>
+                <ChevronDown className={`w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0 transition-transform duration-200 ${staffAssistOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {staffAssistOpen && (
+                <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-700">
                   <Input
                     label="Listing URL or notes for staff (optional)"
                     value={airbnbNote}
@@ -694,7 +705,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     </Button>
                   )}
                 </div>
-              </details>
+              )}
             </div>
           </div>
         )}
@@ -775,7 +786,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 <p className="text-sm text-slate-500">Fetching listings from {selectedAdapter?.title}...</p>
               </div>
             ) : mappingError || !mappingDetails?.rooms || mappingDetails.rooms.length === 0 ? (
-              <div className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl space-y-3 text-center">
+              <div className="p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg space-y-3 text-center">
                 <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 mx-auto" />
                 <h4 className="text-base font-semibold text-amber-900 dark:text-amber-200">
                   {t('no_airbnb_listings_detected', 'No Airbnb listings detected yet')}
