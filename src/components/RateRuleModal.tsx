@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Dropdown } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
-import { Trash2, Plus, DollarSign, X, Loader2, Pencil, Send, ChevronDown } from './icons/FlowbiteIcons';
+import { Trash2, Plus, DollarSign, X, Loader2, Pencil, ChevronDown } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
@@ -79,8 +79,15 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [minStayType, setMinStayType] = useState<'arrival' | 'through'>('arrival');
   const [maxStay, setMaxStay] = useState<string>('');
   const [stopSell, setStopSell] = useState<boolean>(false);
-  const [closedToArrival, setClosedToArrival] = useState<boolean>(false);
-  const [closedToDeparture, setClosedToDeparture] = useState<boolean>(false);
+  // No check-ins / No check-outs (closed-to-arrival / closed-to-departure) were
+  // removed from this form 6 Sep 2026 at the owner's request - genuinely niche
+  // channel-manager restrictions most hosts never need, and two more checkboxes
+  // to read past on an already dense page. Kept as constants rather than ripped
+  // out of the payload: the columns still exist, older rules may still carry
+  // them, and the rules list below still displays them - this form simply never
+  // sets them any more.
+  const closedToArrival = false;
+  const closedToDeparture = false;
   // Day-of-week scoping (4 Sep 2026, "Monday to Friday 3000, Saturday and
   // Sunday 4000") - all 7 selected = applies every day (unchanged default
   // behavior), matching what saveRateRule() on the backend normalizes an
@@ -100,7 +107,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   const [roomTariffs, setRoomTariffs] = useState<Record<number, string>>({});
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [isSavingTariff, setIsSavingTariff] = useState(false);
-  const [syncingRoomId, setSyncingRoomId] = useState<number | null>(null);
 
   useEffect(() => {
     if (rooms && rooms.length > 0) {
@@ -129,32 +135,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     setRulesPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  const handleSyncSingleRoom = async (room: { id: number; name: string; default_tariff?: number }) => {
-    setSyncingRoomId(room.id);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const future = new Date();
-      future.setDate(future.getDate() + 500);
-      const dateTo = future.toISOString().split('T')[0];
-
-      const res = await apiFetch('/php/api/router.php?action=channex_push_ari', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ room_id: room.id, date_from: today, date_to: dateTo }),
-      });
-      const data = await res.json();
-      if (data.status === 'success' || data.success) {
-        showToast(`Pushed ${room.name} rates & availability to Airbnb & connected channels successfully!`, { type: 'success' });
-      } else {
-        showToast(data.message || `Failed to push ${room.name} to channels`, { type: 'error' });
-      }
-    } catch {
-      showToast(`Network error pushing ${room.name} to channels`, { type: 'error' });
-    } finally {
-      setSyncingRoomId(null);
-    }
-  };
 
   const handleSaveRoomTariff = async (roomId: number, tariffStr: string) => {
     setIsSavingTariff(true);
@@ -280,8 +260,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         setMinStay('');
         setMaxStay('');
         setStopSell(false);
-        setClosedToArrival(false);
-        setClosedToDeparture(false);
         setSelectedDays([...ALL_DAY_CODES]);
         setSelectedRoomIds([]);
         onRulesUpdated();
@@ -474,16 +452,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                           ) : (
                             <>
                               <Button
-                                variant="secondary"
-                                size="xs"
-                                disabled={syncingRoomId === room.id}
-                                onClick={() => handleSyncSingleRoom(room)}
-                                className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800"
-                                leftIcon={syncingRoomId === room.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                              >
-                                Sync to Airbnb
-                              </Button>
-                              <Button
                                 variant="edit"
                                 size="xs"
                                 onClick={() => {
@@ -568,13 +536,19 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                         ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
                         : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
                     }`}>
+                      {/* Name the units, always (6 Sep 2026, explicit request:
+                          "always show selected properties"). "3 Units Selected"
+                          said how many rooms a price was about to change but not
+                          WHICH - the one detail that matters before saving a rate
+                          that reaches Airbnb. */}
                       {selectedRoomIds.length === 0
                         ? 'No units selected'
                         : selectedRoomIds.length === rooms.length
-                        ? `All Units (${rooms.length})`
-                        : selectedRoomIds.length === 1
-                        ? `🏠 ${rooms.find((r) => r.id === selectedRoomIds[0])?.name || '1 Unit'}`
-                        : `${selectedRoomIds.length} Units Selected`}
+                        ? `All ${rooms.length} units`
+                        : rooms
+                            .filter((r) => selectedRoomIds.includes(r.id))
+                            .map((r) => r.name)
+                            .join(', ')}
                     </span>
                   </div>
 
@@ -804,39 +778,6 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   </span>
                 </label>
 
-                <label className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                  closedToArrival
-                    ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300'
-                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={closedToArrival}
-                    onChange={(e) => setClosedToArrival(e.target.checked)}
-                    className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-                  />
-                  <span className="text-xs">
-                    <span className="font-semibold block">No check-ins</span>
-                    <span className="text-2xs opacity-75">Nobody new arrives. Guests already staying are unaffected.</span>
-                  </span>
-                </label>
-
-                <label className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                  closedToDeparture
-                    ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300'
-                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={closedToDeparture}
-                    onChange={(e) => setClosedToDeparture(e.target.checked)}
-                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                  />
-                  <span className="text-xs">
-                    <span className="font-semibold block">No check-outs</span>
-                    <span className="text-2xs opacity-75">Nobody leaves. Handy over a long weekend you want booked end to end.</span>
-                  </span>
-                </label>
               </div>
 
               <div className="flex justify-end pt-2">

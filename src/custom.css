@@ -1383,7 +1383,20 @@ div:has(> [role="tablist"]) {
    to select by. Backdrop below, panel above, both above the z-50 popover tier
    and any in-page sticky column (see CONFIRMED VIOLATION #2 above), both still
    under the 60/70/100 secondary-modal tier. */
-[data-testid="flowbite-drawer"] + div {
+/* CONFIRMED VIOLATION #4 FOUND + FIXED 6 Sep 2026 (reported as "dark overlay?"
+   with a screenshot of the Connect a Channel wizard rendering dimmed, as though
+   the page scrim were painted over the drawer itself - because it was). The
+   `+ div` here matches ANY next sibling div, and a drawer panel IS a div. Two
+   <Drawer>s rendered as adjacent siblings (AirbnbConfigImportDrawer returns a
+   fragment holding its own Drawer immediately followed by ChannelConnectWizard's)
+   therefore made the SECOND panel match this backdrop rule: at specificity
+   (0,1,1) it outranks the plain `[data-testid]` panel rule at (0,1,0), so that
+   panel dropped from 59 to 58 - an exact tie with its own backdrop, which then
+   won on DOM order and painted over the drawer. Measured live with the wizard
+   open: panel z=58, backdrop z=58. The :not() makes this select only a real
+   backdrop, never another drawer, so a panel always falls through to the 59
+   rule below. This bites ANY two adjacent Drawers, not just these two. */
+[data-testid="flowbite-drawer"] + div:not([data-testid="flowbite-drawer"]) {
   z-index: 58;
 }
 [data-testid="flowbite-drawer"] {
