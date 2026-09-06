@@ -405,7 +405,12 @@ function handleCreatePublicBooking(PDO $pdo): void {
     }
 
     $nights = max(1, $nightCount);
-    $avgNightlyRate = round($totalTariff / $nights, 2);
+    // Same shared occupancy maths as booking_holds.php - see
+    // php/rates/occupancy_pricing.php for why this is not computed inline.
+    require_once __DIR__ . '/../rates/occupancy_pricing.php';
+    $charges = computeStayCharges($pdo, $targetRoomId ?: $propertyId, $totalTariff, $numGuests, $nights);
+    $totalTariff = $charges['total'];
+    $avgNightlyRate = $charges['avg_nightly_rate'];
 
     // Begin atomic transaction to prevent double bookings
     $pdo->beginTransaction();
@@ -563,6 +568,7 @@ function handleCreatePublicBooking(PDO $pdo): void {
                 'checkout_date' => $checkoutDate,
                 'nights' => $nights,
                 'total_tariff' => $totalTariff,
+                'charges' => $charges,
                 'payment_method' => $paymentMethod,
                 'payment_status' => 'Pending (Pay on Arrival)',
                 'upi_id' => $prop['upi_id'] ?? null,

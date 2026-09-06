@@ -81,7 +81,7 @@ function getActiveBookingHoldConflict(PDO $pdo, int $roomId, string $checkinDate
 /** Shared daily-rate summation - same shape as public_booking.php's, kept
  *  local rather than factored out to avoid touching that file's own logic
  *  for this unrelated feature. */
-function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $checkinDate, string $checkoutDate, float $roomDefaultTariff, float $baseDefaultTariff, string $roomPricingMode): array {
+function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $checkinDate, string $checkoutDate, float $roomDefaultTariff, float $baseDefaultTariff, string $roomPricingMode, int $numGuests = 1): array {
     $rateRulesPerRoom = [];
     $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
     try {
@@ -129,7 +129,13 @@ function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $check
         $cur = strtotime('+1 day', $cur);
     }
     $nights = max(1, $nightCount);
-    return [$totalTariff, $nights];
+    // Occupancy pricing and the per-stay cleaning fee are applied in one shared
+    // place (php/rates/occupancy_pricing.php) rather than here, so this quote and
+    // the public booking engine's can never drift into different totals for the
+    // same stay - they already had byte-identical date loops.
+    require_once __DIR__ . '/../rates/occupancy_pricing.php';
+    $charges = computeStayCharges($pdo, $roomId ?: $propertyId, $totalTariff, $numGuests, $nights);
+    return [$charges['total'], $nights, $charges];
 }
 
 /** Staff-authenticated: generate a quote + lock the room for BOOKING_HOLD_MINUTES. */
@@ -183,7 +189,7 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
         if ($rRow['default_tariff'] !== null) $roomDefaultTariff = (float)$rRow['default_tariff'];
     }
 
-    [$totalTariff, $nights] = computeHoldTariff($pdo, $propertyId, $roomId, $checkinDate, $checkoutDate, $roomDefaultTariff, $baseDefaultTariff, $roomPricingMode);
+    [$totalTariff, $nights, $charges] = computeHoldTariff($pdo, $propertyId, $roomId, $checkinDate, $checkoutDate, $roomDefaultTariff, $baseDefaultTariff, $roomPricingMode, $numGuests);
 
     $pdo->beginTransaction();
     try {
@@ -248,6 +254,7 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
                 'checkout_date' => $checkoutDate,
                 'nights' => $nights,
                 'total_tariff' => $totalTariff,
+                'charges' => $charges,
                 'expires_in_seconds' => BOOKING_HOLD_MINUTES * 60,
             ],
         ]);
