@@ -259,8 +259,8 @@ textarea,
    made that impossible, and shrank the floated state to 7.5px - well under
    Flowbite's proportions. See https://flowbite.com/docs/forms/floating-label/ */
 label:not(.floating-label),
-.app-label,
-.input__label {
+.app-label:not(.floating-label),
+.input__label:not(.floating-label) {
   font-family: inherit !important;
   font-size: 10px !important;
   line-height: 1.3 !important;

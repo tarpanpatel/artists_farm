@@ -500,10 +500,8 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
               )}
             </div>
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                {t('license_type_label', 'License Type *')}
-              </label>
               <StyledSelect
+                label={t('license_type_label', 'License Type *')}
                 value={form.license_type}
                 onChange={(v) => setForm({ ...form, license_type: v })}
                 options={LICENSE_TYPES.map((lt) => ({ value: lt.value, label: t(lt.labelKey, lt.fallback) }))}

@@ -221,10 +221,8 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
           </h3>
           <form onSubmit={handleAddItem} className="space-y-3">
             <div>
-              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
-                Bill Name <span className="text-red-500">*</span>
-              </label>
               <Input
+                label="Bill Name *"
                 value={newItem.label}
                 onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                 onBlur={() => setBillNameTouched(true)}
@@ -234,10 +232,8 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
               />
             </div>
             <div>
-              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">
-                Description / Notes (Optional)
-              </label>
               <Input
+                label="Description / Notes (Optional)"
                 value={newItem.description}
                 onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                 placeholder="e.g., Monthly electricity charges from PGVCL"

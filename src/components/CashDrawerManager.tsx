@@ -456,8 +456,8 @@ export const CashDrawerManager: React.FC<CashDrawerManagerProps> = ({
             </div>
 
             <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('notes_optional_label', 'Notes (Optional)')}</label>
               <Input
+                label={t('notes_optional_label', 'Notes (Optional)')}
                 type="text"
                 value={handoverNotes}
                 onChange={e => setHandoverNotes(e.target.value)}

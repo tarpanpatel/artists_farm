@@ -247,10 +247,8 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
           <form onSubmit={handleAddItem} className="app-form app-form--add-expense-item space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('item_name_required_label', 'Item Name *')}
-                </label>
                 <Input
+                  label={t('item_name_required_label', 'Item Name *')}
                   value={newItem.label}
                   onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                   onBlur={() => setItemNameTouched(true)}
@@ -259,10 +257,8 @@ export const DefaultExpensesManager: React.FC<DefaultExpensesManagerProps> = ({ 
                 />
               </div>
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  {t('category_required_label', 'Category *')}
-                </label>
                 <StyledSelect
+                  label={t('category_required_label', 'Category *')}
                   value={newItem.category}
                   onChange={(value) => setNewItem({ ...newItem, category: value })}
                   placeholder={t('select_category_placeholder', '-- Select Category --')}

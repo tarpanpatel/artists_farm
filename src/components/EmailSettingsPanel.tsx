@@ -151,8 +151,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('smtp_host_label', 'SMTP Host')}</label>
             <Input
+              label={t('smtp_host_label', 'SMTP Host')}
               type="text"
               value={host}
               onChange={(e) => setHost(e.target.value)}
@@ -160,8 +160,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
             />
           </div>
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('port_label', 'Port')}</label>
             <Input
+              label={t('port_label', 'Port')}
               type="text"
               inputMode="numeric"
               value={port}
@@ -173,8 +173,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('smtp_username_label', 'SMTP Username')}</label>
             <Input
+              label={t('smtp_username_label', 'SMTP Username')}
               type="text"
               value={smtpUsername}
               onChange={(e) => setSmtpUsername(e.target.value)}
@@ -182,8 +182,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
             />
           </div>
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('smtp_password_label', 'SMTP Password')}</label>
             <Input
+              label={t('smtp_password_label', 'SMTP Password')}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -194,8 +194,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 email-settings-panel__label">{t('from_name_label', 'From Name')}</label>
             <Input
+              label={t('from_name_label', 'From Name')}
               type="text"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
@@ -203,8 +203,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
             />
           </div>
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 email-settings-panel__label">{t('from_email_label', 'From Email')}</label>
             <Input
+              label={t('from_email_label', 'From Email')}
               type="email"
               value={fromEmail}
               onChange={(e) => setFromEmail(e.target.value)}
@@ -213,8 +213,8 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
             />
           </div>
           <div>
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5 email-settings-panel__label">{t('encryption_label', 'Encryption')}</label>
             <StyledSelect
+              label={t('encryption_label', 'Encryption')}
               value={encryption}
               onChange={(val) => setEncryption(val as any)}
               options={[

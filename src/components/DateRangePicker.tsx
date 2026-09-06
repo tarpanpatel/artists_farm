@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import FlowbiteDateRangePicker from 'flowbite-datepicker/DateRangePicker';
+import { twMerge } from 'tailwind-merge';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 
 interface DateRangePickerProps {
@@ -22,6 +23,7 @@ interface DateRangePickerProps {
   description?: string;
   fromLabel?: string;
   toLabel?: string;
+  bgMode?: 'modal' | 'page' | 'drawer' | 'card';
 }
 
 const CalendarIcon: React.FC = () => (
@@ -168,7 +170,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   error,
   disablePastDates = false,
   blockedDates,
+  bgMode = 'modal',
 }) => {
+  const bgToken =
+    bgMode === 'page'
+      ? 'bg-white dark:bg-gray-900'
+      : bgMode === 'card'
+      ? 'bg-gray-50 dark:bg-gray-800'
+      : 'bg-white dark:bg-gray-800';
+
   const containerRef = useRef<HTMLDivElement>(null);
   const startInputRef = useRef<HTMLInputElement>(null);
   const endInputRef = useRef<HTMLInputElement>(null);
@@ -921,13 +931,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           />
           <label
             htmlFor="daterange-start-input"
-            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${
+            className={twMerge(
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
               disabled
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
                 : hasError
-                ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-500'
-                : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
-            }`}
+                ? `${bgToken} text-red-600 dark:text-red-500`
+                : `${bgToken} text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500`
+            )}
           >
             {startLabel}
           </label>
@@ -958,13 +969,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           />
           <label
             htmlFor="daterange-end-input"
-            className={`absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all ${
+            className={twMerge(
+              'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] px-2 start-2 pointer-events-none transition-all',
               disabled
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
                 : hasError
-                ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-500'
-                : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500'
-            }`}
+                ? `${bgToken} text-red-600 dark:text-red-500`
+                : `${bgToken} text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500`
+            )}
           >
             {endLabel}
           </label>

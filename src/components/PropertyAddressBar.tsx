@@ -130,13 +130,12 @@ export const PropertyAddressBar: React.FC<PropertyAddressBarProps> = ({
             placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
           />
           <div className="property-address-bar__instructions-field">
-            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('instructions_label', 'Instructions')}</label>
             <Textarea
+              label={t('instructions_label', 'Instructions')}
               rows={4}
               value={editInstructions}
               onChange={(e) => setEditInstructions(e.target.value)}
               placeholder={t('instructions_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
-              className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
             />
           </div>
         </div>
