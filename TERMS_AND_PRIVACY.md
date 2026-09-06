@@ -21,7 +21,7 @@ Ground Code provides a cloud-based property management system (PMS) incorporatin
 * **Universal 30-Day Free Trial**: Every new property owner receives a **1-Month (30 Days) Free Trial** upon registration. No credit card information is required, and there is no lock-in commitment.
 * **GroundCode Pro Subscription Plan**:
   * **Base Rate**: **₹1,499 / month** (or **₹14,990 / year** when billed annually), which includes the first room/villa key.
-  * **Additional Key Add-On**: **₹350 / month** per additional room key beyond 1 key.
+  * **Additional Key Add-On**: **₹200 / month** per additional room key beyond 1 key.
 * **Direct Offline Billing**: Subscriptions are billed directly via manual invoices. No automated recurring credit card debits are performed without explicit owner authorization.
 
 ---

@@ -14,7 +14,7 @@ Ground Code operates on a single unified **GroundCode Pro Plan** designed for hi
 
 ### 🔑 Flexible Key Add-On
 Properties scaling beyond 1 room key do not require complex enterprise contracts or separate tiers:
-* **Additional Room Key**: **₹350 / room / month** for each additional key beyond 1 key.
+* **Additional Room Key**: **₹200 / room / month** for each additional key beyond 1 key.
 
 ---
 
@@ -35,7 +35,7 @@ Setup Call     Check-In         Review Call     Warning Toast     & Billing
 2. **Day 7 (Check-in)**: Support touchpoint after the first weekend of live guest orders.
 3. **Day 21 (Review Call)**: Mid-month check-in to resolve staff questions and review petty cash/KDS usage.
 4. **Day 27 (In-App Warning)**: In-app notification toast reminding the owner that their 30-day trial ends in 3 days.
-5. **Day 30 (Conversion)**: Close subscriber on **GroundCode Pro (₹1,499/mo + ₹350/extra key)** or **Annual Plan (₹14,990/yr — 2 Months Free)**.
+5. **Day 30 (Conversion)**: Close subscriber on **GroundCode Pro (₹1,499/mo + ₹200/extra key)** or **Annual Plan (₹14,990/yr — 2 Months Free)**.
 
 ---
 
