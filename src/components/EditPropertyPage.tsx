@@ -54,6 +54,7 @@ export const EditPropertyPage: React.FC<EditPropertyPageProps> = ({ property, on
               ? t('edit_room_help_text', 'Configure details, room name, and per-night tariff for this specific room.')
               : t('edit_property_help_text', "Use this page to update your property's details:\n• Phone & UPI payment info\n• Check-in & Check-out times\n• Address & special guest notes\nAll changes update live on guest receipts & messages!")
           }
+          inlineActions
         >
           {!isRoom && (
             <Button

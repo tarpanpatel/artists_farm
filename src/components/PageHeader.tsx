@@ -24,6 +24,16 @@ interface PageHeaderProps {
   // this true there rather than reverting the shared default everyone else
   // needs.
   forceRow?: boolean;
+  // Render `children` immediately beside the title/Help? text instead of in
+  // the far-right actions slot (6 Sep 2026). `justify-between` puts the
+  // default actions slot at the opposite edge of the header, which reads as
+  // "next to the title" only on a narrow page - on a wide one (e.g. Edit
+  // Property, ~800px away at desktop width) it can end up far enough away,
+  // or under an opened right-side drawer's overlay, to look like it isn't
+  // there at all. Use this for a small, single compact action that's meant
+  // to read as part of the title line itself, not a page-level primary
+  // action - most pages should keep the default right-aligned slot.
+  inlineActions?: boolean;
 }
 
 /**
@@ -50,7 +60,7 @@ interface PageHeaderProps {
  * `title`, not `subtitle`) - harmless duplication of the same pattern, not
  * a conflict.
  */
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, forceRow }) => (
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, forceRow, inlineActions }) => (
   // flex-col on mobile, flex-row from sm: up (found 21 Aug 2026) - this was
   // always flex-row, so on a narrow phone a page with 2+ action buttons
   // (e.g. "Manage Custom Types" + "New Request") left the title/subtitle
@@ -91,9 +101,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, childre
             </button>
           </Popover>
         )}
+        {inlineActions && children}
       </div>
     </div>
-    {children && <div className={`flex flex-wrap items-center gap-2.5 sm:shrink-0 ${forceRow ? '' : 'w-full sm:w-auto'} page-header__actions`}>{children}</div>}
+    {!inlineActions && children && <div className={`flex flex-wrap items-center gap-2.5 sm:shrink-0 ${forceRow ? '' : 'w-full sm:w-auto'} page-header__actions`}>{children}</div>}
   </div>
 );
 
