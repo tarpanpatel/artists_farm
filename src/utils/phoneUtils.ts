@@ -46,6 +46,24 @@ export function normalizePhoneNumber(raw: string): string {
 }
 
 /**
+ * Whether a phone number (already run through normalizePhoneNumber, or raw -
+ * only the digit count matters) is a plausible length to save. A domestic
+ * guest must have exactly a 10-digit Indian mobile number; a foreign guest's
+ * number is allowed to vary (7-15 digits, per E.164) since normalizePhoneNumber
+ * itself only caps international numbers at 15, it doesn't validate a minimum -
+ * found live 7 Sep 2026: a domestic booking's Phone Number field accepted
+ * "888888888888888" (15 repeated digits) with zero feedback, because nothing
+ * gated that international-length leniency to only apply when the guest is
+ * actually marked as foreign.
+ */
+export function isValidPhoneNumber(raw: string, isForeignGuest: boolean): boolean {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return false;
+  if (isForeignGuest) return digits.length >= 7 && digits.length <= 15;
+  return digits.length === 10;
+}
+
+/**
  * Returns a WhatsApp-ready phone string (pure digits including country code, e.g. 918299893837 or 15552345678).
  */
 export function getWhatsAppPhone(raw: string): string {

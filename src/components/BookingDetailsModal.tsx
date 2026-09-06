@@ -19,7 +19,7 @@ import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
-import { normalizePhoneNumber } from '../utils/phoneUtils';
+import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
 import { getOtaIcon } from '../utils/otaIcons';
 import { t } from '../i18n/en';
 import {
@@ -556,6 +556,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       showToast('Pick both check-in and check-out dates before saving.', { type: 'error' });
       return;
     }
+    if (!editPhone.trim()) {
+      showToast('Phone number is required.', { type: 'error' });
+      return;
+    }
+    // Same gap as GuestManagement.tsx's Add Booking form (fixed together, 7
+    // Sep 2026): nothing stopped an edit from saving an over-long domestic
+    // number here either.
+    if (!isValidPhoneNumber(editPhone, editIsForeignGuest)) {
+      showToast(
+        editIsForeignGuest ? 'Enter a valid international phone number.' : 'Enter a valid 10-digit mobile number.',
+        { type: 'error' }
+      );
+      return;
+    }
     const newRoom = rooms.find((r) => String(r.id) === editRoomId);
     const newRoomRent = parseFloat(editRoomRent) || 0;
     const newAdvance = parseFloat(editAdvance) || 0;
@@ -929,6 +943,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   placeholder="10-digit mobile number"
                   disabled={!isEditing}
                   required
+                  error={
+                    isEditing && editPhone.trim().length > 0 && !isValidPhoneNumber(editPhone, editIsForeignGuest)
+                      ? (editIsForeignGuest ? 'Enter a valid international phone number' : 'Enter a valid 10-digit mobile number')
+                      : undefined
+                  }
                 />
               </div>
             </div>

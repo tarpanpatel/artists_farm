@@ -21,7 +21,7 @@ import {
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 import { parseDateToYMD } from '../utils/dateUtils';
-import { normalizePhoneNumber } from '../utils/phoneUtils';
+import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
@@ -228,6 +228,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     const gCheckin = (g.checkinDate || '').split(' ')[0];
     return gPhone === phoneNumber.trim() && gCheckin === checkinDate;
   });
+
+  // Live phone-format validation (7 Sep 2026, explicit report: "phone number
+  // cant be this long" - a domestic booking accepted a 15-digit repeated-digit
+  // string with no feedback at all). Only judges once the field is non-empty,
+  // same gating style as every other live check in this file.
+  const phoneFormatInvalid = phoneNumber.trim().length > 0 && !isValidPhoneNumber(phoneNumber, isForeignGuest);
 
   // BillingCheckout's own effect (child, so it fires first within the same
   // commit) reads focusGuestId to jump to the right tab and pre-fill the
@@ -575,6 +581,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               showToast('Booking Rejected: Phone number is required.', { type: 'error' });
               return;
             }
+            if (!isValidPhoneNumber(phoneNumber, isForeignGuest)) {
+              showToast(
+                isForeignGuest
+                  ? 'Booking Rejected: Enter a valid international phone number.'
+                  : 'Booking Rejected: Enter a valid 10-digit mobile number.',
+                { type: 'error' }
+              );
+              return;
+            }
             if (!checkinDate || !expectedCheckout) {
               showToast('Booking Rejected: Check-in and check-out dates are required.', { type: 'error' });
               return;
@@ -722,6 +737,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       error={
                         phoneNumberTouched && !phoneNumber.trim()
                           ? 'Phone number is required'
+                          : phoneFormatInvalid
+                          ? (isForeignGuest ? 'Enter a valid international phone number' : 'Enter a valid 10-digit mobile number')
                           : duplicateBookingLive
                           ? 'A reservation for this contact on this check-in date already exists'
                           : undefined
@@ -781,6 +798,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       error={
                         phoneNumberTouched && !phoneNumber.trim()
                           ? 'Phone number is required'
+                          : phoneFormatInvalid
+                          ? (isForeignGuest ? 'Enter a valid international phone number' : 'Enter a valid 10-digit mobile number')
                           : duplicateBookingLive
                           ? 'A reservation for this contact on this check-in date already exists'
                           : undefined
