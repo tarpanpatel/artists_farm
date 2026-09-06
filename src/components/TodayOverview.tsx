@@ -93,7 +93,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
-  const { confirm } = useConfirm();
+  const { confirmWithAlt } = useConfirm();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -121,6 +121,52 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
   const formatDateStr = (d: Date): string =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  /**
+   * Double-click a cell in Change Prices mode: price that ONE night, with no
+   * range gesture at all (6 Sep 2026, explicit request - "on calendar if i
+   * double click a date, i should open the modal to change price").
+   *
+   * Before this, a double-click was actively unhelpful: the two clicks landed
+   * on handleRangeCellClick, which reads a second click on the SAME cell as
+   * "cancel the pending selection" - so double-clicking selected and then
+   * immediately deselected, and looked like nothing happened at all.
+   *
+   * Pricing mode only, per the same request. In booking mode a double-click
+   * keeps its existing (select-then-cancel) behaviour rather than silently
+   * opening a pricing modal the user did not ask for.
+   */
+  const handleCellDoubleClick = (roomId: number, dateStr: string, isUnavailable: boolean) => {
+    if (calMode !== 'pricing' || isUnavailable) return;
+    setPendingSelection(null);
+    setPendingColumn(null);
+    setRateRuleStartDate(dateStr);
+    setRateRuleEndDate(dateStr);
+    setRateModalRoomIds([roomId]);
+    setShowRateRuleModal(true);
+  };
+
+  /**
+   * Leaving the pricing modal for the booking flow with the same room and
+   * dates already chosen - the other half of the wrong-mode escape hatch the
+   * Add Booking confirmation below offers. A price range's last date is the
+   * last NIGHT, while a booking's checkout is the morning after, so the
+   * checkout handed on is one day later.
+   */
+  const handleSwitchToBooking = () => {
+    const roomId = rateModalRoomIds && rateModalRoomIds.length === 1 ? rateModalRoomIds[0] : undefined;
+    const room = (rooms || []).find((r) => r.id === roomId);
+    const start = rateRuleStartDate;
+    const end = rateRuleEndDate;
+    setShowRateRuleModal(false);
+    setRateModalRoomIds(undefined);
+    setRateRuleStartDate(undefined);
+    setRateRuleEndDate(undefined);
+    setCalMode('booking');
+    if (!room || !start || !end) return;
+    const checkout = formatDateStr(new Date(new Date(end + 'T00:00:00').getTime() + 86400000));
+    onAddBooking?.({ roomName: room.name, checkin: start, checkout });
+  };
 
   const handleRangeCellClick = async (
     roomId: number,
@@ -195,13 +241,32 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     // request) - the two clicks alone don't clearly signal "this is a real
     // action about to happen", so a third, deliberate step asks first.
     const nights = Math.round((end.getTime() - new Date(startStr + 'T00:00:00').getTime()) / 86400000);
-    const confirmed = await confirm({
+    // Third action added 6 Sep 2026: the Change Prices / Add Booking toggle is
+    // easy to forget, and this prompt was where people discovered they were in
+    // the wrong one - after picking the dates. Offering the switch here means
+    // the picked room and dates carry straight over instead of being thrown
+    // away and re-picked.
+    const result = await confirmWithAlt({
       title: 'Add Booking?',
       message: `Create a new booking for ${roomName} from ${formatDateDDMMYYYY(startStr)} to ${formatDateDDMMYYYY(dateStr)} (${nights} night${nights === 1 ? '' : 's'})?`,
       confirmText: 'Add Booking',
+      altText: 'Change Prices Instead',
       variant: 'info',
     });
-    if (!confirmed) return;
+
+    if (result === 'alt') {
+      // A booking's second click is its CHECKOUT, but a price range's last
+      // date is the last night - so drop a day, exactly as the pricing branch
+      // of this same handler already does.
+      const priceEndStr = formatDateStr(new Date(end.getTime() - 86400000));
+      setCalMode('pricing');
+      setRateRuleStartDate(startStr);
+      setRateRuleEndDate(priceEndStr < startStr ? startStr : priceEndStr);
+      setRateModalRoomIds([roomId]);
+      setShowRateRuleModal(true);
+      return;
+    }
+    if (result !== 'confirm') return;
 
     onAddBooking?.({ roomName, checkin: startStr, checkout: dateStr });
   };
@@ -936,8 +1001,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         <div
                           key={`bg-${day.toISOString()}`}
                           onClick={() => handleRangeCellClick(room.id, room.name, dateStr, isUnavailable, roomOccupiedDateStrings)}
+                          onDoubleClick={() => handleCellDoubleClick(room.id, dateStr, isUnavailable)}
                           title={isUnavailable ? undefined : calMode === 'pricing'
-                            ? (pendingSelection ? 'Click the last night to price' : 'Click the first night to price a range')
+                            ? (pendingSelection ? 'Click the last night to price' : 'Double-click to price this night, or click the first night to price a range')
                             : (pendingSelection ? 'Click to set check-out' : 'Click to start a new booking')}
                           className={`w-16 min-w-16 shrink-0 border-r transition flex items-center justify-center ${
                             isUnavailable ? '' : 'cursor-pointer'
@@ -1181,6 +1247,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           initialStartDate={rateRuleStartDate}
           initialEndDate={rateRuleEndDate}
           initialRoomIds={rateModalRoomIds}
+          onSwitchToBooking={
+            rateModalRoomIds && rateModalRoomIds.length === 1 && rateRuleStartDate && rateRuleEndDate
+              ? handleSwitchToBooking
+              : undefined
+          }
         />
       )}
     </div>

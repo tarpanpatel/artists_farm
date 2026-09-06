@@ -44,6 +44,12 @@ interface RateRuleModalProps {
   // Only applied on the isOpen rising edge so the user can still change them.
   initialRoomIds?: number[];
   initialRatePerNight?: string;
+  // "You're in the wrong mode" escape hatch (6 Sep 2026). The calendar has a
+  // Change Prices / Add Booking toggle that is easy to forget, and landing in
+  // the wrong one means cancelling, flipping the toggle and re-picking the
+  // same dates. When the calendar opens this modal it passes a callback that
+  // switches to booking mode with the same room and dates already chosen.
+  onSwitchToBooking?: () => void;
 }
 
 export const RateRuleModal: React.FC<RateRuleModalProps> = ({
@@ -59,6 +65,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   initialEndDate,
   initialRoomIds,
   initialRatePerNight,
+  onSwitchToBooking,
 }) => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
@@ -90,6 +97,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   // behavior), matching what saveRateRule() on the backend normalizes an
   // "every day" selection to (NULL, not a literal 7-item list).
   const [selectedDays, setSelectedDays] = useState<string[]>([...ALL_DAY_CODES]);
+
+  // A rule covering a single night spans exactly one weekday, so the
+  // day-of-week picker below can only ever do nothing (all days selected) or
+  // make the rule apply to no nights at all (that day deselected). Reported
+  // 6 Sep 2026 as plainly confusing - "it is showing option to choose days of
+  // the week, but i have chosen only one night" - so it is hidden entirely in
+  // that case rather than shown as a control that cannot help.
+  const isSingleNight = !!startDate && !!endDate && startDate === endDate;
 
   // Flat Base Rate inline room tariff editing
   const [localRooms, setLocalRooms] = useState<Array<{ id: number; name: string; default_tariff?: number }>>(rooms);
@@ -233,7 +248,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       return;
     }
 
-    if (selectedDays.length === 0) {
+    // Skipped for a one-night rule: the day picker is hidden in that case
+    // (see isSingleNight), so there is no control for the user to fix.
+    if (!isSingleNight && selectedDays.length === 0) {
       showToast('Select at least one day for this rule to apply on.', { type: 'error' });
       return;
     }
@@ -292,7 +309,11 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         stop_sell: stopSell ? 1 : 0,
         closed_to_arrival: closedToArrival ? 1 : 0,
         closed_to_departure: closedToDeparture ? 1 : 0,
-        days_of_week: selectedDays,
+        // A one-night rule covers exactly one weekday, so day-of-week scoping
+        // can only ever be a no-op or a contradiction. Always send "every day"
+        // there rather than whatever the (hidden) picker happens to hold - it
+        // could still be a narrowed selection left over from a wider range.
+        days_of_week: isSingleNight ? [...ALL_DAY_CODES] : selectedDays,
       };
 
       const res = await saveRateRuleDB(payload);
@@ -737,6 +758,20 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 </div>
               ) : null}
 
+              {/* Wrong-mode escape hatch (6 Sep 2026) - see onSwitchToBooking's
+                  note on the props interface. Only rendered when the calendar
+                  supplied the callback, so opening this modal from anywhere
+                  else looks exactly as it did before. */}
+              {onSwitchToBooking && (
+                <button
+                  type="button"
+                  onClick={onSwitchToBooking}
+                  className="w-full text-left px-3 py-2 rounded-lg border border-dashed border-blue-300 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 text-2xs text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
+                >
+                  Wanted to <span className="font-semibold">book</span> these dates instead of pricing them? Switch to Add Booking &rarr;
+                </button>
+              )}
+
               {/* Date range row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FloatingInput
@@ -759,7 +794,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   Saturday and Sunday 4000") - all 7 selected (the default)
                   means every day, identical to before this existed. Two
                   quick presets for the two most common patterns, plus the
-                  individual day toggles for anything else. */}
+                  individual day toggles for anything else.
+                  Hidden for a single-night rule - see isSingleNight. */}
+              {!isSingleNight && (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300">
@@ -812,6 +849,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   <p className="text-2xs text-red-600 dark:text-red-400 mt-1">Select at least one day, or this rule will never apply.</p>
                 )}
               </div>
+              )}
 
               {/* Nightly Rate & Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

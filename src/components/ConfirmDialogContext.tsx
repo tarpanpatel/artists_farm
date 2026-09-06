@@ -11,10 +11,22 @@ export interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   variant?: ConfirmVariant;
+  // Optional THIRD action, rendered between Cancel and Confirm (6 Sep 2026).
+  // Added for "you're in the wrong mode" prompts - the calendar's Add Booking
+  // confirmation offers "Change Prices Instead" rather than making the user
+  // cancel, notice the mode toggle, flip it, and re-pick the same dates. Only
+  // reachable through confirmWithAlt(); plain confirm() ignores it, so every
+  // existing caller is untouched.
+  altText?: string;
 }
+
+// Three outcomes, not two - see altText above. confirm() keeps its boolean
+// contract by collapsing anything that isn't 'confirm' to false.
+export type ConfirmResult = 'confirm' | 'alt' | 'cancel';
 
 interface ConfirmContextValue {
   confirm: (options: ConfirmOptions | string) => Promise<boolean>;
+  confirmWithAlt: (options: ConfirmOptions & { altText: string }) => Promise<ConfirmResult>;
   alertModal: (options: ConfirmOptions | string) => Promise<void>;
 }
 
@@ -30,7 +42,7 @@ export function useConfirm(): ConfirmContextValue {
 
 interface PendingDialog {
   options: ConfirmOptions;
-  resolve: (value: boolean) => void;
+  resolve: (value: ConfirmResult) => void;
   isAlert?: boolean;
 }
 
@@ -59,9 +71,24 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
     return new Promise<boolean>((resolve) => {
       const normalizedOpts: ConfirmOptions =
         typeof options === 'string' ? { message: options } : options;
-      setPendingDialog({ options: normalizedOpts, resolve, isAlert: false });
+      // Collapse the tri-state back to the boolean every existing caller
+      // expects; only confirmWithAlt() below can actually see 'alt'.
+      setPendingDialog({
+        options: normalizedOpts,
+        resolve: (r) => resolve(r === 'confirm'),
+        isAlert: false,
+      });
     });
   }, []);
+
+  const confirmWithAlt = useCallback(
+    (options: ConfirmOptions & { altText: string }): Promise<ConfirmResult> => {
+      return new Promise<ConfirmResult>((resolve) => {
+        setPendingDialog({ options, resolve, isAlert: false });
+      });
+    },
+    [],
+  );
 
   const alertModal = useCallback((options: ConfirmOptions | string): Promise<void> => {
     return new Promise<void>((resolve) => {
@@ -77,14 +104,21 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
 
   const handleConfirm = () => {
     if (pendingDialog) {
-      pendingDialog.resolve(true);
+      pendingDialog.resolve('confirm');
+      setPendingDialog(null);
+    }
+  };
+
+  const handleAlt = () => {
+    if (pendingDialog) {
+      pendingDialog.resolve('alt');
       setPendingDialog(null);
     }
   };
 
   const handleCancel = () => {
     if (pendingDialog) {
-      pendingDialog.resolve(false);
+      pendingDialog.resolve('cancel');
       setPendingDialog(null);
     }
   };
@@ -101,7 +135,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     const cancelPending = () => {
       if (pendingDialogRef.current) {
-        pendingDialogRef.current.resolve(false);
+        pendingDialogRef.current.resolve('cancel');
         setPendingDialog(null);
       }
     };
@@ -118,7 +152,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
   const variant = pendingDialog?.options.variant || 'warning';
 
   return (
-    <ConfirmContext.Provider value={{ confirm, alertModal }}>
+    <ConfirmContext.Provider value={{ confirm, confirmWithAlt, alertModal }}>
       {children}
       {pendingDialog && (
         <Modal
@@ -166,6 +200,15 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
                 className="h-9 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer confirm-dialog__btn confirm-dialog__btn--cancel"
               >
                 {pendingDialog.options.cancelText || t('cancel_button')}
+              </button>
+            )}
+            {!pendingDialog.isAlert && pendingDialog.options.altText && (
+              <button
+                type="button"
+                onClick={handleAlt}
+                className="h-9 px-4 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer confirm-dialog__btn confirm-dialog__btn--alt"
+              >
+                {pendingDialog.options.altText}
               </button>
             )}
             <button
