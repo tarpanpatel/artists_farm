@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Drawer } from 'flowbite-react';
-import { Check, AlertTriangle, X, Plug } from './icons/FlowbiteIcons';
+import { Check, AlertTriangle, X, Plug, ChevronDown } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
 import { Button } from './Button';
@@ -78,6 +78,16 @@ interface AirbnbConfigImportDrawerProps {
   /** Fired after a successful apply so the caller can refresh its own view. */
   onImported?: () => void;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string }) => void;
+  /** Scopes this drawer to ONE room's own listing (7 Sep 2026, explicit
+   *  request: "in front of individual listing give option to individual
+   *  import from airbnb") - set from ChannelConnectionsPage's per-room
+   *  "Import from Airbnb" button. The dry-run still fetches every mapped
+   *  room in one batched request (cheap, see getMultipleListingDetails),
+   *  it's only the DISPLAY that's filtered down to this room - property-
+   *  level fields (address/maps) are hidden too since those aren't
+   *  per-room. Omitted entirely, this behaves exactly as before: every
+   *  mapped room shown, property-level fields included. */
+  focusRoomId?: number;
 }
 
 /** Key identifying one selectable cell: `${room_id}:${fieldName}`. */
@@ -89,6 +99,7 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
   propertyId,
   onImported,
   onLogAudit,
+  focusRoomId,
 }) => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -96,6 +107,20 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
   const [data, setData] = useState<ProposalPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Accordion state (7 Sep 2026, explicit request: "make this section
+  // accordion") - a multi-key property's proposal list is one card per room,
+  // which read as a very long, all-expanded scroll. Multiple rooms can be
+  // open at once (not strict single-open) so a bulk review can still compare
+  // a few rooms side by side while ticking boxes across them.
+  const [expandedRoomIds, setExpandedRoomIds] = useState<Set<number>>(new Set());
+  const toggleRoomExpanded = (roomId: number) => {
+    setExpandedRoomIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(roomId)) next.delete(roomId);
+      else next.add(roomId);
+      return next;
+    });
+  };
   const [takeAddress, setTakeAddress] = useState(false);
   const [takeMaps, setTakeMaps] = useState(false);
 
@@ -169,13 +194,21 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
       setSelected(preset);
       setTakeAddress(false);
       setTakeMaps(false);
+
+      // Default expanded: the focused room when scoped to one (so there's
+      // nothing extra to click - it's already what the user asked to see),
+      // otherwise just the first room, so the drawer isn't a wall of empty
+      // headers on open but also isn't fully collapsed with nothing visible.
+      const proposals = payload.proposals || [];
+      const visible = focusRoomId != null ? proposals.filter((p) => p.room_id === focusRoomId) : proposals;
+      setExpandedRoomIds(new Set(visible.length ? [visible[0].room_id] : []));
     } catch (err) {
       setLoadError(t('airbnb_import_load_failed', 'Could not read your Airbnb listings.'));
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [propertyId]);
+  }, [propertyId, focusRoomId]);
 
   useEffect(() => {
     if (isOpen) load();
@@ -190,7 +223,28 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
     });
   };
 
-  const selectedCount = selected.size + (takeAddress ? 1 : 0) + (takeMaps ? 1 : 0);
+  // Scoped down to one room's own proposal when focusRoomId is set (the
+  // per-listing "Import from Airbnb" entry point) - property-level fields
+  // (address/maps) and the cross-room capacity-disagreement panel are both
+  // shared/cross-room concepts, so they're hidden in this scoped view rather
+  // than shown against a room that isn't the one being reviewed. Computed
+  // here (not just in the render below) because handleApply/selectedCount
+  // must ALSO only ever count/submit what's actually visible - otherwise a
+  // scoped "individual" import could silently count or apply another room's
+  // pre-ticked "safe" cells that the user never saw in this view.
+  const visibleProposals = focusRoomId != null
+    ? (data?.proposals || []).filter((p) => p.room_id === focusRoomId)
+    : (data?.proposals || []);
+  const focusedRoomName = focusRoomId != null ? visibleProposals[0]?.room : null;
+  const visibleCapacityContext = focusRoomId != null
+    ? (data?.capacity_context || []).filter((c) => c.room === focusedRoomName)
+    : (data?.capacity_context || []);
+
+  const visibleSelectedCount = visibleProposals.reduce(
+    (sum, p) => sum + Object.keys(p.fields || {}).filter((name) => selected.has(cellKey(p.room_id, name))).length,
+    0
+  );
+  const selectedCount = visibleSelectedCount + (takeAddress ? 1 : 0) + (takeMaps ? 1 : 0);
 
   const handleApply = async () => {
     if (selectedCount === 0) {
@@ -199,9 +253,10 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
     }
     setApplying(true);
     try {
-      // Build one entry per room carrying only the ticked fields.
+      // Build one entry per room carrying only the ticked fields. Iterates
+      // visibleProposals, not data.proposals - see the comment above.
       const rooms: Array<Record<string, any>> = [];
-      (data?.proposals || []).forEach((p) => {
+      visibleProposals.forEach((p) => {
         const entry: Record<string, any> = { room_id: p.room_id };
         let any = false;
         Object.entries(p.fields || {}).forEach(([name, f]) => {
@@ -269,7 +324,7 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
     }
   };
 
-  const hasAnything = !!data && (data.proposals?.length > 0 || !!data.property);
+  const hasAnything = !!data && (visibleProposals.length > 0 || (focusRoomId == null && !!data.property));
   // Matches router.php's exact wording for this one case (both
   // channex_import_airbnb_room_config and channex_airbnb_listing_details use
   // the identical string) - everything else stays a plain, non-actionable error.
@@ -283,6 +338,7 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
           <div>
             <h2 className="text-base font-bold text-gray-900 dark:text-white">
               {t('airbnb_import_heading', 'Import Details from Airbnb')}
+              {focusedRoomName ? ` - ${focusedRoomName}` : ''}
             </h2>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {t(
@@ -337,16 +393,41 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
             </p>
           )}
 
-          {!loading && !loadError && data?.proposals?.map((p) => {
+          {!loading && !loadError && visibleProposals.map((p) => {
             const entries = Object.entries(p.fields || {});
             if (!entries.length) return null;
+            const differCount = entries.filter(([, f]) => f.differs).length;
+            const tickedCount = entries.filter(([name]) => selected.has(cellKey(p.room_id, name))).length;
+            const isExpanded = expandedRoomIds.has(p.room_id);
             return (
-              <div key={p.room_id} className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                <div className="mb-3">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{p.room}</p>
-                  <p className="truncate text-xs text-gray-500 dark:text-gray-400">{p.listing_title}</p>
-                </div>
-                <div className="space-y-2">
+              <div key={p.room_id} className="rounded-lg border border-gray-200 dark:border-gray-700">
+                {/* Accordion header (7 Sep 2026, explicit request: "make this
+                    section accordion") - a multi-key property's proposal list
+                    read as a very long, all-expanded scroll. Several rooms can
+                    stay open at once (not strict single-open), so a bulk
+                    review can still compare a few rooms while ticking boxes
+                    across them, rather than being forced one at a time. */}
+                <button
+                  type="button"
+                  onClick={() => toggleRoomExpanded(p.room_id)}
+                  className="flex w-full items-center justify-between gap-3 p-4 text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{p.room}</p>
+                    <p className="truncate text-xs text-gray-500 dark:text-gray-400">{p.listing_title}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {tickedCount > 0 && (
+                      <Badge variant="info">{tickedCount} {t('airbnb_import_selected_short', 'selected')}</Badge>
+                    )}
+                    {differCount > 0 && (
+                      <Badge variant="warning">{differCount} {t('airbnb_import_differs', 'differs')}</Badge>
+                    )}
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-gray-500 transition-transform duration-200 dark:text-gray-400 ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </button>
+                {isExpanded && (
+                <div className="space-y-2 border-t border-gray-100 p-4 pt-3 dark:border-gray-800">
                   {entries.map(([name, f]) => {
                     const key = cellKey(p.room_id, name);
                     const on = selected.has(key);
@@ -393,11 +474,12 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}
 
-          {!loading && !loadError && data?.property && (
+          {!loading && !loadError && focusRoomId == null && data?.property && (
             <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
               <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                 {t('airbnb_import_property_heading', 'Property details')}
@@ -452,7 +534,7 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
               leaving it at 0 degrades the booking page's "sleeps N", the guest
               picker and the extra-guest ceiling. It never reaches this panel,
               since `differs` requires a stored value. */}
-          {!loading && !loadError && !!data?.capacity_context?.some((c) => c.differs) && (
+          {!loading && !loadError && visibleCapacityContext.some((c) => c.differs) && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
               <p className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-200">
                 <AlertTriangle className="h-4 w-4" />
@@ -465,7 +547,7 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
                 )}
               </p>
               <ul className="mt-2 space-y-1">
-                {data.capacity_context!.filter((c) => c.differs).map((c) => (
+                {visibleCapacityContext.filter((c) => c.differs).map((c) => (
                   <li key={c.room} className="text-xs text-amber-900 dark:text-amber-200">
                     <span className="font-medium">{c.room}</span>
                     {': '}

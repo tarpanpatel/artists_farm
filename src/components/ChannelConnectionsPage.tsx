@@ -54,12 +54,20 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [resumeChannelCode, setResumeChannelCode] = useState<string | null>(null);
   const [removingCode, setRemovingCode] = useState<string | null>(null);
-  // "Push Rates"/"Sync All ARI" above are outbound-only (rates & availability
-  // TO Airbnb) - this is the separate inbound direction (descriptions,
-  // amenities, house rules FROM Airbnb), previously only reachable from Edit
-  // Property. Added here too (7 Sep 2026, explicit report: a user on this
-  // exact page went looking for it and only found the outbound sync button).
+  // "Push Rates"/"Push All Rates" above are outbound-only (rates &
+  // availability TO Airbnb) - this is the separate inbound direction
+  // (descriptions, amenities, house rules FROM Airbnb), previously only
+  // reachable from Edit Property. Added here too (7 Sep 2026, explicit
+  // report: a user on this exact page went looking for it and only found
+  // the outbound sync button).
   const [showImporterModal, setShowImporterModal] = useState(false);
+  // Set only when a specific listing's own "Import from Airbnb" button
+  // (below, in the Individual Listings list) opened the drawer, scoping it
+  // to that one room instead of the whole property (7 Sep 2026, explicit
+  // request: "in front of individual listing give option to individual
+  // import from airbnb"). Reset to null on close so the page-level button
+  // above always reopens the full, unscoped drawer.
+  const [importFocusRoomId, setImportFocusRoomId] = useState<number | null>(null);
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -229,7 +237,7 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
               ) : (
                 <Send className="w-4 h-4 me-1.5" />
               )}
-              Sync All ARI
+              Push All Rates
             </Button>
           )}
           <Button variant="secondary" size="sm" onClick={() => fetchConnections(true)} disabled={refreshing} className="h-10 text-xs font-medium">
@@ -249,8 +257,12 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
 
       <AirbnbConfigImportDrawer
         isOpen={showImporterModal}
-        onClose={() => setShowImporterModal(false)}
+        onClose={() => {
+          setShowImporterModal(false);
+          setImportFocusRoomId(null);
+        }}
         propertyId={propertyId}
+        focusRoomId={importFocusRoomId ?? undefined}
         onImported={() => fetchConnections(true)}
       />
 
@@ -344,16 +356,36 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
                         </div>
                       </div>
 
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        disabled={isSyncingThis || !room.local_room_id}
-                        onClick={() => handleSyncSingleRoom(room)}
-                        className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 h-8 self-start sm:self-auto"
-                        leftIcon={isSyncingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                      >
-                        {isSyncingThis ? 'Pushing...' : 'Push Rates'}
-                      </Button>
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        {/* Per-listing import (7 Sep 2026, explicit request:
+                            "in front of individual listing give option to
+                            individual import from airbnb") - opens the same
+                            drawer as the page-level button above, scoped to
+                            just this one room instead of all of them. */}
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          disabled={!room.local_room_id}
+                          onClick={() => {
+                            setImportFocusRoomId(room.local_room_id);
+                            setShowImporterModal(true);
+                          }}
+                          className="h-8"
+                          leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-500" />}
+                        >
+                          Import
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          disabled={isSyncingThis || !room.local_room_id}
+                          onClick={() => handleSyncSingleRoom(room)}
+                          className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 h-8"
+                          leftIcon={isSyncingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                        >
+                          {isSyncingThis ? 'Pushing...' : 'Push Rates'}
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}

@@ -148,6 +148,25 @@ class ChannexChannelClient {
     }
 
     /**
+     * Concurrent variant of getListingDetails() for many listings at once
+     * (7 Sep 2026 - proposeAirbnbRoomConfig() used to call getListingDetails()
+     * once per room in a sequential loop, so opening "Import from Airbnb" on
+     * a multi-key property paid for N sequential round trips to Channex just
+     * to render the dry-run drawer - reported live as "took a lot of time to
+     * load" on a 7-room property). Returns a map keyed by listing id, each
+     * value shaped exactly like a single getListingDetails() response.
+     */
+    public function getMultipleListingDetails(string $channelId, array $listingIds): array {
+        $listingIds = array_values(array_unique(array_filter($listingIds, fn($id) => $id !== '')));
+        if (empty($listingIds)) return [];
+        $endpoints = array_map(
+            fn($id) => "channels/{$channelId}/action/listing_details?" . http_build_query(['listing_id' => $id]),
+            $listingIds
+        );
+        return $this->client->getConcurrent($endpoints, $listingIds);
+    }
+
+    /**
      * POST /channels/:id/mappings - map ONE local room's rate plan to ONE
      * external listing/room. This is Airbnb's actual mapping call (one
      * request per room, no bulk rate_plans array like updateChannel()) -

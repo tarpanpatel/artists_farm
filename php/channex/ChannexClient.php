@@ -181,4 +181,96 @@ class ChannexClient {
             'error' => $lastException ? $lastException->getMessage() : 'Max retry attempts exceeded',
         ];
     }
+
+    /**
+     * Fires several GET requests concurrently via curl_multi (7 Sep 2026 -
+     * added for ChannexChannelClient::getMultipleListingDetails(), see its own
+     * comment for why: a multi-room property was paying for one sequential
+     * getListingDetails() round trip PER ROOM, so opening "Import from
+     * Airbnb" on a 7-room property took as long as all 7 calls added
+     * together. Wall time here is roughly the SLOWEST single call, not
+     * their sum.
+     *
+     * $endpoints: full relative paths (with querystring), same shape get()
+     * builds internally. $keys: parallel array of caller-chosen keys the
+     * results are indexed by (so a caller can look a result up by, e.g.,
+     * listing id instead of array position).
+     *
+     * Deliberately no retry-on-429/5xx here, unlike request()'s single-call
+     * path - this only ever backs a best-effort, read-only dry-run proposal
+     * (proposeAirbnbRoomConfig() already treats one room's details being
+     * unavailable as "skip those fields for that room", not a hard error),
+     * so trading a little retry-robustness for a large speed win is the
+     * right call. A transient failure here just means that one room's
+     * proposal is thinner than usual, not a broken import.
+     */
+    public function getConcurrent(array $endpoints, array $keys): array {
+        $count = count($endpoints);
+        if ($count === 0) return [];
+
+        // One rate-ceiling check for the whole batch, then record all N calls
+        // up front - waitForRateLimit() itself only guards the FIRST of them
+        // since the rest fire without going back through it individually.
+        self::waitForRateLimit();
+        for ($i = 1; $i < $count; $i++) {
+            self::$callTimestamps[] = microtime(true);
+        }
+
+        $mh = curl_multi_init();
+        $handles = [];
+        foreach (array_values($endpoints) as $i => $endpoint) {
+            $url = $this->baseUrl . '/' . ltrim($endpoint, '/');
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'user-api-key: ' . $this->apiKey,
+                'Content-Type: application/json',
+                'Accept: application/json',
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_multi_add_handle($mh, $ch);
+            $handles[$i] = $ch;
+        }
+
+        $running = null;
+        do {
+            $status = curl_multi_exec($mh, $running);
+            if ($running > 0) {
+                curl_multi_select($mh);
+            }
+        } while ($running > 0 && $status === CURLM_OK);
+
+        $keysList = array_values($keys);
+        $results = [];
+        foreach ($handles as $i => $ch) {
+            $rawResponse = curl_multi_getcontent($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+
+            $decoded = ($rawResponse !== false && $rawResponse !== null) ? json_decode($rawResponse, true) : null;
+            $key = $keysList[$i] ?? $i;
+
+            if ($rawResponse !== false && $httpCode >= 200 && $httpCode < 300) {
+                $results[$key] = [
+                    'success' => true,
+                    'http_code' => $httpCode,
+                    'data' => $decoded['data'] ?? ($decoded ?: []),
+                    'raw' => $decoded,
+                ];
+            } else {
+                $results[$key] = [
+                    'success' => false,
+                    'http_code' => $httpCode,
+                    'error' => $decoded['errors'] ?? ($decoded['message'] ?? ($curlError ?: 'Channex API error')),
+                    'raw' => $decoded,
+                ];
+            }
+        }
+        curl_multi_close($mh);
+        return $results;
+    }
 }

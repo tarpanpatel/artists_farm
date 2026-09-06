@@ -1265,23 +1265,50 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
 
     $propertyProposal = null;
 
-    foreach ($roomMappings as $m) {
-        // A SINGLE property's one unit is stored with local_room_id NULL (the
-        // property row IS the unit - see channex_channel_save_mapping, which
-        // writes null there deliberately). Casting that to 0 and skipping it
-        // meant the importer silently returned NOTHING for every single-unit
-        // property - the most common shape for a new client - while working
-        // fine for multi-key ones. Found 6 Sep 2026 auditing whether property
-        // setup was actually ready end to end.
+    // Resolves one room mapping to [localRoomId, listingId], or null if it
+    // doesn't match a real room/listing - shared by the pre-pass below and
+    // the main loop so both agree on exactly which mappings count. A SINGLE
+    // property's one unit is stored with local_room_id NULL (the property
+    // row IS the unit - see channex_channel_save_mapping, which writes null
+    // there deliberately); casting that to 0 and skipping it meant the
+    // importer silently returned NOTHING for every single-unit property -
+    // the most common shape for a new client - while working fine for
+    // multi-key ones. Found 6 Sep 2026 auditing whether property setup was
+    // actually ready end to end.
+    $resolveMapping = function (array $m) use ($singleUnitPropertyId, $byId): ?array {
         $rawRoomId = $m['local_room_id'] ?? null;
         $localRoomId = ($rawRoomId === null || $rawRoomId === '')
             ? (int)$singleUnitPropertyId
             : (int)$rawRoomId;
         $listingId = (string)($m['external_room_code'] ?? '');
-        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId])) {
+        if ($localRoomId <= 0 || $listingId === '' || !isset($byId[$listingId])) return null;
+        return [$localRoomId, $listingId];
+    };
+
+    // Pre-pass: fetch every matched room's listing details in ONE concurrent
+    // round trip instead of one sequential call per room in the loop below
+    // (7 Sep 2026 - reported live: opening "Import from Airbnb" on a 7-room
+    // property "took a lot of time to load", since it used to await 7
+    // sequential GET requests to Channex's API one after another). Wall time
+    // is now roughly the SLOWEST single listing_details call, not their sum.
+    $detailsByListingId = [];
+    if ($withDetails) {
+        $matchedListingIds = [];
+        foreach ($roomMappings as $m) {
+            $resolved = $resolveMapping($m);
+            if ($resolved) $matchedListingIds[] = $resolved[1];
+        }
+        $detailsByListingId = $channelClient->getMultipleListingDetails($channexChannelId, $matchedListingIds);
+    }
+
+    foreach ($roomMappings as $m) {
+        $resolved = $resolveMapping($m);
+        if (!$resolved) {
+            $listingId = (string)($m['external_room_code'] ?? '');
             if ($listingId !== '') $out['unmatched'][] = $listingId;
             continue;
         }
+        [$localRoomId, $listingId] = $resolved;
         $cur = $pdo->prepare("SELECT name, max_capacity, checkin_time, checkout_time, included_occupancy, extra_guest_charge, cleaning_fee, security_deposit, default_tariff, instructions, house_manual, wifi_network, wifi_password, description, house_rules, amenities, bed_configuration, bedrooms, beds_count, bathrooms, default_min_nights, default_max_nights FROM properties WHERE id = ? AND is_deleted = 0");
         $cur->execute([$localRoomId]);
         $row = $cur->fetch(PDO::FETCH_ASSOC);
@@ -1327,10 +1354,12 @@ function proposeAirbnbRoomConfig(PDO $pdo, $channelClient, string $channexChanne
             'differs' => $current > 0 && $suggested > 0 && $current !== $suggested,
         ];
 
-        // Per-listing detail call - times, and (once, from the first listing that
-        // has them) the shared property-level address/location fields.
+        // Per-listing details - times, and (once, from the first listing that
+        // has them) the shared property-level address/location fields. Read
+        // from the batched pre-pass fetch above rather than calling
+        // getListingDetails() again here per room.
         if ($withDetails) {
-            $det = $channelClient->getListingDetails($channexChannelId, $listingId);
+            $det = $detailsByListingId[$listingId] ?? ['success' => false];
             $L = $det['success'] ? ($det['data']['listing'] ?? []) : [];
             if ($L) {
                 $bs = $L['booking_settings'] ?? [];
