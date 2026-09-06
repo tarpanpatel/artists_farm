@@ -5,14 +5,15 @@
  * A host who took a phone call or WhatsApp inquiry can generate a link with the
  * room/dates/price already filled in and send it straight to the guest - no
  * "let me check availability and call you back". Generating the link locks the
- * room for BOOKING_HOLD_MINUTES: nobody else (staff or the public direct
- * booking engine) can book over it while the guest is still deciding, but if
- * they never come back to confirm, the hold quietly expires and the room is
- * free again - no manual cleanup, no cron. Confirming inside the window turns
- * the hold into a real `guests` row via the exact same insert shape
- * create_public_booking already uses, so every downstream consumer (Channex
- * ARI push, Telegram alert, the booking calendar) treats it identically to a
- * guest who booked directly on the website.
+ * room for a host-chosen duration (see DEFAULT_BOOKING_HOLD_HOURS below):
+ * nobody else (staff or the public direct booking engine) can book over it
+ * while the guest is still deciding, but if they never come back to confirm,
+ * the hold quietly expires and the room is free again - no manual cleanup, no
+ * cron. Confirming inside the window turns the hold into a real `guests` row
+ * via the exact same insert shape create_public_booking already uses, so
+ * every downstream consumer (Channex ARI push, Telegram alert, the booking
+ * calendar) treats it identically to a guest who booked directly on the
+ * website.
  */
 
 if (!defined('GROUND_CODE_API')) {
@@ -21,7 +22,19 @@ if (!defined('GROUND_CODE_API')) {
 
 require_once __DIR__ . '/../config/guest_status.php';
 
-const BOOKING_HOLD_MINUTES = 30;
+const DEFAULT_BOOKING_HOLD_HOURS = 2.0;
+const MAX_BOOKING_HOLD_HOURS = 72.0;
+const MIN_BOOKING_HOLD_MINUTES = 5;
+
+/** Clamp a host-supplied hold duration (hours) into a safe minute count. */
+function resolveBookingHoldMinutes($rawHours): int {
+    $hours = is_numeric($rawHours) ? (float)$rawHours : DEFAULT_BOOKING_HOLD_HOURS;
+    if (!is_finite($hours) || $hours <= 0) {
+        $hours = DEFAULT_BOOKING_HOLD_HOURS;
+    }
+    $hours = min($hours, MAX_BOOKING_HOLD_HOURS);
+    return max(MIN_BOOKING_HOLD_MINUTES, (int)round($hours * 60));
+}
 
 function ensureBookingHoldsSchema(PDO $pdo): void {
     static $done = false;
@@ -53,18 +66,17 @@ function ensureBookingHoldsSchema(PDO $pdo): void {
 }
 
 /**
- * Whether an ACTIVE, not-yet-expired hold overlaps this room/date range - the
+ * Every ACTIVE, not-yet-expired hold that overlaps this room/date range - the
  * same half-open comparison every other overlap check in this app uses
  * (start < otherEnd AND end > otherStart), so a same-day turnover between a
- * hold and a real booking is never wrongly treated as a clash. Called from
- * here (to stop two overlapping quotes) and from guests.php/public_booking.php
- * (so a pending quote blocks a real booking from being created underneath it
- * too) - see those call sites for why this needed to be shared rather than
- * duplicated.
+ * hold and a real booking is never wrongly treated as a clash. Returns full
+ * rows (not just a boolean) so handleCreateBookingHold can tell "this is MY
+ * own earlier quote, being revised" (see its own comment) apart from "someone
+ * else already has this room/dates held".
  */
-function getActiveBookingHoldConflict(PDO $pdo, int $roomId, string $checkinDate, string $checkoutDate, ?string $excludeToken = null): bool {
+function getActiveBookingHoldConflicts(PDO $pdo, int $roomId, string $checkinDate, string $checkoutDate, ?string $excludeToken = null): array {
     ensureBookingHoldsSchema($pdo);
-    $sql = "SELECT id FROM booking_holds
+    $sql = "SELECT id, quote_token, created_by FROM booking_holds
             WHERE room_id = ? AND status = 'active' AND expires_at > NOW()
               AND checkin_date < ? AND checkout_date > ?";
     $params = [$roomId, $checkoutDate, $checkinDate];
@@ -72,10 +84,21 @@ function getActiveBookingHoldConflict(PDO $pdo, int $roomId, string $checkinDate
         $sql .= " AND quote_token != ?";
         $params[] = $excludeToken;
     }
-    $sql .= " LIMIT 1 FOR UPDATE";
+    $sql .= " FOR UPDATE";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    return (bool)$stmt->fetch();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Boolean form of the above - whether ANY active hold overlaps this room/date
+ * range, regardless of who created it. Used by guests.php/update_guest and
+ * public_booking.php so a pending quote blocks a real booking from being
+ * created underneath it too (those callers don't need to know or care whose
+ * quote it is - a real booking must never overlap ANY pending hold).
+ */
+function getActiveBookingHoldConflict(PDO $pdo, int $roomId, string $checkinDate, string $checkoutDate, ?string $excludeToken = null): bool {
+    return !empty(getActiveBookingHoldConflicts($pdo, $roomId, $checkinDate, $checkoutDate, $excludeToken));
 }
 
 /** Shared daily-rate summation - same shape as public_booking.php's, kept
@@ -138,7 +161,7 @@ function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $check
     return [$charges['total'], $nights, $charges];
 }
 
-/** Staff-authenticated: generate a quote + lock the room for BOOKING_HOLD_MINUTES. */
+/** Staff-authenticated: generate a quote + lock the room for a host-chosen duration. */
 function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): void {
     ensureBookingHoldsSchema($pdo);
     $data = json_decode(file_get_contents('php://input'), true) ?: [];
@@ -149,6 +172,7 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
     $guestName = trim((string)($data['guest_name'] ?? ''));
     $phone = trim((string)($data['phone'] ?? ''));
     $numGuests = max(1, (int)($data['num_guests'] ?? 2));
+    $holdMinutes = resolveBookingHoldMinutes($data['hold_hours'] ?? null);
 
     if ($propertyId <= 0) {
         http_response_code(400);
@@ -212,11 +236,26 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
             return;
         }
 
-        if (getActiveBookingHoldConflict($pdo, $roomId, $checkinDate, $checkoutDate)) {
+        // A staff member revising a price (or dates) mid-conversation should be
+        // able to just resend - not get blocked by their OWN earlier quote for
+        // this exact room/dates. Only a hold created by a DIFFERENT staff
+        // member blocks the request outright; the requester's own conflicting
+        // hold(s) are superseded (cancelled) instead, since the new quote
+        // replaces them. Reported live 6 Sep 2026: staff sent a quote, guest
+        // asked to negotiate, staff changed the price and could no longer
+        // resend at all.
+        $conflicts = getActiveBookingHoldConflicts($pdo, $roomId, $checkinDate, $checkoutDate);
+        $otherStaffConflicts = array_filter($conflicts, function ($c) use ($createdBy) {
+            return ($c['created_by'] ?? '') !== $createdBy;
+        });
+        if (!empty($otherStaffConflicts)) {
             $pdo->rollBack();
             http_response_code(409);
             echo json_encode(['status' => 'error', 'message' => 'A quote is already pending for this room and these dates']);
             return;
+        }
+        foreach ($conflicts as $c) {
+            $pdo->prepare("UPDATE booking_holds SET status = 'cancelled' WHERE id = ?")->execute([$c['id']]);
         }
 
         $token = bin2hex(random_bytes(20));
@@ -224,22 +263,23 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
         // expires_at is computed by MySQL's own NOW(), not PHP's time()/date() -
         // found live while testing (5 Sep 2026): this dev environment's PHP and
         // MySQL clocks disagree by 3 hours (different configured timezones), so
-        // a PHP-computed "30 minutes from now" written into this column could
+        // a PHP-computed "N minutes from now" written into this column could
         // already read as expired the instant MySQL's NOW() evaluated against
         // it - the entire lock silently doing nothing. Every comparison against
-        // this column (getActiveBookingHoldConflict above, and the expiry
+        // this column (getActiveBookingHoldConflicts above, and the expiry
         // checks in handleGetBookingHold/handleConfirmBookingHold below) must
         // likewise stay inside SQL, on MySQL's own clock, never mixed with a
-        // PHP-side time value.
+        // PHP-side time value. $holdMinutes itself is safe to bind as a normal
+        // parameter - MySQL accepts a placeholder as an INTERVAL's quantity.
         $insStmt = $pdo->prepare("
             INSERT INTO booking_holds (
                 property_id, room_id, quote_token, guest_name, phone, no_of_guests,
                 checkin_date, checkout_date, nights, total_tariff, status, created_by, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, NOW() + INTERVAL " . BOOKING_HOLD_MINUTES . " MINUTE)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, NOW() + INTERVAL ? MINUTE)
         ");
         $insStmt->execute([
             $propertyId, $roomId, $token, $guestName ?: null, $phone ?: null, $numGuests,
-            $checkinDate, $checkoutDate, $nights, $totalTariff, $createdBy ?: null,
+            $checkinDate, $checkoutDate, $nights, $totalTariff, $createdBy ?: null, $holdMinutes,
         ]);
 
         $pdo->commit();
@@ -255,7 +295,7 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
                 'nights' => $nights,
                 'total_tariff' => $totalTariff,
                 'charges' => $charges,
-                'expires_in_seconds' => BOOKING_HOLD_MINUTES * 60,
+                'expires_in_seconds' => $holdMinutes * 60,
             ],
         ]);
     } catch (Exception $e) {

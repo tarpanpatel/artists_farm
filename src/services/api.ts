@@ -2265,10 +2265,10 @@ export async function sendTelegramAlertDB(payload: {
 /**
  * "Inquiry -> Instant Quote" WhatsApp booking links (see php/api/booking_holds.php's
  * own doc comment for the full picture). Staff generates a hold via
- * createBookingHoldDB() (locks the room 30 minutes), shares the resulting link,
- * and the guest-facing quote page (PublicBookingEngine.tsx's `?quote=` mode)
- * uses getBookingHoldDB()/confirmBookingHoldDB() - unauthenticated, the token
- * itself is the credential - to view and complete it.
+ * createBookingHoldDB() (locks the room for the host-chosen duration), shares
+ * the resulting link, and the guest-facing quote page (PublicBookingEngine.tsx's
+ * `?quote=` mode) uses getBookingHoldDB()/confirmBookingHoldDB() - unauthenticated,
+ * the token itself is the credential - to view and complete it.
  */
 export interface BookingHoldQuote {
   quote_token: string;
@@ -2291,6 +2291,9 @@ export async function createBookingHoldDB(payload: {
   guest_name?: string;
   phone?: string;
   num_guests?: number;
+  // How long to lock the room for, in hours - host-chosen (see GuestManagement.tsx's
+  // "Hold Room For" dropdown). Backend defaults/clamps this if omitted/out of range.
+  hold_hours?: number;
 }): Promise<{ success: boolean; data?: BookingHoldQuote; message?: string }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=create_booking_hold`, {

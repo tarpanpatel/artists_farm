@@ -692,8 +692,8 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
 
                         // A pending "Inquiry -> Instant Quote" WhatsApp link (booking_holds.php)
-                        // locks the room for its 30-minute window too - without this, a staff
-                        // member could book straight over a quote a guest is actively completing.
+                        // locks the room for its (host-chosen) hold window too - without this,
+                        // a staff member could book straight over a quote a guest is actively completing.
                         if (is_file(__DIR__ . '/../api/booking_holds.php')) {
                             require_once __DIR__ . '/../api/booking_holds.php';
                             if (function_exists('getActiveBookingHoldConflict') && getActiveBookingHoldConflict($pdo, $lockTargetId, $newCheckin, $newCheckout)) {
@@ -701,7 +701,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                     $pdo->rollBack();
                                 }
                                 http_response_code(409);
-                                echo json_encode(['status' => 'error', 'message' => 'A WhatsApp quote is pending for this room and these dates - it will free up automatically within 30 minutes if the guest does not confirm']);
+                                echo json_encode(['status' => 'error', 'message' => 'A WhatsApp quote is pending for this room and these dates - it will free up automatically once the hold expires if the guest does not confirm']);
                                 break;
                             }
                         }
@@ -1048,7 +1048,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                                     $pdo->rollBack();
                                 }
                                 http_response_code(409);
-                                echo json_encode(['status' => 'error', 'message' => 'A WhatsApp quote is pending for this room and these dates - it will free up automatically within 30 minutes if the guest does not confirm']);
+                                echo json_encode(['status' => 'error', 'message' => 'A WhatsApp quote is pending for this room and these dates - it will free up automatically once the hold expires if the guest does not confirm']);
                                 break;
                             }
                         }

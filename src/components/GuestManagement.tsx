@@ -203,9 +203,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // filled in, instead of finalizing the booking themselves. Reuses this
   // exact form's own room/date/guest fields rather than a separate drawer,
   // since it's the same information either way. Generating the link locks
-  // the room for 30 minutes server-side (see booking_holds.php) - if the
-  // guest never confirms, it quietly expires and the room frees up again.
+  // the room server-side for the duration picked below (see
+  // booking_holds.php) - if the guest never confirms, it quietly expires and
+  // the room frees up again. Revising the price and clicking it again simply
+  // resends - the staff member's own earlier quote for this room/dates is
+  // superseded rather than blocking the new one (6 Sep 2026, reported live).
   const [sendingQuote, setSendingQuote] = useState(false);
+  const [holdHours, setHoldHours] = useState('2');
 
   // Live duplicate-booking check (26 Aug 2026, part of the site-wide real-time
   // validation sweep - see CLAUDE.md's "Real-Time Form Validation" note)
@@ -496,6 +500,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
 
     const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
+    const hoursNum = Number(holdHours) || 2;
+    const holdLabel = hoursNum === 1 ? '1 hour' : hoursNum < 1 ? `${Math.round(hoursNum * 60)} minutes` : `${hoursNum} hours`;
 
     setSendingQuote(true);
     try {
@@ -506,6 +512,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         guest_name: guestName.trim() || undefined,
         phone: phoneNumber.trim() || undefined,
         num_guests: noOfGuests,
+        hold_hours: hoursNum,
       });
 
       if (!result.success || !result.data) {
@@ -519,10 +526,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       const waText = `${greeting}here's your instant quote for ${quote.room_name}:\n`
         + `📅 ${quote.checkin_date} to ${quote.checkout_date} (${quote.nights} night${quote.nights > 1 ? 's' : ''})\n`
         + `💰 Total: ₹${quote.total_tariff.toLocaleString('en-IN')}\n\n`
-        + `Tap to confirm your room (held for the next 30 minutes):\n${shareUrl}`;
+        + `Tap to confirm your room (held for the next ${holdLabel}):\n${shareUrl}`;
 
       window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank');
-      showToast('Quote link created - room held for 30 minutes.', { type: 'success' });
+      showToast(`Quote link created - room held for ${holdLabel}.`, { type: 'success' });
     } catch (err: any) {
       showToast(err?.message || 'Network error creating quote', { type: 'error' });
     } finally {
@@ -1081,13 +1088,30 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 Reuses the room/date/guest fields above; type="button" so it
                 never triggers this form's own submit validation, which
                 requires guest name + phone (a quote link can be sent before
-                either is known). */}
+                either is known). Revising the price and clicking it again
+                just resends - see handleSendInstantQuote/booking_holds.php. */}
+            <div className="mt-2">
+              <StyledSelect
+                label="Hold Room For"
+                value={holdHours}
+                onChange={setHoldHours}
+                options={[
+                  { value: '1', label: '1 Hour' },
+                  { value: '2', label: '2 Hours' },
+                  { value: '4', label: '4 Hours' },
+                  { value: '6', label: '6 Hours' },
+                  { value: '12', label: '12 Hours' },
+                  { value: '24', label: '24 Hours (1 Day)' },
+                  { value: '48', label: '48 Hours (2 Days)' },
+                ]}
+              />
+            </div>
             <Button
               type="button"
-              color="light"
+              color="success"
               disabled={sendingQuote}
               onClick={handleSendInstantQuote}
-              className="w-full mt-2 font-semibold flex items-center justify-center gap-2 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+              className="w-full mt-2 font-semibold flex items-center justify-center gap-2"
             >
               {sendingQuote ? (
                 <>
@@ -1097,7 +1121,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               ) : (
                 <>
                   <MessageCircle className="w-4 h-4 shrink-0" />
-                  <span>Send Instant Quote (WhatsApp) - Holds Room 30 Min</span>
+                  <span>Share Quote and Payment Link</span>
                 </>
               )}
             </Button>
