@@ -603,6 +603,67 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     return { isStart, isEnd, isInRange, isSingleDayPick, isTentative: isRangeTentative };
   };
 
+  // The last NIGHT of the selected stay - checkout day itself is not a night.
+  // 11 -> 13 is two nights, the 11th and the 12th; nobody occupies the room on
+  // the 13th, so nothing on that date belongs to the stay.
+  const lastNightStr = useMemo(() => {
+    if (!checkinDate || !effectiveEndDate || effectiveEndDate <= checkinDate) return '';
+    const d = new Date(effectiveEndDate + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    return formatDateISO(d);
+  }, [checkinDate, effectiveEndDate]);
+
+  // Which rooms can actually take the WHOLE stay (7 Sep 2026, reported live).
+  //
+  // getRangeStatus() above is deliberately date-only - it drives the date-picker
+  // header, where the selected span is the answer regardless of any one room. A
+  // room ROW is a different question: it is that room's own availability, so
+  // highlighting it purely by date claimed a room was part of the stay when it
+  // was free on only one day of it. On Patel Colony, asking for 11->13 lit up
+  // The Antique Studio's 13th (free only on the 13th) and, on the checkout day,
+  // rooms that had nothing to do with the stay - so a room the guest cannot book
+  // looked selected, and the same rectangle disagreed with the "Available
+  // Options" list right above it.
+  //
+  // Same rule as availableRoomResults uses (every night free, half-open so a
+  // same-day turnover still counts as available) - derived once here rather than
+  // re-implemented, so the two can never drift apart on what "available" means.
+  const availableRoomIdsForRange = useMemo(() => {
+    const ids = new Set<number>();
+    if (!checkinDate || !effectiveEndDate || effectiveEndDate <= checkinDate) return ids;
+    for (const room of rooms) {
+      const cur = new Date(checkinDate + 'T00:00:00');
+      const end = new Date(effectiveEndDate + 'T00:00:00');
+      let ok = true;
+      while (cur < end) {
+        if (isRoomOccupied(room.id, formatDateISO(cur))) { ok = false; break; }
+        cur.setDate(cur.getDate() + 1);
+      }
+      if (ok) ids.add(room.id);
+    }
+    return ids;
+  }, [checkinDate, effectiveEndDate, rooms, occupiedBlocks]);
+
+  /** Range status for one ROOM's row: nights only, and only if that room can
+   *  take the entire stay. A room that cannot returns all-false, so its row
+   *  stays in its normal available/booked colours. */
+  const getRoomRangeStatus = (roomId: number, dStr: string) => {
+    const blank = { isStart: false, isEnd: false, isInRange: false, isSingleDayPick: false, isTentative: false };
+    if (!checkinDate || !lastNightStr || !availableRoomIdsForRange.has(roomId)) return blank;
+    if (dStr < checkinDate || dStr > lastNightStr) return blank;
+    const isStart = dStr === checkinDate;
+    const isEnd = dStr === lastNightStr;
+    return {
+      isStart: isStart && !isEnd,
+      isEnd: isEnd && !isStart,
+      // A one-night stay is both ends at once - round it on both sides rather
+      // than leaving it half-open against nothing.
+      isSingleDayPick: isStart && isEnd,
+      isInRange: !isStart && !isEnd,
+      isTentative: isRangeTentative,
+    };
+  };
+
   // Real-Time Available Rooms Calculation for selected Check-in & Check-out dates
   const availableRoomResults = useMemo(() => {
     if (!checkinDate || !checkoutDate || checkinDate >= checkoutDate) {
@@ -1740,35 +1801,34 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                             const isPast = dStr < todayStr;
                             const occupied = isRoomOccupied(room.id, dStr);
                             const rate = getRoomDailyPrice(room, dStr);
-                            const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRangeStatus(dStr);
+                            const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRoomRangeStatus(room.id, dStr);
 
                             // Dynamic restriction badges
                             const roomRestrictions = dailyRestrictionsMap[room.id] || {};
                             const dayRest = roomRestrictions[dStr];
 
                             return (
+                              // Not clickable (7 Sep 2026, explicit request). Dates are
+                              // picked from the Check-in/Check-out fields or the date row
+                              // above; a room cell is a read-only availability readout, so
+                              // it carries no cursor-pointer or hover colour to imply
+                              // otherwise.
                               <td
                                 key={dStr}
-                                onClick={() => handleCellClick(room, dStr, occupied, isPast)}
-                                onMouseEnter={() => {
-                                  if (checkinDate && !checkoutDate && !isPast && !occupied) {
-                                    setHoverDate(dStr);
-                                  }
-                                }}
                                 className={`p-1 h-12 border-r border-gray-200 dark:border-gray-800 text-center transition-all select-none ${
                                   isPast
-                                    ? 'bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                                    ? 'bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600'
                                     : occupied
-                                    ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400 cursor-not-allowed'
+                                    ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400'
                                     : isSingleDayPick
-                                    ? 'bg-blue-600 text-white cursor-pointer ring-1 ring-blue-600 font-bold'
+                                    ? 'bg-blue-600 text-white ring-1 ring-blue-600 rounded-md font-bold'
                                     : isStart
-                                    ? 'bg-blue-600 text-white cursor-pointer ring-1 ring-blue-600 font-bold'
+                                    ? 'bg-blue-600 text-white ring-1 ring-blue-600 rounded-l-md font-bold'
                                     : isEnd
-                                    ? `${isTentative ? 'bg-blue-500/90' : 'bg-blue-600'} text-white cursor-pointer ring-1 ring-blue-600 font-bold`
+                                    ? `${isTentative ? 'bg-blue-500/90' : 'bg-blue-600'} text-white ring-1 ring-blue-600 rounded-r-md font-bold`
                                     : isInRange
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 cursor-pointer font-bold'
-                                    : 'bg-[#f0fdf4] dark:bg-emerald-950/20 text-[#15803d] dark:text-emerald-400 hover:bg-[#dcfce7] dark:hover:bg-emerald-900/40 cursor-pointer font-bold'
+                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 font-bold'
+                                    : 'bg-[#f0fdf4] dark:bg-emerald-950/20 text-[#15803d] dark:text-emerald-400 font-bold'
                                 }`}
                               >
                                 {isPast ? (
