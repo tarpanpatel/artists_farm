@@ -11,7 +11,13 @@ function getThemeSettings($pdo) {
         $result = $stmt->fetch();
 
         if ($result) {
-            return json_decode($result['settings_json'], true);
+            $settings = json_decode($result['settings_json'], true);
+            if (is_array($settings) && isset($settings['borderRadius']['large']) && in_array($settings['borderRadius']['large'], ['1rem', '16px'], true)) {
+                $settings['borderRadius']['small'] = '0.25rem';
+                $settings['borderRadius']['medium'] = '0.375rem';
+                $settings['borderRadius']['large'] = '0.5rem';
+            }
+            return $settings;
         }
 
         return getDefaultThemeSettings();
@@ -46,9 +52,9 @@ function getDefaultThemeSettings() {
             'baseUnit' => '4px',
         ],
         'borderRadius' => [
-            'small' => '0.375rem',
-            'medium' => '0.5rem',
-            'large' => '1rem',
+            'small' => '0.25rem',
+            'medium' => '0.375rem',
+            'large' => '0.5rem',
         ],
         'shadows' => [
             'small' => '0 1px 2px 0 rgb(0 0 0 / 0.05)',

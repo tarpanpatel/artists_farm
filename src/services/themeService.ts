@@ -104,10 +104,14 @@ export function applyThemeSettings(settings: ThemeSettings): void {
   // Apply spacing
   root.style.setProperty('--spacing-unit', settings.spacing.baseUnit);
 
-  // Apply border radius
-  root.style.setProperty('--radius-sm', settings.borderRadius.small);
-  root.style.setProperty('--radius-md', settings.borderRadius.medium);
-  root.style.setProperty('--radius-lg', settings.borderRadius.large);
+  // Apply border radius: strictly ensure --radius-lg is 0.5rem (8px), never 1rem (16px),
+  // so rounded-lg buttons maintain crisp rectangular geometry and never collapse into capsules.
+  const radiusLg = (settings.borderRadius.large === '1rem' || settings.borderRadius.large === '16px')
+    ? '0.5rem'
+    : (settings.borderRadius.large || '0.5rem');
+  root.style.setProperty('--radius-sm', settings.borderRadius.small || '0.25rem');
+  root.style.setProperty('--radius-md', settings.borderRadius.medium || '0.375rem');
+  root.style.setProperty('--radius-lg', radiusLg);
 
   // Apply shadows
   root.style.setProperty('--shadow-sm', settings.shadows.small);

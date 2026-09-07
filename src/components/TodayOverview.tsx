@@ -920,13 +920,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
         <div className="today-overview__header-actions flex items-center gap-2 shrink-0">
           {onAddBooking && (
-            <button
+            <Button
+              variant="primary"
+              size="md"
               onClick={() => onAddBooking()}
-              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold rounded-lg text-xs px-3.5 py-2 flex items-center gap-2 shadow-md transition-all cursor-pointer whitespace-nowrap"
+              leftIcon={<Plus className="w-4 h-4" />}
+              className="h-10 text-xs font-semibold shadow-none whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
               <span>{t('add_booking_button', 'Add Booking')}</span>
-            </button>
+            </Button>
           )}
         </div>
       </div>

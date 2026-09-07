@@ -230,6 +230,16 @@ html.dark {
 /* Mobile input focus auto-zoom fix: minimum 16px font-size enforced on mobile screens
    in mobile_screen_fix.css to prevent iOS Safari/Chrome from zooming in on input focus. */
 
+/* Hard lock on standard border-radius tokens:
+   Prevents any dynamic theme setting or external stylesheet from inflating --radius-lg
+   from 8px (0.5rem) to 16px (1rem), which causes 32px buttons to curve into full capsules. */
+:root {
+  --radius-xs: 0.125rem !important;
+  --radius-sm: 0.25rem !important;
+  --radius-md: 0.375rem !important;
+  --radius-lg: 0.5rem !important;
+}
+
 /* ==========================================================================
    Universal Button Geometry Safeguards (Desktop & Universal)
    ==========================================================================

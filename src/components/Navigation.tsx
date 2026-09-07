@@ -11,6 +11,7 @@ import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { getPropertySlug } from '../services/api';
 import { shareTextContent } from '../utils/shareText';
+import { Button } from './Button';
 import { t } from '../i18n/en';
 
 export type TabType =
@@ -931,15 +932,17 @@ export const Navigation: React.FC<NavigationProps> = ({
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="ghost"
+                size="md"
+                block
                 type="button"
                 onClick={handleLogoutClick}
-                className="flex items-center w-full p-2 text-sm font-semibold rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer shadow-2xs"
-                style={{ color: '#ff5252' }}
+                leftIcon={<LogOut className="w-4 h-4 text-red-500 shrink-0" />}
+                className="w-full h-10 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 shadow-none justify-start px-3"
               >
-                <LogOut className="w-4 h-4 text-red-500" />
-                <span className="ms-3">{t('sign_out_terminal_button', 'Sign Out')}</span>
-              </button>
+                <span>{t('sign_out_terminal_button', 'Sign Out')}</span>
+              </Button>
             </div>
           </div>
         )}
