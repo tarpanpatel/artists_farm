@@ -174,6 +174,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     longPressTimer: number | null;
     columnMode: boolean;
     isClickSelecting: boolean;
+    // True only from a real pointerdown until its matching pointerup/cancel
+    // (7 Sep 2026 fix - see the note on handleGridPointerMove's own "not
+    // armed yet" branch for why this exists: startX/startY are stale once a
+    // gesture is over, and until this flag existed nothing distinguished a
+    // genuinely fresh not-yet-armed touch from an already-finished one).
+    pointerDownActive: boolean;
   }>({
     armed: false,
     pointerType: 'mouse',
@@ -183,6 +189,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     longPressTimer: null,
     columnMode: false,
     isClickSelecting: false,
+    pointerDownActive: false,
   });
   const [isDragArmed, setIsDragArmed] = useState(false);
 
@@ -197,6 +204,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     }
     dragRef.current.armed = false;
     dragRef.current.columnMode = false;
+    dragRef.current.pointerDownActive = false;
     setIsDragArmed(false);
   };
 
@@ -259,6 +267,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     d.startY = e.clientY;
     d.moved = false;
     d.columnMode = false;
+    d.pointerDownActive = true;
 
     // If currently in 2-click selection mode, this click is Click 2!
     if (d.isClickSelecting && selAnchor) {
@@ -298,6 +307,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
     // Mode B: Pointer drag (mouse held down or long-pressed touch)
     if (!d.armed) {
+      if (!d.pointerDownActive) return;
       // A finger that has already travelled before the long-press fired is
       // scrolling, not selecting - stand down and let the scroller have it.
       const dist = Math.hypot(e.clientX - d.startX, e.clientY - d.startY);

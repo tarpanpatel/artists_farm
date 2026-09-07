@@ -186,8 +186,16 @@ detection to match the visuals, and do not treat the check-out date as an occupi
 11 → 13 occupies the nights of the 11th and 12th; that is what any highlight, count or conflict
 check must use. The 20% inset is how that fact is drawn, not a change to what it means.
 
-Applies to every stay-bar surface: `TodayOverview.tsx`, `OperationalDashboard.tsx`, and the public
-booking engine's availability grid.
+**Where the 20% inset applies:** the two surfaces that actually draw stay capsules -
+`TodayOverview.tsx` and `OperationalDashboard.tsx` (both render them into a separate absolutely
+positioned overlay; grep `data-cal-capsule`). Any new capsule surface joins this list.
+
+**Where only the second half applies:** the public booking engine's availability grid
+(`PublicBookingEngine.tsx`) paints one cell per day and draws no capsules, so there is no bar to
+inset - but "the check-out date is not a night" governs it just the same. Its per-room highlight
+therefore covers check-in through check-out-minus-one, and only for rooms free every night of the
+stay (`getRoomRangeStatus()`; fixed 7 Sep 2026, when asking for 11 → 13 highlighted the 13th and lit
+up rooms that were free on just one day of the range).
 
 ## Date/Time Input Fields (found 21 Aug 2026)
 
