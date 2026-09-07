@@ -385,6 +385,28 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setMiscChargesList(miscCharges as MiscChargeTemplate[]);
   }, [miscCharges]);
 
+  // Live "advance can't exceed the bill" guard (7 Sep 2026, reported live:
+  // Advance Paid ₹3,535 against a ₹2,829 room rent drove Pending Balance to
+  // -₹706 with no warning). The most a guest can owe on this form is the room
+  // tariff plus any extra charges toggled on; an advance past that would post a
+  // negative pending balance and a phantom overpayment to the ledger. The same
+  // rule is enforced at submit below and gates the Save button.
+  const bookingTotalDue = bookingRoomTariff + calcTotalBookingExtraCharges(bookingExtraChargesList, showBookingExtraCharges);
+  const advanceExceedsTotal = bookingAdvance > 0 && bookingTotalDue > 0 && bookingAdvance > bookingTotalDue;
+
+  // Every condition that would make the submit handler below reject this
+  // booking, recomputed reactively so the Save button can be greyed until they
+  // all pass. Per CLAUDE.md, the button stays CLICKABLE (opacity only, never
+  // `disabled`) - clicking it still runs onSubmit, which sets the touched flags
+  // and toasts the specific reason, so a greyed button always explains itself.
+  const canSubmitBooking =
+    phoneNumber.trim().length > 0 &&
+    !phoneFormatInvalid &&
+    !duplicateBookingLive &&
+    !!checkinDate && !!expectedCheckout &&
+    (!isMultiKeyProperty || (!!roomNumber && roomNumber.trim().length > 0)) &&
+    !advanceExceedsTotal;
+
   // Get all blocked date strings for DatePicker
   const getBlockedDateStrings = (): string[] => {
     const blocked: string[] = [];
@@ -719,6 +741,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             if (isMultiKeyProperty && (!roomNumber || !roomNumber.trim())) {
               showToast('Booking Rejected: An assigned place selection is required.', { type: 'error' });
+              return;
+            }
+
+            if (advanceExceedsTotal) {
+              showToast(
+                `Booking Rejected: Advance paid (₹${bookingAdvance.toLocaleString('en-IN')}) can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')}).`,
+                { type: 'error' }
+              );
               return;
             }
 
@@ -1203,6 +1233,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     value={bookingAdvance || ''}
                     onChange={e => handleAdvanceChange(Number(e.target.value))}
                     placeholder="0.00"
+                    error={advanceExceedsTotal
+                      ? `Can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')})`
+                      : undefined}
                   />
                 </div>
 
@@ -1230,6 +1263,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     value={bookingPending || ''}
                     onChange={e => handlePendingChange(Number(e.target.value))}
                     placeholder="0.00"
+                    error={bookingPending < 0
+                      ? 'Pending balance cannot be negative — lower the advance paid'
+                      : undefined}
                   />
                 </div>
 
@@ -1251,7 +1287,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               type="submit"
               color="blue"
               disabled={isSubmitting}
-              className="w-full mt-4 font-semibold flex items-center justify-center gap-2"
+              className={`w-full mt-4 font-semibold flex items-center justify-center gap-2 transition-opacity ${!canSubmitBooking ? 'opacity-50' : ''}`}
             >
               {isSubmitting ? (
                 <>
@@ -1277,6 +1313,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 value={holdHours}
                 onChange={setHoldHours}
                 options={[
+                  { value: '0.25', label: '15 Minutes' },
+                  { value: '0.5', label: '30 Minutes' },
                   { value: '1', label: '1 Hour' },
                   { value: '2', label: '2 Hours' },
                   { value: '4', label: '4 Hours' },
