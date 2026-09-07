@@ -2,10 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { Button } from './Button';
 import { AirbnbIcon } from './icons/AirbnbIcon';
-import { CheckCircle2, AlertCircle, Download, LinkIcon } from './icons/FlowbiteIcons';
+import { CheckCircle2, AlertCircle, Download, LinkIcon, Sparkles, Loader2 } from './icons/FlowbiteIcons';
 import { ChannelConnectWizard } from './ChannelConnectWizard';
 import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
 import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
+import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 
 interface OnboardingChannelStepProps {
@@ -39,12 +40,38 @@ export const OnboardingChannelStep: React.FC<OnboardingChannelStepProps> = ({
   onSkip,
   onDone,
 }) => {
+  const { showToast } = useToast();
   const [connections, setConnections] = useState<ChannexChannelConnection[]>([]);
   const [localRooms, setLocalRooms] = useState<ChannexLocalRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectOpen, setConnectOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [imported, setImported] = useState(false);
+  const [autoProvisioning, setAutoProvisioning] = useState(false);
+
+  const handleAutoProvision = async () => {
+    if (!propertyId) return;
+    setAutoProvisioning(true);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_auto_provision_from_airbnb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId }),
+      });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        setImported(true);
+        showToast('Property and rooms successfully imported & activated from Airbnb!', { type: 'success' });
+        onDone();
+      } else {
+        showToast(json?.message || 'Failed to auto-provision from Airbnb', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to auto-provision from Airbnb', { type: 'error' });
+    } finally {
+      setAutoProvisioning(false);
+    }
+  };
 
   const airbnb = connections.find((c) => c.channel_code === 'AirBNB');
   // "mapping" onwards means the OAuth actually completed - the channel object
@@ -122,16 +149,37 @@ export const OnboardingChannelStep: React.FC<OnboardingChannelStepProps> = ({
                     {t('onboarding_airbnb_connected', 'Airbnb connected')}
                   </span>
                 </div>
-                <Button
-                  variant={imported ? 'secondary' : 'primary'}
-                  className="w-full"
-                  onClick={() => setImportOpen(true)}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {imported
-                    ? t('onboarding_review_import_again', 'Review imported details again')
-                    : t('onboarding_review_import', 'Review and import your listing details')}
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="primary"
+                    className="w-full justify-center"
+                    onClick={handleAutoProvision}
+                    disabled={autoProvisioning}
+                  >
+                    {autoProvisioning ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Auto-Provisioning Property & Rooms...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
+                        1-Click Auto-Provision & Launch
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-center"
+                    onClick={() => setImportOpen(true)}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    {imported
+                      ? t('onboarding_review_import_again', 'Review imported details again')
+                      : t('onboarding_review_import', 'Review and import your listing details manually')}
+                  </Button>
+                </div>
               </>
             )}
           </div>

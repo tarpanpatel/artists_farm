@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle,
-  LinkBreak, ExternalLink, RefreshCw, ChevronDown,
+  LinkBreak, ExternalLink, RefreshCw, ChevronDown, Sparkles,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -162,6 +162,12 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   const [mappingError, setMappingError] = useState(false);
   const [roomMapping, setRoomMapping] = useState<Record<string, { external_room_code: string; external_rate_code: string }>>({});
   const [savingMapping, setSavingMapping] = useState(false);
+  const [currentLocalRooms, setCurrentLocalRooms] = useState<ChannexLocalRoom[]>(localRooms);
+  const [autoCreatingRooms, setAutoCreatingRooms] = useState(false);
+
+  useEffect(() => {
+    setCurrentLocalRooms(localRooms);
+  }, [localRooms]);
 
   const [readinessProblems, setReadinessProblems] = useState<any[] | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
@@ -436,23 +442,51 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   }, [step, selectedCode]);
 
   const isMappingComplete = useMemo(() => {
-    if (localRooms.length === 0 || !mappingDetails?.rooms || mappingDetails.rooms.length === 0) return false;
+    if (currentLocalRooms.length === 0 || !mappingDetails?.rooms || mappingDetails.rooms.length === 0) return false;
     // Airbnb maps one listing straight to a room's own (already-known)
     // rate plan - there's no separate rate to pick, unlike Booking.com's
     // room+rate two-level model.
     const isAirbnbMode = !!mappingDetails?.is_airbnb_listing_mode;
-    return localRooms.every((r) => {
+    return currentLocalRooms.every((r) => {
       const key = String(r.local_room_id ?? 'null');
       const m = roomMapping[key];
       return m && m.external_room_code && (isAirbnbMode || m.external_rate_code);
     });
-  }, [localRooms, roomMapping, mappingDetails]);
+  }, [currentLocalRooms, roomMapping, mappingDetails]);
+
+  const handleAutoCreateRooms = async () => {
+    if (!propertyId) return;
+    setAutoCreatingRooms(true);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_auto_create_rooms_from_listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId }),
+      });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        showToast(json.message || 'Rooms created successfully!', { type: 'success' });
+        if (Array.isArray(json.local_rooms)) {
+          setCurrentLocalRooms(json.local_rooms);
+        }
+        if (json.suggested_mappings) {
+          setRoomMapping((prev) => ({ ...prev, ...json.suggested_mappings }));
+        }
+      } else {
+        showToast(json?.message || 'Failed to auto-create rooms', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to auto-create rooms', { type: 'error' });
+    } finally {
+      setAutoCreatingRooms(false);
+    }
+  };
 
   const handleSaveMapping = async () => {
     if (!selectedCode || !isMappingComplete) return;
     setSavingMapping(true);
     try {
-      const rooms = localRooms.map((r) => {
+      const rooms = currentLocalRooms.map((r) => {
         const key = String(r.local_room_id ?? 'null');
         const m = roomMapping[key];
         return { local_room_id: r.local_room_id, external_room_code: m.external_room_code, external_rate_code: m.external_rate_code };
@@ -825,7 +859,41 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
               <div className="space-y-3">
                 {(() => {
                   const isAirbnbMode = !!mappingDetails?.is_airbnb_listing_mode;
-                  return localRooms.map((room) => {
+                  const missingRoomsCount = Math.max(0, (mappingDetails?.rooms?.length || 0) - currentLocalRooms.length);
+                  return (
+                    <>
+                      {isAirbnbMode && (mappingDetails?.rooms?.length || 0) > 0 && (
+                        <div className="p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span className="text-xs text-indigo-900 dark:text-indigo-200">
+                              Found <strong>{mappingDetails?.rooms?.length} listing{mappingDetails?.rooms?.length === 1 ? '' : 's'}</strong> on Airbnb
+                              {missingRoomsCount > 0 ? ` (${missingRoomsCount} not created yet in Ground Code)` : ''}.
+                            </span>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleAutoCreateRooms}
+                            disabled={autoCreatingRooms}
+                            className="shrink-0 text-xs"
+                          >
+                            {autoCreatingRooms ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                                Creating Rooms...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500 mr-1" />
+                                Auto-Create Rooms from Listings
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      {currentLocalRooms.map((room) => {
                     const key = String(room.local_room_id ?? 'null');
                     const current = roomMapping[key] || { external_room_code: '', external_rate_code: '' };
                     const selectedOtaRoom = (mappingDetails?.rooms || []).find((r: any) => String(r.id) === current.external_room_code);
@@ -867,7 +935,9 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                         )}
                       </div>
                     );
-                  });
+                  })}
+                    </>
+                  );
                 })()}
               </div>
             )}

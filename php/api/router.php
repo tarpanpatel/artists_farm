@@ -5191,6 +5191,8 @@ switch ($action) {
     case 'channex_channel_deactivate':
     case 'channex_channel_delete':
     case 'channex_channel_pending_staff_action':
+    case 'channex_auto_provision_from_airbnb':
+    case 'channex_auto_create_rooms_from_listings':
         if (is_file(__DIR__ . '/../channex/ChannexChannelClient.php')) {
             require_once __DIR__ . '/../channex/ChannexChannelClient.php';
         }
@@ -5199,6 +5201,9 @@ switch ($action) {
         }
         if (is_file(__DIR__ . '/../channex/content_sync.php')) {
             require_once __DIR__ . '/../channex/content_sync.php';
+        }
+        if (is_file(__DIR__ . '/../channex/ota_provisioner.php')) {
+            require_once __DIR__ . '/../channex/ota_provisioner.php';
         }
         if (!class_exists('ChannexChannelClient') || !function_exists('getChannexChannelConnection')) {
             http_response_code(503);
@@ -5521,6 +5526,26 @@ switch ($action) {
                     break 2;
                 }
                 echo json_encode(['status' => 'success', 'data' => $report]);
+                break 2;
+
+            // 1-Click Auto-provision property & child rooms directly from connected Airbnb listings
+            case 'channex_auto_provision_from_airbnb':
+                $selectedListings = is_array($input['selected_listing_ids'] ?? null) ? $input['selected_listing_ids'] : [];
+                $customPropName = isset($input['property_name']) ? trim((string)$input['property_name']) : null;
+                $res = autoProvisionPropertyFromAirbnb($pdo, $targetPropertyId, $selectedListings, $customPropName);
+                if (($res['status'] ?? '') !== 'success') {
+                    http_response_code(400);
+                }
+                echo json_encode($res);
+                break 2;
+
+            // Auto-create missing child rooms from Airbnb listings for an existing property
+            case 'channex_auto_create_rooms_from_listings':
+                $res = autoCreateRoomsFromAirbnbListings($pdo, $targetPropertyId);
+                if (($res['status'] ?? '') !== 'success') {
+                    http_response_code(400);
+                }
+                echo json_encode($res);
                 break 2;
 
             // Read-only: pulls one Airbnb listing's own configuration (capacity,
