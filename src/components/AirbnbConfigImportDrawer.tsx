@@ -8,6 +8,19 @@ import { Badge } from './Badge';
 import { t } from '../i18n/en';
 import { ChannelConnectWizard } from './ChannelConnectWizard';
 import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
+import { normalizeAmenityList } from '../utils/amenityCatalog';
+
+/** The amenities cell carries a JSON array string; anything else is left alone. */
+const parseJsonArray = (raw: any): any[] => {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+};
 
 /**
  * Confirm-before-write import of a property's own Airbnb listing configuration.
@@ -262,7 +275,17 @@ export const AirbnbConfigImportDrawer: React.FC<AirbnbConfigImportDrawerProps> =
         Object.entries(p.fields || {}).forEach(([name, f]) => {
           if (selected.has(cellKey(p.room_id, name))) {
             // `value` when the stored form differs from the displayed one.
-            entry[name] = f.value ?? f.airbnb;
+            const raw = f.value ?? f.airbnb;
+            // Amenities are the one field where Airbnb's vocabulary is not ours:
+            // the API sends its own constants (WIRELESS_INTERNET,
+            // DISHES_AND_SILVERWARE) and the Amenities picker matches on catalog
+            // LABELS, so storing them verbatim left every imported amenity sitting
+            // in "Custom Added Amenities" next to its own unticked checkbox - and
+            // ticking that checkbox then gave the guest two chips for one thing.
+            // Translated HERE, at the boundary, so the database only ever holds
+            // canonical labels and no downstream reader needs the map
+            // (7 Sep 2026). Unknown keys are kept, not dropped.
+            entry[name] = name === 'amenities' ? JSON.stringify(normalizeAmenityList(parseJsonArray(raw))) : raw;
             any = true;
           }
         });

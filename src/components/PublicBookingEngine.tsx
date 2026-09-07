@@ -68,6 +68,7 @@ import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { buildUpiPaymentLink } from '../utils/upiQrCode';
 import { humanizeKey } from '../utils/humanizeKey';
+import { normalizeAmenityList } from '../utils/amenityCatalog';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { apiFetch, API_ROOT_BASE, getBookingHoldDB, confirmBookingHoldDB, BookingHoldDetails } from '../services/api';
@@ -2302,9 +2303,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   "+N more": this drawer exists precisely to be the place with no
                   truncation. */}
               {(() => {
-                const amenities = parseJsonArray(detailsRoom.amenities).filter(
-                  (a): a is string => typeof a === 'string' && a.trim() !== ''
-                );
+                // Normalised rather than only humanised (7 Sep 2026): a room
+                // imported before the importer started writing catalog labels
+                // still holds Airbnb's own constants, which humanizeKey would
+                // show a guest as "Wireless Internet" while the same amenity
+                // ticked by hand reads "Wi-Fi". Normalising here means the two
+                // render identically, and a room carrying both only lists it
+                // once. Legacy rows get this without waiting for a re-save.
+                const amenities = normalizeAmenityList(parseJsonArray(detailsRoom.amenities));
                 if (!amenities.length) return null;
                 return (
                   <section>
@@ -2318,7 +2324,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         return (
                           <div key={a} className="flex items-center gap-2 py-0.5">
                             <Icon className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300">{humanizeKey(a)}</span>
+                            <span className="text-xs text-gray-700 dark:text-gray-300">{a}</span>
                           </div>
                         );
                       })}

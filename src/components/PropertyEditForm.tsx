@@ -7,7 +7,7 @@ import { Input } from './Input';
 import { FieldHelpPopover } from './FieldHelpPopover';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { AmenitiesSelectModal } from './AmenitiesSelectModal';
-import { getAmenityIcon } from '../utils/amenityCatalog';
+import { getAmenityIcon, normalizeAmenityList } from '../utils/amenityCatalog';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, VOUCHER_TOKENS, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { MessageQrPreview } from './MessageQrPreview';
@@ -150,10 +150,15 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       return [];
     }
   };
+  // Amenities go a step further than humanizeKey() (7 Sep 2026): they are
+  // mapped onto the real catalog labels via normalizeAmenityList(), so an
+  // imported WIRELESS_INTERNET arrives as "Wi-Fi" and actually ticks its own
+  // checkbox in AmenitiesSelectModal instead of sitting in "Custom Added
+  // Amenities" beside an unticked one. Humanizing alone could never do that -
+  // it produced "Wireless Internet", which matches no catalog label. Legacy
+  // rows heal on the next save; nothing needs a migration.
   const [amenities, setAmenities] = useState<string[]>(() =>
-    parseJsonArraySafe((property as any).amenities)
-      .filter((a): a is string => typeof a === 'string')
-      .map((a) => humanizeKey(a))
+    normalizeAmenityList(parseJsonArraySafe((property as any).amenities))
   );
   const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
   const removeAmenity = (idx: number) => setAmenities((prev) => prev.filter((_, i) => i !== idx));

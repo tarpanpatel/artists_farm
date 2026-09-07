@@ -12,6 +12,7 @@ import {
   AMENITY_CATEGORIES,
   ALL_CATALOG_AMENITIES,
   getAmenityIcon,
+  normalizeAmenityList,
 } from '../utils/amenityCatalog';
 import { t } from '../i18n/en';
 
@@ -36,7 +37,10 @@ export const AmenitiesSelectModal: React.FC<AmenitiesSelectModalProps> = ({
   // Sync state when modal opens
   React.useEffect(() => {
     if (isOpen) {
-      setSelected([...selectedAmenities]);
+      // Normalised on open so an Airbnb-imported vocabulary ticks its real
+      // checkbox rather than piling up under "Custom Added Amenities"
+      // (7 Sep 2026). Also collapses WIFI + WIRELESS_INTERNET into one row.
+      setSelected(normalizeAmenityList(selectedAmenities));
       setSearchQuery('');
       setActiveCategory('all');
       setCustomAmenity('');
