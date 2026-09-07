@@ -132,6 +132,100 @@ tagging real properties as "protected" and refusing to run test-triggering actio
 them in code) is wanted later - that was discussed as a further-out, bigger option, not part of
 this planned fix.
 
+### 🚀 Ground Code Pre-Launch Roadmap: Onboarding vs. Operational Finalisation
+
+Clean division between **Part 1: Onboarding, Adding/Importing Properties & User Flow** (the primary product priority, given that 99.99% of prospective hosts already run on OTAs) and **Part 2: The Rest (Operational Refinements & Launch Finalisation)**.
+
+---
+
+### PART 1: 🏨 Onboarding, Adding/Importing Properties & User Flow
+
+#### 1.1 The Onboarding Process: Eliminating the Blank-Canvas Maze
+- **Current Code State**:
+  - `SelfOnboardingWizard.tsx` is structured around a traditional 5-step signup: (1) Profile Credentials, (2) Trial summary, (3) Manual Property Setup (Name, Single vs Multi-Key, Room count, Standard rate, Check-in/out hours, Kitchen toggle), (4) OTA Channel Connection (`OnboardingChannelStep.tsx`), and (5) Mobile PWA install advice.
+- **Friction & Flaws**:
+  - **Inverted Sequence**: In Step 3, the host is forced to type provisional room counts and flat room rates in the dark, before Ground Code even connects to their real Airbnb or Booking.com account.
+  - **Drop-Off at Step 4**: When reaching Step 4, clicking "Connect Airbnb" launches a nested `ChannelConnectWizard.tsx` modal, which then expects the user to manually match dummy rooms (`Room 1`, `Room 2`...) to real Airbnb listing names. Following that, a second nested drawer (`AirbnbConfigImportDrawer.tsx`) opens, asking the user to tick checkboxes across 20 fields per room.
+- **What Could Be Done Better (The Architectural Solution)**:
+  - [ ] **1-Screen Frictionless Sign-Up (`SelfOnboardingWizard.tsx`)**:
+    - Step 1: Just Name, Phone, and 6-digit PIN.
+    - Step 2: **"How do you want to set up your property?"**:
+      - 🌟 **"Import from Airbnb / OTA" (Hero Path for 99.99% of hosts)**.
+      - 📝 *"I am a brand new property with no OTA listings yet"* (Manual fallback).
+    - If "Import from Airbnb" is tapped, immediate Channex OAuth opens in popup.
+    - Once authorized, Ground Code queries all discovered listings and displays a visual property card:
+      *"We found Artists Farm: 4 Units (Main Villa, Pool Cottage, Suite 1, Suite 2). Click below to launch."*
+    - Single tap on **"Import & Launch My Resort"** completes everything!
+
+#### 1.2 Adding / Importing Properties: Automated Direct Provisioning
+- **Current Code State**:
+  - `PropertyCreationWizard.tsx` and `PropertySetupWizard.tsx` require 5 linear steps (Basics, Contact/Tax, Payments/UPI, Operations, Notes).
+  - Adding a multi-key property requires manually creating the parent property, navigating to `MultiKeyPropertyOverview.tsx` to manually click "Add Room" for every single room, navigating to `ChannelConnectionsPage.tsx` to map each room, and finally opening `AirbnbConfigImportDrawer.tsx`.
+  - `php/api/router.php:1280-1660` (`proposeAirbnbRoomConfig`) pulls capacity, check-in/out, prices, house rules, instructions, wifi, amenities, and bed layouts, but **does not import listing photos into the gallery**.
+- **Friction & Flaws**:
+  - **Chicken-and-Egg Blocker**: Backend `channex_import_airbnb_room_config` requires local `properties` rows and room rows to ALREADY exist and be mapped in `channex_channel_room_mappings` before any listing data can be read.
+  - **No Listing Photos**: Airbnb listing photos are left behind, leaving the direct booking engine (`/{slug}/#book`) blank without manual photo uploads.
+  - **Amenity Manual Mapping**: Amenities are pulled as JSON strings but not automatically activated in the property's standard amenity catalog.
+- **What Could Be Done Better (The Architectural Solution)**:
+  - [ ] **1-Click Discovered Listing Provisioner (`php/channex/ota_provisioner.php`)**:
+    - New backend endpoint that takes an array of discovered Airbnb listing IDs from `getChannelListings` and in a single atomic PDO transaction:
+      1. Creates the parent property row (`name`, `address`, `google_maps_link`, `checkin_time`, `checkout_time`, `property_type = 'MULTI_KEY'`).
+      2. Creates all child room rows (`properties` with `property_type = 'MULTI_KEY_ROOM'`) using exact Airbnb listing titles.
+      3. Sets `max_capacity`, `included_occupancy`, `extra_guest_charge`, `cleaning_fee`, `security_deposit`, and `default_tariff`.
+      4. Fills `instructions`, `house_manual`, `wifi_network`, `wifi_password`, `house_rules`, and `cancellation_policy`.
+      5. Auto-populates `channex_mappings` and `channex_channel_room_mappings` so the property is instantly connected.
+  - [ ] **Listing Photos Auto-Import**:
+    - Ingest listing image URLs from the Airbnb payload, save them to `php/uploads/images/{tenantSlug}/{propertySlug}/`, and populate the property image gallery.
+  - [ ] **Amenity Catalog Translation**:
+    - Automatically parse Airbnb amenities (pool, wifi, ac, kitchen, parking, pets) and enable the corresponding badges in [amenityCatalog.ts](file:///c:/xampp/htdocs/artists_farm/src/utils/amenityCatalog.ts).
+
+#### 1.3 User Flow & Time-to-Value (First 5 Minutes Experience)
+- **Current Code State**:
+  - A user who finishes registration lands on `#dashboard`. If they haven't completed the multi-layer channel setup, the calendar is empty with no bookings, giving no immediate sense of accomplishment or live utility.
+- **What Could Be Done Better (The Architectural Solution)**:
+  - [ ] **Immediate Calendar Hydration (Day-1 Bookings Backfill)**:
+    - Upon channel connection, trigger an immediate sync of current and upcoming reservations via Channex feed so the front-desk calendar ([TodayOverview.tsx](file:///c:/xampp/htdocs/artists_farm/src/components/TodayOverview.tsx)) displays real in-house guests and future check-ins immediately.
+  - [ ] **Instant Staff Telegram Onboarding**:
+    - As soon as the owner imports their property, surface a friendly 1-tap modal:
+      *"Connect Your Staff on Telegram — No apps to install"*.
+    - Caretakers and cooks scan the QR code, tap `/start`, and are instantly wired for check-in alerts and KOT food orders.
+
+---
+
+### PART 2: ⚙️ The Rest — Day-to-Day Operations & Launch Finalisation
+
+*(Audit Note: Features verified already live in code — such as Header Property Switcher, Mobile Bottom Nav direct Kitchen tab & FAB, dynamic UPI QR blocks, recipe stock depletion, and WhatsApp voucher templates — are preserved as-is and excluded from this TODO list).*
+
+#### 2.1 Food Ordering & KDS Polish
+- [ ] **Mobile Take Order "Quick Favorites" Row**:
+  - Add a persistent top bar of top 10 homestay staples (Masala Chai, Coffee, Toast, Maggi, Poha, Aloo Paratha, Thali, Mineral Water) in `KitchenManagement.tsx` for 1-tap addition while staff are taking orders poolside/table-side.
+- [ ] **One-Tap Dietary & Preparation Tag Chips**:
+  - Add instant chips (`[Jain]`, `[Less Spicy]`, `[Extra Spicy]`, `[No Sugar]`, `[Room Delivery]`) appended to item notes with a single tap, eliminating typing on mobile keyboards.
+- [ ] **KOT Audio Chime on Kitchen Phone**:
+  - Sound an audible chime on the kitchen staff device when a new food order is placed.
+
+#### 2.2 Inventory & Petty Cash Bridge (Homestay Operational Reality)
+- [ ] **Unified "Record Market Purchase" Modal (Stock In + Cash Out in 1 Flow)**:
+  - Caretakers buying milk, eggs, bread, or vegetables from local markets currently have to record cash out in Petty Cash and stock count in Inventory separately.
+  - Create a single unified drawer: Caretaker enters item ("Milk 10L"), total cost (₹600), and uploads receipt photo.
+  - System simultaneously increments inventory stock count AND logs a debit entry in the Petty Cash ledger in one motion.
+
+#### 2.3 Billing & Folio Settlement
+- [ ] **Group Folio & Corporate Split Billing**:
+  - In `BillingCheckout.tsx`, provide an option to split folio line items: e.g. Route room tariff to corporate GST invoice while splitting personal food and laundry charges across individual guest receipts.
+
+#### 2.4 Pre-Flight Launch Verification Checklist
+- [ ] **Interactive Pre-Flight Health Dashboard (`#preflight`)**:
+  - Self-diagnostics screen that verifies all property connections before the host goes live:
+    - ✅ Property details & location coordinates valid.
+    - ✅ All rooms mapped with active rate plans.
+    - ✅ UPI ID & QR payment block verified.
+    - ✅ Telegram staff bot connected & responding.
+    - ✅ WhatsApp Business API credentials verified.
+    - ✅ Channex OTA connection active and in sync.
+- [ ] **Automated Nightly Cloud Database Backups**:
+  - Nightly background cron creating an encrypted SQL dump stored in off-site archive / Admin Telegram channel at 03:00 AM.
+
 ### 🛡️ Codebase Audit & System Hardening Roadmap (Sep 2026)
 
 Comprehensive architectural, security, database, and frontend audit conducted September 2026 across all 91 MySQL tables, PHP backend APIs, and React/Flowbite components.
