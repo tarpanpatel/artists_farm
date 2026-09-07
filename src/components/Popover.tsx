@@ -232,11 +232,7 @@ export const Popover: React.FC<PopoverProps> = ({
       window.clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
     }
-    if (trigger === 'hover') {
-      setIsOpen(false);
-    } else {
-      setIsOpen(!isOpen);
-    }
+    setIsOpen(!isOpen);
   };
 
   const clonedChild = React.cloneElement(children, {

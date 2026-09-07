@@ -5,6 +5,7 @@ import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
+import { FieldHelpPopover } from './FieldHelpPopover';
 import { LoadingScreen } from './LoadingScreen';
 import { TelegramPairingPanel } from './TelegramPairingPanel';
 import { API_ROOT_BASE } from '../services/api';
@@ -1678,12 +1679,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   {t('property_name_label', 'Property Name')}
-                  <span
-                    className="text-2xs font-semibold text-slate-400 dark:text-slate-500 cursor-help hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                    title={t('property_name_help_tooltip', 'The display name guests see for this property/room. Automatically generates the URL slug.')}
-                  >
-                    {t('help_label', 'Help?')}
-                  </span>
+                  <FieldHelpPopover
+                    content={t('property_name_help_tooltip', 'The display name guests see for this property/room. Automatically generates the URL slug.')}
+                    title={t('property_name_label', 'Property Name')}
+                  />
                 </label>
                 <Input
                   type="text"

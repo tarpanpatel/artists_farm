@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { AlertTriangle } from './icons/FlowbiteIcons';
 import { FileInput as FlowbiteFileInput, Label as FlowbiteLabel } from 'flowbite-react';
 import { compressImageFile } from '../utils/imageCompressor';
+import { FieldHelpPopover } from './FieldHelpPopover';
 
 /**
  * Site-wide file upload input (added 26 Aug 2026, explicit request: "Only use flowbite elements
@@ -90,9 +91,9 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="app-helper-text mt-1 text-xs text-slate-500 dark:text-slate-400 file-input__helper">
-            {helperText}
-          </p>
+          <div id={`${inputId}-helper`} className="app-helper-text mt-1 flex items-center file-input__helper">
+            <FieldHelpPopover content={helperText} title={label} />
+          </div>
         ) : null}
       </div>
     );

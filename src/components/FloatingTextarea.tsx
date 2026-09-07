@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 import { FloatingBgMode, getBgToken } from './FloatingInput';
+import { FieldHelpPopover } from './FieldHelpPopover';
 
 export interface FloatingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
@@ -104,9 +105,9 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
         ) : helperText ? (
-          <p id={`${textareaId}-helper`} className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            {helperText}
-          </p>
+          <div id={`${textareaId}-helper`} className="mt-1.5 flex items-center">
+            <FieldHelpPopover content={helperText} title={label} />
+          </div>
         ) : null}
       </div>
     );

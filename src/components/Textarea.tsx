@@ -3,6 +3,7 @@ import { AlertTriangle } from './icons/FlowbiteIcons';
 import { Textarea as FlowbiteTextarea, Label as FlowbiteLabel } from 'flowbite-react';
 import { FloatingTextarea } from './FloatingTextarea';
 import { FloatingBgMode } from './FloatingInput';
+import { FieldHelpPopover } from './FieldHelpPopover';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -94,9 +95,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMessage}
           </p>
         ) : helperText ? (
-          <p id={`${textareaId}-helper`} className="mt-2 text-xs text-slate-500 dark:text-slate-400 textarea__helper">
-            {helperText}
-          </p>
+          <div id={`${textareaId}-helper`} className="mt-2 flex items-center textarea__helper">
+            <FieldHelpPopover content={helperText} title={label} />
+          </div>
         ) : null}
       </div>
     );

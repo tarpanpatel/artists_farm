@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 import { FloatingInput, FloatingBgMode } from './FloatingInput';
+import { FieldHelpPopover } from './FieldHelpPopover';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -126,9 +127,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="app-helper-text mt-1.5 text-xs text-slate-500 dark:text-slate-400 input__helper">
-            {helperText}
-          </p>
+          <div id={`${inputId}-helper`} className="app-helper-text mt-1.5 flex items-center input__helper">
+            <FieldHelpPopover content={helperText} title={label} />
+          </div>
         ) : null}
       </div>
     );

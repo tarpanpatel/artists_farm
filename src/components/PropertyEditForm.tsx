@@ -4,6 +4,7 @@ import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X } fr
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
+import { FieldHelpPopover } from './FieldHelpPopover';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, VOUCHER_TOKENS, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
@@ -738,12 +739,15 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           either way, since PublicBookingEngine's humanizeKey() just title-cases
           whatever string is stored. */}
       <div className="property-edit-form__field space-y-2">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
-          {t('bed_configuration_label', 'Bed Configuration')}
-        </label>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          {t('bed_configuration_help', 'Shown to guests as part of the room facts (e.g. "1 Queen Bed"). Optional.')}
-        </p>
+        <div className="flex items-center gap-2">
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
+            {t('bed_configuration_label', 'Bed Configuration')}
+          </label>
+          <FieldHelpPopover
+            content={t('bed_configuration_help', 'Shown to guests as part of the room facts (e.g. "1 Queen Bed"). Optional.')}
+            title={t('bed_configuration_label', 'Bed Configuration')}
+          />
+        </div>
         <div className="space-y-3">
           {bedConfig.map((room, roomIdx) => (
             <div key={roomIdx} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2.5">
@@ -822,18 +826,21 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           that applied, not search for them inside a list about smoking and quiet
           hours. Both appear on the public booking voucher. */}
       <div className="property-edit-form__field">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-          {t('cancellation_policy_label', 'Cancellation Policy')}
-        </label>
+        <div className="flex items-center gap-2 mb-1.5">
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
+            {t('cancellation_policy_label', 'Cancellation Policy')}
+          </label>
+          <FieldHelpPopover
+            content={t('cancellation_policy_help', 'Shown to the guest on their booking voucher.')}
+            title={t('cancellation_policy_label', 'Cancellation Policy')}
+          />
+        </div>
         <WhatsAppEditor
           value={cancellationPolicy}
           onChange={setCancellationPolicy}
           placeholder={t('cancellation_policy_placeholder', 'e.g. Free cancellation up to 7 days before check-in. After that, the advance is not refundable.')}
           rows={3}
         />
-        <p className="text-2xs text-slate-500 dark:text-slate-400 mt-1">
-          {t('cancellation_policy_help', 'Shown to the guest on their booking voucher.')}
-        </p>
       </div>
 
       {/* Amenities (7 Sep 2026) - shown to guests as chips under the room

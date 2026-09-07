@@ -1,6 +1,7 @@
 import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
+import { FieldHelpPopover } from './FieldHelpPopover';
 
 export type FloatingBgMode = 'modal' | 'page' | 'drawer' | 'card' | (string & {});
 
@@ -159,9 +160,9 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            {helperText}
-          </p>
+          <div id={`${inputId}-helper`} className="mt-1.5 flex items-center">
+            <FieldHelpPopover content={helperText} title={label} />
+          </div>
         ) : null}
       </div>
     );
