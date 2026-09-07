@@ -1,17 +1,18 @@
 ﻿name: Playwright E2E Tests
 
-# Runs the existing Playwright test suite on staging after every push
-# to direct-booking-engine branch. Catches UI regressions automatically.
+# Manual trigger only - run this after deploying to staging to verify
+# nothing is broken. Automatic push trigger is disabled because the tests
+# require a running PHP/MySQL backend which is not available in GitHub CI.
+#
+# To run: Actions tab -> "Playwright E2E Tests" -> "Run workflow"
 
 on:
-  push:
-    branches: [direct-booking-engine]
   workflow_dispatch:
     inputs:
       base_url:
         description: "Base URL to test against"
         required: false
-        default: "https://staging.ground-code.com"
+        default: "http://localhost:3000"
 
 jobs:
   playwright:
@@ -26,7 +27,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
@@ -35,11 +36,10 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests against staging
+      - name: Run Playwright tests
         run: npx playwright test
         env:
-          BASE_URL: ${{ inputs.base_url || 'https://staging.ground-code.com' }}
-          DEMO_PROPERTY_PATH: /rivera-resorts/luxe-stays/
+          BASE_URL: ${{ inputs.base_url }}
           CI: true
 
       - name: Upload test report on failure

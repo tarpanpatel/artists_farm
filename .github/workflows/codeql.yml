@@ -1,9 +1,5 @@
 ﻿name: CodeQL Security Analysis
 
-# Scans PHP and TypeScript/JavaScript for security vulnerabilities on every
-# push to main/direct-booking-engine, and on all PRs.
-# Results appear in: Security tab -> Code scanning alerts
-
 on:
   push:
     branches: [main, direct-booking-engine]
@@ -26,8 +22,6 @@ jobs:
       fail-fast: false
       matrix:
         language: [javascript-typescript, php]
-        # javascript-typescript covers both React/TS frontend and any .js files
-        # php covers the entire php/ API directory
 
     steps:
       - name: Checkout repository
@@ -43,7 +37,7 @@ jobs:
         if: matrix.language == 'javascript-typescript'
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies (for TypeScript)
