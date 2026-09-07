@@ -308,16 +308,50 @@ class ChannexWebhookReceiver {
         $isForeignGuest = (!empty($country) && !in_array(strtoupper($country), ['IN', 'IND', 'INDIA'], true)) ? 1 : 0;
 
         $arrivalHour = trim((string)($booking['arrival_hour'] ?? ($booking['arrival_time'] ?? '')));
-        $bookingNotes = trim((string)($booking['notes'] ?? ''));
+        $rawBookingNotes = trim((string)($booking['notes'] ?? ''));
+
+        // Filter out machine-generated OTA financial/telemetry lines (e.g. from Airbnb)
+        // so they don't clutter the human-facing Guest Notes box.
+        $cleanNotes = '';
+        if (!empty($rawBookingNotes)) {
+            $filteredLines = [];
+            $otaTelemetryPatterns = [
+                '/^\s*Listing Base Price\s*:/i',
+                '/^\s*Transient Occupancy Tax/i',
+                '/^\s*Listing Cancellation/i',
+                '/^\s*Occupancy Tax Amount/i',
+                '/^\s*Extra Guest Fee\s*:/i',
+                '/^\s*Cohost Payout\s*:/i',
+                '/^\s*Number Of Pets\s*:/i',
+                '/^\s*Management Fee\s*:/i',
+                '/^\s*Imported Booking\s*$/i',
+            ];
+            foreach (preg_split('/\r?\n/', $rawBookingNotes) as $line) {
+                $trimmed = trim($line);
+                if ($trimmed === '') continue;
+                $isTelemetry = false;
+                foreach ($otaTelemetryPatterns as $pat) {
+                    if (preg_match($pat, $trimmed)) {
+                        $isTelemetry = true;
+                        break;
+                    }
+                }
+                if (!$isTelemetry) {
+                    $filteredLines[] = $trimmed;
+                }
+            }
+            $cleanNotes = implode("\n", $filteredLines);
+        }
+
         $notesParts = [];
         if (!empty($arrivalHour)) {
             $notesParts[] = "Arrival: {$arrivalHour}";
         }
-        if (!empty($bookingNotes)) {
-            $notesParts[] = $bookingNotes;
+        if (!empty($cleanNotes)) {
+            $notesParts[] = $cleanNotes;
         }
         $notes = !empty($notesParts) ? implode("\n", $notesParts) : null;
-        $guestNotes = !empty($bookingNotes) ? $bookingNotes : null;
+        $guestNotes = !empty($cleanNotes) ? $cleanNotes : null;
 
         // Channex sends amount as a decimal string in MAJOR units ("480.00"),
         // not minor units.

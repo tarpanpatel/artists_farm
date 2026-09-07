@@ -21,6 +21,7 @@ import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, fe
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
+import { cleanGuestNotes } from '../utils/otaNotesCleaner';
 import { OtaBadge } from './OtaBadge';
 import { t } from '../i18n/en';
 import {
@@ -340,8 +341,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     setEditAdvanceReceivedBy(g.advance_received_by || source.advanceReceivedBy || '');
     setEditPendingReceivedBy(g.pending_received_by || source.pendingReceivedBy || '');
     setEditBookingSource(source.bookingSource || 'Offline');
-    setEditNotes(source.notes || '');
-    setEditShowNotes(!!source.notes);
+    const cleanedNotes = cleanGuestNotes(source.notes || '');
+    setEditNotes(cleanedNotes);
+    setEditShowNotes(!!cleanedNotes);
     setEditIsForeignGuest(!!source.isForeignGuest);
 
     const isFiled = !!(source.cFormFiledAt || g.c_form_filed_at || g.c_form_filed || g.cFormFiled);
@@ -1377,9 +1379,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                           </span>
                         </div>
                         <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
-                          {p.method}
-                          {p.received_by_name ? ` · ${t('received_by_prefix', 'received by')} ${p.received_by_name}` : ''}
-                          {p.note ? ` · ${p.note}` : ''}
+                          {p.kind === 'ota_auto' ? (
+                            <span className="font-medium text-blue-700 dark:text-blue-300">
+                              {p.method ? `Pre-paid via ${p.method}` : 'Pre-paid via OTA'}
+                            </span>
+                          ) : (
+                            <>
+                              {p.method}
+                              {p.received_by_name ? ` · ${t('received_by_prefix', 'received by')} ${p.received_by_name}` : ''}
+                              {p.note ? ` · ${p.note}` : ''}
+                            </>
+                          )}
                         </div>
                       </div>
                       {/* System-seeded OTA merchant-of-record row (kind
@@ -1488,7 +1498,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
 
             {/* Guest Notes Textarea (if checked or existing notes present) */}
-            {(editShowNotes || guest.notes) && (
+            {(editShowNotes || cleanGuestNotes(guest.notes)) && (
               <div>
                 <Textarea
                   label={t('guest_notes_checkbox_label', 'Guest Notes')}
