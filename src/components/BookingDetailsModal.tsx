@@ -1382,14 +1382,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                           {p.note ? ` · ${p.note}` : ''}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePayment(p.id)}
-                        aria-label={t('delete_button', 'Delete')}
-                        className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {/* System-seeded OTA merchant-of-record row (kind
+                          'ota_auto', see webhook_receiver.php) - not deletable
+                          from here. It isn't something staff recorded, it's the
+                          synced reflection of what the OTA already collected;
+                          deleting it would zero out guests.advance_paid via
+                          recalcBookingPaymentTotals until the next Channex
+                          re-sync happens to rewrite it. */}
+                      {p.kind !== 'ota_auto' && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePayment(p.id)}
+                          aria-label={t('delete_button', 'Delete')}
+                          className="p-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>

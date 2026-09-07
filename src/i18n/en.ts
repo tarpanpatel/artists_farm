@@ -112,6 +112,7 @@ export const strings: Record<string, string> = {
   legend_ota_blocked: "OTA-Blocked (not yet a booking)",
   legend_ota_converted: "Converted OTA Bookings",
   ota_blocked_label: "Blocked",
+  booked_guest_fallback: "Booked",
   ota_blocked_tooltip: "Blocked via {{source}} - not yet a booking in this system",
   legend_blocked: "Blocked",
   edit_booking_header: "Edit Booking",

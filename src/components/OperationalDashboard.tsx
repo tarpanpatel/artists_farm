@@ -37,6 +37,7 @@ import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
+import { Button } from './Button';
 import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
@@ -1823,6 +1824,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         const dayPendingReasons = getGuestPendingReasons(dayBooking);
                         const hasDayPending = dayPendingReasons.length > 0;
                         const popoverKey = `${dayBooking.id}-${seg.info.dateStr}`;
+                        const guestName = dayBooking.guestName?.trim() || (dayBooking as any).name?.trim();
+                        const backupName = (dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource || t('booked_guest_fallback', 'Booked');
+                        const displayName = guestName ? getFirstName(guestName) : backupName;
+                        const fullDisplayName = guestName || backupName;
                         return (
                           <div key={`seg-b-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={capsuleStyle} className="pointer-events-auto">
                             <Popover
@@ -1833,12 +1838,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               title={
                                 <div className="flex items-center justify-between gap-2">
                                   <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate flex items-center gap-1.5">
-                                    {isOtaBooking && (OtaIcon ? (
-                                      <OtaIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
-                                    ) : (
-                                      <Globe className="w-3 h-3 shrink-0" />
-                                    ))}
-                                    <span className="truncate">{dayBooking.guestName}</span>
+                                    {isOtaBooking && (
+                                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
+                                        {OtaIcon ? (
+                                          <OtaIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
+                                        ) : (
+                                          <Globe className="w-3 h-3 shrink-0 text-slate-700" />
+                                        )}
+                                      </span>
+                                    )}
+                                    <span className="truncate">{fullDisplayName}</span>
                                   </h4>
                                   {nightlyRate > 0 && (
                                     <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
@@ -1875,19 +1884,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                       </div>
                                     )}
                                   </div>
-                                  <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
-                                    <button
-                                      type="button"
+                                  <div className="p-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
+                                    <Button
+                                      size="xs"
+                                      variant="primary"
                                       data-tour="checkin-view-more"
+                                      className="w-full justify-center"
                                       onClick={() => {
                                         setSelectedBookingFocusSection(null);
                                         setSelectedBooking(dayBooking);
                                         setOpenBookingPopoverId(null);
                                       }}
-                                      className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
                                     >
-                                      {t('view_more_button', 'View More')} →
-                                    </button>
+                                      <span>{t('view_more_button', 'View More')}</span>
+                                      <ArrowRight className="w-3 h-3 ms-1" />
+                                    </Button>
                                   </div>
                                 </div>
                               }
@@ -1903,13 +1914,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 {hasDayPending && (
                                   <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
                                 )}
-                                {isOtaBooking && (OtaIcon ? (
-                                  <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
-                                ) : (
-                                  <Globe className="w-2.5 h-2.5 shrink-0" />
-                                ))}
-                                <span className="truncate font-semibold min-w-0">{getFirstName(dayBooking.guestName)}</span>
-                                {nightlyRate > 0 && <span className="text-2xs font-normal opacity-85 shrink-0 ml-auto">₹{nightlyRate}</span>}
+                                {isOtaBooking && (
+                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
+                                    {OtaIcon ? (
+                                      <OtaIcon className="w-3 h-3 shrink-0" />
+                                    ) : (
+                                      <Globe className="w-2.5 h-2.5 shrink-0 text-slate-700" />
+                                    )}
+                                  </span>
+                                )}
+                                <span className="truncate font-semibold min-w-0">{displayName}</span>
                               </button>
                             </Popover>
                           </div>
@@ -1924,6 +1938,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       // Popover.tsx/CLAUDE.md mistake #15).
                       const otaBlock = seg.info.otaBlock!;
                       const otaPopoverKey = `${otaBlock.event_start}-${seg.info.dateStr}`;
+                      const BlockOtaIcon = getOtaIcon(otaBlock.source_label || otaBlock.source);
                       const handleConvert = () => {
                         handleConvertOtaBlock(otaBlock);
                         setOpenOtaPopoverId(null);
@@ -1936,8 +1951,15 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             open={openOtaPopoverId === otaPopoverKey}
                             onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
                             title={
-                              <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">
-                                {otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}
+                              <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate flex items-center gap-1.5">
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
+                                  {BlockOtaIcon ? (
+                                    <BlockOtaIcon className="w-3 h-3 shrink-0" />
+                                  ) : (
+                                    <Globe className="w-2.5 h-2.5 shrink-0 text-slate-700" />
+                                  )}
+                                </span>
+                                <span className="truncate">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</span>
                               </h4>
                             }
                             content={
@@ -1947,20 +1969,31 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     {t('ota_blocked_tooltip_convertible', '{{source}} - not yet a booking.').replace('{{source}}', otaBlock.source_label || otaBlock.source || 'external calendar')}
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={handleConvert}
-                                  className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
-                                >
-                                  {t('convert_to_booking_button', 'Convert to Booking')} →
-                                </button>
+                                <div className="p-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
+                                  <Button
+                                    size="xs"
+                                    variant="primary"
+                                    className="w-full justify-center"
+                                    onClick={handleConvert}
+                                  >
+                                    <span>{t('convert_to_booking_button', 'Convert to Booking')}</span>
+                                    <ArrowRight className="w-3 h-3 ms-1" />
+                                  </Button>
+                                </div>
                               </div>
                             }
                           >
                             <button
                               type="button"
-                              className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex flex-col justify-center shadow-2xs truncate text-left cursor-pointer transition-colors"
+                              className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex items-center gap-1.5 shadow-2xs truncate text-left cursor-pointer transition-colors"
                             >
+                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
+                                {BlockOtaIcon ? (
+                                  <BlockOtaIcon className="w-3 h-3 shrink-0" />
+                                ) : (
+                                  <Globe className="w-2.5 h-2.5 shrink-0 text-slate-700" />
+                                )}
+                              </span>
                               <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
                             </button>
                           </Popover>

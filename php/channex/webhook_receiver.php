@@ -12,6 +12,12 @@ require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/../config/schema_cache.php';
 require_once __DIR__ . '/ChannexAdapter.php';
 require_once __DIR__ . '/outbox.php';
+// Required directly (not just relied on from router.php) because this file is
+// also require_once'd straight from php/cron/channex_feed_drain.php, which
+// never loads router.php or its own require of booking_payments.php - without
+// this, recordBookingPaymentRowOnly() below would silently no-op on every
+// booking that arrives via the cron drain path instead of a live webhook.
+require_once __DIR__ . '/../finance/booking_payments.php';
 
 function ensureChannexRevisionsSchema(PDO $pdo): void {
     if (!isSchemaVerified('schema_guests_channex_id')) {
@@ -505,6 +511,41 @@ class ChannexWebhookReceiver {
                         'action' => 'ota_new_booking',
                         'guest_id' => $guestId,
                     ]);
+                }
+
+                // Seed/refresh the booking_payments ledger row for the OTA's
+                // merchant-of-record amount (7 Sep 2026). This webhook writes
+                // guests.advance_paid directly above, the same way it always
+                // has - it never goes through add_guest(), which is the only
+                // place that otherwise calls recordBookingPaymentRowOnly() to
+                // seed this table. Without this, a Channex-synced booking's
+                // "Payments received" panel reads "Nothing recorded yet." even
+                // when Advance Paid/Pending correctly show the OTA collected
+                // the full amount - the scalar was right, the ledger was just
+                // never told. kind='ota_auto' keeps this scoped to rows THIS
+                // code wrote, so a re-sync (dates/amount changed on the OTA)
+                // can safely replace just its own row without ever touching a
+                // manually-recorded payment - not that one should exist here,
+                // since the UI hides "Record a payment" for OTA bookings, but
+                // scoping by kind costs nothing and avoids assuming that holds.
+                if (function_exists('recordBookingPaymentRowOnly') && $guestId) {
+                    try {
+                        if (function_exists('ensureBookingPaymentsSchema')) {
+                            ensureBookingPaymentsSchema($this->pdo);
+                        }
+                        $this->pdo->prepare("DELETE FROM booking_payments WHERE booking_id = ? AND property_id = ? AND kind = 'ota_auto'")
+                            ->execute([$guestId, $propertyId]);
+                        if ($advancePaid > 0) {
+                            recordBookingPaymentRowOnly($this->pdo, $propertyId, $guestId, [
+                                'amount' => $advancePaid,
+                                'method' => $otaSource ?: 'Channel',
+                                'kind' => 'ota_auto',
+                                'received_by_name' => trim(($otaSource ?: 'OTA channel') . ' (merchant of record)'),
+                                'received_at' => date('Y-m-d H:i:s'),
+                                'note' => 'Collected by the OTA at booking - synced via Channex',
+                            ]);
+                        }
+                    } catch (Exception $e) {}
                 }
             }
 
