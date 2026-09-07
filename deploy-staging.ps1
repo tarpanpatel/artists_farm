@@ -126,7 +126,81 @@ if ([string]::IsNullOrWhiteSpace($Branch)) {
 $CustomCssFile = "assets/css/custom_css_override.css"
 $SwFile        = "sw.js"
 
+# Tracked files this script's own BUILD rewrites, and which must therefore never
+# enter the deploy stash. This one list is the fix for the chronic "stash pop
+# failed" that stranded work on 4, 5, 6 and 7 Sep 2026 (ten orphaned
+# staging-deploy-isolation stashes, four of them consecutive).
+#
+# The failure was structural, not bad luck, and it RATCHETED:
+#   1. sw.js is dirty when the deploy starts (a previous build stamped it, or an
+#      earlier deploy died before step 5b could commit it).
+#   2. step 3 stashes that modification, so sw.js reverts to HEAD.
+#   3. npm run build re-stamps sw.js - by design, step 5b exists to commit it.
+#   4. step 5's `git stash pop` now has to merge the stashed sw.js onto a working
+#      tree where sw.js is modified again, and git refuses outright:
+#         "Your local changes to the following files would be overwritten by
+#          merge: sw.js ... Aborting"
+#      The pop ABORTS - no tracked file is restored - but git still puts the
+#      stash's untracked files back on disk first. So the tree looks dirty again,
+#      sw.js is STILL modified, and the next deploy repeats the whole thing one
+#      stash deeper. Once it happens once it happens every time, forever.
+#
+# Excluding sw.js from the stash breaks the cycle at step 2: there is nothing to
+# merge back, so the pop cannot collide. Leaving it dirty through the build is
+# safe because it is purely an OUTPUT - vite.config.ts overwrites its CACHE_NAME
+# line in a bundle hook and nothing imports it, so its pre-build content cannot
+# reach the bundle. Verified by reproducing the abort and the fix 7 Sep 2026.
+#
+# Add a file here only if the BUILD writes it and git TRACKS it. Ignored build
+# output (dist/) never needs listing - `stash -u` skips ignored paths already.
+$BuildGeneratedFiles = @($SwFile)
+
+# Concurrency lock (7 Sep 2026). Two overlapping runs of this script share ONE
+# working tree and ONE stash stack, and neither can tell its own changes from the
+# other's: run B's `git stash push` happily scoops up the files run A restored a
+# second earlier, and A's pop then collides with whatever B rebuilt. That is not
+# hypothetical - concurrent runs destroyed a session's uncommitted edits on
+# 7 Sep 2026. No amount of care inside the stash window fixes this; only refusing
+# to open a second window does.
+$LockFile     = Join-Path $ProjectRoot ".deploy-staging.lock"
+$lockAcquired = $false
+if (Test-Path $LockFile) {
+    $lockAgeMinutes = [int]((Get-Date) - (Get-Item $LockFile).LastWriteTime).TotalMinutes
+    $lockBody       = (Get-Content $LockFile -Raw -ErrorAction SilentlyContinue)
+    # 45 min is comfortably longer than a real deploy (build + upload is minutes)
+    # but short enough that a crashed run does not wedge deploys until someone
+    # notices a stray file.
+    if ($lockAgeMinutes -lt 45) {
+        Write-Err "Another staging deploy is already running (lock is $lockAgeMinutes min old)."
+        Write-Err "  $($lockBody.Trim())"
+        Write-Err "Refusing to start: two concurrent runs share one stash stack and WILL lose uncommitted work."
+        Write-Err "Wait for it to finish. If you are certain nothing else is deploying, delete this file and re-run:"
+        Write-Err "    $LockFile"
+        exit 1
+    }
+    Write-Warn "Stale deploy lock found ($lockAgeMinutes min old) - assuming a crashed run and taking it over."
+}
+"pid=$PID started=$(Get-Date -Format s) branch=$Branch" | Set-Content -Path $LockFile -Encoding UTF8
+$lockAcquired = $true
+
+# Set by step 5 when the working tree could not be restored. The deploy still runs
+# to completion (aborting midway would leave staging with new PHP and an old
+# frontend), but the run must NOT end on a green "Complete" - that green line under
+# a scrolled-off warning is exactly why four failed pops in one night went unnoticed.
+$stashRestoreFailed = $false
+$stashLabel         = ''
+
 try {
+    # Surface a ratchet already in progress. Ten of these piled up before anyone
+    # connected them to the vanished edits; a count at the top of every run makes
+    # the next occurrence obvious on sight instead of after a forensic dig.
+    $existingIsolationStashes = @(git stash list 2>$null | Select-String -Pattern 'staging-deploy-isolation-' -SimpleMatch)
+    if ($existingIsolationStashes.Count -gt 0) {
+        Write-Warn "$($existingIsolationStashes.Count) earlier deploy stash(es) are still unrestored - past runs failed to pop:"
+        $existingIsolationStashes | Select-Object -First 3 | ForEach-Object { Write-Warn "    $($_.Line)" }
+        Write-Warn "Your work is safe inside them. Recover with 'git stash list' / 'git stash pop', or drop them once confirmed applied."
+    }
+
     # 0. Auto-commit Custom CSS override if changed
     $cssChanged = git status --porcelain -- $CustomCssFile
     if ($cssChanged -and -not $DryRun) {
@@ -175,18 +249,27 @@ try {
         Write-Ok "Staging PHP backend is in sync."
     }
 
-    # 3. Stash uncommitted local changes
+    # 3. Stash uncommitted local changes, EXCLUDING the files this build rewrites
+    #    (see $BuildGeneratedFiles for the full why - that exclusion is what stops
+    #    the pop in step 5 from aborting on a file the build touched meanwhile).
     Write-Step "Checking for uncommitted local changes"
-    $dirty = git status --porcelain
+    $stashPathspec = @('.') + ($BuildGeneratedFiles | ForEach-Object { ":(exclude)$_" })
+    $dirty   = git status --porcelain -- $stashPathspec
     $stashed = $false
     if ($dirty) {
         $stashLabel = "staging-deploy-isolation-$(Get-Date -Format yyyyMMdd-HHmmss)"
         Write-Warn "Uncommitted changes found - stashing them for clean build:"
-        git stash push -u -m $stashLabel | Out-Null
+        git stash push -u -m $stashLabel -- $stashPathspec | Out-Null
+        # A failed push must stop the run. Continuing would build and deploy while
+        # believing the tree was isolated when it never was - and the finally block
+        # below would then pop a stash this run did not create.
+        if ($LASTEXITCODE -ne 0) {
+            throw "git stash push failed - refusing to build so nothing can be lost. Working tree is untouched."
+        }
         $stashed = $true
         Write-Ok "Stashed as '$stashLabel'."
     } else {
-        Write-Ok "Working tree is clean."
+        Write-Ok "Working tree is clean (build-generated files ignored)."
     }
 
     # 4. Build, with the stash restore in a finally.
@@ -213,6 +296,11 @@ try {
             if ($LASTEXITCODE -eq 0) {
                 Write-Ok "Restored."
             } else {
+                # Flag it so the run cannot end on a green "Deploy Complete" and
+                # cannot exit 0. Warning alone was not enough: it scrolls off behind
+                # the upload/verify output, which is how four consecutive failures
+                # went unnoticed overnight on 6-7 Sep 2026.
+                $stashRestoreFailed = $true
                 Write-Warn "STASH POP FAILED - your uncommitted changes are NOT back in the working tree."
                 Write-Warn "They are safe. Recover with:"
                 Write-Warn "    git stash list          # find '$stashLabel'"
@@ -387,9 +475,27 @@ try {
     Write-Ok "Staging backend API verified alive (get_nav_menu responded with a real API envelope: $__apiSummary)."
     
     Write-Host ""
+    # Staging itself is fine and consistent at this point - the deploy is deliberately
+    # NOT aborted on a failed pop, because bailing out after step 2 would leave staging
+    # running new PHP behind an old frontend. But the RUN failed: work the user expected
+    # back in their tree is not there, so this must never report success or exit 0.
+    if ($stashRestoreFailed) {
+        Write-Err "Staging deployed OK - but YOUR UNCOMMITTED WORK IS STILL IN THE STASH."
+        Write-Err "    git stash list      # look for '$stashLabel'"
+        Write-Err "    git stash pop"
+        Write-Err "Nothing is lost; the working tree just does not have it back yet."
+        exit 1
+    }
     Write-Host "Staging Deploy Complete: https://staging.ground-code.com/dist/" -ForegroundColor Green
 
 } catch {
     Write-Err $_.Exception.Message
     exit 1
+} finally {
+    # Must release on EVERY path - success, throw, or the exit 1 above (PowerShell
+    # runs finally before an in-try `exit`). A leaked lock would block deploys for
+    # the full 45-minute stale window for no reason.
+    if ($lockAcquired) {
+        Remove-Item $LockFile -Force -ErrorAction SilentlyContinue
+    }
 }

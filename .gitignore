@@ -125,3 +125,9 @@ php/channex/*.lock
 # environment can keep its own local file without it ever needing to
 # round-trip through git again.
 assets/css/custom_css_override.css
+
+# deploy-staging.ps1's concurrency lock (7 Sep 2026). MUST stay ignored: the script
+# creates it before `git stash push -u`, so if it were merely untracked the stash
+# would sweep the lock off disk and the next concurrent run would see no lock at all -
+# the deploy would silently unlock itself in exactly the window the lock exists to guard.
+.deploy-staging.lock
