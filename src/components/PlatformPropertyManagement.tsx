@@ -13,6 +13,7 @@ import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, VOUCHER_TOKENS } from '../utils/whatsappVoucherTemplate';
 
 interface Tenant {
   id: number;
@@ -27,6 +28,10 @@ interface Tenant {
   phone?: string;
   is_active: number;
   is_demo?: number;
+  // Root-Admin-editable default all of this tenant's properties fall back to
+  // when they haven't set their own wording (7 Sep 2026) - see
+  // PropertyEditForm.tsx's inheritance chain and whatsappVoucherTemplate.ts.
+  whatsapp_voucher_template?: string | null;
 }
 
 interface Property {
@@ -141,6 +146,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   const [resettingLoginId, setResettingLoginId] = useState<number | null>(null);
   const [resetLoginError, setResetLoginError] = useState<{ tenantId: number; message: string } | null>(null);
   const [revealedPasscodeId, setRevealedPasscodeId] = useState<number | null>(null);
+  // WhatsApp voucher template editor (7 Sep 2026) - collapsed by default,
+  // same pattern as PropertyEditForm.tsx's own "Edit wording" toggle.
+  const [showTenantVoucherEditor, setShowTenantVoucherEditor] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('');
   // Populated after a successful "Add Tenant" - keeps the modal open to show
   // the generated login credentials + a "Share via WhatsApp" button, instead
@@ -266,6 +274,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     setEditingTenant(tenant);
     setShowEditTenantModal(true);
     setRenewalNote('');
+    setShowTenantVoucherEditor(false);
     loadRenewalHistory(tenant.id);
     loadTenantCredentials(tenant.id);
   };
@@ -559,6 +568,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           is_active: editingTenant.is_active,
           is_demo: editingTenant.is_demo,
           renewal_note: renewalNote.trim() || undefined,
+          whatsapp_voucher_template: (editingTenant.whatsapp_voucher_template || '').trim(),
         }),
       });
 
@@ -1628,6 +1638,66 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                         </div>
                       );
                     })()
+                  )}
+                </div>
+              </div>
+
+              {/* WhatsApp Voucher Template (7 Sep 2026) - the tenant-level
+                  default every one of this tenant's properties falls back to
+                  unless it has its own wording set in Edit Property. This is
+                  the one write path for `tenants.whatsapp_voucher_template` -
+                  the column already existed and was already read (see
+                  PropertyEditForm.tsx's "inherited from your account"
+                  copy) but had no editor anywhere until now. */}
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                  <span className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Share2 className="w-3.5 h-3.5 text-emerald-500" />
+                    WhatsApp Voucher Template
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowTenantVoucherEditor((prev) => !prev)}
+                    className="text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
+                  >
+                    {showTenantVoucherEditor ? 'Done editing' : 'Edit wording'}
+                  </button>
+                </div>
+                <div className="p-3 bg-white dark:bg-slate-900 space-y-2">
+                  <p className="text-2xs text-slate-500 dark:text-slate-400">
+                    {(editingTenant.whatsapp_voucher_template || '').trim()
+                      ? 'This owner account has its own wording - every property under it uses this unless a property sets its own.'
+                      : 'Currently falls back to the Ground Code default. Type below to give this owner account its own wording, used by every property under it that has not set its own.'}
+                  </p>
+                  {showTenantVoucherEditor && (
+                    <div className="space-y-2">
+                      <textarea
+                        value={editingTenant.whatsapp_voucher_template || ''}
+                        onChange={(e) =>
+                          setEditingTenant({ ...editingTenant, whatsapp_voucher_template: e.target.value })
+                        }
+                        placeholder={DEFAULT_WHATSAPP_VOUCHER_TEMPLATE}
+                        rows={12}
+                        spellCheck={false}
+                        className="w-full px-3 py-2 text-[11px] font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
+                        <p className="font-semibold text-slate-700 dark:text-slate-300">
+                          Available tokens - each is replaced with the real value:
+                        </p>
+                        <p className="font-mono break-words leading-relaxed">{VOUCHER_TOKENS.join('  ')}</p>
+                        <p>A line whose value is empty is removed automatically, so a property can keep lines it only sometimes uses.</p>
+                      </div>
+                      {(editingTenant.whatsapp_voucher_template || '').trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingTenant({ ...editingTenant, whatsapp_voucher_template: '' })}
+                          className="text-[10px] font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                        >
+                          Remove this account's wording and go back to the Ground Code default
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

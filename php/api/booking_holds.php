@@ -21,6 +21,7 @@ if (!defined('GROUND_CODE_API')) {
 }
 
 require_once __DIR__ . '/../config/guest_status.php';
+require_once __DIR__ . '/public_voucher.php';
 
 const DEFAULT_BOOKING_HOLD_HOURS = 2.0;
 const MAX_BOOKING_HOLD_HOURS = 72.0;
@@ -561,7 +562,7 @@ function handleConfirmBookingHold(PDO $pdo): void {
             return;
         }
 
-        $propStmt = $pdo->prepare("SELECT name, slug, email, upi_id, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
+        $propStmt = $pdo->prepare("SELECT name, slug, email, phone, upi_id, address, checkin_time, checkout_time FROM properties WHERE id = ? LIMIT 1");
         $propStmt->execute([$propertyId]);
         $prop = $propStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -601,6 +602,15 @@ function handleConfirmBookingHold(PDO $pdo): void {
 
         $pdo->prepare("UPDATE booking_holds SET status = 'converted', converted_guest_id = ?, payment_proof_url = ? WHERE id = ?")
             ->execute([$bookingId, $proofUrl, $hold['id']]);
+
+        // Voucher-template resolution + link (7 Sep 2026) - see
+        // getPropertyVoucherFields()'s doc comment. This flow has no other
+        // property fetch on the frontend (quote mode skips
+        // fetchPublicData()), so everything the shared WhatsApp template
+        // needs must travel in this response, unlike the instant-booking
+        // path which can also read it off the already-loaded property state.
+        $voucherFields = getPropertyVoucherFields($pdo, $propertyId);
+        $voucherToken = getOrCreateVoucherToken($pdo, $propertyId, $bookingId);
 
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
@@ -683,7 +693,7 @@ function handleConfirmBookingHold(PDO $pdo): void {
 
         echo json_encode([
             'status' => 'success',
-            'data' => [
+            'data' => array_merge([
                 'booking_id' => $bookingId,
                 'reference_number' => $refNumber,
                 'property_name' => $prop['name'] ?? '',
@@ -701,7 +711,9 @@ function handleConfirmBookingHold(PDO $pdo): void {
                 'checkin_time' => $prop['checkin_time'] ?: '14:00',
                 'checkout_time' => $prop['checkout_time'] ?: '11:00',
                 'address' => $prop['address'] ?? '',
-            ],
+                'num_guests' => $numGuests,
+                'voucher_token' => $voucherToken,
+            ], $voucherFields),
         ]);
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

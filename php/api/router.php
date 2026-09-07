@@ -3311,9 +3311,25 @@ switch ($action) {
             $newPlanType = $input['plan_type'] ?? 'Growth';
             $newExpiresAt = !empty($input['subscription_expires_at']) ? $input['subscription_expires_at'] : null;
 
+            // whatsapp_voucher_template (7 Sep 2026) - the Root-Admin-editable
+            // tenant-level default all of a tenant's properties fall back to
+            // (see property_edit_form.tsx's own per-property override, and
+            // whatsappVoucherTemplate.ts's inheritance chain). Handled with
+            // COALESCE-on-absence rather than joining the fixed column list
+            // above like every other field here - this action's OTHER call
+            // site (toggleTenantStatus, a quick active/inactive flip) never
+            // sends this field, and every other field here already gets
+            // silently reset to a default when absent from that call
+            // (a pre-existing gap, out of scope to fix here) - this field
+            // must not join that list. Present-but-empty means "reset to the
+            // Ground Code default", same semantic as the property-level save.
+            $hasVoucherTemplateField = array_key_exists('whatsapp_voucher_template', $input);
+            $newVoucherTemplate = $hasVoucherTemplateField ? trim((string)$input['whatsapp_voucher_template']) : null;
+
             $stmt = $pdo->prepare("
                 UPDATE tenants
-                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, is_demo = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?
+                SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, is_demo = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?,
+                    whatsapp_voucher_template = CASE WHEN ? THEN ? ELSE whatsapp_voucher_template END
                 WHERE id = ?
             ");
             $stmt->execute([
@@ -3327,6 +3343,8 @@ switch ($action) {
                 isset($input['max_properties']) ? (int)$input['max_properties'] : null,
                 $newExpiresAt,
                 $newPlanType,
+                $hasVoucherTemplateField ? 1 : 0,
+                $newVoucherTemplate !== '' ? $newVoucherTemplate : null,
                 $id
             ]);
             echo json_encode(['success' => true, 'message' => 'Tenant updated successfully']);

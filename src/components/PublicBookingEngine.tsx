@@ -68,6 +68,8 @@ import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { buildUpiPaymentLink } from '../utils/upiQrCode';
 import { humanizeKey } from '../utils/humanizeKey';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
+import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { apiFetch, API_ROOT_BASE, getBookingHoldDB, confirmBookingHoldDB, BookingHoldDetails } from '../services/api';
 
 interface PublicRoom {
@@ -243,6 +245,17 @@ interface PublicProperty {
   checkout_time: string;
   pricing_mode: string;
   default_tariff: number;
+  // Voucher-template resolution (7 Sep 2026) - see getPropertyVoucherFields()
+  // on the PHP side. whatsapp_voucher_template is this property's own
+  // override; tenant_whatsapp_voucher_template is what it falls back to
+  // before the hardcoded DEFAULT_WHATSAPP_VOUCHER_TEMPLATE - same chain
+  // PropertyEditForm.tsx already resolves for the offline flow.
+  whatsapp_voucher_template?: string | null;
+  tenant_whatsapp_voucher_template?: string | null;
+  wifi_network?: string | null;
+  wifi_password?: string | null;
+  house_manual?: string | null;
+  security_deposit?: number | null;
 }
 
 interface BookingConfirmation {
@@ -262,6 +275,25 @@ interface BookingConfirmation {
   checkin_time: string;
   checkout_time: string;
   address: string;
+  // Added 7 Sep 2026 for the shared WhatsApp voucher template (see
+  // buildBookingVoucherWhatsAppText below). The WhatsApp-quote confirmation
+  // path (handleConfirmBookingHold) has no other property fetch to fall back
+  // on - quote mode skips fetchPublicData() entirely - so it carries its own
+  // copy of every field the template can reference; the instant-booking path
+  // (handleCreatePublicBooking) only strictly needs num_guests/voucher_token
+  // here since `property` state already has the rest, but the fields are
+  // optional on both so either response shape works without special-casing.
+  num_guests?: number;
+  voucher_token?: string | null;
+  whatsapp_voucher_template?: string | null;
+  tenant_whatsapp_voucher_template?: string | null;
+  wifi_network?: string | null;
+  wifi_password?: string | null;
+  house_manual?: string | null;
+  security_deposit?: number | null;
+  upi_qr_code_url?: string | null;
+  google_maps_link?: string | null;
+  instructions?: string | null;
 }
 
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -644,6 +676,84 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     if (c === 'GBP') return '£';
     return `${c} `;
   }, [property?.currency, quoteHold?.currency]);
+
+  // Shared WhatsApp voucher text (7 Sep 2026) - same renderWhatsappVoucherTemplate()
+  // the offline/staff flow uses (see BookingDetailsModal.tsx), so a guest who
+  // books directly through this page gets the exact same rich confirmation
+  // message (UPI/QR, nights, advance/balance, notes, voucher link) instead of
+  // the old 6-line hardcoded string this used to build inline, twice, nearly
+  // verbatim. Resolution order matches PropertyEditForm.tsx's own inheritance:
+  // this booking's own copy (only the WhatsApp-quote confirmation carries one,
+  // since quote mode never loads `property`) -> the loaded property's own
+  // override -> the property's tenant default -> the hardcoded fallback.
+  const buildBookingVoucherWhatsAppText = (b: BookingConfirmation): string => {
+    const effectiveTemplate =
+      (b.whatsapp_voucher_template && b.whatsapp_voucher_template.trim()) ||
+      (property?.whatsapp_voucher_template && property.whatsapp_voucher_template.trim()) ||
+      (b.tenant_whatsapp_voucher_template && b.tenant_whatsapp_voucher_template.trim()) ||
+      (property?.tenant_whatsapp_voucher_template && property.tenant_whatsapp_voucher_template.trim()) ||
+      DEFAULT_WHATSAPP_VOUCHER_TEMPLATE;
+
+    const finalUpi = b.upi_id || property?.upi_id || '';
+    const uploadedQr = b.upi_qr_code_url || property?.upi_qr_code_url || '';
+    // Same auto-generated-QR-from-deep-link fallback PropertyEditForm.tsx's
+    // own preview uses when no bank/PhonePe/GPay QR image has been uploaded.
+    const upiDeepLink = finalUpi
+      ? buildUpiPaymentLink({
+          upiId: finalUpi,
+          payeeName: b.property_name || property?.name || 'Ground Code Resort',
+          amount: b.total_tariff,
+          note: `Booking ${b.room_name || ''}`.trim(),
+        })
+      : '';
+    const finalQr = uploadedQr || (upiDeepLink ? `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiDeepLink)}` : '');
+
+    const voucherLink = b.voucher_token
+      ? `${window.location.origin}${window.location.pathname}#voucher?token=${b.voucher_token}`
+      : '';
+
+    const totalStr = Number(b.total_tariff || 0).toFixed(2);
+    const depositVal = b.security_deposit ?? property?.security_deposit;
+
+    return renderWhatsappVoucherTemplate(effectiveTemplate, {
+      booking_id: String(b.booking_id ?? ''),
+      guest_name: b.guest_name || '',
+      guest_phone: b.phone || '',
+      room_name: b.room_name || '',
+      checkin_date: formatDateDDMMYYYY(b.checkin_date),
+      checkin_time: b.checkin_time || '',
+      checkout_date: formatDateDDMMYYYY(b.checkout_date),
+      checkout_time: b.checkout_time || '',
+      nights: String(b.nights ?? ''),
+      // The online form only ever collects a single guest count, never an
+      // adults/children split - guest_breakdown stays empty and its line
+      // drops, same as any offline booking that never captured a split.
+      guest_count: b.num_guests != null ? String(b.num_guests) : '',
+      guest_breakdown: '',
+      room_tariff: totalStr,
+      // Always 0 for a fresh direct booking - see handleCreatePublicBooking/
+      // handleConfirmBookingHold, which both insert advance_paid = 0 and rely
+      // on the guest paying afterward ("Payment requested"/"Pending
+      // Verification"). Not droppable here on purpose: a brand-new unpaid
+      // booking SHOULD say so, unlike an offline booking that might already
+      // be part-paid.
+      advance_paid: '0.00',
+      payments_list: '',
+      balance_due: totalStr,
+      security_deposit: depositVal ? Number(depositVal).toFixed(2) : '',
+      address: b.address || property?.address || '',
+      contact_phone: property?.phone || '',
+      maps_link: b.google_maps_link || property?.google_maps_link || '',
+      upi_id: finalUpi,
+      upi_qr_code_url: finalQr,
+      other_notes: b.instructions || property?.instructions || '',
+      wifi_network: b.wifi_network || property?.wifi_network || '',
+      wifi_password: b.wifi_password || property?.wifi_password || '',
+      house_manual: b.house_manual || property?.house_manual || '',
+      voucher_link: voucherLink,
+      property_name: b.property_name || property?.name || '',
+    });
+  };
 
   // Navigate Months (Guarded against past months)
   const handlePrevMonth = () => {
@@ -1038,7 +1148,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             WalkInTabBillModal.tsx for the same pattern. */}
         <div className="grid grid-cols-2 gap-2.5">
           <a
-            href={`https://wa.me/?text=${encodeURIComponent(`🏨 Booking Confirmation (${confirmation.property_name})\nRef: ${confirmation.reference_number}\nRoom: ${confirmation.room_name}\nDates: ${formatDateDisplay(confirmation.checkin_date)} to ${formatDateDisplay(confirmation.checkout_date)}\nTotal: ${currencySym}${confirmation.total_tariff}\nGuest: ${confirmation.guest_name}`)}`}
+            href={`https://wa.me/?text=${encodeURIComponent(buildBookingVoucherWhatsAppText(confirmation))}`}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center h-10 cursor-pointer text-center"
@@ -1177,7 +1287,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
               <div className="p-5 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`🏨 Booking Confirmation (${booking?.property_name || quoteHold?.property_name})\nRef: ${booking?.reference_number}\nRoom: ${booking?.room_name || quoteHold?.room_name}\nDates: ${formatDateDisplay(booking?.checkin_date || '')} to ${formatDateDisplay(booking?.checkout_date || '')}\nTotal: ${currencySym}${booking?.total_tariff}\nGuest: ${booking?.guest_name || quoteGuestName}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(buildBookingVoucherWhatsAppText({
+                    ...(quoteHold as any),
+                    ...(booking as any),
+                    property_name: booking?.property_name || quoteHold?.property_name || '',
+                    room_name: booking?.room_name || quoteHold?.room_name || '',
+                    guest_name: booking?.guest_name || quoteGuestName || '',
+                  }))}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center h-10 cursor-pointer text-center"

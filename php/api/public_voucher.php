@@ -54,6 +54,54 @@ function ensureGuestVoucherTokenColumn(PDO $pdo): void {
  * in the database gets one the first time its voucher is sent, with no
  * migration.
  */
+/**
+ * Everything the shared WhatsApp voucher template (src/utils/
+ * whatsappVoucherTemplate.ts) needs beyond what each guest-facing booking
+ * call site already selects for its own purposes - property override,
+ * tenant-level default, and the handful of property fields the template can
+ * reference (WiFi, house manual, security deposit, UPI QR/maps/instructions).
+ * One extra query, reused by every guest-facing booking-confirmation path
+ * (the public booking-info fetch that feeds the page itself, the instant
+ * direct-booking confirmation, and the WhatsApp-quote confirmation) so the
+ * online and offline confirmation messages resolve their wording exactly the
+ * same way: property override -> tenant default -> DEFAULT_WHATSAPP_VOUCHER_
+ * TEMPLATE (applied client-side, same as BookingDetailsModal.tsx, when both
+ * are empty). Added 7 Sep 2026 alongside the online/offline voucher unify.
+ */
+function getPropertyVoucherFields(PDO $pdo, int $propertyId): array {
+    $out = [
+        'whatsapp_voucher_template' => null,
+        'tenant_whatsapp_voucher_template' => null,
+        'wifi_network' => null,
+        'wifi_password' => null,
+        'house_manual' => null,
+        'security_deposit' => null,
+        'upi_qr_code_url' => null,
+        'google_maps_link' => null,
+        'instructions' => null,
+    ];
+    try {
+        $stmt = $pdo->prepare("SELECT tenant_id, whatsapp_voucher_template, wifi_network, wifi_password, house_manual, security_deposit, upi_qr_code_url, google_maps_link, instructions FROM properties WHERE id = ? LIMIT 1");
+        $stmt->execute([$propertyId]);
+        if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $out['whatsapp_voucher_template'] = $row['whatsapp_voucher_template'] ?? null;
+            $out['wifi_network'] = $row['wifi_network'] ?? null;
+            $out['wifi_password'] = $row['wifi_password'] ?? null;
+            $out['house_manual'] = $row['house_manual'] ?? null;
+            $out['security_deposit'] = $row['security_deposit'] ?? null;
+            $out['upi_qr_code_url'] = $row['upi_qr_code_url'] ?? null;
+            $out['google_maps_link'] = $row['google_maps_link'] ?? null;
+            $out['instructions'] = $row['instructions'] ?? null;
+            if (!empty($row['tenant_id'])) {
+                $tStmt = $pdo->prepare("SELECT whatsapp_voucher_template FROM tenants WHERE id = ? LIMIT 1");
+                $tStmt->execute([$row['tenant_id']]);
+                $out['tenant_whatsapp_voucher_template'] = $tStmt->fetchColumn() ?: null;
+            }
+        }
+    } catch (Exception $e) {}
+    return $out;
+}
+
 function getOrCreateVoucherToken(PDO $pdo, int $propertyId, int $bookingId): ?string {
     ensureGuestVoucherTokenColumn($pdo);
     try {

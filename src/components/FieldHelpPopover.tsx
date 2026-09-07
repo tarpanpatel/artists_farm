@@ -1,6 +1,5 @@
 import React from 'react';
 import { Popover } from './Popover';
-import { Badge } from './Badge';
 import { HelpCircle } from './icons/FlowbiteIcons';
 
 export interface FieldHelpPopoverProps {
@@ -12,7 +11,7 @@ export interface FieldHelpPopoverProps {
 
 /**
  * Standardized Flowbite Popover trigger for field instruction/helper text.
- * Renders a compact bordered "Help?" badge with icon that reveals full guidance on hover/tap.
+ * Renders an unobtrusive help icon that reveals full guidance on hover/tap.
  */
 export const FieldHelpPopover: React.FC<FieldHelpPopoverProps> = ({
   content,
@@ -30,7 +29,7 @@ export const FieldHelpPopover: React.FC<FieldHelpPopoverProps> = ({
   return (
     <Popover
       trigger="hover"
-      placement="auto"
+      placement="top"
       zIndex={zIndex}
       title={headerTitle || 'Help'}
       content={
@@ -42,16 +41,9 @@ export const FieldHelpPopover: React.FC<FieldHelpPopoverProps> = ({
       <button
         type="button"
         aria-label={typeof headerTitle === 'string' ? `Help for ${headerTitle}` : 'Help information'}
-        className={`inline-flex items-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30 rounded ${className}`}
+        className={`inline-flex items-center justify-center text-slate-400 hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400 transition-colors cursor-pointer p-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500/30 rounded-full ${className}`}
       >
-        <Badge
-          variant="neutral"
-          size="sm"
-          className="cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1"
-        >
-          <HelpCircle className="w-3 h-3 shrink-0 text-slate-500 dark:text-slate-400" />
-          <span>Help?</span>
-        </Badge>
+        <HelpCircle className="w-3.5 h-3.5 shrink-0" />
       </button>
     </Popover>
   );

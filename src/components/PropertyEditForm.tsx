@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useToast } from './ToastContext';
-import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X } from './icons/FlowbiteIcons';
+import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X, Sparkles } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
 import { FieldHelpPopover } from './FieldHelpPopover';
 import { WhatsAppEditor } from './WhatsAppEditor';
+import { AmenitiesSelectModal } from './AmenitiesSelectModal';
+import { getAmenityIcon } from '../utils/amenityCatalog';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, VOUCHER_TOKENS, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { MessageQrPreview } from './MessageQrPreview';
@@ -153,17 +155,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       .filter((a): a is string => typeof a === 'string')
       .map((a) => humanizeKey(a))
   );
-  const [newAmenity, setNewAmenity] = useState('');
-  const addAmenity = () => {
-    const v = newAmenity.trim();
-    if (!v) return;
-    if (amenities.some((a) => a.toLowerCase() === v.toLowerCase())) {
-      setNewAmenity('');
-      return;
-    }
-    setAmenities((prev) => [...prev, v]);
-    setNewAmenity('');
-  };
+  const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
   const removeAmenity = (idx: number) => setAmenities((prev) => prev.filter((_, i) => i !== idx));
 
   interface BedRoomEntry {
@@ -850,48 +842,80 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           has, imported or not. Stored as plain human-readable strings; a
           duplicate (case-insensitive) is silently ignored rather than added
           twice. */}
-      <div className="property-edit-form__field space-y-2">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
-          {t('amenities_label', 'Amenities')}
-        </label>
-        {amenities.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {amenities.map((a, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium pl-3 pr-1.5 py-1"
-              >
-                {a}
-                <button
-                  type="button"
-                  onClick={() => removeAmenity(idx)}
-                  aria-label={t('remove_amenity_label', 'Remove amenity')}
-                  className="p-0.5 rounded-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
+      {/* Amenities (7 Sep 2026) - select via modal or quick add */}
+      <div className="property-edit-form__field space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <label className="app-label block text-sm font-semibold text-slate-800 dark:text-slate-100">
+              {t('amenities_label', 'Amenities')}
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {t('amenities_subtitle', 'Shown to guests on your direct booking page.')}
+            </p>
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          <Input
-            value={newAmenity}
-            onChange={(e) => setNewAmenity(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addAmenity();
-              }
-            }}
-            placeholder={t('amenity_placeholder', 'e.g. Air Conditioning, Free Parking, Kitchen')}
-            fullWidth
-          />
-          <Button type="button" variant="secondary" size="sm" onClick={addAmenity} className="shrink-0 flex items-center gap-1.5">
-            <Plus className="w-4 h-4" />
-            <span>{t('add_amenity_button', 'Add')}</span>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowAmenitiesModal(true)}
+            className="shrink-0 flex items-center gap-1.5"
+          >
+            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>{t('select_amenities_button', 'Select Amenities')}</span>
+            {amenities.length > 0 && (
+              <span className="ms-1 px-1.5 py-0.2 rounded-full text-2xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
+                {amenities.length}
+              </span>
+            )}
           </Button>
         </div>
+
+        {amenities.length > 0 ? (
+          <div className="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80">
+            {amenities.map((a, idx) => {
+              const Icon = getAmenityIcon(a);
+              return (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium pl-2.5 pr-1.5 py-1 border border-slate-200 dark:border-slate-700 shadow-2xs"
+                >
+                  <Icon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <span>{a}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAmenity(idx)}
+                    aria-label={t('remove_amenity_label', 'Remove amenity')}
+                    className="p-0.5 rounded text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
+            <span>{t('no_amenities_added_message', 'No amenities added yet.')}</span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="xs"
+              onClick={() => setShowAmenitiesModal(true)}
+              className="flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>{t('select_amenities_button', 'Select Amenities')}</span>
+            </Button>
+          </div>
+        )}
+
+        {/* Amenities Selection Modal */}
+        <AmenitiesSelectModal
+          isOpen={showAmenitiesModal}
+          onClose={() => setShowAmenitiesModal(false)}
+          selectedAmenities={amenities}
+          onSave={(newAmenities) => setAmenities(newAmenities)}
+        />
       </div>
 
       {/* Guest arrival info (6 Sep 2026). Appears on the WhatsApp booking

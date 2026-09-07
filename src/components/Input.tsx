@@ -82,13 +82,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={`app-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} input`}>
         {label && (
-          <div className="mb-1.5 block">
+          <div className="mb-1.5 flex items-center gap-1.5">
             <label
               htmlFor={inputId}
               className={`app-label text-xs font-semibold text-slate-700 dark:text-slate-200 ${labelClassName || ''} input__label`}
             >
               {label}
             </label>
+            {helperText && !errorMessage && !successMessage && (
+              <FieldHelpPopover content={helperText} title={label} />
+            )}
           </div>
         )}
         <div className="input__field-wrapper relative flex items-center">
@@ -126,7 +129,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <p id={`${inputId}-success`} className="app-success-text mt-1.5 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 font-medium input__success">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
-        ) : helperText ? (
+        ) : (!label && helperText) ? (
           <div id={`${inputId}-helper`} className="app-helper-text mt-1.5 flex items-center input__helper">
             <FieldHelpPopover content={helperText} title={label} />
           </div>

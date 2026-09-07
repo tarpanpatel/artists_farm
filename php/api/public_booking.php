@@ -16,6 +16,7 @@ if (!defined('GROUND_CODE_API')) {
 // loads this, but don't depend on include order for something that decides
 // whether a paying guest can book.
 require_once __DIR__ . '/../config/guest_status.php';
+require_once __DIR__ . '/public_voucher.php';
 
 function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
     if ($propertyId <= 0) {
@@ -261,10 +262,17 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
         }
     }
 
+    // Voucher-template resolution fields (7 Sep 2026) - property override,
+    // tenant default, and the property details the shared template can
+    // reference (WiFi, house manual, deposit) - so this page's own "Share on
+    // WhatsApp" confirmation reads the exact same wording an offline/staff
+    // booking would. See getPropertyVoucherFields()'s own doc comment.
+    $voucherFields = getPropertyVoucherFields($pdo, $propertyId);
+
     echo json_encode([
         'status' => 'success',
         'data' => [
-            'property' => [
+            'property' => array_merge([
                 'id' => (int)$property['id'],
                 'name' => $property['name'],
                 'slug' => $property['slug'],
@@ -279,7 +287,7 @@ function handleGetPublicBookingInfo(PDO $pdo, int $propertyId): void {
                 'checkout_time' => $property['checkout_time'] ?: '11:00',
                 'pricing_mode' => $propPricingMode,
                 'default_tariff' => $baseTariff,
-            ],
+            ], $voucherFields),
             'rooms' => $rooms,
             'occupied_blocks' => $occupiedBlocks,
             'daily_rates' => $dailyRatesPerRoom,
@@ -547,6 +555,12 @@ function handleCreatePublicBooking(PDO $pdo): void {
 
         $pdo->commit();
 
+        // Voucher link (7 Sep 2026) - same token mechanism the staff-facing
+        // "Share via WhatsApp" already mints via get_booking_voucher_link, so
+        // a guest who books directly gets the same {voucher_link} token an
+        // offline booking's confirmation carries.
+        $voucherToken = getOrCreateVoucherToken($pdo, $targetPropertyId, $bookingId);
+
         // Trigger asynchronous/event-driven drain so OTA calendars update immediately
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
@@ -595,6 +609,8 @@ function handleCreatePublicBooking(PDO $pdo): void {
                 'checkin_time' => $prop['checkin_time'] ?: '14:00',
                 'checkout_time' => $prop['checkout_time'] ?: '11:00',
                 'address' => $prop['address'] ?? '',
+                'num_guests' => $numGuests,
+                'voucher_token' => $voucherToken,
             ]
         ]);
 
