@@ -817,11 +817,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     }, 150);
   };
 
-  const handleCellClick = (room: PublicRoom, dateStr: string, occupied: boolean, past: boolean) => {
-    if (occupied || past) return;
-    handleDateSelection(dateStr, room);
-  };
-
   // Top row date header click (Airbnb 2-click date range)
   const handleTopRowDateClick = (dateStr: string, past: boolean) => {
     if (past) return;
@@ -1890,31 +1885,27 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                       const occupied = isRoomOccupied(room.id, dStr);
                       const rate = getRoomDailyPrice(room, dStr);
                       const isToday = dStr === todayStr;
-                      const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRangeStatus(dStr);
+                      const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRoomRangeStatus(room.id, dStr);
 
                       return (
+                        // Read-only, same as the desktop table above - see that
+                        // cell's comment.
                         <div
                           key={dStr}
-                          onClick={() => handleCellClick(room, dStr, occupied, isPast)}
-                          onMouseEnter={() => {
-                            if (checkinDate && !checkoutDate && !isPast && !occupied) {
-                              setHoverDate(dStr);
-                            }
-                          }}
                           className={`relative p-2 min-h-[4.5rem] flex flex-col justify-between transition-all select-none ${
                             isPast
-                              ? 'bg-gray-50 dark:bg-gray-800/40 opacity-40 cursor-not-allowed'
+                              ? 'bg-gray-50 dark:bg-gray-800/40 opacity-40'
                               : occupied
-                              ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400 cursor-not-allowed'
+                              ? 'bg-[#fef2f2] dark:bg-red-950/20 text-[#b91c1c] dark:text-red-400'
                               : isSingleDayPick
-                              ? 'bg-blue-600 text-white cursor-pointer rounded-lg ring-2 ring-blue-500 shadow-md font-bold z-10'
+                              ? 'bg-blue-600 text-white rounded-lg ring-2 ring-blue-500 shadow-md font-bold z-10'
                               : isStart
-                              ? 'bg-blue-600 text-white cursor-pointer rounded-l-lg ring-1 ring-blue-600 shadow-md font-bold z-10'
+                              ? 'bg-blue-600 text-white rounded-l-lg ring-1 ring-blue-600 shadow-md font-bold z-10'
                               : isEnd
-                              ? `${isTentative ? 'bg-blue-500/90 text-white' : 'bg-blue-600 text-white'} cursor-pointer rounded-r-lg ring-1 ring-blue-500 shadow-md font-bold z-10`
+                              ? `${isTentative ? 'bg-blue-500/90 text-white' : 'bg-blue-600 text-white'} rounded-r-lg ring-1 ring-blue-500 shadow-md font-bold z-10`
                               : isInRange
-                              ? 'bg-blue-100/90 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold'
-                              : 'bg-[#f0fdf4] dark:bg-emerald-950/20 hover:bg-[#dcfce7] dark:hover:bg-emerald-900/40 cursor-pointer'
+                              ? 'bg-blue-100/90 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100 font-semibold'
+                              : 'bg-[#f0fdf4] dark:bg-emerald-950/20'
                           }`}
                         >
                           <div className="flex items-center justify-between">
