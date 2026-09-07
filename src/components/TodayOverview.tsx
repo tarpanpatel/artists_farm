@@ -397,6 +397,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     d.columnMode = true;
     d.armed = true;
     d.isClickSelecting = false;
+    d.pointerDownActive = true;
     setIsDragArmed(true);
     setSelAnchor({ roomIdx: 0, dateIdx });
     setSelFocus({ roomIdx: gridRooms.length - 1, dateIdx });
