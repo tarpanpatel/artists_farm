@@ -26,8 +26,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 // a deliberate departure from Flowbite's own theme.js defaults, which do put
 // shadow-sm/shadow-xs on solid buttons.
 const buttonTheme = createTheme({
+  pill: 'rounded-lg',
   size: {
-    xs: 'text-[11px] px-2.5 h-7',
+    xs: 'text-xs px-2.5 h-8',
     sm: 'text-xs px-3 h-8',
     md: 'text-sm px-4 h-10',
     lg: 'text-base px-5 h-12',

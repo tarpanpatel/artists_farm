@@ -3124,13 +3124,15 @@ ${itemsStr}
               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Use it directly from your desktop or mobile homescreen</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleInstallApp}
-                className="bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                leftIcon={<Download className="w-3.5 h-3.5" />}
+                className="h-8 text-xs font-semibold shadow-none"
               >
-                <Download className="w-3.5 h-3.5" />
                 <span>Install</span>
-              </button>
+              </Button>
               <button
                 onClick={() => setShowInstallBanner(false)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg cursor-pointer animate-none"

@@ -252,21 +252,25 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
             </p>
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={handleSyncDefaults}
               disabled={syncing}
-              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              leftIcon={syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              className="h-8 text-xs font-semibold shadow-none"
             >
-              {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               {syncing ? t('syncing_button', 'Syncing...') : t('sync_defaults_button', 'Sync Defaults')}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="success"
+              size="sm"
               onClick={() => setIsAddingNew(!isAddingNew)}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              leftIcon={<Plus className="w-3.5 h-3.5" />}
+              className="h-8 text-xs font-semibold shadow-none border-transparent"
             >
-              <Plus className="w-3.5 h-3.5" />
               {t('add_new_item_button', 'Add New Item')}
-            </button>
+            </Button>
           </div>
         </div>
         <div className="relative mt-3">

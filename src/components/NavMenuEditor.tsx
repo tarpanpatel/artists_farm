@@ -709,9 +709,9 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
               ))}
             </div>
             {item.tabKey === 'custom' && (
-              <div className="nav-menu-editor__custom-url-row mt-2 flex gap-1">
+              <div className="nav-menu-editor__custom-url-row mt-2 flex gap-1 items-center">
                 <Input type="url" value={customUrlInput[item.id] ?? item.customUrl ?? ''} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." className="flex-1" />
-                <button onClick={() => handleCustomUrlSave(item.id)} className="nav-menu-editor__custom-url-set px-2 py-1 bg-blue-600 text-white text-[10px] font-semibold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
+                <Button size="xs" variant="primary" onClick={() => handleCustomUrlSave(item.id)} className="h-8 text-xs font-semibold">{t('nav_set_url_button', 'Set')}</Button>
               </div>
             )}
             <button onClick={() => { setShowTabPickerFor(null); setTabSearch(''); }} className="nav-menu-editor__picker-close mt-2 text-[10px] text-slate-400 hover:text-slate-600 cursor-pointer">{t('close_button', 'Close')}</button>
@@ -720,10 +720,10 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
 
         {/* Custom URL Input */}
         {customUrlInput[item.id] !== undefined && showTabPickerFor !== item.id && (
-          <div className="nav-menu-editor__custom-url-row ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1">
+          <div className="nav-menu-editor__custom-url-row ml-12 my-1 p-2 bg-purple-50 rounded-lg border border-purple-200 flex gap-1 items-center">
             <Input type="url" value={customUrlInput[item.id]} onChange={(e) => setCustomUrlInput(prev => ({ ...prev, [item.id]: e.target.value }))} placeholder="https://..." autoFocus className="flex-1" />
-            <button onClick={() => handleCustomUrlSave(item.id)} className="nav-menu-editor__custom-url-set px-2 py-1 bg-blue-600 text-white text-[10px] font-semibold rounded cursor-pointer">{t('nav_set_url_button', 'Set')}</button>
-            <button onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="nav-menu-editor__custom-url-cancel px-2 py-1 text-slate-400 text-[10px] cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+            <Button size="xs" variant="primary" onClick={() => handleCustomUrlSave(item.id)} className="h-8 text-xs font-semibold">{t('nav_set_url_button', 'Set')}</Button>
+            <Button size="xs" variant="secondary" onClick={() => setCustomUrlInput(prev => { const n = { ...prev }; delete n[item.id]; return n; })} className="h-8 text-xs font-semibold">{t('cancel_button', 'Cancel')}</Button>
           </div>
         )}
 

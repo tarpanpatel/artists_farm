@@ -1207,7 +1207,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
                       <button
                         type="button"
                         title={t('move_template_group_tooltip', 'Move to a different group')}
-                        className="h-7 px-2.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-sky-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="h-8 px-2.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-sky-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <span>{t(`template_group_${getTemplateGroup(tpl).toLowerCase()}`, getTemplateGroup(tpl))}</span>
                         <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />

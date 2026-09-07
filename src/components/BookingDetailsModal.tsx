@@ -1911,23 +1911,27 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   {t('share_preview_subheading', "This is exactly what will be sent - review it before sending.")}
                 </p>
                 {!isEditingSharePreview ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="edit"
+                    size="sm"
                     onClick={handleEditSharePreview}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/60 cursor-pointer transition-colors"
+                    leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                    className="shrink-0 h-8 text-xs font-semibold shadow-none"
                   >
-                    <Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span>{t('edit_button', 'Edit')}</span>
-                  </button>
+                  </Button>
                 ) : (
-                  <button
+                  <Button
                     type="button"
+                    variant="success"
+                    size="sm"
                     onClick={handleSaveSharePreview}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg cursor-pointer transition-colors"
+                    leftIcon={<Save className="w-3.5 h-3.5" />}
+                    className="shrink-0 h-8 text-xs font-semibold shadow-none border-transparent"
                   >
-                    <Save className="w-3.5 h-3.5" />
                     <span>{t('save_button', 'Save')}</span>
-                  </button>
+                  </Button>
                 )}
               </div>
               {isEditingSharePreview ? (

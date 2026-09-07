@@ -230,6 +230,30 @@ html.dark {
 /* Mobile input focus auto-zoom fix: minimum 16px font-size enforced on mobile screens
    in mobile_screen_fix.css to prevent iOS Safari/Chrome from zooming in on input focus. */
 
+/* ==========================================================================
+   Universal Button Geometry Safeguards (Desktop & Universal)
+   ==========================================================================
+   Enforces a standard minimum height (32px / h-8) across all screen sizes so that
+   Flowbite's rounded-lg (8px) never collapses into a capsule / stadium shape due to
+   small heights or tight vertical paddings (e.g. py-1 or py-0.5).
+   - On mobile (<=768px), mobile_screen_fix.css enforces min-height: 44px for touch ergonomics.
+   - On desktop (>768px), this baseline ensures buttons remain at least 32px tall (h-8),
+     preserving crisp rectangular edges with Flowbite rounded-lg corners.
+   - Action buttons must NEVER be capsule / pill-shaped (DESIGN.md rule).
+*/
+button:not(.inline-link):not(.var-chip):not(.app-toggle-switch):not([role="switch"]):not(.scroll-to-top-button):not(.mobile-fab):not(.btn-compact-stepper):not(.wizard-step-btn):not(.btn-step-circle):not(.confirm-dialog__close):not([data-cal-capsule="1"]):not(.receipt-remove-btn):not(.tag-remove-btn),
+.btn,
+.app-btn {
+  min-height: 32px;
+}
+
+/* Action buttons must NEVER be capsule / pill-shaped (DESIGN.md rule).
+   Normalize any accidental rounded-full or rounded-3xl on action buttons to rounded-lg (8px). */
+button.rounded-full:not(.scroll-to-top-button):not(.mobile-fab):not(.wizard-step-btn):not(.btn-step-circle):not(.app-toggle-switch):not([role="switch"]):not([data-cal-capsule="1"]):not(.receipt-remove-btn):not(.tag-remove-btn),
+button.rounded-3xl:not(.scroll-to-top-button):not(.mobile-fab):not(.wizard-step-btn):not(.btn-step-circle):not(.app-toggle-switch):not([role="switch"]) {
+  border-radius: 0.5rem !important;
+}
+
 /* Global Design System Typography: Unified Form Inputs & Select Controls */
 input,
 select,

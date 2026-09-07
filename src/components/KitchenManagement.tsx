@@ -1509,15 +1509,17 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline">{t('synced_text')} {lastSyncTime}</span>
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={triggerManualSync}
                   disabled={isSyncing}
-                  className="px-3 py-1.5 bg-slate-50 sm:bg-white dark:bg-slate-700 dark:sm:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 active:scale-98 text-xs font-semibold rounded-lg shadow-xs sm:shadow-md transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
+                  leftIcon={<RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />}
+                  className="h-8 text-xs font-semibold shadow-none"
                   title={t('check_for_updates_tooltip')}
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
                   <span>{t('sync_button')}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
