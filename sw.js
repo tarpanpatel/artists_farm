@@ -47,7 +47,7 @@
 // v52 (4 Sep 2026): Add Sync All Rates & Availability button directly on Connect Channels page
 // v53 (4 Sep 2026): Add individual listing sync buttons on Connect Channels page & Pricing Modal
 // v54 (4 Sep 2026): Direct Booking Engine with multi-room calendar & offline payment support
-const CACHE_NAME = 'farm-pos-Dl2Tjrac';
+const CACHE_NAME = 'farm-pos-Cr4lb-hB';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
