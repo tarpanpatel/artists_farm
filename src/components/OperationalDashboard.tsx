@@ -1563,7 +1563,37 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             weeks.push(slots.slice(i, i + 7));
           }
 
-          type Segment = { startCol: number; endCol: number; kind: 'booking' | 'ota'; info: DayInfo };
+          type Segment = {
+            startCol: number;
+            endCol: number;
+            kind: 'booking' | 'ota';
+            info: DayInfo;
+            // DESIGN.md "Booking Capsules Must Inset Into the Check-in and
+            // Check-out Cells" - a stay crossing a week boundary renders as
+            // several per-week segments (below), but only the segment that
+            // actually contains the real check-in day is "first", and only
+            // the one containing the real night before checkout is "last".
+            // The inset applies only to those true edges; a continuation
+            // edge (the run was already in progress, or keeps going past
+            // this row) stays flush to the row boundary - insetting every
+            // segment would draw one stay as several detached bars with a
+            // gap at every week seam, which is worse than the bug this rule
+            // fixes.
+            isFirstOfStay: boolean;
+            isLastOfStay: boolean;
+          };
+          // One calendar day past `dateStr`, as a bare YYYY-MM-DD string -
+          // used only to compare a segment's last night against the
+          // booking/OTA block's real checkout/end date (see isLastOfStay
+          // above). Reuses parseDateOnly's own parsing so this stays
+          // consistent with how the rest of the component already reads
+          // these date strings.
+          const addOneDayStr = (dateStr: string): string => {
+            const d = parseDateOnly(dateStr);
+            if (!d) return dateStr;
+            d.setDate(d.getDate() + 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          };
 
           return (
             <div className="divide-y divide-gray-200 dark:divide-gray-700 text-xs">
@@ -1580,7 +1610,24 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 let runKey: string | null = null;
                 const flush = (endCol: number) => {
                   if (runStart !== null && runKind !== null) {
-                    segments.push({ startCol: runStart, endCol, kind: runKind, info: week[runStart]! });
+                    const firstInfo = week[runStart]!;
+                    const lastInfo = week[endCol]!;
+                    let isFirstOfStay: boolean;
+                    let isLastOfStay: boolean;
+                    if (runKind === 'booking') {
+                      const b = firstInfo.dayBooking!;
+                      const realCheckin = (b.checkinDate || '').split(' ')[0].split('T')[0];
+                      const realCheckout = (b.checkoutDate || (b.expectedCheckout || '').split(' ')[0].split('T')[0] || '');
+                      isFirstOfStay = firstInfo.dateStr === realCheckin;
+                      isLastOfStay = addOneDayStr(lastInfo.dateStr) === realCheckout.split(' ')[0].split('T')[0];
+                    } else {
+                      const ob = firstInfo.otaBlock!;
+                      const realStart = ob.event_start.split(' ')[0].split('T')[0];
+                      const realEnd = ob.event_end.split(' ')[0].split('T')[0];
+                      isFirstOfStay = firstInfo.dateStr === realStart;
+                      isLastOfStay = addOneDayStr(lastInfo.dateStr) === realEnd;
+                    }
+                    segments.push({ startCol: runStart, endCol, kind: runKind, info: firstInfo, isFirstOfStay, isLastOfStay });
                   }
                   runStart = null;
                   runKind = null;
@@ -1739,7 +1786,26 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         via Playwright, not guessed. */}
                     <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
                     {segments.map((seg, segIdx) => {
-                      const gridColumn = `${seg.startCol + 1} / span ${seg.endCol - seg.startCol + 1}`;
+                      // DESIGN.md capsule-inset rule, CSS-Grid version: a
+                      // percentage margin resolves against the grid item's
+                      // OWN grid-area width (the columns it spans), not one
+                      // cell - so for a box spanning N columns, insetting by
+                      // 0.8 of one cell is `0.8/N` on that side, not a flat
+                      // 80%. The right inset only has a column to bleed
+                      // into when the checkout day actually falls within
+                      // THIS week row (`seg.endCol < 6`); when checkout
+                      // lands on next row's Sunday, the row boundary itself
+                      // already reads as a break, so there's nothing to add.
+                      const nightsInSegment = seg.endCol - seg.startCol + 1;
+                      const extendForCheckout = seg.isLastOfStay && seg.endCol < 6;
+                      const gridSpanCols = nightsInSegment + (extendForCheckout ? 1 : 0);
+                      const insetPct = (0.8 / gridSpanCols) * 100;
+                      const gridColumn = `${seg.startCol + 1} / span ${gridSpanCols}`;
+                      const capsuleStyle: React.CSSProperties = {
+                        gridColumn,
+                        marginLeft: seg.isFirstOfStay ? `${insetPct}%` : 0,
+                        marginRight: extendForCheckout ? `${insetPct}%` : 0,
+                      };
                       if (seg.kind === 'booking') {
                         const dayBooking = seg.info.dayBooking!;
                         const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
@@ -1747,7 +1813,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         const hasDayPending = dayPendingReasons.length > 0;
                         const popoverKey = `${dayBooking.id}-${seg.info.dateStr}`;
                         return (
-                          <div key={`seg-b-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={{ gridColumn }} className="pointer-events-auto px-0.5">
+                          <div key={`seg-b-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={capsuleStyle} className="pointer-events-auto">
                             <Popover
                               trigger="click"
                               placement="top"
@@ -1847,7 +1913,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         setOpenOtaPopoverId(null);
                       };
                       return (
-                        <div key={`seg-o-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={{ gridColumn }} className="pointer-events-auto px-0.5">
+                        <div key={`seg-o-${weekIdx}-${segIdx}`} data-cal-capsule="1" style={capsuleStyle} className="pointer-events-auto">
                           <Popover
                             trigger="click"
                             placement="top"
