@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge } from 'flowbite-react';
+import { Badge } from './Badge';
 
 export interface KpiCardProps {
   label: string;
@@ -22,6 +22,18 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   className = '',
   layout = 'inline',
 }) => {
+  const badgeVariant = (
+    badge?.color === 'failure' || badge?.color === 'danger'
+      ? 'danger'
+      : badge?.color === 'warning'
+      ? 'warning'
+      : badge?.color === 'info'
+      ? 'info'
+      : badge?.color === 'success'
+      ? 'success'
+      : 'neutral'
+  );
+
   return (
     <div
       className={`kpi-card flex items-center justify-between gap-3 px-4 py-3 sm:p-3.5 bg-white dark:bg-gray-800 border-y sm:border border-gray-200 dark:border-gray-700 rounded-none sm:rounded-lg shadow-xs sm:shadow-2xs hover:shadow-xs transition-shadow ${className}`}
@@ -61,7 +73,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
       </div>
 
       {badge && (
-        <Badge color={badge.color as any} size="xs" className="shrink-0 font-medium">
+        <Badge variant={badgeVariant} size="sm" className="shrink-0 font-medium">
           {badge.text}
         </Badge>
       )}

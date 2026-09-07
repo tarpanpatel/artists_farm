@@ -21,11 +21,12 @@ import { StyledSelect } from './StyledSelect';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Button } from './Button';
+import { Badge } from './Badge';
 import { Input, FloatingTextarea } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Tabs, TabItem, Card, Badge, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { Tabs, TabItem, Card, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 interface Room {
@@ -642,7 +643,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                                 <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
                               </span>
                               {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
-                                <Badge color="success" size="xs" className="font-bold">
+                                <Badge variant="success" size="sm" className="font-bold">
                                   ₹{Number(r.chargeAmount).toFixed(2)}
                                 </Badge>
                               )}
@@ -686,7 +687,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                                   <Home className="w-3 h-3 text-slate-400" /> {r.roomName}
                                 </span>
                                 {Boolean(r.chargeAmount && r.chargeAmount > 0) && (
-                                  <Badge color="success" size="xs" className="font-bold">
+                                  <Badge variant="success" size="sm" className="font-bold">
                                     ₹{Number(r.chargeAmount).toFixed(2)}
                                   </Badge>
                                 )}
@@ -695,7 +696,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                                 {t('fulfilled_by_text', 'Fulfilled by')} {r.fulfilledBy} · {formatDateTimeDDMMYYYY(r.fulfilledAt)}
                               </p>
                             </div>
-                            <Badge color="success" size="xs" icon={CheckCircle2} className="shrink-0 font-semibold">
+                            <Badge variant="success" size="sm" className="shrink-0 font-semibold">
                               {t('done_badge', 'Done')}
                             </Badge>
                           </div>
@@ -991,7 +992,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{rt.label}</span>
                             {Boolean(rt.defaultAmount && rt.defaultAmount > 0) ? (
-                              <Badge color="success" size="xs" className="font-semibold">
+                              <Badge variant="success" size="sm" className="font-semibold">
                                 ₹{Number(rt.defaultAmount).toFixed(2)}
                               </Badge>
                             ) : (
