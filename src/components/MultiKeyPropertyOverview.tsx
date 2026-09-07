@@ -87,7 +87,6 @@ interface MultiKeyPropertyOverviewProps {
   onAddMenuItem?: (item: any) => void;
   onUpdateStock?: (itemId: string, newStock: number) => void;
   onAddInventoryItem?: (item: any) => void;
-  onUpdateItemImage?: (itemId: string, imagePath: string) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onCheckInGuest?: (guestId: string) => void;
   onCheckout?: (guestId: string) => void;
@@ -131,7 +130,6 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   onAddMenuItem: _onAddMenuItem,
   onUpdateStock: _onUpdateStock,
   onAddInventoryItem: _onAddInventoryItem,
-  onUpdateItemImage: _onUpdateItemImage,
   onDispatchTelegram,
   onCheckout,
   activeMenuItemKey = '',

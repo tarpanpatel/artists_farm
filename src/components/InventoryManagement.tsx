@@ -5,7 +5,7 @@ import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, Loader2, FlaskConical, Coffee, Milk, Apple, Banana, Cake, Carrot, Wheat, SprayCan, Drumstick, UtensilsCrossed, Croissant, Soup, Droplet, Snowflake, Fish, Wrench, Balloon, Refrigerator, Microwave, Fan, Blend, Bean, HandPlatter, GlassWater, LeafyGreen, Trash2, Candy, Flame, Cherry, Grape, Citrus, Egg, CupSoda, Utensils, Sandwich, Cookie, Nut, Filter, Eye, type FlowbiteIconComponent } from './icons/FlowbiteIcons';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -13,104 +13,13 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate, uploadImageDB } from '../services/api';
+import { fetchStockRequestsFromDB, createStockRequestInDB, updateStockRequestStatusInDB, fetchWastageLogsFromDB, createWastageLogDB, fetchStaffUsersFromDB, fetchMaterialCategoriesFromDB, updateMaterialCategoryInDB, deleteMaterialCategoryFromDB, addMaterialCategoryToDB, addCatalogItemDB, updateCatalogItemDB, deleteCatalogItemDB, bulkUpdateCatalogCategoryDB, resolveTelegramTemplate } from '../services/api';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
-
-
-// Matched against the item NAME first (most specific), since real catalogs
-// group very different items under one loose category (e.g. "Sugar" and
-// "Red Balloon" both landing under "Housekeeping & Disposables") - a
-// category-only icon was confirmed wrong for most rows. Order matters:
-// more specific terms (e.g. "mirch powder") must be checked before the
-// broader term they contain (e.g. "mirch") so spice powders don't get
-// mapped as fresh vegetables. Covers common English + Hindi/Hinglish
-// kitchen-stock vocabulary; anything unmatched falls through to the
-// category rules below, then to a generic Package icon.
-const STOCK_NAME_ICON_RULES: [RegExp, FlowbiteIconComponent][] = [
-  [/balloon/i, Balloon],
-  [/\bfridge\b|refrigerator/i, Refrigerator],
-  [/microwave/i, Microwave],
-  [/exhaust\s*fan|\bfan\b/i, Fan],
-  [/\bmixer\b|blender/i, Blend],
-  [/air\s*fryer|\bfryer\b/i, Flame],
-  [/sandwich\s*maker/i, Sandwich],
-  [/\bkettle\b/i, Coffee],
-  [/gas\s*cylinder|\blpg\b|\bcylinder\b/i, Flame],
-  [/chlorine|\bro\b|water\s*purifier/i, Droplet],
-  [/dish\s*wash|surf\s*excel|\bvim\b|detergent|\bsoap\b|cleaner|\bpolish\b/i, SprayCan],
-  [/garbage|dustbin|\btrash\b/i, Trash2],
-  [/\bsugar\b/i, Candy],
-  [/\bsalt\b/i, FlaskConical],
-  [/\bmatch\s*box\b/i, Flame],
-  [/\bbiscuit\b|\bcookie\b/i, Cookie],
-  [/\bkaju\b|cashew|\balmond\b|\bpista\b|\bmagaj\b|\bpeanut\b|\bwalnut\b/i, Nut],
-  [/masala|powder|elaichi|dalchini|ajino\s*moto|\bhaldi\b|\bjeera\b|dhaniya|\bgaram\b|\bchaat\b|\bchat\b|kitchen\s*king|\baachar\b|\bachar\b|\bdegi\b/i, FlaskConical],
-  // Sauces/condiments checked before the chili & vegetable rules below, since
-  // e.g. "Tomato Ketchup" and "Green Chili Sauce" contain those ingredient
-  // words but are the finished condiment, not the raw produce.
-  [/sauce|ketchup|chutney/i, Soup],
-  [/\bflour\b|\batta\b|\bmaida\b|\bb[ae]?san\b|\brice\b|\bwheat\b|\bpoha\b|\bpapad\b|\bsev\b|jwar|ragi/i, Wheat],
-  [/\bdal\b|lentil|\bchana\b/i, Bean],
-  [/mirch|mrch|chil+i|pepper/i, Flame],
-  [/\bmint\b|pudina|\bpalak\b|spinach|\bcabbage\b|\bgobhi\b/i, LeafyGreen],
-  [/\blemon\b|\boranges?\b/i, Citrus],
-  [/\bapple\b/i, Apple],
-  [/\bbanana\b/i, Banana],
-  [/\bgrape\b/i, Grape],
-  [/cherry|strawberr/i, Cherry],
-  [/\bmango\b|\bpapaya\b|watermelon|coconut|\bchiku\b|\bamla\b/i, Cherry],
-  [/\btomato\b|\bonion\b|\bpotato\b|\bgarlic\b|\bginger\b|\bcarrot\b|cauliflower|brinjal|\bbeans?\b|capsicum|shimla|\bkhira\b|cucumber|\bloki\b|\bkarela\b|\bmuli\b|radish|\bmatar\b|\bpeas?\b|\bkaddu\b|pumpkin|\bbhindi\b|okra|\barbi\b/i, Carrot],
-  [/\bmilk\b|\bcurd\b|\bdahi\b|paneer|\bcheese\b|\bbutter\b|\bghee\b|\bcream\b|mozzarella/i, Milk],
-  [/chicken|mutton|kabab|kebab/i, Drumstick],
-  [/\begg\b/i, Egg],
-  [/\bfish\b|prawn|seafood/i, Fish],
-  [/\bbread\b|pizza\s*base|\bbun\b|croissant/i, Croissant],
-  [/\btea\b|\bcoffee\b/i, Coffee],
-  [/soda|cold\s*drink/i, CupSoda],
-  [/\bice\b|frozen/i, Snowflake],
-  [/plate|bowl|platter/i, HandPlatter],
-  [/\bcups?\b|\bglass(es)?\b/i, GlassWater],
-  [/fork|knife|spoon/i, Utensils],
-];
-
-const STOCK_CATEGORY_ICON_RULES: [RegExp, FlowbiteIconComponent][] = [
-  [/spice|season|masala/i, FlaskConical],
-  [/oil|ghee|fat/i, Droplet],
-  [/frozen|cold/i, Snowflake],
-  [/non\s*veg|meat|mutton|chicken|poultry/i, Drumstick],
-  [/fish|seafood|prawn/i, Fish],
-  [/dairy|milk|paneer|curd|yog/i, Milk],
-  [/bakery|bread|bun/i, Croissant],
-  [/dessert|sweet|cake|candy/i, Cake],
-  [/fruit/i, Apple],
-  [/vegetable|produce/i, Carrot],
-  [/lentil|pulse|dal|grain|flour|rice|wheat/i, Wheat],
-  [/beverage|drink|coffee|tea/i, Coffee],
-  [/sauce|chinese|continental|soup/i, Soup],
-  [/housekeeping|disposable|clean/i, SprayCan],
-  [/crockery|cutlery|utensil/i, UtensilsCrossed],
-  [/appliance|repair|equipment/i, Wrench],
-];
-
-// Item name is checked first (specific, e.g. "Sugar" -> Candy) since real
-// catalogs bucket very different items under one loose category; category
-// is only a fallback for names that don't match anything above.
-const getStockItemIcon = (name?: string, category?: string): FlowbiteIconComponent => {
-  if (name) {
-    const nameMatch = STOCK_NAME_ICON_RULES.find(([pattern]) => pattern.test(name));
-    if (nameMatch) return nameMatch[1];
-  }
-  if (category) {
-    const catMatch = STOCK_CATEGORY_ICON_RULES.find(([pattern]) => pattern.test(category));
-    if (catMatch) return catMatch[1];
-  }
-  return Package;
-};
 
 // Units that are physically divisible (weight/volume, or a dozen - which
 // still resolves to a whole number of pieces, e.g. 0.5 Doz = 6 bananas).
@@ -144,7 +53,6 @@ const roundQty = (n: number): number => Math.round(n * 100) / 100;
 interface InventoryManagementProps {
   onUpdateStock: (itemId: string, newStock: number) => void;
   onAddInventoryItem: (item: InventoryItem) => void;
-  onUpdateItemImage?: (itemId: string, imagePath: string) => void;
   activeMenuItemKey?: string;
   onDispatchTelegram?: (eventType: string, message: string, channelFilter?: 'all' | 'kitchen' | 'finance' | 'admin', replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
   onLogAudit?: (actionText: string, extra?: { status?: string; module?: string; user?: string }) => void;
@@ -153,7 +61,6 @@ interface InventoryManagementProps {
 export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   onUpdateStock,
   onAddInventoryItem,
-  onUpdateItemImage: _onUpdateItemImage,
   activeMenuItemKey,
   onDispatchTelegram,
   onLogAudit,
@@ -222,7 +129,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             categoryId: item.categoryId || matched.categoryId,
             packUnit: item.unit || matched.packUnit,
             unitLabel: item.unit || matched.unitLabel,
-            imagePath: item.imagePath || matched.imagePath,
             is_verified: (item as any).is_verified !== undefined ? !!(item as any).is_verified : matched.is_verified
           });
         } else {
@@ -236,7 +142,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             packSize: 1,
             packUnit: item.unit || 'Kg',
             unitLabel: item.unit || 'Kg',
-            imagePath: item.imagePath || '',
             is_verified: (item as any).is_verified !== undefined ? !!(item as any).is_verified : true
           });
         }
@@ -256,7 +161,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [catPrice, setCatPrice] = useState(0);
   const [catPackSize, setCatPackSize] = useState(1);
   const [catUnit, setCatUnit] = useState('Kg');
-  const [catImagePath, setCatImagePath] = useState('');
   const [, setLiveCashHandlers] = useState<any[]>(staff.filter(u => u.isFinancialHandler));
 
   useEffect(() => {
@@ -390,7 +294,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     setCatPrice(item.price);
     setCatPackSize(item.packSize);
     setCatUnit(item.packUnit);
-    setCatImagePath(item.imagePath || '');
     setIsCatalogModalOpen(true);
   };
 
@@ -401,22 +304,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     setCatPrice(0);
     setCatPackSize(1);
     setCatUnit('Kg');
-    setCatImagePath('');
     setIsCatalogModalOpen(true);
   };
 
   const handleSaveCatalogItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catItemName || !catCategory) return;
-
-    // Upload image if one is selected (base64 data URI)
-    let savedImagePath = catImagePath;
-    if (catImagePath && catImagePath.startsWith('data:image')) {
-      const uploadedUrl = await uploadImageDB(catImagePath, 'catalog');
-      if (uploadedUrl) {
-        savedImagePath = uploadedUrl;
-      }
-    }
 
     if (editingCatalogItem) {
       const oldItem = editingCatalogItem;
@@ -435,10 +328,9 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         packSize: catPackSize,
         packUnit: catUnit,
         unitLabel: catUnit,
-        imagePath: savedImagePath,
         is_verified: true
       } : item));
-      await updateCatalogItemDB({ id: editingCatalogItem.id, name: catItemName, category: catCategory, price: catPrice, unit: catUnit, imagePath: savedImagePath });
+      await updateCatalogItemDB({ id: editingCatalogItem.id, name: catItemName, category: catCategory, price: catPrice, unit: catUnit });
       if (onLogAudit && changes.length > 0) {
         const currentUserName = currentUser?.name || 'Admin';
         onLogAudit(`${currentUserName} updated catalog item ${oldItem.name}: ${changes.join(', ')}`);
@@ -453,7 +345,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         packSize: catPackSize,
         packUnit: catUnit,
         unitLabel: catUnit,
-        imagePath: savedImagePath,
         is_verified: true
       };
       setCatalogItems([newItem, ...catalogItems]);
@@ -466,12 +357,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         currentStock: 0,
         minThreshold: 5,
         unit: catUnit,
-        imagePath: savedImagePath,
       };
       onAddInventoryItem(invItem);
 
       // Persist to database
-      await addCatalogItemDB({ name: catItemName, category: catCategory, price: catPrice, packSize: catPackSize, unit: catUnit, imagePath: savedImagePath });
+      await addCatalogItemDB({ name: catItemName, category: catCategory, price: catPrice, packSize: catPackSize, unit: catUnit });
       if (onLogAudit) {
         const currentUserName = currentUser?.name || 'Admin';
         onLogAudit(`${currentUserName} created catalog item ${catItemName} (Category: ${catCategory}, Price: ₹${catPrice}, Pack Size: ${catPackSize} ${catUnit})`);
@@ -486,32 +376,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     if (onLogAudit && target) {
       const currentUserName = currentUser?.name || 'Admin';
       onLogAudit(`${currentUserName} approved catalog item '${target.name}'`);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = 150;
-          canvas.height = 50;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-             // Calculate center crop
-             const scale = Math.max(150 / img.width, 50 / img.height);
-             const x = (150 / scale - img.width) / 2;
-             const y = (50 / scale - img.height) / 2;
-             ctx.drawImage(img, x, y, img.width, img.height, 0, 0, 150, 50);
-             setCatImagePath(canvas.toDataURL('image/png'));
-          }
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -760,7 +624,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     unit: `${item.packSize} ${item.packUnit}`,
     rate: item.price,
     category: item.category,
-    imageTag: 'No Image'
   }));
 
   const handleAddToReqBasket = (item: (typeof stockCatalog)[0]) => {
@@ -873,7 +736,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [currentStock, setCurrentStock] = useState(10);
   const [minThreshold, setMinThreshold] = useState(5);
   const [unit, setUnit] = useState('kg');
-  const [imagePath, setImagePath] = useState('');
 
   // Wastage & Spillage Log State
   const [wastageLogs, setWastageLogs] = useState<any[]>([]);
@@ -936,7 +798,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       currentStock,
       minThreshold,
       unit,
-      imagePath,
     };
 
     onAddInventoryItem(item);
@@ -952,13 +813,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       packSize: 1,
       packUnit: unit,
       unitLabel: unit,
-      imagePath,
       is_verified: true
     }, ...prev]);
 
     setIsAddModalOpen(false);
     setName('');
-    setImagePath('');
   };
 
 
@@ -1324,17 +1183,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 {(() => {
                   const catalogColumns = [
                     {
-                      name: t('image_column_header'),
-                      cell: (row: CatalogItem) => {
-                        const ItemIcon = getStockItemIcon(row.name, row.category);
-                        return (
-                          <div className="w-11 h-11 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center justify-center">
-                            <ItemIcon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-                          </div>
-                        );
-                      },
-                    },
-                    {
                       name: t('item_name_label'),
                       cell: (row: CatalogItem) => <span className="font-semibold text-slate-800 dark:text-white">{row.name}</span>,
                     },
@@ -1518,16 +1366,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     <>
                       <div className="space-y-2.5">
                         {paginated.map((item) => {
-                          const ItemIcon = getStockItemIcon(item.name, item.category);
                           return (
                             <div
                               key={item.id}
                               className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80 space-y-2 text-xs"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
-                                  <ItemIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-semibold text-slate-800 dark:text-slate-100 text-sm truncate">{item.name}</span>
@@ -1788,26 +1632,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     />
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('upload_image_label', 'Upload Image')}</label>
-                <label htmlFor="cat-image-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <span>{catImagePath ? t('change_image_button', 'Change Image') : t('choose_image_button', 'Choose Image')}</span>
-                </label>
-                <input
-                  id="cat-image-upload-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                {catImagePath && (
-                  <div className="mt-2">
-                    <p className="text-2xs text-slate-500 dark:text-slate-400 mb-1">{t('preview_label', 'Preview:')}</p>
-                    <img src={catImagePath} alt="Preview" className="w-[150px] h-[50px] object-cover border border-slate-200 dark:border-slate-700 rounded shadow-md" />
-                  </div>
-                )}
               </div>
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
@@ -2370,30 +2194,22 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {filteredCatalog.map((item) => {
                   const isRecentlyAdded = recentlyAddedReqId === item.id;
-                  const ItemIcon = getStockItemIcon(item.name, item.category);
                   return (
                     <div
                       key={item.id}
-                      className={`bg-white rounded-lg border p-2 flex items-center justify-between gap-2.5 transition-all ${
+                      className={`bg-white rounded-lg border p-2.5 flex items-center justify-between gap-2.5 transition-all ${
                         isRecentlyAdded
                           ? 'border-emerald-500 bg-emerald-50/50 shadow-md'
                           : 'border-slate-200/90 hover:border-cyan-400 hover:shadow-md'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        {/* Item Icon Thumbnail */}
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-slate-500 font-semibold text-[10px]">
-                          <ItemIcon className="w-5 h-5 text-cyan-600" />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <h4 className="inventory-management__caption font-semibold text-slate-800 text-xs truncate">
-                            {item.name}
-                          </h4>
-                          <p className="text-slate-500 font-semibold text-[11px] mt-0.5">
-                            Per {item.unit} • ₹{item.rate.toFixed(2)}
-                          </p>
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="inventory-management__caption font-semibold text-slate-800 text-xs truncate">
+                          {item.name}
+                        </h4>
+                        <p className="text-slate-500 font-semibold text-[11px] mt-0.5">
+                          Per {item.unit} • ₹{item.rate.toFixed(2)}
+                        </p>
                       </div>
 
                       <button
@@ -2622,17 +2438,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 }
 
   const stockLogColumns = [
-    {
-      name: t('image_column_header'),
-      cell: (item: InventoryItem) => {
-        const ItemIcon = getStockItemIcon(item.name, item.category);
-        return (
-          <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-            <ItemIcon className="w-4 h-4 text-cyan-600" />
-          </div>
-        );
-      },
-    },
     {
       name: t('item_name_label'),
       cell: (item: InventoryItem) => (
@@ -2953,57 +2758,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   ]}
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="app-label block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">{t('item_image_label', 'Item Image')}</label>
-              <label htmlFor="item-image-upload-input" className="block bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 py-2 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                <span>{imagePath ? t('change_image_button', 'Change Image') : t('choose_image_button', 'Choose Image')}</span>
-              </label>
-              <input
-                id="item-image-upload-input"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setImagePath(reader.result as string);
-                    };
-                    reader.readAsDataURL(file);
-                  }
-                }}
-                className="hidden"
-              />
-
-                {/* Image Preview Box */}
-                {imagePath && (
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-300 bg-slate-50">
-                    <img
-                      src={imagePath}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                    <Popover
-                      trigger="hover"
-                      content={
-                        <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                          Remove Image
-                        </div>
-                      }
-                    >
-                      <button
-                        type="button"
-                        aria-label="Remove Image"
-                        onClick={() => setImagePath('')}
-                        className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-md hover:bg-slate-900"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </Popover>
-                  </div>
-                )}
             </div>
           </div>
           <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">

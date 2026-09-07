@@ -20,7 +20,6 @@ interface InventoryContextValue {
   refreshStockRequests: () => Promise<void>;
   updateStock: (itemId: string, newStock: number) => void;
   addInventoryItem: (item: InventoryItem) => void;
-  updateInventoryItemImage: (itemId: string, imagePath: string) => void;
   addRequisition: (req: Requisition) => void;
 }
 
@@ -89,14 +88,6 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
     onLogAudit?.(`${currentUserName} added new inventory catalog item: ${item.name}`);
   };
 
-  const updateInventoryItemImage = (itemId: string, imagePath: string) => {
-    setInventory((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, imagePath } : i))
-    );
-    const item = inventory.find((i) => i.id === itemId);
-    onLogAudit?.(`${currentUserName} updated image for inventory item ${item?.name || itemId}`);
-  };
-
   const addRequisition = (req: Requisition) => {
     setRequisitions((prev) => [req, ...prev]);
     onLogAudit?.(`${currentUserName} created material requisition ${req.id} for ${req.requestedQty} ${req.unit} of ${req.itemName}`);
@@ -115,7 +106,6 @@ export const InventoryProvider: React.FC<InventoryProviderProps> = ({
         refreshStockRequests,
         updateStock,
         addInventoryItem,
-        updateInventoryItemImage,
         addRequisition,
       }}
     >

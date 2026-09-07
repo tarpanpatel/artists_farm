@@ -944,7 +944,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // passed to AIChatWidget, now disconnected (see the import comment above).
   const { refreshStaff, refreshAttendance } = useStaff();
 
-  const { inventory, updateStock, addInventoryItem, updateInventoryItemImage, addRequisition } = useInventoryContext();
+  const { inventory, updateStock, addInventoryItem, addRequisition } = useInventoryContext();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isSelfOnboardingOpen, setIsSelfOnboardingOpen] = useState<boolean>(() => {
     return typeof window !== 'undefined' && (window.location.search.includes('onboarding=true') || window.location.hash === '#onboarding');
@@ -2282,13 +2282,6 @@ ${itemsStr}
     logAudit(`${currentUserName} added new inventory catalog item: ${item.name}`);
   };
 
-  const handleUpdateInventoryItemImage = (itemId: string, imagePath: string) => {
-    updateInventoryItemImage(itemId, imagePath);
-    const item = inventory.find((i) => i.id === itemId);
-    const currentUserName = currentUser?.name || activeRole;
-    logAudit(`${currentUserName} updated image for inventory item ${item?.name || itemId}`);
-  };
-
   const handleSendTestNotification = async () => {
     const testTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const testMsg = `🧪 <b>TELEGRAM SYSTEM DIAGNOSTIC TEST</b>\n• App: Ground Code Resort Management System\n• Time: ${testTime}\n• Status: Operational ✅\n• Channels: Kitchen, Admin, Finance`;
@@ -2556,7 +2549,6 @@ ${itemsStr}
                   onAddMenuItem={handleAddMenuItem}
                   onUpdateStock={handleUpdateStock}
                   onAddInventoryItem={handleAddInventoryItem}
-                  onUpdateItemImage={handleUpdateInventoryItemImage}
                   onDispatchTelegram={dispatchTelegramAlert}
                   activeMenuItemKey={activeMenuItemKey}
                   onSetActiveMenuItemKey={setActiveMenuItemKey}
@@ -2643,7 +2635,6 @@ ${itemsStr}
                       onAddMenuItem={handleAddMenuItem}
                       onUpdateStock={handleUpdateStock}
                       onAddInventoryItem={handleAddInventoryItem}
-                      onUpdateItemImage={handleUpdateInventoryItemImage}
                       onDispatchTelegram={dispatchTelegramAlert}
                       activeMenuItemKey={activeMenuItemKey}
                       onSetActiveMenuItemKey={setActiveMenuItemKey}
@@ -2805,7 +2796,6 @@ ${itemsStr}
                   <InventoryManagement
                     onUpdateStock={handleUpdateStock}
                     onAddInventoryItem={handleAddInventoryItem}
-                    onUpdateItemImage={handleUpdateInventoryItemImage}
                     activeMenuItemKey={activeMenuItemKey}
                     onDispatchTelegram={dispatchTelegramAlert}
                     onLogAudit={logAudit}
