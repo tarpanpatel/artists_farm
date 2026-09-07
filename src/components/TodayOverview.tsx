@@ -1513,11 +1513,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               style={commonStyle}
                             >
                               <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1.5 min-w-0">
-                                {hasPending && (
-                                  <span
-                                    className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
-                                  />
-                                )}
                                 {isOtaBooking && (
                                   <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
                                     {OtaIcon ? (
@@ -1579,10 +1574,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
             <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shadow-xs ring-1 ring-yellow-600/50" />
-            <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
           </div>
         </div>
       </div>

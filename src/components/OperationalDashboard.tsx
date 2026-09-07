@@ -1728,8 +1728,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     <div className="space-y-1 max-h-64 overflow-y-auto">
                                       {dayBookingsForDate.map((g) => {
                                         const amt = (g as any).totalCharge || (g as any).totalAmount || (g as any).total_charge || 0;
-                                        const itemPendingReasons = getGuestPendingReasons(g);
-                                        const hasItemPending = itemPendingReasons.length > 0;
                                         return (
                                           <button
                                             key={g.id}
@@ -1743,12 +1741,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                           >
                                             <div className="min-w-0">
                                               <div className="text-xs font-semibold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                                                {hasItemPending && (
-                                                  <span
-                                                    className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50"
-                                                    title={`Action Pending: ${itemPendingReasons.join(', ')}`}
-                                                  />
-                                                )}
                                                 <span className="truncate">{g.guestName}</span>
                                               </div>
                                               <div className="text-2xs text-slate-500 dark:text-slate-400">
@@ -1911,9 +1903,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 data-tour="checkin-open-booking-bar"
                                 className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
                               >
-                                {hasDayPending && (
-                                  <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
-                                )}
                                 {isOtaBooking && (
                                   <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
                                     {OtaIcon ? (
@@ -2040,10 +2029,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             <div className="flex items-center gap-2">
               <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
               <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex w-2.5 h-2.5 bg-yellow-400 dark:bg-yellow-300 rounded-full shadow-xs ring-1 ring-yellow-600/50" />
-              <span>{t('legend_pending_action', 'Action Pending (ID, C-Form, Check-in/out)')}</span>
             </div>
           </div>
         </div>
