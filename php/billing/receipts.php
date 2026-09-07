@@ -52,6 +52,11 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
             try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `gst_igst` DECIMAL(10,2) DEFAULT 0 AFTER `gst_tax_type`"); } catch (PDOException $e) {}
             try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_gstin` VARCHAR(20) DEFAULT NULL AFTER `gst_igst`"); } catch (PDOException $e) {}
             try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `guest_billing_name` VARCHAR(255) DEFAULT NULL AFTER `guest_gstin`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `cash_amount` DECIMAL(10,2) DEFAULT 0 AFTER `payment_method`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `upi_amount` DECIMAL(10,2) DEFAULT 0 AFTER `cash_amount`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `card_amount` DECIMAL(10,2) DEFAULT 0 AFTER `upi_amount`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `bank_transfer_amount` DECIMAL(10,2) DEFAULT 0 AFTER `card_amount`"); } catch (PDOException $e) {}
+            try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `split_details` TEXT DEFAULT NULL AFTER `bank_transfer_amount`"); } catch (PDOException $e) {}
             
             markSchemaVerified('schema_billing_receipts');
         }
@@ -92,7 +97,7 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                     // settlement ledger entry must land together or not at all, or a
                     // checkout can end up "paid" on the bill but missing from the books.
                     $pdo->beginTransaction();
-                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount, gst_tax_type, gst_igst, guest_gstin, guest_billing_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount), gst_tax_type=VALUES(gst_tax_type), gst_igst=VALUES(gst_igst), guest_gstin=VALUES(guest_gstin), guest_billing_name=VALUES(guest_billing_name)");
+                    $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, cash_amount, upi_amount, card_amount, bank_transfer_amount, split_details, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount, gst_tax_type, gst_igst, guest_gstin, guest_billing_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), payment_method=VALUES(payment_method), cash_amount=VALUES(cash_amount), upi_amount=VALUES(upi_amount), card_amount=VALUES(card_amount), bank_transfer_amount=VALUES(bank_transfer_amount), split_details=VALUES(split_details), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount), gst_tax_type=VALUES(gst_tax_type), gst_igst=VALUES(gst_igst), guest_gstin=VALUES(guest_gstin), guest_billing_name=VALUES(guest_billing_name)");
                     $stmt->execute([
                         $input['id'] ?? 'REC-' . time(),
                         $propertyId,
@@ -112,6 +117,11 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                         $input['grandTotal'] ?? 0,
                         $input['advancePaid'] ?? 0,
                         $input['paymentMethod'] ?? 'Cash',
+                        floatval($input['cashAmount'] ?? 0),
+                        floatval($input['upiAmount'] ?? 0),
+                        floatval($input['cardAmount'] ?? 0),
+                        floatval($input['bankTransferAmount'] ?? 0),
+                        isset($input['splitDetails']) ? (is_string($input['splitDetails']) ? $input['splitDetails'] : json_encode($input['splitDetails'])) : null,
                         $input['status'] ?? 'Paid',
                         $input['paidAt'] ?? date('Y-m-d H:i:s'),
                         $input['gstEnabled'] ? 1 : 0,
@@ -133,19 +143,52 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                     // advances are posted by the guest module, avoiding double-counting.
                     $settlement = max(0, floatval($input['grandTotal'] ?? 0) - floatval($input['advancePaid'] ?? 0));
                     if ($settlement > 0) {
-                        postFinancialLedger($pdo, [
-                            'entry_key' => 'checkout_settlement:' . ($input['id'] ?? 'REC-' . time()),
-                            'direction' => 'credit',
-                            'amount' => $settlement,
-                            'category' => 'Guest Checkout Settlement',
-                            'payment_method' => $input['paymentMethod'] ?? 'Cash',
-                            'party_type' => 'guest',
-                            'party_id' => $input['guestId'] ?? '',
-                            'party_name' => $input['guestName'] ?? '',
-                            'source_type' => 'billing_receipt',
-                            'source_id' => $input['id'] ?? '',
-                            'description' => 'Balance collected on checkout',
-                        ], $propertyId);
+                        $cashAmt = floatval($input['cashAmount'] ?? 0);
+                        $upiAmt = floatval($input['upiAmount'] ?? 0);
+                        $cardAmt = floatval($input['cardAmount'] ?? 0);
+                        $btAmt = floatval($input['bankTransferAmount'] ?? 0);
+                        $splitCount = ($cashAmt > 0 ? 1 : 0) + ($upiAmt > 0 ? 1 : 0) + ($cardAmt > 0 ? 1 : 0) + ($btAmt > 0 ? 1 : 0);
+
+                        if ($splitCount > 1) {
+                            $receiptId = $input['id'] ?? 'REC-' . time();
+                            $splits = [
+                                'Cash' => $cashAmt,
+                                'UPI' => $upiAmt,
+                                'Card' => $cardAmt,
+                                'Bank Transfer' => $btAmt
+                            ];
+                            foreach ($splits as $mode => $amt) {
+                                if ($amt > 0) {
+                                    postFinancialLedger($pdo, [
+                                        'entry_key' => 'checkout_settlement:' . $receiptId . ':' . strtolower(str_replace(' ', '_', $mode)),
+                                        'direction' => 'credit',
+                                        'amount' => $amt,
+                                        'category' => 'Guest Checkout Settlement',
+                                        'payment_method' => $mode,
+                                        'party_type' => 'guest',
+                                        'party_id' => $input['guestId'] ?? '',
+                                        'party_name' => $input['guestName'] ?? '',
+                                        'source_type' => 'billing_receipt',
+                                        'source_id' => $input['id'] ?? '',
+                                        'description' => 'Split checkout collected (' . $mode . ')',
+                                    ], $propertyId);
+                                }
+                            }
+                        } else {
+                            postFinancialLedger($pdo, [
+                                'entry_key' => 'checkout_settlement:' . ($input['id'] ?? 'REC-' . time()),
+                                'direction' => 'credit',
+                                'amount' => $settlement,
+                                'category' => 'Guest Checkout Settlement',
+                                'payment_method' => $input['paymentMethod'] ?? 'Cash',
+                                'party_type' => 'guest',
+                                'party_id' => $input['guestId'] ?? '',
+                                'party_name' => $input['guestName'] ?? '',
+                                'source_type' => 'billing_receipt',
+                                'source_id' => $input['id'] ?? '',
+                                'description' => 'Balance collected on checkout',
+                            ], $propertyId);
+                        }
                     }
                     $pdo->commit();
 

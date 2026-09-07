@@ -78,6 +78,11 @@ export interface BillingReceipt {
   status: 'Paid' | 'Pending';
   paidAt?: string;
   paymentMethod?: string;
+  cashAmount?: number;
+  upiAmount?: number;
+  cardAmount?: number;
+  bankTransferAmount?: number;
+  splitDetails?: string;
   advancePaid?: number;
   advanceCollectedBy?: string;
   tariffCollectedBy?: string;

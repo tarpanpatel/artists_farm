@@ -211,8 +211,10 @@ Clean division between **Part 1: Onboarding, Adding/Importing Properties & User 
   - System simultaneously increments inventory stock count AND logs a debit entry in the Petty Cash ledger in one motion.
 
 #### 2.3 Billing & Folio Settlement
-- [ ] **Group Folio & Corporate Split Billing**:
-  - In `BillingCheckout.tsx`, provide an option to split folio line items: e.g. Route room tariff to corporate GST invoice while splitting personal food and laundry charges across individual guest receipts.
+- [x] **Split Payment Settlement & GSTIN Tax Folio Billing**:
+  - In `ReceiptEditModal.tsx` & `receipts.php`, support settling guest bills across multiple tenders simultaneously (e.g. ₹5,000 Cash + ₹3,200 UPI).
+  - Multi-tender splits persist method amounts (`cash_amount`, `upi_amount`, `card_amount`, `bank_transfer_amount`) and post granular entries to `financial_ledger` for exact front-desk cash drawer and bank account reconciliation.
+  - Complete GSTIN and company billing name support on folios, share messages, and print invoices with CGST/SGST tax breakdown.
 
 #### 2.4 Pre-Flight Launch Verification Checklist
 - [ ] **Interactive Pre-Flight Health Dashboard (`#preflight`)**:

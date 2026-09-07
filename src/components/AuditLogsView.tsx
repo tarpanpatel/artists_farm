@@ -73,7 +73,7 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       if (paymentFilter === 'cash') matchPayment = method.includes('cash');
       else if (paymentFilter === 'card') matchPayment = method.includes('card');
       else if (paymentFilter === 'online') matchPayment = method.includes('upi') || method.includes('online');
-      else if (paymentFilter === 'split') matchPayment = method.includes('split');
+      else if (paymentFilter === 'split') matchPayment = method.includes('split') || method.includes('+');
 
       return matchQuery && matchPayment;
     });
@@ -306,8 +306,8 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                 name: t('status_column', 'Status / Method'),
                 cell: (rec: BillingReceipt) => {
                   const method = (rec.paymentMethod || 'Cash').toLowerCase();
-                  const isCash = method.includes('cash');
-                  const isSplit = method.includes('split');
+                  const isSplit = method.includes('split') || method.includes('+') || (rec.cashAmount && rec.upiAmount);
+                  const isCash = method.includes('cash') && !isSplit;
                   return (
                     <Badge variant={isCash ? 'success' : isSplit ? 'warning' : 'info'} size="sm">
                       {rec.paymentMethod || 'Paid (Cash)'}

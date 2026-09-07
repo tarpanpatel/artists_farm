@@ -519,7 +519,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   };
 
   const buildReceiptShareMessage = () => {
-    return `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`;
+    const activeSplits = splitRows.filter((r) => (Number(r.amount) || 0) > 0);
+    const paymentBreakdown = activeSplits.length > 1
+      ? `\n💳 *Payment Modes (Split):*\n${activeSplits.map((r) => `   • ${r.mode}: ₹${(Number(r.amount) || 0).toFixed(2)}${r.refNo ? ` (Ref: ${r.refNo})` : ''}`).join('\n')}`
+      : `\n💳 *Payment Mode:* ${splitRows[0]?.mode || 'Cash'}${splitRows[0]?.refNo ? ` (Ref: ${splitRows[0].refNo})` : ''}`;
+
+    const gstinLine = (gstEnabled && guestGstin) ? `\n🏢 *GSTIN:* ${guestGstin}${guestBillingName ? ` (${guestBillingName})` : ''}` : '';
+
+    return `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}${gstinLine}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${paymentBreakdown}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`;
   };
 
   // Generic OS-level share sheet (navigator.share) rather than a
@@ -555,6 +562,24 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       // here was silently dropped instead of reaching guests.php.
       saveGuestEdits();
 
+      // Calculate per-method amounts for accurate ledger accounting
+      let cashAmount = 0;
+      let upiAmount = 0;
+      let cardAmount = 0;
+      let bankTransferAmount = 0;
+      splitRows.forEach((r) => {
+        const amt = Number(r.amount) || 0;
+        if (r.mode === 'Cash') cashAmount += amt;
+        else if (r.mode === 'UPI') upiAmount += amt;
+        else if (r.mode === 'Card') cardAmount += amt;
+        else if (r.mode === 'Bank Transfer') bankTransferAmount += amt;
+      });
+
+      const activeSplits = splitRows.filter((r) => (Number(r.amount) || 0) > 0);
+      const paymentMethodSummary = activeSplits.length > 1
+        ? activeSplits.map((r) => `${r.mode} (₹${(Number(r.amount) || 0).toFixed(0)})`).join(' + ')
+        : (splitRows[0]?.mode || 'Cash');
+
       const receipt: BillingReceipt = {
         id: `REC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
         guestId: guest.id,
@@ -569,7 +594,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         grandTotal: grandTargetDue,
         advancePaid,
         status: 'Paid',
-        paymentMethod: splitRows[0]?.mode || 'Cash',
+        paymentMethod: paymentMethodSummary,
+        cashAmount,
+        upiAmount,
+        cardAmount,
+        bankTransferAmount,
+        splitDetails: JSON.stringify(splitRows),
         gstEnabled,
         gstRate: gstAccommodationRate,
         gstAmount,
@@ -1522,6 +1552,21 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               <div className="border-t-2 border-b-2 border-black py-2 flex justify-between font-extrabold text-sm text-black">
                 <span>{t('grand_total_payable_label', 'Grand Total Payable:')}</span>
                 <span className="summary-line summary-line--grand-total-payable">₹{grandTargetDue.toFixed(2)}</span>
+              </div>
+
+              {/* Payment Settlement / Split Details */}
+              <div className="space-y-1 pt-2 border-t border-dashed border-slate-200 text-black text-[11px]">
+                <div className="font-semibold border-l-2 border-slate-400 pl-2 text-xs">
+                  {splitRows.filter((r) => (Number(r.amount) || 0) > 0).length > 1
+                    ? t('split_payment_settlement', 'Payment Settlement (Split Breakdown)')
+                    : t('payment_settlement', 'Payment Settlement')}
+                </div>
+                {splitRows.filter((r) => (Number(r.amount) || 0) > 0).map((row, idx) => (
+                  <div key={row.id || idx} className="flex justify-between text-black">
+                    <span>{row.mode}{row.refNo ? ` (Ref: ${row.refNo})` : ''}:</span>
+                    <span className="font-semibold">₹{(Number(row.amount) || 0).toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
 
               {/* UPI Payment (only when the property has a UPI ID configured) */}
