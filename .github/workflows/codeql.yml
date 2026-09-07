@@ -1,5 +1,11 @@
 ﻿name: CodeQL Security Analysis
 
+# Scans TypeScript/JavaScript (React frontend + any .js files) for security
+# vulnerabilities on every push. Results: Security tab -> Code scanning alerts.
+#
+# NOTE: PHP scanning requires GitHub Advanced Security (paid) on private repos.
+# Only javascript-typescript is scanned here (free for all repos).
+
 on:
   push:
     branches: [main, direct-booking-engine]
@@ -11,17 +17,12 @@ on:
 
 jobs:
   analyze:
-    name: CodeQL Analyze (${{ matrix.language }})
+    name: CodeQL Analyze (TypeScript)
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [javascript-typescript, php]
 
     steps:
       - name: Checkout repository
@@ -30,18 +31,16 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ matrix.language }}
+          languages: javascript-typescript
           queries: +security-extended,security-and-quality
 
-      - name: Setup Node.js (for TypeScript build)
-        if: matrix.language == 'javascript-typescript'
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
-      - name: Install dependencies (for TypeScript)
-        if: matrix.language == 'javascript-typescript'
+      - name: Install dependencies
         run: npm ci
 
       - name: Autobuild
@@ -50,4 +49,4 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/language:javascript-typescript"
