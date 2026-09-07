@@ -57,7 +57,13 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
             try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `card_amount` DECIMAL(10,2) DEFAULT 0 AFTER `upi_amount`"); } catch (PDOException $e) {}
             try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `bank_transfer_amount` DECIMAL(10,2) DEFAULT 0 AFTER `card_amount`"); } catch (PDOException $e) {}
             try { $pdo->exec("ALTER TABLE billing_receipts ADD COLUMN `split_details` TEXT DEFAULT NULL AFTER `bank_transfer_amount`"); } catch (PDOException $e) {}
-            
+            // payment_method started as a single word ("Cash"/"UPI"/...) but a
+            // split-tender receipt now stores a summary like "Cash (₹3000) +
+            // UPI (₹2000) + Card (₹1000) + Bank Transfer (₹500)" (64+ chars) -
+            // the original VARCHAR(50) silently truncated it (or hard-failed
+            // the whole checkout under STRICT_TRANS_TABLES). Found 8 Sep 2026.
+            try { $pdo->exec("ALTER TABLE billing_receipts MODIFY COLUMN `payment_method` VARCHAR(191)"); } catch (PDOException $e) {}
+
             markSchemaVerified('schema_billing_receipts');
         }
     } catch (PDOException $e) {}
@@ -141,12 +147,43 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
 
                     // Record only the settlement collected at checkout. Registration
                     // advances are posted by the guest module, avoiding double-counting.
-                    $settlement = max(0, floatval($input['grandTotal'] ?? 0) - floatval($input['advancePaid'] ?? 0));
+                    //
+                    // grandTotal is ALREADY net of advance - ReceiptEditModal.tsx's
+                    // only real sender computes it as grandTargetDue = subtotal
+                    // (itself built from lodgingPendingDue = roomCharges - advancePaid)
+                    // + GST, then sends BOTH that and advancePaid separately. Subtracting
+                    // advancePaid again here double-counted it - found 8 Sep 2026 (a
+                    // ₹4,000 swing on a real worked example, and in one edge case a real
+                    // ₹0 settlement that silently skipped the whole block below even
+                    // though real cash/UPI had been collected and was still recorded on
+                    // the receipt itself). This has been wrong since before split-tender
+                    // existed; split-tender just made the inconsistency visible by
+                    // computing the true figure a different way (summing the splits).
+                    $settlement = round(max(0, floatval($input['grandTotal'] ?? 0)), 2);
                     if ($settlement > 0) {
                         $cashAmt = floatval($input['cashAmount'] ?? 0);
                         $upiAmt = floatval($input['upiAmount'] ?? 0);
                         $cardAmt = floatval($input['cardAmount'] ?? 0);
                         $btAmt = floatval($input['bankTransferAmount'] ?? 0);
+                        $providedSum = round($cashAmt + $upiAmt + $cardAmt + $btAmt, 2);
+
+                        // The frontend's isSplitMatching gate is UI-only - re-verified
+                        // here since a stale client, a replayed request, or a hand-
+                        // crafted call could post whatever amount it likes against a
+                        // real bill (found 8 Sep 2026 - nothing server-side checked
+                        // this before). Skipped only when no per-method breakdown was
+                        // sent at all (0 across all four), so an older/hypothetical
+                        // caller with no breakdown still falls through to the
+                        // single-method branch below unaffected.
+                        if ($providedSum > 0 && abs($providedSum - $settlement) > 0.01) {
+                            if ($pdo->inTransaction()) {
+                                $pdo->rollBack();
+                            }
+                            http_response_code(422);
+                            echo json_encode(['status' => 'error', 'message' => "Payment amounts (₹{$providedSum}) do not match the amount due (₹{$settlement})"]);
+                            break;
+                        }
+
                         $splitCount = ($cashAmt > 0 ? 1 : 0) + ($upiAmt > 0 ? 1 : 0) + ($cardAmt > 0 ? 1 : 0) + ($btAmt > 0 ? 1 : 0);
 
                         if ($splitCount > 1) {

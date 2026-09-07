@@ -578,7 +578,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       const activeSplits = splitRows.filter((r) => (Number(r.amount) || 0) > 0);
       const paymentMethodSummary = activeSplits.length > 1
         ? activeSplits.map((r) => `${r.mode} (₹${(Number(r.amount) || 0).toFixed(0)})`).join(' + ')
-        : (splitRows[0]?.mode || 'Cash');
+        // activeSplits[0], not splitRows[0]: a staff member can zero out the
+        // first row and put the whole amount on a later one (e.g. Cash ₹0,
+        // UPI ₹5000) - splitRows[0] would still read "Cash" here even though
+        // every rupee moved through UPI, mislabeling the receipt and the
+        // ledger entry below it (found 8 Sep 2026).
+        : (activeSplits[0]?.mode || splitRows[0]?.mode || 'Cash');
 
       const receipt: BillingReceipt = {
         id: `REC-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
