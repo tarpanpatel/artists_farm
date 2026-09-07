@@ -1124,7 +1124,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           </div>
           <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
             <span className="text-gray-500">Total Tariff</span>
-            <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+            <span className="font-black text-emerald-600 dark:text-emerald-400 text-base">
               {currencySym}{confirmation.total_tariff.toLocaleString('en-IN')}
             </span>
           </div>
@@ -1183,7 +1183,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4">
           <Loader2 className="w-10 h-10 text-blue-600 animate-spin dark:text-blue-400 mb-3" />
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Loading your quote...</p>
+          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Loading your quote...</p>
         </div>
       );
     }
@@ -1248,7 +1248,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 </div>
                 <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-2">
                   <span className="text-gray-500 dark:text-gray-400">Total Payable</span>
-                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-base">
                     {currencySym}{(booking?.total_tariff || quoteHold?.total_tariff || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -1273,7 +1273,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block">
                           View Screenshot Proof
                         </span>
-                        <span className="text-3xs text-gray-400 block">Click to open full size</span>
+                        <span className="text-2xs text-gray-400 block">Click to open full size</span>
                       </div>
                     </a>
                   </div>
@@ -1311,7 +1311,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 </Button>
               </div>
 
-              <div className="p-3 bg-gray-100 dark:bg-gray-850 text-center text-3xs text-gray-500 dark:text-gray-400">
+              <div className="p-3 bg-gray-100 dark:bg-gray-850 text-center text-2xs text-gray-500 dark:text-gray-400">
                 🔒 This quote has been finalized. The booking form is closed for this quote.
               </div>
             </div>
@@ -1365,7 +1365,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col items-center justify-center p-4 font-sans">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col items-center justify-center p-4 py-8 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] font-sans">
         <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-5 sm:p-6 space-y-4">
           <div className="text-center space-y-1">
             <Badge variant="warning">Room Held For You</Badge>
@@ -1376,7 +1376,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           {/* Countdown */}
           <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-center">
             <p className="text-2xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Confirm Within</p>
-            <p className="text-2xl font-black font-mono text-amber-800 dark:text-amber-300 tabular-nums">
+            <p className="text-lg font-black font-mono text-amber-800 dark:text-amber-300 tabular-nums">
               {countdownDisplay}
             </p>
           </div>
@@ -1391,12 +1391,12 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               <div>
                 <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-in</span>
                 <span className="font-semibold text-gray-900 dark:text-white">{formatDateDisplay(quote.checkin_date || '')}</span>
-                <span className="text-3xs text-gray-400 block">From {quote.checkin_time}</span>
+                <span className="text-2xs text-gray-400 block">From {quote.checkin_time}</span>
               </div>
               <div>
                 <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-out</span>
                 <span className="font-semibold text-gray-900 dark:text-white">{formatDateDisplay(quote.checkout_date || '')}</span>
-                <span className="text-3xs text-gray-400 block">Until {quote.checkout_time}</span>
+                <span className="text-2xs text-gray-400 block">Until {quote.checkout_time}</span>
               </div>
             </div>
             <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between">
@@ -1536,7 +1536,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                       )}
                     </Button>
                   </div>
-                  <p className="text-3xs text-gray-400 dark:text-gray-500">
+                  <p className="text-2xs text-gray-400 dark:text-gray-500">
                     Open GPay, PhonePe, Paytm, or your banking app and transfer the amount.
                   </p>
                 </div>
@@ -1549,7 +1549,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                     <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     <span>Upload Payment Screenshot *</span>
                   </label>
-                  <span className="text-3xs font-semibold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                  <span className="text-2xs font-semibold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
                     Required to Confirm
                   </span>
                 </div>
@@ -1588,7 +1588,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                     <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                       Choose or Capture Screenshot
                     </span>
-                    <span className="text-3xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    <span className="text-2xs text-gray-400 dark:text-gray-500 mt-0.5">
                       PNG, JPG, or WebP photo of transfer receipt
                     </span>
                     <input
@@ -1647,7 +1647,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col items-center justify-center p-4">
         <Loader2 className="w-10 h-10 text-blue-600 animate-spin dark:text-blue-400 mb-3" />
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Checking live availability & rates...</p>
+        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Checking live availability & rates...</p>
       </div>
     );
   }
@@ -1671,7 +1671,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
               {property.name.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -1701,7 +1701,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20 sm:pb-24 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] space-y-6">
         {/* Date Range Selection & Filter Toolbar */}
         <section className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1867,7 +1867,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                            <h4 className="text-base font-bold text-gray-900 dark:text-white truncate">
                               {room.name}
                             </h4>
                             <Badge variant="info">{nights} Night{nights > 1 ? 's' : ''}</Badge>
@@ -1953,7 +1953,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               Previous
             </Button>
 
-            <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">
               {monthInfo.monthName}
             </h2>
 
@@ -2015,7 +2015,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                                 : ''
                             }`}
                           >
-                            <div className="text-3xs opacity-80">{dayInitial}</div>
+                            <div className="text-2xs opacity-80">{dayInitial}</div>
                             <div className="font-bold text-xs">{d}</div>
                           </th>
                         );
@@ -2077,10 +2077,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                                       </span>
                                     )}
                                     {dayRest?.closed_to_arrival && (
-                                      <span className="text-3xs bg-red-100 text-red-700 px-1 rounded-xs mt-0.5">CTA</span>
+                                      <span className="text-2xs font-bold px-1 rounded bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800 mt-0.5">CTA</span>
                                     )}
                                     {dayRest?.min_stay_arrival > 1 && (
-                                      <span className="text-3xs bg-amber-100 text-amber-700 px-1 rounded-xs mt-0.5">
+                                      <span className="text-2xs font-bold px-1 rounded bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 mt-0.5">
                                         {dayRest.min_stay_arrival}N
                                       </span>
                                     )}
@@ -2151,10 +2151,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                               {d}
                             </span>
                             {isToday && !isStart && !isEnd && !isSingleDayPick && (
-                              <span className="text-3xs uppercase font-bold text-blue-600 dark:text-blue-400">Today</span>
+                              <span className="text-2xs uppercase font-bold text-blue-600 dark:text-blue-400">Today</span>
                             )}
                             {isEnd && previewNights > 0 && (
-                              <span className="text-3xs px-1.5 py-0.5 rounded-full bg-white/20 text-white font-medium border border-white/30 backdrop-blur-xs">
+                              <span className="text-2xs px-1.5 py-0.5 rounded-full bg-white/20 text-white font-bold border border-white/30 backdrop-blur-xs">
                                 {previewNights}N
                               </span>
                             )}
@@ -2179,6 +2179,20 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           )}
         </section>
       </main>
+
+      {/* Page Footer per Flowbite Layout Rules with Safe Area */}
+      <footer className="mt-auto border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 py-6 px-4 sm:px-6 lg:px-8 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-900 dark:text-white">{property.name}</span>
+            <span>·</span>
+            <span>Direct Booking Engine</span>
+          </div>
+          <p className="text-2xs text-gray-400 dark:text-gray-500">
+            Powered by Ground Code PMS · Real-time Availability &amp; 0% Commission
+          </p>
+        </div>
+      </footer>
 
       {/* UNIT DETAILS MODAL (7 Sep 2026)
           A CENTRED modal, deliberately - this is the one documented exception to
@@ -2429,14 +2443,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                       <span className="font-semibold text-gray-900 dark:text-white">
                         {formatDateDisplay(bookingDrawerRoom.checkin)}
                       </span>
-                      <span className="text-3xs text-gray-400 block">From {property.checkin_time}</span>
+                      <span className="text-2xs text-gray-400 block">From {property.checkin_time}</span>
                     </div>
                     <div>
                       <span className="text-2xs text-gray-500 dark:text-gray-400 block">Check-out</span>
                       <span className="font-semibold text-gray-900 dark:text-white">
                         {formatDateDisplay(bookingDrawerRoom.checkout)}
                       </span>
-                      <span className="text-3xs text-gray-400 block">Until {property.checkout_time}</span>
+                      <span className="text-2xs text-gray-400 block">Until {property.checkout_time}</span>
                     </div>
                   </div>
                   <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/60 flex items-center justify-between">

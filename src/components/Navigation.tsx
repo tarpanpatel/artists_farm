@@ -455,7 +455,15 @@ export const Navigation: React.FC<NavigationProps> = ({
   const handleShareAvailability = () => {
     const slug = getPropertySlug() || '';
     const url = `${window.location.origin}/${slug ? `${slug}/#book` : '#book'}`;
-    window.open(url, '_blank');
+    const propertyTitle = multiKeyPropertyName || 'our place';
+    const message = `📅 Check live availability and book directly with ${propertyTitle} (0% commission):\n${url}`;
+    shareTextContent(
+      `${propertyTitle} Availability`,
+      message,
+      showToast,
+      t('booking_engine_link_copied', 'Booking engine link copied - paste it wherever you\'d like to share it.'),
+      t('booking_engine_share_failed', 'Could not share or copy the booking link.'),
+    );
     if (window.innerWidth < 768) onCloseSidebar();
   };
 
@@ -823,7 +831,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                       className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
                       <CalendarDays className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                      <span className="ms-3 flex-1 text-left truncate">Share Availability</span>
+                      <span className="ms-3 flex-1 text-left truncate">{t('share_availability_button', 'Share Availability')}</span>
                     </button>
                   </li>
                 </ul>
