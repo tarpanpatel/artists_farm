@@ -13,7 +13,6 @@ import {
   Copy,
   Check,
   Upload,
-  MessageCircle,
   Calendar,
   Users,
   Wifi,
@@ -60,7 +59,6 @@ import {
   Sun,
   Armchair,
 } from './icons/FlowbiteIcons';
-import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from './Button';
@@ -69,6 +67,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { buildUpiPaymentLink } from '../utils/upiQrCode';
+import { humanizeKey } from '../utils/humanizeKey';
 import { apiFetch, API_ROOT_BASE, getBookingHoldDB, confirmBookingHoldDB, BookingHoldDetails } from '../services/api';
 
 interface PublicRoom {
@@ -90,10 +89,6 @@ interface PublicRoom {
   bathrooms?: number | null;
   max_capacity?: number | null;
 }
-
-/** "WIRELESS_INTERNET" -> "Wireless Internet". Display only. */
-const humanizeKey = (k: string) =>
-  k.trim().toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const parseJsonArray = (raw?: string | null): any[] => {
   if (!raw) return [];
@@ -307,15 +302,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const [dailyRestrictionsMap, setDailyRestrictionsMap] = useState<{ [roomId: number]: { [dateStr: string]: any } }>({});
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
-  // Toast notification helper (safely fall back if rendered standalone)
-  let showToast: ((msg: string, opts?: any) => void) | null = null;
-  try {
-    const toastCtx = useToast();
-    showToast = toastCtx?.showToast || null;
-  } catch {
-    // Graceful fallback
-  }
 
   // Read initial date range from URL hash or query params (?checkin=YYYY-MM-DD&checkout=YYYY-MM-DD)
   const urlDates = useMemo(() => {
@@ -741,12 +727,40 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     return Math.round((b - a) / 86400000);
   }, [checkinDate, effectiveEndDate]);
 
-  const getRangeStatus = (dStr: string) => {
-    const isStart = checkinDate === dStr;
-    const isEnd = effectiveEndDate === dStr;
-    const isInRange = Boolean(checkinDate && effectiveEndDate && dStr > checkinDate && dStr < effectiveEndDate);
-    const isSingleDayPick = isStart && !effectiveEndDate;
-    return { isStart, isEnd, isInRange, isSingleDayPick, isTentative: isRangeTentative };
+  const BLANK_RANGE_STATUS = {
+    isStart: false, isEnd: false, isInRange: false, isSingleDayPick: false, isTentative: false,
+  };
+
+  /**
+   * Night-only range status for a date, ignoring rooms. The CHECK-OUT DATE IS
+   * NOT A NIGHT, so it is never highlighted: 9 -> 10 is one night, the 9th.
+   *
+   * This is the date row's version and the room rows' version both (the latter
+   * adds an availability gate on top), because when the two disagreed the header
+   * lit the 10th while every room row below it correctly did not - which reads as
+   * a rendering bug, not as a deliberate picker convention. One definition of
+   * "which days are part of this stay" for the whole grid. 7 Sep 2026.
+   */
+  const getNightRangeStatus = (dStr: string) => {
+    if (!checkinDate) return BLANK_RANGE_STATUS;
+    // Only a check-in picked so far - mark just that cell.
+    if (!lastNightStr) {
+      return dStr === checkinDate
+        ? { ...BLANK_RANGE_STATUS, isSingleDayPick: true, isTentative: isRangeTentative }
+        : BLANK_RANGE_STATUS;
+    }
+    if (dStr < checkinDate || dStr > lastNightStr) return BLANK_RANGE_STATUS;
+    const isStart = dStr === checkinDate;
+    const isEnd = dStr === lastNightStr;
+    return {
+      isStart: isStart && !isEnd,
+      isEnd: isEnd && !isStart,
+      // A one-night stay is both ends at once - round it on both sides rather
+      // than leaving it half-open against nothing.
+      isSingleDayPick: isStart && isEnd,
+      isInRange: !isStart && !isEnd,
+      isTentative: isRangeTentative,
+    };
   };
 
   // The last NIGHT of the selected stay - checkout day itself is not a night.
@@ -761,15 +775,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
   // Which rooms can actually take the WHOLE stay (7 Sep 2026, reported live).
   //
-  // getRangeStatus() above is deliberately date-only - it drives the date-picker
-  // header, where the selected span is the answer regardless of any one room. A
-  // room ROW is a different question: it is that room's own availability, so
-  // highlighting it purely by date claimed a room was part of the stay when it
-  // was free on only one day of it. On Patel Colony, asking for 11->13 lit up
-  // The Antique Studio's 13th (free only on the 13th) and, on the checkout day,
-  // rooms that had nothing to do with the stay - so a room the guest cannot book
-  // looked selected, and the same rectangle disagreed with the "Available
-  // Options" list right above it.
+  // getNightRangeStatus() above answers "is this date part of the stay" for the
+  // date row. A room ROW is a different question: it is that room's own
+  // availability, so highlighting it purely by date claimed a room was part of
+  // the stay when it was free on only one day of it. On Patel Colony, asking for
+  // 11->13 lit up The Antique Studio's 13th (free only on the 13th) - so a room
+  // the guest cannot book looked selected, and the same rectangle disagreed with
+  // the "Available Options" list right above it.
   //
   // Same rule as availableRoomResults uses (every night free, half-open so a
   // same-day turnover still counts as available) - derived once here rather than
@@ -790,24 +802,16 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     return ids;
   }, [checkinDate, effectiveEndDate, rooms, occupiedBlocks]);
 
-  /** Range status for one ROOM's row: nights only, and only if that room can
-   *  take the entire stay. A room that cannot returns all-false, so its row
-   *  stays in its normal available/booked colours. */
+  /** Range status for one ROOM's row: the nights above, gated on that room being
+   *  able to take the ENTIRE stay. A room that cannot returns all-false, so its
+   *  row stays in its normal available/booked colours. */
   const getRoomRangeStatus = (roomId: number, dStr: string) => {
-    const blank = { isStart: false, isEnd: false, isInRange: false, isSingleDayPick: false, isTentative: false };
-    if (!checkinDate || !lastNightStr || !availableRoomIdsForRange.has(roomId)) return blank;
-    if (dStr < checkinDate || dStr > lastNightStr) return blank;
-    const isStart = dStr === checkinDate;
-    const isEnd = dStr === lastNightStr;
-    return {
-      isStart: isStart && !isEnd,
-      isEnd: isEnd && !isStart,
-      // A one-night stay is both ends at once - round it on both sides rather
-      // than leaving it half-open against nothing.
-      isSingleDayPick: isStart && isEnd,
-      isInRange: !isStart && !isEnd,
-      isTentative: isRangeTentative,
-    };
+    // Until a full range exists there is no availability to assert, so rows stay
+    // neutral - only the date row marks the half-made selection. In practice the
+    // hover preview fills effectiveEndDate the moment the pointer moves past the
+    // check-in, so this is a momentary state, not a dead one.
+    if (!lastNightStr || !availableRoomIdsForRange.has(roomId)) return BLANK_RANGE_STATUS;
+    return getNightRangeStatus(dStr);
   };
 
   // Real-Time Available Rooms Calculation for selected Check-in & Check-out dates
@@ -875,29 +879,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   }, [checkinDate, checkoutDate, filterRoomId, partySize, rooms, occupiedBlocks, dailyRatesMap, property]);
 
   // Share all available room options and rates for selected dates via WhatsApp
-  const handleShareAvailability = () => {
-    if (!checkinDate || !checkoutDate || availableRoomResults.length === 0) return;
-    const cIn = new Date(checkinDate + 'T00:00:00');
-    const cOut = new Date(checkoutDate + 'T00:00:00');
-    const nights = Math.max(1, Math.round((cOut.getTime() - cIn.getTime()) / (1000 * 60 * 60 * 24)));
-    const propName = property?.name || 'our property';
-    const shareUrl = `${window.location.origin}${window.location.pathname}#book?checkin=${checkinDate}&checkout=${checkoutDate}`;
-
-    let waText = `Namaste! Here are the available options for ${formatDateDisplay(checkinDate)} to ${formatDateDisplay(checkoutDate)} (${nights} night${nights > 1 ? 's' : ''}) at ${propName}:\n\n`;
-    availableRoomResults.forEach(({ room, totalTariff, avgNightlyRate }, idx) => {
-      waText += `${idx + 1}. *${room.name}* — ${currencySym}${avgNightlyRate.toLocaleString('en-IN')}/night (Total: ${currencySym}${totalTariff.toLocaleString('en-IN')})\n`;
-    });
-    waText += `\nTap here to view room details, photos, and book directly:\n${shareUrl}`;
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(waText).catch(() => {});
-    }
-
-    window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank');
-    if (showToast) {
-      showToast('Available options and rates ready to share on WhatsApp!', { type: 'success' });
-    }
-  };
+  // handleShareAvailability was removed 7 Sep 2026 along with its button - see
+  // the note at that button's old site in the Available Options header. The
+  // equivalent staff-side feature lives in GuestManagement.tsx
+  // (handleShareAllAvailableRooms), which is where a host actually is.
 
   // Open booking drawer for a specific room and dates
   const handleOpenBookingDrawer = (room: PublicRoom, cIn: string, cOut: string) => {
@@ -1772,24 +1757,22 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    Available Options for {formatDateDisplay(checkinDate)} → {formatDateDisplay(checkoutDate)}
+                    {/* Dates deliberately dropped from this heading (7 Sep 2026) -
+                        they are already in the Check-in/Check-out fields directly
+                        above and on every room card below, so a third copy just
+                        made the line long enough to wrap on a phone. */}
+                    Available Options
                   </h3>
                   <Badge variant="success">
                     {availableRoomResults.length} {availableRoomResults.length === 1 ? 'room' : 'rooms'} available
                   </Badge>
                 </div>
-                {availableRoomResults.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    onClick={handleShareAvailability}
-                    className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shrink-0 self-start sm:self-auto"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Share Options via WhatsApp</span>
-                  </Button>
-                )}
+                {/* "Share Options via WhatsApp" was removed here 7 Sep 2026. This
+                    page is the GUEST's booking view - the host never opens it, so a
+                    staff-style share action had no audience on it and only competed
+                    with Book Now for attention. Staff share availability from inside
+                    the app instead (GuestManagement's own "Share All Available
+                    Rooms"), which is where the host actually works. */}
               </div>
 
               {availableRoomResults.length === 0 ? (
@@ -1841,14 +1824,16 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                               baths is exactly what a guest compares rooms ON. */}
                           {(room.description || parseJsonArray(room.amenities).length > 0 ||
                             parseJsonArray(room.bed_configuration).length > 0) && (
-                            <button
+                            <Button
                               type="button"
+                              variant="secondary"
+                              size="xs"
                               onClick={() => setDetailsRoom(room)}
-                              className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                              className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold"
                             >
-                              <Info className="w-3.5 h-3.5" />
+                              <Info className="w-3.5 h-3.5 shrink-0" />
                               Unit Details
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -1931,7 +1916,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         const dayInitial = dayDate.toLocaleDateString('default', { weekday: 'narrow' });
                         const isToday = dStr === todayStr;
                         const isPast = dStr < todayStr;
-                        const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRangeStatus(dStr);
+                        const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getNightRangeStatus(dStr);
 
                         return (
                           <th
@@ -2125,25 +2110,31 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
         </section>
       </main>
 
-      {/* SLIDE-OVER UNIT DETAILS DRAWER (7 Sep 2026)
-          A right slide-over, not a centred popup, per DESIGN.md's "Flowbite
-          Modals & Drawers Specification" - and matching the booking drawer
-          directly below it, since two different overlay styles on one public page
-          would read as two different products. Backdrop click closes it, wired by
-          hand (onClick on the backdrop + stopPropagation on the panel) because
-          this is a hand-rolled slide-over, not flowbite-react's <Drawer> which
-          gets that for free - the exact case DESIGN.md calls out. */}
+      {/* UNIT DETAILS MODAL (7 Sep 2026)
+          A CENTRED modal, deliberately - this is the one documented exception to
+          DESIGN.md's "all dialogs are right slide-overs" rule, made on the owner's
+          explicit call ("it should open a modal and not drawer"). See DESIGN.md's
+          own note on it so the next person does not "correct" this back to a
+          drawer. The reasoning that holds it up: a drawer is for a task you
+          perform (the booking form beneath this one), while this is reference
+          content you read and dismiss.
+          Backdrop click closes it, wired by hand (onClick on the backdrop +
+          stopPropagation on the panel) because this is hand-rolled, not
+          flowbite-react's own component which gets that for free. */}
       {detailsRoom && (
         <div
-          className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fade-in"
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setDetailsRoom(null)}
         >
           <div
-            className="w-full max-w-lg bg-white dark:bg-gray-800 h-full shadow-2xl flex flex-col border-l border-gray-200 dark:border-gray-700 animate-slide-in-right"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${detailsRoom.name} unit details`}
+            className="w-full max-w-lg max-h-[90vh] bg-white dark:bg-gray-800 rounded-lg shadow-2xl flex flex-col border border-gray-200 dark:border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-750 shrink-0">
+            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-750 rounded-t-lg shrink-0">
               <div className="min-w-0">
                 <h3 className="text-base font-bold text-gray-900 dark:text-white truncate">{detailsRoom.name}</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Unit details</p>
@@ -2291,9 +2282,10 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
               )}
             </div>
 
-            {/* Footer - pinned, so it needs the safe-area inset per DESIGN.md's
-                bottom-anchored drawer footer rule. */}
-            <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            {/* Footer. No safe-area inset here, unlike the booking drawer's: this
+                panel is centred and capped at 90vh, so its bottom edge never
+                reaches the home-indicator bar that rule exists for. */}
+            <div className="shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 rounded-b-lg">
               <Button variant="ghost" size="sm" onClick={() => setDetailsRoom(null)}>
                 Close
               </Button>

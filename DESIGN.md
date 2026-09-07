@@ -155,25 +155,41 @@ All single monthly calendars across the platform (such as single-room booking ca
 Canonical reference: Airbnb's host Multicalendar (`airbnb.co.in/multicalendar`).
 
 **On ANY calendar that draws a stay as a bar/capsule across date cells, the capsule must NOT fill
-the check-in and check-out cells edge to edge. It occupies the last 10% of the check-in cell and
-the first 10% of the check-out cell.**
+the check-in and check-out cells edge to edge. It occupies the last 35% of the check-in cell and
+the first 35% of the check-out cell.**
 
 Given a stay whose check-in falls on column index `S` and check-out on column index `E`, with
 `w` = one cell's width:
 
 ```
-left  = (S + 0.9) * w          /* starts 90% into the arrival cell   */
-width = (E - S - 0.8) * w      /* ends   10% into the departure cell */
+left  = (S + 0.65) * w         /* starts 65% into the arrival cell   */
+width = (E - S - 0.3) * w      /* ends   35% into the departure cell */
 ```
 
-A 2-night stay 11 → 13 therefore spans 1.2 cells, not 2 and not 3.
+A 2-night stay 11 → 13 therefore spans 1.7 cells, not 2 and not 3.
 
-**Revised 7 Sep 2026, same day, after live comparison against Airbnb's own calendar.** The
-original cut was 20% per side (2-night stay = 1.4 cells) - correct in shape but too aggressive in
-practice: it read fine as an abstract formula but made a 1-night stay (0.4 cell wide at 20%) look
-like a stray sliver rather than a booking, and made the whole calendar feel gappier than Airbnb's
-own tighter, fuller-looking bars. 10% per side keeps the same mechanism and the same reasoning
-below - it's a magnitude correction, not a rule change.
+**Why 35%, not higher:** the two visible slivers (checkout side + checkin side) share ONE date
+cell on a same-day turnover, so they only avoid overlapping when they sum to under 100% - any
+value over 50% per side guarantees the two capsules visually merge on that shared day (a 30%/70%
+split still sums to 100%, leaving literally zero gap; anything above that overlaps). 35%/35%
+sums to 70%, leaving a real 30%-of-a-cell gap - the largest fill that still reads as a gap rather
+than a seam. **Both sides use the same fraction, always** - an asymmetric split (checkout side
+bigger than checkin side, on the reasoning that a checkout-morning guest occupied more of the day)
+does not help: it still consumes the same shared-cell budget and only worsens whichever side is
+larger.
+
+**Revision history.** Both revisions happened 7 Sep 2026, the same day this rule was added, after
+two rounds of live comparison against Airbnb's own calendar:
+1. Original cut: 20% per side (2-night stay = 1.4 cells) - correct in shape but too aggressive in
+   practice, making a 1-night stay (0.4 cell wide) read as a stray sliver rather than a booking.
+2. First correction: dropped to 10% per side - this was a mistake in the wrong direction (a
+   smaller per-side fraction shrinks the visible capsule further, it does not grow it - a 1-night
+   stay at 10%/side is 0.2 cell wide, thinner than the original 20% version, not fuller). Caught
+   when the user proposed even larger numbers (30%/70%) and the arithmetic was re-checked from
+   scratch.
+3. Current: 35% per side (2-night = 1.7 cells, 1-night = 0.7 cell) - the corrected, symmetric fix
+   for "capsules should occupy more space, closer to Airbnb's fuller bars," landing at the largest
+   value that still leaves a same-day-turnover gap (see "Why 35%" above).
 
 **Why.** A stay does not own the whole of either end day - the guest arrives in the afternoon and
 leaves in the morning (Airbnb's own reservation detail for these listings: check-in 1:00 pm,
@@ -191,9 +207,9 @@ check-out 11:00 am). Two consequences follow, and both are the real reason for t
 (`existing_start < new_end && existing_end > new_start`) exactly as it is - do not "fix" overlap
 detection to match the visuals, and do not treat the check-out date as an occupied night. A stay
 11 → 13 occupies the nights of the 11th and 12th; that is what any highlight, count or conflict
-check must use. The 10% inset is how that fact is drawn, not a change to what it means.
+check must use. The 35% inset is how that fact is drawn, not a change to what it means.
 
-**Where the 10% inset applies:** the two surfaces that actually draw stay capsules -
+**Where the 35% inset applies:** the two surfaces that actually draw stay capsules -
 `TodayOverview.tsx` and `OperationalDashboard.tsx` (both render them into a separate absolutely
 positioned overlay; grep `data-cal-capsule`). Any new capsule surface joins this list.
 
@@ -360,6 +376,7 @@ All action modals, creation forms, and secondary management dialogs across the s
 - **Bottom-Anchored Drawer Footer Safe Area (added 28 Aug 2026, explicit report + screenshot)**: any drawer whose footer is a `shrink-0` flex child sitting OUTSIDE the scrollable content area (i.e. the primary action button is pinned to the physical bottom edge of the drawer, not just the end of scrollable content) must add `env(safe-area-inset-bottom)` to that footer's bottom padding - e.g. `p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]` - not a plain `p-4`. Found live in `SelfOnboardingWizard.tsx`'s "Next Step" footer: on an iPhone with a home-indicator bar, the button sat with zero breathing room above it. This is a *different* case from `App.tsx`'s shared `<main>` (which already handles its own safe-area-bottom + persistent mobile nav bar clearance) and from a footer that's merely the last item inside a scrollable `DrawerItems` region (like `BookingDetailsModal.tsx`'s own footer) - only a truly fixed/pinned footer needs this explicit inset. Check for this same gap before shipping any new `shrink-0` footer bar.
 - **Z-Index**: Modals and right drawers operate at `z-58` per application z-index layering scale.
 - **In-Drawer Management**: When a drawer presents a list of entities (such as custom service types, material categories, or payment accounts), users must be able to **add new items directly from inside the drawer** via an inline creation form at the top, alongside inline edit and delete actions.
+- **Documented exception - read-only reference content may be a CENTRED MODAL (added 7 Sep 2026, explicit request)**: the rule above governs *dialogs you act in* - creation forms, edit sheets, management panels. A dialog that only presents information to read and dismiss may be a centred modal instead. The distinction is whether the user is performing a task (drawer) or consulting reference material (modal). Current instance: `PublicBookingEngine.tsx`'s **Unit Details** modal on the public booking page - room description, amenities, sleeping arrangement, check-in/out times. Note that the *booking form* on that same page stays a right slide-over, so both patterns coexist there deliberately and by role, not by accident. **Do not "fix" the Unit Details modal into a drawer** - it was a drawer first and was changed on the owner's explicit call. A hand-rolled modal still owes the same backdrop-click-to-close wiring as a hand-rolled drawer (see the next bullet), but NOT the safe-area footer inset above: a centred panel capped at `max-h-[90vh]` never reaches the home-indicator bar that rule exists for.
 - **Click-Outside-to-Close (added 4 Sep 2026, explicit request)**: every drawer must close when the user clicks the dimmed backdrop area outside the panel, not just its `X`/Cancel controls. `flowbite-react`'s real `<Drawer>` already does this for free - its `backdrop` prop defaults to `true` and renders a click-to-`onClose` overlay div (see `node_modules/flowbite-react/dist/components/Drawer/Drawer.js`), so any call site passing a real `onClose` gets this automatically; never pass `backdrop={false}` on a dismissible drawer. A **hand-rolled** slide-over (a plain `fixed inset-0` overlay div, built outside `flowbite-react` - e.g. `PublicBookingEngine.tsx`'s public-facing "Complete Your Booking" drawer) does not get this for free and must wire it by hand: `onClick={onClose}` on the outer backdrop div, and `onClick={(e) => e.stopPropagation()}` on the inner panel div so clicks inside the drawer don't bubble up and close it.
 
 **Exception - confirmation/alert prompts (no form fields)**: a dialog that's fundamentally a yes/no or OK prompt - not a data-entry form or a list - is a centered `flowbite-react` `<Modal size="md|lg" popup dismissible className="z-9999 ...">`, not a right-side drawer, even though several of these were briefly rebuilt as drawers on 22 Aug 2026 during the drawer sweep. Reverted 23 Aug 2026 (explicit user report + screenshot): a short prompt in a full-height drawer left most of the drawer an empty void, with Cancel/Confirm stranded far below the message - a bad fit, unlike this rule's other drawers, which hold genuine multi-field forms or lists. `z-9999` (not `z-58`) matches custom.css's own z-index scale, which already reserves an "always on top" tier for toasts + the confirm dialog, so it stacks above an already-open drawer/page-modal.
