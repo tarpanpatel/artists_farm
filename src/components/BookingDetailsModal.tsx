@@ -18,7 +18,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, fetchBookingVoucherTokenDB, type BookingPayment } from '../services/api';
+import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, fetchBookingVoucherTokenDB, type BookingPayment, type BookingPaymentTotals } from '../services/api';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
@@ -479,6 +479,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // php/finance/booking_payments.php for why a booking needs more than one.
   const [payments, setPayments] = useState<BookingPayment[]>([]);
   const [showAddPayment, setShowAddPayment] = useState(false);
+  // Totals as the SERVER recomputed them after the last payment write.
+  //
+  // Needed because `guest` is a prop from a list this modal cannot refresh:
+  // recording or deleting a payment changes guests.advance_paid and
+  // pending_amount server-side, and every local derivation from the prop is
+  // stale from that moment on. Deleting the last payment was the case that made
+  // it visible - paid correctly went to 0 while Pending stayed at the
+  // mid-payment figure, because the prop still held the pre-delete advance.
+  // Null until a write happens, so an untouched booking keeps displaying
+  // exactly as it always did.
+  const [serverTotals, setServerTotals] = useState<BookingPaymentTotals | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('Cash');
   const [payReceivedBy, setPayReceivedBy] = useState('');
@@ -525,6 +536,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         return;
       }
       setPayments(res.payments);
+      if (res.totals) setServerTotals(res.totals);
       // The Advance Paid box is bound to its own edit-state string, seeded once
       // from the booking prop - so without this it keeps showing the pre-payment
       // figure while the list right below it shows the new payment (found on
@@ -554,8 +566,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       showToast(res.message || 'Could not remove the payment.', { type: 'error' });
       return;
     }
-    const remaining = await fetchBookingPaymentsDB(guest.id);
+    // res.totals present means the server answered with its recomputed state,
+    // so res.payments is authoritative even when empty - deleting the last
+    // payment legitimately returns []. Only fall back to a re-fetch when the
+    // response carried no totals at all.
+    const remaining = res.totals ? res.payments : await fetchBookingPaymentsDB(guest.id);
     setPayments(remaining);
+    if (res.totals) setServerTotals(res.totals);
     // Same reason as the record path above - the Advance Paid box holds its own
     // state and would keep showing the deleted payment's total otherwise.
     setEditAdvance(String(remaining.reduce((sum, p) => sum + Number(p.amount || 0), 0)));
@@ -576,7 +593,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // the stale pending makes the two cancel out, and the Pending field then does
   // not move when a payment is recorded (found on staging, 7 Sep 2026).
   const propAdvancePaid = g.advance_paid ?? g.advanceAmount ?? 0;
-  const advancePaid = payments.length > 0 ? paymentsTotal : propAdvancePaid;
+  const advancePaid = serverTotals ? serverTotals.paid : (payments.length > 0 ? paymentsTotal : propAdvancePaid);
   // OTA (Airbnb/Booking.com/etc via Channex) bookings arrive pre-paid by the
   // channel itself - front desk never actually collects or hands off the
   // advance/pending amount, so tracking "who received it" doesn't apply and
@@ -591,6 +608,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     : 0;
   const pendingDisplay = isEditing
     ? Math.max(0, (parseFloat(editRoomRent) || 0) - (parseFloat(editAdvance) || 0) + extrasBaked)
+    : serverTotals
+    ? serverTotals.pending
     : Math.max(0, roomRent - advancePaid + extrasBaked);
 
   const handleEditPendingReceivedByChange = (val: string) => {

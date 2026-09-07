@@ -4253,10 +4253,21 @@ switch ($action) {
     case 'delete_booking_payment': {
         $in = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $paymentId = (int)($in['payment_id'] ?? 0);
+        // Capture the booking before the row goes, so the recomputed totals can
+        // be returned - the caller's copy of the booking is stale the moment
+        // this runs, and without them it has no way to know the real figures
+        // short of re-fetching the whole guest list.
+        $ownerStmt = $pdo->prepare("SELECT booking_id FROM booking_payments WHERE id = ? AND property_id = ? LIMIT 1");
+        $ownerStmt->execute([$paymentId, (int)$propertyId]);
+        $ownerBookingId = (int)($ownerStmt->fetchColumn() ?: 0);
         if (!$paymentId || !deleteBookingPayment($pdo, (int)$propertyId, $paymentId)) {
             http_response_code(404); echo json_encode(['status' => 'error', 'message' => 'Payment not found for this property.']); break;
         }
-        echo json_encode(['status' => 'success']);
+        echo json_encode([
+            'status' => 'success',
+            'totals' => $ownerBookingId ? recalcBookingPaymentTotals($pdo, $ownerBookingId, (int)$propertyId) : null,
+            'data'   => $ownerBookingId ? getBookingPayments($pdo, (int)$propertyId, $ownerBookingId) : [],
+        ]);
         break;
     }
 

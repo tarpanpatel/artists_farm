@@ -3214,7 +3214,7 @@ export async function addBookingPaymentDB(payment: {
   /** 'YYYY-MM-DD' or a full datetime. Defaults to now on the server. */
   received_at?: string;
   note?: string;
-}): Promise<{ success: boolean; message: string; payments: BookingPayment[] }> {
+}): Promise<{ success: boolean; message: string; payments: BookingPayment[]; totals: BookingPaymentTotals | null }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_booking_payment`, {
       method: 'POST',
@@ -3226,14 +3226,17 @@ export async function addBookingPaymentDB(payment: {
       success: json.status === 'success',
       message: json.message || '',
       payments: Array.isArray(json.data) ? json.data : [],
+      totals: json.totals || null,
     };
   } catch (err) {
     console.error('Failed to add booking payment:', err);
-    return { success: false, message: 'Network error recording the payment', payments: [] };
+    return { success: false, message: 'Network error recording the payment', payments: [], totals: null };
   }
 }
 
-export async function deleteBookingPaymentDB(paymentId: number): Promise<{ success: boolean; message: string }> {
+export interface BookingPaymentTotals { paid: number; pending: number; last_received_by: string }
+
+export async function deleteBookingPaymentDB(paymentId: number): Promise<{ success: boolean; message: string; totals: BookingPaymentTotals | null; payments: BookingPayment[] }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=delete_booking_payment`, {
       method: 'POST',
@@ -3241,10 +3244,15 @@ export async function deleteBookingPaymentDB(paymentId: number): Promise<{ succe
       body: JSON.stringify({ payment_id: paymentId }),
     });
     const json = await res.json();
-    return { success: json.status === 'success', message: json.message || '' };
+    return {
+      success: json.status === 'success',
+      message: json.message || '',
+      totals: json.totals || null,
+      payments: Array.isArray(json.data) ? json.data : [],
+    };
   } catch (err) {
     console.error('Failed to delete booking payment:', err);
-    return { success: false, message: 'Network error removing the payment' };
+    return { success: false, message: 'Network error removing the payment', totals: null, payments: [] };
   }
 }
 
