@@ -1,0 +1,45 @@
+﻿name: OpenHands Issue Resolver
+
+# OpenHands AI agent automatically resolves GitHub Issues labelled "fix-me".
+# When triggered, it reads the issue, browses the codebase, writes a fix,
+# and opens a PR - exactly like a human developer would.
+#
+# SETUP REQUIRED (one-time, in GitHub repo settings):
+#   Settings -> Secrets and variables -> Actions -> New repository secret:
+#     LLM_API_KEY = your Google Gemini or OpenAI API key
+#   Settings -> Actions -> General -> Workflow permissions:
+#     -> Read and write permissions (check)
+#     -> Allow GitHub Actions to create and approve pull requests (check)
+#
+# USAGE:
+#   1. Create or find a GitHub Issue describing a bug / feature
+#   2. Add the label "fix-me" to the issue
+#   3. OpenHands will automatically open a PR within ~5 minutes
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  openhands-resolver:
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == 'fix-me') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@openhands-agent'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve Issue with OpenHands
+        uses: all-hands-ai/openhands-resolver@v2
+        with:
+          llm_model: "gemini/gemini-2.0-flash"
+          max_iterations: 30
+          runtime_container_image: "docker.all-hands.dev/all-hands-ai/runtime:0.47-nikolaik"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}

@@ -1,0 +1,59 @@
+﻿name: Playwright E2E Tests
+
+# Runs the existing Playwright test suite on staging after every push
+# to direct-booking-engine branch. Catches UI regressions automatically.
+
+on:
+  push:
+    branches: [direct-booking-engine]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL to test against"
+        required: false
+        default: "https://staging.ground-code.com"
+
+jobs:
+  playwright:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests against staging
+        run: npx playwright test
+        env:
+          BASE_URL: ${{ inputs.base_url || 'https://staging.ground-code.com' }}
+          DEMO_PROPERTY_PATH: /rivera-resorts/luxe-stays/
+          CI: true
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7
