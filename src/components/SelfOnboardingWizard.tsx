@@ -224,11 +224,10 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
       // Create initial trial account shell if not already registered
       if (!createdPropertyId) {
         setLoading(true);
-        setError(null);
         try {
-          const res = await fetch('/php/api/router.php?action=register_tenant_trial', {
+          setError(null);
+          const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=register_tenant_trial`, {
             method: 'POST',
-            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               full_name: fullName.trim(),
@@ -286,11 +285,10 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
     }
 
     setLoading(true);
-    setError(null);
     try {
-      const response = await fetch('/php/api/router.php?action=register_tenant_trial', {
+      setError(null);
+      const response = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=register_tenant_trial`, {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: fullName.trim(),
