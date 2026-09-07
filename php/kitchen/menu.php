@@ -337,6 +337,22 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 markSchemaVerified('nav_menu_self_heal_v13');
             }
 
+            // v14 (8 Sep 2026): IA overhaul per Senior UI/UX audit:
+            // 1. Rename 'Channel Manager' -> 'OTA Channels'
+            // 2. Nest 'Connect Channels' as child of 'nav-channel-manager'
+            // 3. Nest 'Expenses' as child of 'nav-29' (Finances)
+            // 4. Ensure Dashboard is top order 1 and Bookings order 2
+            if (!isSchemaVerified('nav_menu_self_heal_v14')) {
+                try {
+                    $pdo->exec("UPDATE nav_menu_items SET title = 'OTA Channels' WHERE unique_key = 'channel_manager' OR id = 'nav-channel-manager'");
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-channel-manager', title = 'Channel Connections' WHERE unique_key = 'connect_channels' OR id = 'nav-connect-channels'");
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-29', title = 'Daily Expenses' WHERE unique_key = 'expenses' AND id = 'nav-12'");
+                    $pdo->exec("UPDATE nav_menu_items SET display_order = 1 WHERE unique_key = 'dashboard' AND parent_id IS NULL");
+                    $pdo->exec("UPDATE nav_menu_items SET display_order = 2 WHERE unique_key = 'all_bookings' AND parent_id IS NULL");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v14');
+            }
+
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 

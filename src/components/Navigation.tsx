@@ -33,7 +33,8 @@ export type TabType =
   | 'licenses'
   | 'channel_manager'
   | 'connect_channels'
-  | 'subscription';
+  | 'subscription'
+  | 'calendar_compact';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -805,38 +806,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   via isKitchenModuleNavItem() above. Same fix on the actual
                   public page itself - see food_menu.php's isModuleEnabledForProperty
                   gate - this is the "don't even offer the broken action"
-                  half of it. */}
-              <div className="pb-2 border-b border-gray-200 dark:border-gray-700 space-y-1">
-                <ul className="space-y-1">
-                  {kitchenModuleEnabled && (
-                    <li>
-                      <button
-                        type="button"
-                        onClick={handleShareFoodMenu}
-                        className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <Share2 className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                        <span className="ms-3 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Food Menu')}</span>
-                      </button>
-                    </li>
-                  )}
-                  {/* Share Availability - moved here from the dashboard calendar
-                      header 4 Sep 2026 (explicit request), sits directly below
-                      Share Menu. Not gated on any module - every property has a
-                      public availability page. */}
-                  <li>
-                    <button
-                      type="button"
-                      onClick={handleShareAvailability}
-                      className="w-full flex items-center p-2 text-sm font-medium rounded-lg transition duration-75 cursor-pointer text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <CalendarDays className="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-400" />
-                      <span className="ms-3 flex-1 text-left truncate">{t('share_availability_button', 'Share Availability')}</span>
-                    </button>
-                  </li>
-                </ul>
-              </div>
-
+              {/* Quick Actions (Share Menu & Share Availability) moved to bottom above profile (8 Sep 2026, IA overhaul) so Dashboard is top anchor */}
               <ul className="space-y-1 font-medium">
                 {/* filteredNavItems.length, not tree.length (2 Sep 2026, user
                     report: sidebar shows only "Kitchen" for a while before the
@@ -898,6 +868,37 @@ export const Navigation: React.FC<NavigationProps> = ({
                   </ul>
                 </div>
               )}
+              {/* Guest Share Links - moved to sidebar footer (8 Sep 2026, Senior UI/UX audit)
+                  so Dashboard is permanently anchored at the very top of the operational menu */}
+              <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+                <div className="px-3 pb-1 text-2xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  {t('guest_share_links', 'Guest Share Links')}
+                </div>
+                <ul className="space-y-1">
+                  {kitchenModuleEnabled && (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={handleShareFoodMenu}
+                        className="w-full flex items-center p-2 text-xs font-medium rounded-lg transition duration-75 cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Share2 className="w-4 h-4 shrink-0 text-teal-600 dark:text-teal-400" />
+                        <span className="ms-2.5 flex-1 text-left truncate">{t('share_food_menu_button', 'Share Food Menu')}</span>
+                      </button>
+                    </li>
+                  )}
+                  <li>
+                    <button
+                      type="button"
+                      onClick={handleShareAvailability}
+                      className="w-full flex items-center p-2 text-xs font-medium rounded-lg transition duration-75 cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <CalendarDays className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                      <span className="ms-2.5 flex-1 text-left truncate">{t('share_availability_button', 'Share Availability')}</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </div>
 
             {/* Bottom User Profile & Sign Out */}

@@ -1225,6 +1225,7 @@ export const strings: Record<string, string> = {
   telescope_monitor_label: "Telescope Monitor",
   logged_in_as_label: "Logged in as",
   quick_actions_label: "Quick Actions",
+  guest_share_links: "Guest Share Links",
   share_food_menu_button: "Share Food Menu",
   share_availability_button: "Share Availability",
   booking_engine_link_copied: "Booking link copied - paste it wherever you'd like to share it.",

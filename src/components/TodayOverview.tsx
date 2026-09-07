@@ -19,6 +19,7 @@ import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 
 interface TodayOverviewProps {
+  isCompactView?: boolean;
   guests: Guest[];
   // default_tariff (4 Sep 2026, unbooked-date price display) - already
   // present on the real objects this prop is fed (App.tsx passes
@@ -64,6 +65,7 @@ interface TodayOverviewProps {
 }
 
 export const TodayOverview: React.FC<TodayOverviewProps> = ({
+  isCompactView = false,
   guests,
   rooms = [],
   isMultiKeyProperty = false,
@@ -911,7 +913,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, [daysArray]);
 
   return (
-    <div className="today-overview space-y-6">
+    <div className={`today-overview ${isCompactView ? 'space-y-3' : 'space-y-6'}`}>
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
       <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="min-w-0 flex-1">
@@ -920,6 +922,18 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           </h1>
         </div>
         <div className="today-overview__header-actions flex items-center gap-2 shrink-0">
+          {!isCompactView && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => {
+                window.location.hash = '#calendar-compact';
+              }}
+              className="h-10 text-xs font-semibold whitespace-nowrap"
+            >
+              <span>🧪 Test Compact View</span>
+            </Button>
+          )}
           {onAddBooking && (
             <Button
               variant="primary"
@@ -934,39 +948,73 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
       </div>
 
-      {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
-      <div className={`today-overview__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
-        <KpiCard
-          label="Arrivals"
-          icon={Calendar}
-          badge={{ text: 'Today', color: 'info' }}
-          value={todaysArrivals}
-        />
-        <KpiCard
-          label="Departures"
-          icon={LogOut}
-          badge={{ text: 'Today', color: 'warning' }}
-          value={todaysDepartures}
-        />
-        {isMultiKeyProperty && (
+      {/* Metric Blocks Grid or Slim Compact Bar */}
+      {isCompactView ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs text-xs">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+              <span>Arrivals Today:</span>
+              <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold rounded border border-blue-200 dark:border-blue-800">{todaysArrivals}</span>
+            </div>
+            <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+              <LogOut className="w-3.5 h-3.5 text-amber-500" />
+              <span>Departures Today:</span>
+              <span className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold rounded border border-amber-200 dark:border-amber-800">{todaysDepartures}</span>
+            </div>
+            {isMultiKeyProperty && (
+              <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+                <User className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Checked-In:</span>
+                <span className="px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-bold rounded border border-emerald-200 dark:border-emerald-800">{inHouseCount}</span>
+              </div>
+            )}
+            {serviceRequestsAccessAllowed && (
+              <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
+                <Bell className="w-3.5 h-3.5 text-red-500" />
+                <span>Requests:</span>
+                <span className="px-1.5 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 font-bold rounded border border-red-200 dark:border-red-800">{pendingRequests}</span>
+              </div>
+            )}
+          </div>
+          <span className="text-2xs font-semibold px-2 py-0.5 rounded border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
+            Compact 1366px Mode
+          </span>
+        </div>
+      ) : (
+        <div className={`today-overview__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
           <KpiCard
-            label="Checked-In Guests"
-            icon={User}
-            badge={{ text: 'Active', color: 'success' }}
-            value={inHouseCount}
+            label="Arrivals"
+            icon={Calendar}
+            badge={{ text: 'Today', color: 'info' }}
+            value={todaysArrivals}
           />
-        )}
-        {serviceRequestsAccessAllowed && (
           <KpiCard
-            label="Service Requests"
-            icon={Bell}
-            badge={{ text: 'Active', color: 'failure' }}
-            value={pendingRequests}
+            label="Departures"
+            icon={LogOut}
+            badge={{ text: 'Today', color: 'warning' }}
+            value={todaysDepartures}
           />
-        )}
-      </div>
+          {isMultiKeyProperty && (
+            <KpiCard
+              label="Checked-In Guests"
+              icon={User}
+              badge={{ text: 'Active', color: 'success' }}
+              value={inHouseCount}
+            />
+          )}
+          {serviceRequestsAccessAllowed && (
+            <KpiCard
+              label="Service Requests"
+              icon={Bell}
+              badge={{ text: 'Active', color: 'failure' }}
+              value={pendingRequests}
+            />
+          )}
+        </div>
+      )}
 
-      <div data-tour="booking-grid" className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
+      <div data-tour="booking-grid" className={`today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md ${isCompactView ? 'p-3 space-y-3' : 'p-4 sm:p-6 space-y-4'}`}>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 shrink-0">
             <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
@@ -1042,7 +1090,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 shifts every date header 32px to the right of the actual
                 day-column grid lines the capsules are positioned against,
                 making bookings appear to sit under the wrong date. */}
-            <div className="w-24 min-w-24 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 px-3 py-2 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700">
+            <div className={`w-24 min-w-24 sticky left-0 z-20 bg-slate-50 dark:bg-slate-800 px-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-700 flex items-center ${
+              isCompactView ? 'py-1' : 'py-2'
+            }`}>
               Room
             </div>
             {daysArray.map((day, idx) => {
@@ -1077,7 +1127,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                     }
                   } : undefined}
                   title={isColumnPickable ? 'Select this date across every unit - drag for a range' : undefined}
-                  className={`w-16 min-w-16 shrink-0 px-1 py-1.5 text-center border-r transition-all ${
+                  className={`w-16 min-w-16 shrink-0 px-1 text-center border-r transition-all ${
+                    isCompactView ? 'py-1' : 'py-1.5'
+                  } ${
                     isColumnPickable ? 'cursor-pointer' : ''
                   } ${
                     // A pending column outranks the today ring - it's the thing
@@ -1093,7 +1145,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   }`}
                 >
                   <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
-                  <div className="text-sm font-extrabold leading-none mt-0.5">{day.getDate()}</div>
+                  <div className={`${isCompactView ? 'text-xs' : 'text-sm'} font-extrabold leading-none mt-0.5`}>{day.getDate()}</div>
                 </div>
               );
             })}
@@ -1234,10 +1286,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               });
 
               const maxLanes = Math.max(1, laneEndDates.length);
-              const laneHeight = 32;
-              const capsuleHeight = 26;
-              const minRowHeight = 44;
-              const dynamicHeight = Math.max(minRowHeight, maxLanes * laneHeight + 12);
+              const laneHeight = isCompactView ? 26 : 32;
+              const capsuleHeight = isCompactView ? 20 : 26;
+              const minRowHeight = isCompactView ? 32 : 44;
+              const dynamicHeight = Math.max(minRowHeight, maxLanes * laneHeight + (isCompactView ? 6 : 12));
 
               return (
                 <div
@@ -1404,7 +1456,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               <button
                                 type="button"
                                 data-cal-capsule="1"
-                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center gap-1.5 z-20 overflow-hidden transition-colors"
+                                className={`${isCompactView ? 'px-1.5' : 'px-2.5'} rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center gap-1.5 z-20 overflow-hidden transition-colors`}
                                 style={commonStyle}
                               >
                                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
@@ -1414,7 +1466,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                     <Globe className="w-2.5 h-2.5 shrink-0 text-slate-700" />
                                   )}
                                 </span>
-                                <span className="font-semibold truncate text-[11px] leading-none">{otaItem.label}</span>
+                                <span className={`font-semibold truncate ${isCompactView ? 'text-[9px]' : 'text-[11px]'} leading-none`}>{otaItem.label}</span>
                               </button>
                             </Popover>
                           );
@@ -1504,7 +1556,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           >
                             <div
                               data-tour="checkin-open-booking-bar"
-                              className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md transition-all absolute ${
+                              className={`${isCompactView ? 'px-1.5' : 'px-2.5'} rounded-md font-semibold cursor-pointer hover:shadow-md transition-all absolute ${
                                 isOtaBooking && !isCheckedOut
                                   ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
                                   : getGuestColor(guest.id, guest.status)
@@ -1512,7 +1564,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               data-cal-capsule="1"
                               style={commonStyle}
                             >
-                              <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1.5 min-w-0">
+                              <span className={`font-semibold truncate ${isCompactView ? 'text-[10px]' : 'text-[11px]'} leading-none flex items-center gap-1.5 min-w-0`}>
                                 {isOtaBooking && (
                                   <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
                                     {OtaIcon ? (
