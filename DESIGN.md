@@ -301,6 +301,11 @@ All primary sub-page and section tab bars across the platform (e.g. `#take_food_
 
 - **No button ever has a box-shadow**, in any state (default/hover/active/focus) - flat fill + border only. This is a deliberate departure from Flowbite's own `Button` theme.js, which puts `shadow-sm` on its base and additional `shadow-sm`/`shadow-xs` on solid color variants; the shared `src/components/Button.tsx` explicitly cancels all of it with `shadow-none` per color (20 Aug 2026).
 - Any hand-rolled `<button>` styled to look like an action button (rather than a plain icon-only control) should be migrated to `src/components/Button.tsx` when touched, both for this shadow rule and for the DataTable Action Buttons rule below - don't hand-copy its color classes onto a raw `<button>`.
+- **Strict No Capsule / No Pill Buttons Rule (added 7 Sep 2026, explicit request)**: Action buttons across the platform must **NEVER** use capsule or pill shapes (`rounded-full`, `rounded-3xl`, or custom small heights where border radius approaches 50% of the element height). All interactive action buttons must strictly follow official Flowbite button geometry:
+  - Exclusively render buttons via the shared Flowbite `<Button>` component (`src/components/Button.tsx`).
+  - Standard corner radius is strictly `rounded-lg` (8px), matching Flowbite's default button specification.
+  - Buttons must use standard Flowbite sizing: `size="sm"` (`h-8` / 32px, `px-3 text-xs font-semibold`), `size="md"` (`h-10` / 40px), or `size="lg"` (`h-12` / 48px). At `h-8` (32px), `rounded-lg` (8px) maintains a crisp, rectangular button silhouette with rounded corners, never collapsing into a stadium/capsule shape.
+  - Capsule (`rounded-full`) geometry is reserved strictly for non-interactive status badges/chips (`<Badge>`), count indicator pills, or round icon/avatar indicators. Never use capsule geometry for interactive action buttons.
 
 ## Form Controls (Checkboxes, Radios, Toggles, Selects)
 

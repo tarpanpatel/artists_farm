@@ -1020,14 +1020,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                 <span>{t('checkin_pending_banner_label', 'Check-in Pending')}</span>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="warning"
+                size="sm"
                 onClick={handleMarkCheckedIn}
-                className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1.5"
+                leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                className="h-8 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shrink-0 border-transparent shadow-none"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {t('mark_checked_in_button', 'Mark Checked In')}
-              </button>
+                <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
+              </Button>
             </div>
           )}
 
@@ -1058,18 +1060,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 : t('checkin_id_verification_label', 'Check-in ID Verification')}
             </span>
             {canActOnBooking && (
-              <button
+              <Button
                 type="button"
+                variant={isIdVerified ? 'success' : 'danger'}
+                size="sm"
                 onClick={handleOpenId}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0 ${
-                  isIdVerified
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-rose-600 hover:bg-rose-700 text-white'
-                }`}
+                leftIcon={<Upload className="w-3.5 h-3.5" />}
+                className="h-8 text-xs font-semibold shrink-0 shadow-none border-transparent"
               >
-                <Upload className="w-3.5 h-3.5" />
-                {isIdVerified ? 'View / Re-upload ID' : 'Upload Guest ID'}
-              </button>
+                <span>{isIdVerified ? 'View / Re-upload ID' : 'Upload Guest ID'}</span>
+              </Button>
             )}
           </div>
 
@@ -1716,14 +1716,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <div className="space-y-3 w-full">
                 {/* Mark Checked In (Full-width action if check-in is due today or past) */}
                 {canActOnBooking && isCheckinDue && (
-                  <button
+                  <Button
                     type="button"
+                    variant="success"
+                    size="md"
+                    block
                     onClick={handleMarkCheckedIn}
-                    className="w-full h-10 px-4 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+                    leftIcon={<CheckCircle2 className="w-4 h-4 shrink-0" />}
+                    className="font-semibold shadow-none"
                   >
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
                     <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
-                  </button>
+                  </Button>
                 )}
 
                 {/* Checkout & Settle Bill (Full-width action if status is Checked In).
