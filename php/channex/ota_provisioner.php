@@ -439,8 +439,56 @@ function autoProvisionPropertyFromAirbnb(
         applyAirbnbRoomConfig($pdo, $confirmedRooms, $propertyId, !empty($propertyFields) ? $propertyFields : null);
     }
 
-    // Step 5: Activate channel connection
-    $channelClient->activateChannel($conn['channex_channel_id']);
+    // Step 5: Activate channel connection - same two safety gates
+    // channex_channel_activate enforces (router.php), previously skipped
+    // entirely here. This is verbatim the 3 Sep 2026 Patel Colony incident:
+    // activating with no readiness check and no ARI ever pushed left every
+    // room showing AVL=0 for every date, silently blocking all bookings from
+    // the day the property went live - found again in this new code path
+    // 8 Sep 2026.
+    $readiness = $channelClient->checkReadiness($conn['channex_channel_id']);
+    $readinessProblems = $readiness['data'] ?? [];
+    if (!empty($readinessProblems)) {
+        return [
+            'status' => 'error',
+            'message' => 'Not ready to activate - resolve these first',
+            'data' => ['problems' => $readinessProblems],
+            'property_id' => $propertyId,
+        ];
+    }
+
+    // Push fresh ARI before the channel can see the listing - activating
+    // with stale/incomplete availability is how a property gets
+    // double-booked on day one. Same enqueue+immediate-drain path
+    // channex_channel_activate and channex_push_ari already use.
+    if (function_exists('enqueueOutboxItem') && class_exists('AriDrainWorker')) {
+        $dFrom = date('Y-m-d');
+        $dTo = date('Y-m-d', strtotime('+500 days'));
+        $pushRoomIds = function_exists('getChannexPushRoomIds')
+            ? getChannexPushRoomIds($pdo, $propertyId)
+            : [null];
+        $preActivateIds = [];
+        foreach ($pushRoomIds as $pushRoomId) {
+            enqueueOutboxItem($pdo, $propertyId, $pushRoomId, 'availability', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
+            $preActivateIds[] = (int)$pdo->lastInsertId();
+            enqueueOutboxItem($pdo, $propertyId, $pushRoomId, 'rates', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
+            $preActivateIds[] = (int)$pdo->lastInsertId();
+        }
+        (new AriDrainWorker($pdo))->processBatch(max(10, count($preActivateIds)), $preActivateIds);
+    }
+
+    $activateRes = $channelClient->activateChannel($conn['channex_channel_id']);
+    if (empty($activateRes['success'])) {
+        upsertChannexChannelConnection($pdo, $propertyId, 'AirBNB', [
+            'last_error' => is_string($activateRes['error'] ?? null) ? $activateRes['error'] : 'Activation failed',
+        ]);
+        return [
+            'status' => 'error',
+            'message' => 'Failed to activate the channel',
+            'error' => $activateRes['error'] ?? null,
+            'property_id' => $propertyId,
+        ];
+    }
     upsertChannexChannelConnection($pdo, $propertyId, 'AirBNB', [
         'status' => 'active',
         'last_error' => null,
@@ -507,54 +555,84 @@ function autoCreateRoomsFromAirbnbListings(PDO $pdo, int $propertyId): array {
         return ['status' => 'success', 'message' => 'Single unit property already matches listing count', 'created_count' => 0];
     }
 
-    // Upgrade to MULTI_KEY if not already
-    if ($property['property_type'] !== 'MULTI_KEY') {
-        $pdo->prepare("UPDATE properties SET property_type = 'MULTI_KEY', unit_count = ? WHERE id = ?")
-            ->execute([count($rawListings), $propertyId]);
-        if (function_exists('populateDefaultExpenses')) {
-            populateDefaultExpenses($pdo, $propertyId);
+    // Existing mappings - same retry-safe, position-independent matching as
+    // autoProvisionPropertyFromAirbnb() above (found 8 Sep 2026: this
+    // function had the identical index-based matching risk).
+    $existingMappingByListingId = [];
+    foreach (getChannexChannelRoomMappings($pdo, (int)$conn['id']) as $m) {
+        if (!empty($m['external_room_code']) && $m['local_room_id'] !== null) {
+            $existingMappingByListingId[(string)$m['external_room_code']] = (int)$m['local_room_id'];
         }
     }
 
-    // Fetch existing child rooms
-    $roomStmt = $pdo->prepare("SELECT id, name, slug FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC, id ASC");
-    $roomStmt->execute([$propertyId]);
-    $existingRooms = $roomStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $createdCount = 0;
-    $updatedMappings = [];
-
-    foreach ($rawListings as $idx => $listing) {
-        $listingId = (string)$listing['id'];
-        $listingTitle = trim((string)($listing['title'] ?? "Room " . ($idx + 1)));
-
-        if ($idx < count($existingRooms)) {
-            $roomId = (int)$existingRooms[$idx]['id'];
-            $pdo->prepare("UPDATE properties SET name = ? WHERE id = ?")->execute([$listingTitle, $roomId]);
-        } else {
-            $roomSlug = $property['slug'] . '-room-' . ($idx + 1) . '-' . substr(md5($listingId), 0, 4);
-            try {
-                $added = addMultiKeyRoomCore($pdo, $propertyId, $listingTitle, $roomSlug, (float)($property['default_tariff'] ?: 2500));
-                $roomId = (int)$added['room_id'];
-                $createdCount++;
-            } catch (Throwable $e) {
-                $maxOrderStmt = $pdo->prepare("SELECT COALESCE(MAX(room_order), 0) FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
-                $maxOrderStmt->execute([$propertyId]);
-                $nextOrder = ((int)$maxOrderStmt->fetchColumn()) + 1;
-
-                $ins = $pdo->prepare("
-                    INSERT INTO properties (tenant_id, name, slug, property_type, parent_property_id, room_order, default_tariff, status)
-                    VALUES (?, ?, ?, 'MULTI_KEY_ROOM', ?, ?, ?, 'active')
-                ");
-                $ins->execute([$property['tenant_id'], $listingTitle, $roomSlug, $propertyId, $nextOrder, (float)($property['default_tariff'] ?: 2500)]);
-                $roomId = (int)$pdo->lastInsertId();
-                $createdCount++;
+    $pdo->beginTransaction();
+    try {
+        // Upgrade to MULTI_KEY if not already
+        if ($property['property_type'] !== 'MULTI_KEY') {
+            $pdo->prepare("UPDATE properties SET property_type = 'MULTI_KEY', unit_count = ? WHERE id = ?")
+                ->execute([count($rawListings), $propertyId]);
+            if (function_exists('populateDefaultExpenses')) {
+                populateDefaultExpenses($pdo, $propertyId);
             }
         }
-        $updatedMappings[(string)$roomId] = [
-            'external_room_code' => $listingId,
-            'external_rate_code' => $listingId,
-        ];
+
+        // Fetch existing child rooms
+        $roomStmt = $pdo->prepare("SELECT id, name, slug FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC, id ASC");
+        $roomStmt->execute([$propertyId]);
+        $existingRooms = $roomStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $createdCount = 0;
+        $updatedMappings = [];
+        $claimedRoomIds = [];
+
+        foreach ($rawListings as $idx => $listing) {
+            $listingId = (string)$listing['id'];
+            $listingTitle = trim((string)($listing['title'] ?? "Room " . ($idx + 1)));
+
+            $roomId = null;
+            if (isset($existingMappingByListingId[$listingId])) {
+                $candidateId = $existingMappingByListingId[$listingId];
+                foreach ($existingRooms as $er) {
+                    if ((int)$er['id'] === $candidateId && !isset($claimedRoomIds[$candidateId])) {
+                        $roomId = $candidateId;
+                        break;
+                    }
+                }
+            }
+            if ($roomId === null) {
+                foreach ($existingRooms as $er) {
+                    $erId = (int)$er['id'];
+                    if (!isset($claimedRoomIds[$erId])) {
+                        $roomId = $erId;
+                        break;
+                    }
+                }
+            }
+
+            if ($roomId !== null) {
+                $claimedRoomIds[$roomId] = true;
+                $pdo->prepare("UPDATE properties SET name = ? WHERE id = ?")->execute([$listingTitle, $roomId]);
+            } else {
+                // No blanket catch here either (found 8 Sep 2026, same class
+                // of bug as the sibling function above) - a real failure
+                // (10-room cap, slug collision) surfaces as a real error.
+                $roomSlug = $property['slug'] . '-room-' . ($idx + 1) . '-' . substr(md5($listingId), 0, 4);
+                $added = addMultiKeyRoomCore($pdo, $propertyId, $listingTitle, $roomSlug, (float)($property['default_tariff'] ?: 2500));
+                $roomId = (int)$added['room_id'];
+                $claimedRoomIds[$roomId] = true;
+                $createdCount++;
+            }
+            $updatedMappings[(string)$roomId] = [
+                'external_room_code' => $listingId,
+                'external_rate_code' => $listingId,
+            ];
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        return ['status' => 'error', 'message' => 'Could not create rooms: ' . $e->getMessage()];
     }
 
     // Run content sync so new rooms exist on Channex

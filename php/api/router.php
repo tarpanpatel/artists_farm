@@ -5215,6 +5215,20 @@ switch ($action) {
         $input = json_decode($rawInput, true) ?: $_POST;
         $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: (int)($_GET['property_id'] ?? 0));
 
+        // The universal gate above only authorised $propertyId (resolved from
+        // this request's own property_slug) - it never checked whatever
+        // property_id this block reads straight out of the body above. Found
+        // 8 Sep 2026: an authenticated user of ANY property could send their
+        // own slug (passing that gate) and another tenant's property_id here,
+        // and every one of these channex_* actions would act on it - for the
+        // newer provisioning actions that means renaming a property, flipping
+        // it to MULTI_KEY, and creating rooms on someone else's account.
+        if ($targetPropertyId > 0 && $targetPropertyId !== $propertyId && !isPropertyAccessAllowed($pdo, $targetPropertyId)) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Not authorized for this property']);
+            break;
+        }
+
         // Every "meta"-kind channel is attached to THIS local property's own
         // Channex property UUID - resolved from channex_mappings, which is
         // keyed by property_id regardless of room_id (every unit of one local
@@ -5532,9 +5546,18 @@ switch ($action) {
             case 'channex_auto_provision_from_airbnb':
                 $selectedListings = is_array($input['selected_listing_ids'] ?? null) ? $input['selected_listing_ids'] : [];
                 $customPropName = isset($input['property_name']) ? trim((string)$input['property_name']) : null;
-                $res = autoProvisionPropertyFromAirbnb($pdo, $targetPropertyId, $selectedListings, $customPropName);
+                // Same two consent gates channex_channel_activate requires -
+                // see autoProvisionPropertyFromAirbnb()'s own docblock for why
+                // this one-click flow does not get to skip them (found 8 Sep
+                // 2026: it previously activated with neither ever checked).
+                $confirmedExistingBookings = !empty($input['confirmed_existing_bookings']);
+                $confirmedRateFallback = !empty($input['confirmed_rate_fallback']);
+                $res = autoProvisionPropertyFromAirbnb(
+                    $pdo, $targetPropertyId, $selectedListings, $customPropName,
+                    $confirmedExistingBookings, $confirmedRateFallback
+                );
                 if (($res['status'] ?? '') !== 'success') {
-                    http_response_code(400);
+                    http_response_code((int)($res['http_code'] ?? 400));
                 }
                 echo json_encode($res);
                 break 2;
