@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X } from './icons/FlowbiteIcons';
+import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X, Bell } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
+import { EmptyState } from './EmptyState';
+import { TableSkeleton } from './TableSkeleton';
 import {
   ServiceRequestType,
   createServiceRequestInDB,
@@ -620,18 +622,25 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             already spans the full width underneath it). */}
         <Card className="shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px service-requests-management__desk-body">
           {loading ? (
-            <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__loading">{t('loading_spinner_default_message', 'Loading...')}</div>
+            <TableSkeleton rows={3} cols={4} />
           ) : requests.length === 0 ? (
-            <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-sm service-requests-management__empty-state">{t('no_service_requests_label', 'No service requests logged yet.')}</div>
+            <EmptyState
+              icon={Bell}
+              title={t('no_service_requests_label', 'No service requests logged yet.')}
+              description="Guest requests for housekeeping, extra towels, maintenance, or amenities will appear here."
+            />
           ) : (
             <div className="space-y-4 service-requests-management__sections">
               {/* Pending Tab Content */}
               {activeTab === 'pending' && (
                 <div className="space-y-3 service-requests-management__section">
                   {pending.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400 font-semibold text-xs">
-                      No pending service requests.
-                    </div>
+                    <EmptyState
+                      icon={CheckCircle2}
+                      title="All caught up! No pending requests"
+                      description="There are currently no active guest service or housekeeping tickets waiting for fulfillment."
+                      compact
+                    />
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 service-requests-management__request-list">
                       {pending.map((r) => (
@@ -672,9 +681,12 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
               {activeTab === 'fulfilled' && (
                 <div className="space-y-3 service-requests-management__section">
                   {fulfilled.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400 font-semibold text-xs">
-                      No fulfilled service requests.
-                    </div>
+                    <EmptyState
+                      icon={Bell}
+                      title="No fulfilled service requests"
+                      description="Completed service tickets will be archived here for historical tracking."
+                      compact
+                    />
                   ) : (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 service-requests-management__request-list">
@@ -931,9 +943,12 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
             <div className="space-y-2">
               {requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length === 0 ? (
-                <div className="text-center py-6 text-slate-500 dark:text-slate-400 text-xs bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-dashed border-gray-200 dark:border-gray-700 p-4">
-                  No custom service types added yet. Use the form above to add your first type.
-                </div>
+                <EmptyState
+                  icon={Settings}
+                  title="No custom service types added yet"
+                  description="Use the form above to add your first type."
+                  compact
+                />
               ) : (
                 requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').map((rt) => (
                   <div key={rt.id} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">

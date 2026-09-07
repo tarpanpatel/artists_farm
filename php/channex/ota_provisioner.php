@@ -13,6 +13,17 @@ require_once __DIR__ . '/channel_connections.php';
 require_once __DIR__ . '/ChannexChannelClient.php';
 require_once __DIR__ . '/content_sync.php';
 require_once __DIR__ . '/../api/multikey_properties.php';
+// Needed for the same readiness-check + pre-activation ARI push
+// channex_channel_activate already requires (router.php) - this file used to
+// call activateChannel() directly with none of that, which is exactly how the
+// 3 Sep 2026 Patel Colony incident (AVL=0 for every room, every date) happened
+// (found 8 Sep 2026 during code review; see the activation step below).
+if (is_file(__DIR__ . '/outbox.php')) {
+    require_once __DIR__ . '/outbox.php';
+}
+if (is_file(__DIR__ . '/ari_drain_worker.php')) {
+    require_once __DIR__ . '/ari_drain_worker.php';
+}
 
 if (!function_exists('airbnbNormalizeHour')) {
     function airbnbNormalizeHour($raw): ?string {
@@ -30,17 +41,40 @@ if (!function_exists('airbnbNormalizeHour')) {
  * @param PDO $pdo
  * @param int $propertyId
  * @param array $selectedListingIds List of external Airbnb listing IDs to import (empty = import all)
- * @param string|null $customPropertyName Optional custom name for the property
+ * @param string|null $customPropertyName Optional custom name for the property - used ONLY when this
+ *   property is not (and is not becoming) a MULTI_KEY parent. A MULTI_KEY parent's name is never
+ *   written by this function at all, regardless of this argument - see the CLAUDE.md rule
+ *   "OTA Import Must Never Rewrite a Property's Identity" (6 Sep 2026). Passing a name through here
+ *   for a multi-listing property is silently ignored for `name` specifically.
+ * @param bool $confirmedExistingBookings Same consent gate `channex_channel_activate` requires
+ *   before going live - the caller (the onboarding wizard) must have the host explicitly confirm
+ *   any pre-existing bookings on this OTA before this function will activate the channel.
+ * @param bool $confirmedRateFallback Same consent gate for the flat-default-rate-fallback risk.
  * @return array
  */
 function autoProvisionPropertyFromAirbnb(
     PDO $pdo,
     int $propertyId,
     array $selectedListingIds = [],
-    ?string $customPropertyName = null
+    ?string $customPropertyName = null,
+    bool $confirmedExistingBookings = false,
+    bool $confirmedRateFallback = false
 ): array {
     if ($propertyId <= 0) {
         return ['status' => 'error', 'message' => 'Invalid property ID'];
+    }
+    // Same two consent gates channex_channel_activate enforces server-side
+    // (router.php) - checked here too, up front, so a caller cannot reach
+    // activation below without them regardless of which action invokes this
+    // function. loadFutureReservations() further down does pull in Airbnb's
+    // own existing reservations automatically, but that does not cover a
+    // manually-set block on Airbnb's own calendar with no reservation behind
+    // it - the host still needs to confirm that themselves.
+    if (!$confirmedExistingBookings) {
+        return ['status' => 'error', 'message' => 'Confirm any existing bookings on this OTA are already entered in Ground Code before going live', 'http_code' => 422];
+    }
+    if (!$confirmedRateFallback) {
+        return ['status' => 'error', 'message' => 'Confirm you understand dates with no explicit rate will push at this property\'s default rate before going live', 'http_code' => 422];
     }
 
     $conn = getChannexChannelConnection($pdo, $propertyId, 'AirBNB');
@@ -109,92 +143,169 @@ function autoProvisionPropertyFromAirbnb(
         }
     }
 
-    // Determine parent property title
-    $parentName = trim((string)$customPropertyName);
-    if ($parentName === '') {
-        $existingName = trim((string)$property['name']);
-        // If current name is generic placeholder, use first listing title or clean homestay title
-        if (preg_match('/^(My Property|Rajesh\'s Property|New Property|Property \d+|.*\'s Property)$/i', $existingName)) {
-            $firstTitle = trim((string)($rawListings[0]['title'] ?? ''));
-            $parentName = $firstTitle !== '' ? $firstTitle : $existingName;
-        } else {
-            $parentName = $existingName;
+    // Determine the property's name. A MULTI_KEY PARENT's name is NEVER
+    // derived from a listing title - only $customPropertyName (something a
+    // human actually typed) may ever be written to a parent's `name` column.
+    // See "OTA Import Must Never Rewrite a Property's Identity" (CLAUDE.md,
+    // 6 Sep 2026) - naming a multi-room BUILDING after one of its rooms is
+    // exactly the mistake that rule exists to stop, and this function's own
+    // multi-listing branch below was doing exactly that (found 8 Sep 2026).
+    // The listing-title fallback stays legitimate for a genuinely single-unit
+    // property, computed separately just below the branch that needs it -
+    // there, "the property" and "the one listing" are the same thing, so
+    // naming it from the listing isn't overwriting a separate identity.
+    $explicitParentName = trim((string)$customPropertyName);
+
+    // Existing mappings (if this connection was mapped before - e.g. a retry
+    // after a partial failure, or re-running this on an already-provisioned
+    // property) - a listing already bound to a specific local room keeps that
+    // exact binding. Channex's own listing order is not something this app
+    // controls or can rely on staying stable between calls, so positional
+    // index is only ever a last-resort fallback below, never the primary
+    // match (found 8 Sep 2026 - re-running this could previously rename an
+    // established room to a different listing's title purely because the
+    // order Channex returned listings in had shifted).
+    $existingMappingByListingId = [];
+    foreach (getChannexChannelRoomMappings($pdo, (int)$conn['id']) as $m) {
+        if (!empty($m['external_room_code']) && $m['local_room_id'] !== null) {
+            $existingMappingByListingId[(string)$m['external_room_code']] = (int)$m['local_room_id'];
         }
     }
 
-    if ($isMultiListing) {
-        // Upgrade to MULTI_KEY if not already
-        if ($property['property_type'] !== 'MULTI_KEY') {
-            $pdo->prepare("UPDATE properties SET property_type = 'MULTI_KEY', unit_count = ?, name = ? WHERE id = ?")
-                ->execute([count($rawListings), $parentName, $propertyId]);
-            if (function_exists('populateDefaultExpenses')) {
-                populateDefaultExpenses($pdo, $propertyId);
-            }
-        } else {
-            $pdo->prepare("UPDATE properties SET name = ?, unit_count = ? WHERE id = ?")
-                ->execute([$parentName, count($rawListings), $propertyId]);
-        }
-
-        // Fetch existing child rooms
-        $roomStmt = $pdo->prepare("SELECT id, name, slug, room_order FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC, id ASC");
-        $roomStmt->execute([$propertyId]);
-        $existingRooms = $roomStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($rawListings as $idx => $listing) {
-            $listingId = (string)$listing['id'];
-            $listingTitle = trim((string)($listing['title'] ?? "Room " . ($idx + 1)));
-            $det = $detailsByListingId[$listingId] ?? null;
-            $L = ($det && !empty($det['success'])) ? ($det['data']['listing'] ?? []) : [];
-            $PS = is_array($L['pricing_settings'] ?? null) ? $L['pricing_settings'] : $L;
-            $defaultTariff = (float)($PS['default_daily_price'] ?? $property['default_tariff'] ?: 2500);
-
-            if ($idx < count($existingRooms)) {
-                // Update/adopt existing room
-                $roomId = (int)$existingRooms[$idx]['id'];
-                $pdo->prepare("UPDATE properties SET name = ? WHERE id = ?")->execute([$listingTitle, $roomId]);
+    // The property/room writes below are one business event - either all of
+    // it lands (rename/upgrade + every room resolved) or none of it does.
+    // Previously unwrapped: a Channex network failure further down (content
+    // sync, mapping, activation) could leave the property already renamed and
+    // upgraded to MULTI_KEY with only SOME child rooms created, and a retry
+    // would then re-enter with a different existingRooms and mis-align
+    // everything (found 8 Sep 2026). Committed before the first network call
+    // below, matching this project's own convention for exactly this
+    // (CLAUDE.md: "commit before the first network call").
+    $pdo->beginTransaction();
+    try {
+        if ($isMultiListing) {
+            // Upgrade to MULTI_KEY if not already
+            if ($property['property_type'] !== 'MULTI_KEY') {
+                if ($explicitParentName !== '') {
+                    $pdo->prepare("UPDATE properties SET property_type = 'MULTI_KEY', unit_count = ?, name = ? WHERE id = ?")
+                        ->execute([count($rawListings), $explicitParentName, $propertyId]);
+                } else {
+                    $pdo->prepare("UPDATE properties SET property_type = 'MULTI_KEY', unit_count = ? WHERE id = ?")
+                        ->execute([count($rawListings), $propertyId]);
+                }
+                if (function_exists('populateDefaultExpenses')) {
+                    populateDefaultExpenses($pdo, $propertyId);
+                }
             } else {
-                // Create new room
-                $roomSlug = $property['slug'] . '-room-' . ($idx + 1) . '-' . substr(md5($listingId), 0, 4);
-                try {
-                    $added = addMultiKeyRoomCore($pdo, $propertyId, $listingTitle, $roomSlug, $defaultTariff);
-                    $roomId = (int)$added['room_id'];
-                } catch (Throwable $e) {
-                    // Fallback direct insert if addMultiKeyRoomCore limit is hit
-                    $maxOrderStmt = $pdo->prepare("SELECT COALESCE(MAX(room_order), 0) FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM'");
-                    $maxOrderStmt->execute([$propertyId]);
-                    $nextOrder = ((int)$maxOrderStmt->fetchColumn()) + 1;
-
-                    $ins = $pdo->prepare("
-                        INSERT INTO properties (tenant_id, name, slug, property_type, parent_property_id, room_order, default_tariff, status)
-                        VALUES (?, ?, ?, 'MULTI_KEY_ROOM', ?, ?, ?, 'active')
-                    ");
-                    $ins->execute([$property['tenant_id'], $listingTitle, $roomSlug, $propertyId, $nextOrder, $defaultTariff]);
-                    $roomId = (int)$pdo->lastInsertId();
+                if ($explicitParentName !== '') {
+                    $pdo->prepare("UPDATE properties SET name = ?, unit_count = ? WHERE id = ?")
+                        ->execute([$explicitParentName, count($rawListings), $propertyId]);
+                } else {
+                    $pdo->prepare("UPDATE properties SET unit_count = ? WHERE id = ?")
+                        ->execute([count($rawListings), $propertyId]);
                 }
             }
 
+            // Fetch existing child rooms
+            $roomStmt = $pdo->prepare("SELECT id, name, slug, room_order FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC, id ASC");
+            $roomStmt->execute([$propertyId]);
+            $existingRooms = $roomStmt->fetchAll(PDO::FETCH_ASSOC);
+            $claimedRoomIds = [];
+
+            foreach ($rawListings as $idx => $listing) {
+                $listingId = (string)$listing['id'];
+                $listingTitle = trim((string)($listing['title'] ?? "Room " . ($idx + 1)));
+                $det = $detailsByListingId[$listingId] ?? null;
+                $L = ($det && !empty($det['success'])) ? ($det['data']['listing'] ?? []) : [];
+                $PS = is_array($L['pricing_settings'] ?? null) ? $L['pricing_settings'] : $L;
+                $defaultTariff = (float)($PS['default_daily_price'] ?? $property['default_tariff'] ?: 2500);
+
+                $roomId = null;
+
+                // Priority 1: this listing was already bound to a local room
+                // by an earlier run - keep that exact binding.
+                if (isset($existingMappingByListingId[$listingId])) {
+                    $candidateId = $existingMappingByListingId[$listingId];
+                    foreach ($existingRooms as $er) {
+                        if ((int)$er['id'] === $candidateId && !isset($claimedRoomIds[$candidateId])) {
+                            $roomId = $candidateId;
+                            break;
+                        }
+                    }
+                }
+                // Priority 2: an existing room nothing has claimed yet this
+                // run, taken positionally - only reached for a listing that
+                // was never mapped before (first provision, or a genuinely
+                // new listing added since).
+                if ($roomId === null) {
+                    foreach ($existingRooms as $er) {
+                        $erId = (int)$er['id'];
+                        if (!isset($claimedRoomIds[$erId])) {
+                            $roomId = $erId;
+                            break;
+                        }
+                    }
+                }
+
+                if ($roomId !== null) {
+                    $claimedRoomIds[$roomId] = true;
+                    $pdo->prepare("UPDATE properties SET name = ? WHERE id = ?")->execute([$listingTitle, $roomId]);
+                } else {
+                    // Priority 3: no existing room left to claim - create one.
+                    // Was previously wrapped in a catch(Throwable) that fell
+                    // through to a raw INSERT bypassing BOTH the 10-room cap
+                    // and the unique-slug constraint addMultiKeyRoomCore()
+                    // itself enforces (found 8 Sep 2026) - a real failure
+                    // (cap reached, slug collision) now surfaces as a real
+                    // error instead of being silently worked around.
+                    $roomSlug = $property['slug'] . '-room-' . ($idx + 1) . '-' . substr(md5($listingId), 0, 4);
+                    $added = addMultiKeyRoomCore($pdo, $propertyId, $listingTitle, $roomSlug, $defaultTariff);
+                    $roomId = (int)$added['room_id'];
+                    $claimedRoomIds[$roomId] = true;
+                }
+
+                $roomMappingsToSave[] = [
+                    'local_room_id' => $roomId,
+                    'external_room_code' => $listingId,
+                    'listing' => $listing,
+                    'details' => $L,
+                ];
+            }
+        } else {
+            // Single unit property - naming it from its own one listing is not
+            // an identity overwrite (there is no separate "parent" here), so
+            // the placeholder-name fallback stays legitimate for this branch only.
+            $singleUnitName = $explicitParentName;
+            if ($singleUnitName === '') {
+                $existingName = trim((string)$property['name']);
+                if (preg_match('/^(My Property|New Property|Property \d+|.*\'s Property)$/i', $existingName)) {
+                    $firstTitle = trim((string)($rawListings[0]['title'] ?? ''));
+                    $singleUnitName = $firstTitle !== '' ? $firstTitle : $existingName;
+                } else {
+                    $singleUnitName = $existingName;
+                }
+            }
+
+            $listing = $rawListings[0];
+            $listingId = (string)$listing['id'];
+            $det = $detailsByListingId[$listingId] ?? null;
+            $L = ($det && !empty($det['success'])) ? ($det['data']['listing'] ?? []) : [];
+
+            $pdo->prepare("UPDATE properties SET name = ? WHERE id = ?")->execute([$singleUnitName, $propertyId]);
+
             $roomMappingsToSave[] = [
-                'local_room_id' => $roomId,
+                'local_room_id' => null,
                 'external_room_code' => $listingId,
                 'listing' => $listing,
                 'details' => $L,
             ];
         }
-    } else {
-        // Single unit property
-        $listing = $rawListings[0];
-        $listingId = (string)$listing['id'];
-        $det = $detailsByListingId[$listingId] ?? null;
-        $L = ($det && !empty($det['success'])) ? ($det['data']['listing'] ?? []) : [];
-
-        $pdo->prepare("UPDATE properties SET name = ? WHERE id = ?")->execute([$parentName, $propertyId]);
-
-        $roomMappingsToSave[] = [
-            'local_room_id' => null,
-            'external_room_code' => $listingId,
-            'listing' => $listing,
-            'details' => $L,
-        ];
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        return ['status' => 'error', 'message' => 'Could not provision property/rooms: ' . $e->getMessage()];
     }
 
     // Step 2: Content Sync to Channex (creates/updates Channex properties, room types, rate plans)

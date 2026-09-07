@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { X, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, Loader2, User, Scale, Building2, Camera, Plus, Trash2, Settings, Filter } from './icons/FlowbiteIcons';
+import { X, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, User, Users, Scale, Building2, Camera, Plus, Trash2, Settings, Filter, Package } from './icons/FlowbiteIcons';
 import { TablePagination } from './TablePagination';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { EmptyState } from './EmptyState';
+import { TableSkeleton } from './TableSkeleton';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -1709,15 +1711,20 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
 
             if (pettyCashLoading || kitchenPurchasesLoading) {
               return (
-                <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> Loading operational expenses...
+                <div className="p-4">
+                  <TableSkeleton rows={4} cols={6} />
                 </div>
               );
             }
             if (filteredEntries.length === 0) {
               return (
-                <div className="text-center p-8 text-slate-400 font-semibold text-xs">
-                  No operational expenses found matching the current search & filters.
+                <div className="p-4">
+                  <EmptyState
+                    icon={Scale}
+                    title="No operational expenses found"
+                    description="No operational expenses match your current date, category, or search filters."
+                    compact
+                  />
                 </div>
               );
             }
@@ -2155,7 +2162,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="text-center py-8 text-slate-400 font-semibold italic">No registered payees found.</td>
+                        <td colSpan={3} className="p-4">
+                          <EmptyState
+                            icon={Users}
+                            title="No registered payees found"
+                            description={searchPayeeQuery ? "No payees match your search filter." : "Add recurring vendors, contractors, or staff payees for quick expense recording."}
+                            compact
+                          />
+                        </td>
                       </tr>
                     ) : (
                       dbVendors.filter(p => !searchPayeeQuery || p.name.toLowerCase().includes(searchPayeeQuery.toLowerCase())).map(p => (
@@ -2375,7 +2389,14 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                     {customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold italic">No custom items found.</td>
+                        <td colSpan={4} className="p-4">
+                          <EmptyState
+                            icon={Package}
+                            title="No custom items found"
+                            description={searchCustomQuery ? "No custom items match your search query." : "Add frequently purchased items or services with default amounts for 1-click expense entry."}
+                            compact
+                          />
+                        </td>
                       </tr>
                     ) : (
                       customExpenses.filter(p => !searchCustomQuery || p.label.toLowerCase().includes(searchCustomQuery.toLowerCase())).map(p => (

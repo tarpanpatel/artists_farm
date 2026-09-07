@@ -1063,7 +1063,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         setEditingRoomName(roomName || '');
                       }}
                       className="p-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
-                      title={t('edit_room_name_tooltip', 'Edit room name')}
+                      aria-label={t('edit_room_name_tooltip', 'Edit room name')}
                     >
                       <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                     </button>
@@ -1412,7 +1412,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   window.open(url, '_blank');
                 }}
                 className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                title="Open public direct booking engine & availability"
+                aria-label="Open public direct booking engine & availability"
               >
                 <Share2 className="w-3.5 h-3.5 text-blue-600" />
                 <span>Booking Page</span>
@@ -1444,7 +1444,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               showTodayButton={false}
               sizing="sm"
               className="w-48 shrink-0 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
-              title={t('jump_to_month_tooltip', 'Jump to any month/date')}
+              aria-label={t('jump_to_month_tooltip', 'Jump to any month/date')}
             />
             <button
               type="button"
@@ -1675,7 +1675,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           onPointerDown={isPastDay ? undefined : (e) => handleDayPointerDown(e, dateStr)}
                           onPointerMove={isPastDay ? undefined : handleDayPointerMove}
                           onPointerUp={isPastDay ? undefined : handleDayPointerUp}
-                          title={isPastDay ? undefined : 'Drag to select these nights'}
+                          aria-label={isPastDay ? undefined : 'Drag to select these nights'}
                           className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors select-none ${
                             !isPastDay ? 'cursor-pointer' : ''
                           } ${

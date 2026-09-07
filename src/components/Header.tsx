@@ -375,8 +375,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onToggleIconOnly();
               }
             }}
-            title={isIconOnly ? t('expand_sidebar_tooltip', 'Expand Sidebar Menu') : t('collapse_sidebar_tooltip', 'Collapse Sidebar Menu')}
-            aria-label={t('toggle_sidebar_aria', 'Toggle Sidebar Navigation')}
+            aria-label={isIconOnly ? t('expand_sidebar_tooltip', 'Expand Sidebar Menu') : t('collapse_sidebar_tooltip', 'Collapse Sidebar Menu')}
             className="btn-toggle-sidebar hidden md:flex p-2 text-slate-600 dark:text-slate-300 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <Menu className="w-5 h-5" />
@@ -392,7 +391,6 @@ export const Header: React.FC<HeaderProps> = ({
               renderTrigger={() => (
                 <button
                   type="button"
-                  title="Switch property"
                   aria-label="Switch property"
                   className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer group"
                 >
@@ -482,7 +480,6 @@ export const Header: React.FC<HeaderProps> = ({
               className="z-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden text-xs p-1 min-w-40"
               renderTrigger={() => (
                 <button
-                  title={t('view_site_as_tooltip', 'View site as...')}
                   aria-label={t('view_site_as_aria', 'View site as a specific role')}
                   className={`header__view-as-role relative p-2 rounded-lg transition-colors cursor-pointer ${
                     activeRole !== 'Root Admin'
@@ -573,7 +570,6 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="header__notification relative" ref={notificationWrapperRef}>
             <button
               onClick={handleToggleNotifications}
-              title={t('notifications_tooltip', 'Notifications')}
               aria-label={t('view_notifications_aria', 'View notifications')}
               aria-expanded={showNotificationDropdown}
               className={`btn-notification-bell relative p-2 rounded-lg transition-colors cursor-pointer ${

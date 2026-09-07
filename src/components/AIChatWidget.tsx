@@ -581,7 +581,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             type="submit"
             disabled={!input.trim() || loading}
             className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors shrink-0 cursor-pointer"
-            title="Send message"
+            aria-label="Send message"
           >
             <Send className="w-4 h-4" />
           </button>

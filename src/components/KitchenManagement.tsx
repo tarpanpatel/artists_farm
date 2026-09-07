@@ -51,6 +51,7 @@ import { Input } from './Input';
 import { FileInput } from './FileInput';
 import { Button } from './Button';
 import { PageHeader } from './PageHeader';
+import { EmptyState } from './EmptyState';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
 import { TextInput as FlowbiteTextInput } from 'flowbite-react';
@@ -134,6 +135,45 @@ interface KitchenManagementProps {
 // serialized as strings), so it can never collide with a DB-assigned tab.
 const NEW_WALKIN_CUSTOMER_VALUE = '__new_customer__';
 
+/**
+ * Synthesize a clean, non-intrusive dual-tone chime (D5 -> A5) via Web Audio API.
+ * 100% offline resilient and works in any modern browser without external audio files.
+ */
+export const playKitchenChime = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const now = ctx.currentTime;
+    // Tone 1: 587.33 Hz (D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    // Tone 2: 880 Hz (A5)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now + 0.15);
+    gain2.gain.setValueAtTime(0.15, now + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.15);
+    osc2.stop(now + 0.65);
+  } catch (e) {}
+};
+
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   guests,
   menu,
@@ -213,6 +253,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // activeOrders below), so a ticket already long past its life on the board
   // by the time staff tap the link simply finds nothing to highlight - same
   // defensive no-op as ServiceRequestsManagement.tsx's equivalent effect.
+  // Audio Chime on New Incoming Kitchen Orders (Finding 5.1)
+  const prevOrdersCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (prevOrdersCountRef.current !== null && orders.length > prevOrdersCountRef.current) {
+      playKitchenChime();
+    }
+    prevOrdersCountRef.current = orders.length;
+  }, [orders.length]);
+
   const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null);
   useEffect(() => {
     if (!focusOrderId || orders.length === 0) return;
@@ -1498,7 +1547,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <div className="flex items-center gap-2">
                 {/* Always-on live indicator, not a toggle - see the state
                     declaration above for why this can't be paused. */}
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" title={t('auto_sync_active_tooltip')} />
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" aria-label={t('auto_sync_active_tooltip')} />
                 <span className="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">
                   {t('auto_sync_label', 'Auto-sync')}
                   <span className="font-mono text-slate-400 dark:text-slate-500 font-normal ml-1">
@@ -1516,26 +1565,30 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   disabled={isSyncing}
                   leftIcon={<RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />}
                   className="h-8 text-xs font-semibold shadow-none"
-                  title={t('check_for_updates_tooltip')}
+                  aria-label={t('check_for_updates_tooltip')}
                 >
                   <span>{t('sync_button')}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => playKitchenChime()}
+                  leftIcon={<Bell className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+                  className="h-8 text-xs font-semibold shadow-none text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400"
+                  aria-label="Test kitchen order chime sound"
+                >
+                  <span>Chime</span>
                 </Button>
               </div>
             </div>
           </div>
 
           {activeOrders.length === 0 ? (
-            <div className="text-center py-12 px-4 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
-              <div className="w-14 h-14 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3 border border-emerald-200 dark:border-emerald-800/60">
-                <UtensilsCrossed className="w-7 h-7" />
-              </div>
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base tracking-wide">
-                {t('no_kitchen_orders_title', 'Currently, there are no kitchen orders')}
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 max-w-sm mx-auto">
-                {t('no_kitchen_orders_desc', 'New orders placed from POS or room service will automatically appear in this live ticket queue.')}
-              </p>
-            </div>
+            <EmptyState
+              icon={UtensilsCrossed}
+              title={t('no_kitchen_orders_title', 'Currently, there are no kitchen orders')}
+              description={t('no_kitchen_orders_desc', 'New orders placed from POS or room service will automatically appear in this live ticket queue.')}
+            />
           ) : (
             <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {activeOrders.map((ord) => {
@@ -1630,8 +1683,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           type="button"
                           onClick={() => handleCancelOrder(ord)}
                           className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
-                          title={t('cancel_order_tooltip', 'Cancel this order')}
-                          aria-label="Cancel order"
+                          aria-label={t('cancel_order_tooltip', 'Cancel this order')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1729,8 +1781,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isServed ? (
-                              <span className="text-xs font-semibold px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 shrink-0 select-none">
-                                <Check className="w-3.5 h-3.5 shrink-0" />
+                              <span className="h-11 px-3.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1.5 shrink-0 select-none font-bold text-xs">
+                                <Check className="w-4 h-4 shrink-0" />
                                 <span>{t('served_badge', 'Served')}</span>
                               </span>
                             ) : isReady ? (
@@ -1740,10 +1792,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishServed(ord, idx, item)}
-                                  className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                                  title={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
+                                  className="h-11 px-4 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                  aria-label={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                                   <span>{t('served_action_button', 'Mark Served')}</span>
                                 </button>
                               ) : (
@@ -1751,28 +1803,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleSendPickupReminder(ord, idx, item)}
-                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer shrink-0"
-                                  title={t('send_pickup_reminder_tooltip')}
+                                  className="h-11 w-11 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 active:scale-98 text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center cursor-pointer shrink-0"
+                                  aria-label={t('send_pickup_reminder_tooltip')}
                                 >
-                                  <Bell className="w-3.5 h-3.5 shrink-0" />
+                                  <Bell className="w-4 h-4 shrink-0" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishServed(ord, idx, item)}
-                                  className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                                  title={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
+                                  className="h-11 px-4 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-98 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                  aria-label={t('click_when_served_tooltip', 'Confirm dish has been delivered to guest')}
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                                   <span>{t('served_action_button', 'Mark Served')}</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteItem(ord, idx, item)}
-                                  className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
-                                  title={t('delete_dish_tooltip', 'Remove this dish')}
-                                  aria-label="Remove dish"
+                                  className="h-11 w-11 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0 flex items-center justify-center"
+                                  aria-label={t('delete_dish_tooltip', 'Remove this dish')}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                               )
@@ -1781,35 +1832,35 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                               // but has nothing to act on until the kitchen marks it
                               // ready (ROLES.md, 24 Aug 2026: "see live orders", not a
                               // kitchen-prep action).
-                              <span className="text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 select-none">
-                                {t('status_preparing', 'Preparing')}
+                              <span className="h-11 px-3.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700 flex items-center justify-center gap-1.5 select-none font-bold text-xs">
+                                <Clock className="w-4 h-4 shrink-0" />
+                                <span>{t('status_preparing', 'Preparing')}</span>
                               </span>
                             ) : (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => handleSendKitchenReminder(ord, idx, item)}
-                                  className="px-2.5 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700 active:scale-98 text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer shrink-0"
-                                  title={t('send_reminder_tooltip')}
+                                  className="h-11 w-11 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 active:scale-98 text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center cursor-pointer shrink-0"
+                                  aria-label={t('send_reminder_tooltip')}
                                 >
-                                  <Bell className="w-3.5 h-3.5 shrink-0" />
+                                  <Bell className="w-4 h-4 shrink-0" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleMarkDishReady(ord, idx, item)}
-                                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-semibold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                                  className="h-11 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white text-xs font-bold rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                                   <span>{t('ready_button', 'Mark Ready')}</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteItem(ord, idx, item)}
-                                  className="p-1.5 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
-                                  title={t('delete_dish_tooltip', 'Remove this dish')}
-                                  aria-label="Remove dish"
+                                  className="h-11 w-11 rounded-lg text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0 flex items-center justify-center"
+                                  aria-label={t('delete_dish_tooltip', 'Remove this dish')}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </>
                             )}
@@ -2268,8 +2319,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           ? 'bg-blue-600 border-blue-600 text-white shadow-md'
                           : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
                       }`}
-                      title={t('toggle_category_filters_tooltip', 'Filter by category')}
-                      aria-label="Toggle category filters"
+                      aria-label={t('toggle_category_filters_tooltip', 'Filter by category')}
                       aria-expanded={showCategoryFilters}
                     >
                       <Filter className="w-4 h-4" />
@@ -3040,12 +3090,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <div className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                         {row.food}
                         {row.hasTag && (
-                          <span
-                            className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300 cursor-help"
-                            title={t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                          <Popover
+                            trigger="hover"
+                            content={
+                              <div className="px-2.5 py-1.5 text-2xs text-gray-700 dark:text-gray-200">
+                                {t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                              </div>
+                            }
                           >
-                            {t('leftover_buffer_badge_label', 'L')}
-                          </span>
+                            <span
+                              className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 dark:bg-amber-950/60 rounded text-3xs text-amber-700 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-700 cursor-help"
+                              aria-label={t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                            >
+                              {t('leftover_buffer_badge_label', 'L')}
+                            </span>
+                          </Popover>
                         )}
                       </div>
                     </div>
@@ -3102,12 +3161,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 relative inline-flex items-center gap-1.5">
                           {row.food}
                           {row.hasTag && (
-                            <span
-                              className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 rounded text-3xs text-amber-700 font-bold border border-amber-300 cursor-help"
-                              title={t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                            <Popover
+                              trigger="hover"
+                              content={
+                                <div className="px-2.5 py-1.5 text-2xs text-gray-700 dark:text-gray-200">
+                                  {t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                                </div>
+                              }
                             >
-                              {t('leftover_buffer_badge_label', 'L')}
-                            </span>
+                              <span
+                                className="w-3.5 h-3.5 inline-flex items-center justify-center bg-amber-100 dark:bg-amber-950/60 rounded text-3xs text-amber-700 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-700 cursor-help"
+                                aria-label={t('leftover_buffer_badge_tooltip', 'Made from leftover / buffer stock, not freshly prepared')}
+                              >
+                                {t('leftover_buffer_badge_label', 'L')}
+                              </span>
+                            </Popover>
                           )}
                         </span>
                       ),
@@ -3637,7 +3705,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                         <button
                           onClick={() => setRecipeIngredients(recipeIngredients.filter((i) => i.id !== row.id))}
                           className="text-red-400 hover:text-red-600 cursor-pointer"
-                          title={t('remove_tooltip')}
+                          aria-label={t('remove_tooltip')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -3647,10 +3715,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                   if (filteredRecipeIngredients.length === 0) {
                     return (
-                      <div className="py-12 text-center">
-                        <Boxes className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                        <p className="text-sm text-slate-400 font-semibold">{t('no_ingredients_yet_text')}</p>
-                        <p className="text-[11px] text-slate-400 mt-1">{t('add_raw_ingredients_hint')}</p>
+                      <div className="py-6">
+                        <EmptyState
+                          icon={Boxes}
+                          title={t('no_ingredients_yet_text')}
+                          compact
+                        />
                       </div>
                     );
                   }
@@ -3844,7 +3914,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       type="button"
                       onClick={() => setNewItemImagePath('')}
                       className="absolute top-1 right-1 bg-slate-900/80 text-white p-0.5 rounded-md hover:bg-slate-900 cursor-pointer"
-                      title={t('remove_image_tooltip')}
+                      aria-label={t('remove_image_tooltip')}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>

@@ -1304,7 +1304,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {showBookingExtraCharges && (
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3 shadow-md">
                 <div className="flex items-center justify-between">
-<Button color="blue" size="sm" onClick={handleAddBookingExtraChargeLine}>
+                  <Button color="light" size="sm" onClick={handleAddBookingExtraChargeLine}>
                     <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Charges
                   </Button>
                   <span className="text-2xs text-gray-500 dark:text-gray-400">e.g. Pet Stay, Decoration, Misc</span>

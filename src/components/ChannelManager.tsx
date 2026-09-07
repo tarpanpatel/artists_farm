@@ -19,6 +19,9 @@ import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Badge } from './Badge';
+import { Popover } from './Popover';
+import { EmptyState } from './EmptyState';
+import { TableSkeleton } from './TableSkeleton';
 import { TablePagination } from './TablePagination';
 import { DateRangePicker } from './DateRangePicker';
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
@@ -313,11 +316,17 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 space-y-3">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin dark:text-blue-400" />
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          {t('loading_channel_manager', 'Connecting to Channel Manager...')}
-        </p>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-7xl mx-auto">
+        <div className="animate-pulse space-y-3">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-64"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-96"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+          <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+          <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+        </div>
+        <TableSkeleton rows={4} cols={5} />
       </div>
     );
   }
@@ -417,9 +426,18 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
           <div className="space-y-1.5 text-xs text-gray-700 dark:text-gray-300">
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Channex Property ID:</span>
-              <span className="font-mono text-2xs text-gray-900 dark:text-white truncate max-w-[140px]" title={data?.mappings[0]?.channex_property_id || 'None'}>
-                {data?.mappings[0]?.channex_property_id || 'Not Mapped'}
-              </span>
+              <Popover
+                trigger="hover"
+                content={
+                  <div className="px-2.5 py-1.5 font-mono text-2xs text-gray-900 dark:text-white">
+                    {data?.mappings[0]?.channex_property_id || 'Not Mapped'}
+                  </div>
+                }
+              >
+                <span className="font-mono text-2xs text-gray-900 dark:text-white truncate max-w-[140px] cursor-help">
+                  {data?.mappings[0]?.channex_property_id || 'Not Mapped'}
+                </span>
+              </Popover>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-500 dark:text-gray-400">Sync Status:</span>
@@ -618,8 +636,8 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                       <button
                         type="button"
                         onClick={() => handleCopy(tr.task_id!, `task_${tr.id}`)}
-                        className="p-1 hover:text-blue-600 dark:hover:text-blue-400 text-gray-400"
-                        title="Copy Task ID"
+                        className="p-1 hover:text-blue-600 dark:hover:text-blue-400 text-gray-400 cursor-pointer"
+                        aria-label="Copy Task ID"
                       >
                         {copiedKey === `task_${tr.id}` ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
@@ -779,8 +797,13 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60 font-medium">
               {filteredOutbox.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
-                    No sync activity matches the selected filter.
+                  <td colSpan={7} className="p-4">
+                    <EmptyState
+                      icon={RefreshCw}
+                      title="No sync activity found"
+                      description="No channel manager outbox events match the selected filter."
+                      compact
+                    />
                   </td>
                 </tr>
               ) : (
@@ -824,8 +847,8 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                             <button
                               type="button"
                               onClick={() => handleCopy(row.task_id!, `row_task_${row.id}`)}
-                              className="p-1 hover:text-blue-600 dark:hover:text-blue-400 text-gray-400"
-                              title="Copy Task ID"
+                              className="p-1 hover:text-blue-600 dark:hover:text-blue-400 text-gray-400 cursor-pointer"
+                              aria-label="Copy Task ID"
                             >
                               {copiedKey === `row_task_${row.id}` ? (
                                 <Check className="w-3.5 h-3.5 text-green-500" />
@@ -835,9 +858,18 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
                             </button>
                           </div>
                         ) : isFailed ? (
-                          <span className="text-red-600 dark:text-red-400 text-2xs font-normal truncate max-w-[260px] inline-block" title={row.last_error || ''}>
-                            {row.last_error || 'Error during send'}
-                          </span>
+                          <Popover
+                            trigger="hover"
+                            content={
+                              <div className="px-2.5 py-1.5 text-2xs text-red-600 dark:text-red-400 max-w-xs leading-relaxed">
+                                {row.last_error || 'Error during send'}
+                              </div>
+                            }
+                          >
+                            <span className="text-red-600 dark:text-red-400 text-2xs font-normal truncate max-w-[260px] inline-block cursor-help">
+                              {row.last_error || 'Error during send'}
+                            </span>
+                          </Popover>
                         ) : (
                           <span className="text-gray-400 text-2xs italic">Queued for next drain</span>
                         )}
