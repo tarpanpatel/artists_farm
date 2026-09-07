@@ -994,7 +994,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   <div className="flex gap-1.5 items-center">
                     <div className="flex-1">
                       <Input
-                        label="Wasted / Spilled Qty *"
+                        label="Wasted Qty *"
                         type="number"
                         required
                         min="0.1"
