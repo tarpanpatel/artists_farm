@@ -620,10 +620,23 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         // room's own Edit Property form can show/save them per-room (each room
         // row already carries its own values - see properties.checkin_time/
         // checkout_time - just never surfaced here before).
+        // EVERY column the room's own Edit Room form can edit must be selected
+        // here (7 Sep 2026). That form is built entirely from this row, and
+        // PropertyEditForm submits ALL of those fields on save whether or not it
+        // was given them (they sit outside its `if (!isRoom)` block) - so a column
+        // missing here does not merely render blank, it returns as '' and
+        // update_property writes that away: empty money becomes 0, empty text
+        // becomes NULL. house_rules/cancellation_policy/amenities/
+        // bed_configuration/bedrooms/beds_count/bathrooms were all missing, so
+        // opening a freshly-imported room and pressing Save discarded exactly what
+        // the Airbnb importer had just written. Add a field to that form, add its
+        // column here too.
         $stmt = $pdo->prepare("
             SELECT id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time, max_capacity,
                    included_occupancy, extra_guest_charge, cleaning_fee, security_deposit,
-                   wifi_network, wifi_password, house_manual, description
+                   wifi_network, wifi_password, house_manual, description,
+                   house_rules, cancellation_policy, amenities, bed_configuration,
+                   bedrooms, beds_count, bathrooms
             FROM properties
             WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
             ORDER BY room_order ASC

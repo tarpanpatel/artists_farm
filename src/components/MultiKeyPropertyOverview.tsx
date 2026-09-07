@@ -402,15 +402,29 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                       <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
                         {t('edit_room_page_heading', 'Edit Room')}
                       </h2>
+                      {/* Pass the WHOLE room row, never a hand-picked subset
+                          (fixed 7 Sep 2026). This literal used to list seven
+                          fields, so everything else the form can edit -
+                          extra_guest_charge, cleaning_fee, security_deposit,
+                          description, wifi, house rules, amenities, bed config -
+                          rendered blank even when the row held real values, which
+                          is how a freshly imported Airbnb listing looked like it
+                          had imported nothing.
+
+                          It was not only a display bug: PropertyEditForm builds
+                          its save payload from state for ALL of those fields
+                          (they sit outside its `if (!isRoom)` block), and
+                          update_property turns an empty value into 0 for money
+                          and NULL for text. So opening this form and pressing
+                          Save silently overwrote every field it had not been
+                          given - an imported 900/night extra-guest charge became
+                          0. Spreading the row keeps the form and the save in
+                          agreement by construction, so adding a field to the form
+                          cannot reintroduce this. */}
                       <PropertyEditForm
                         property={{
-                          id: selectedRoom.id,
-                          name: selectedRoom.name,
+                          ...(selectedRoom as any),
                           property_type: 'MULTI_KEY_ROOM',
-                          default_tariff: selectedRoom.default_tariff,
-                          checkin_time: selectedRoom.checkin_time,
-                          checkout_time: selectedRoom.checkout_time,
-                          max_capacity: (selectedRoom as any).max_capacity,
                         }}
                         onSaved={() => window.location.reload()}
                         isRoom
