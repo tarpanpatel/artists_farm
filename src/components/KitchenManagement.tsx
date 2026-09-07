@@ -50,6 +50,7 @@ import { useStaff } from '../contexts/StaffContext';
 import { Input } from './Input';
 import { FileInput } from './FileInput';
 import { Button } from './Button';
+import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
 import { TextInput as FlowbiteTextInput } from 'flowbite-react';
@@ -2898,7 +2899,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
       {/* TAB: STAFF MEALS POS */}
       {activeTab === 'staff_meals' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div>
+          <PageHeader
+            title={t('staff_meals_title', 'Staff Meals')}
+            subtitle={t('staff_meals_desc', 'Track daily staff meal consumption, rations, and allowances.')}
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Left Panel: Record Consumption */}
           <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-md space-y-5">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
@@ -3143,6 +3149,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </div>
           </div>
         </div>
+      </div>
       )}
         {/* ADD NEW WALK-IN TABLE MODAL - the walk-in picker above is a closed
             dropdown, so this small popup is the only place left to pick a

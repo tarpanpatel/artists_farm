@@ -12,6 +12,8 @@ export const strings: Record<string, string> = {
   stock_log: "Stock & Adjustments",
   kitchen_purchases: "Kitchen Purchases",
   staff_meals: "Staff Meal Logs",
+  staff_meals_title: "Staff Meals",
+  staff_meals_desc: "Track daily staff meal consumption, rations, and allowances.",
   staff_payees_control: "Staff & Payees Control",
   attendance_calendar: "Attendance Calendar",
   staff_directory_salaries: "Staff Directory & Salaries",
