@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Plus, Lock, Check } from './icons/FlowbiteIcons';
 import { Button } from './Button';
+import { ToggleSwitch } from './ToggleSwitch';
 import { useToast } from './ToastContext';
 import { saveRateRuleDB } from '../services/api';
 
@@ -193,36 +194,6 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
     }
   };
 
-  const radioRow = (
-    value: 'available' | 'blocked',
-    title: string,
-    subtitle: string,
-    icon: React.ReactNode,
-  ) => (
-    <label
-      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
-        availability === value
-          ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-900/25 dark:border-blue-500'
-          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-      }`}
-    >
-      <input
-        type="radio"
-        name="cal-availability"
-        checked={availability === value}
-        onChange={() => setAvailability(value)}
-        className="mt-0.5 w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-      />
-      <span className="flex-1 min-w-0">
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
-          {icon}
-          {title}
-        </span>
-        <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</span>
-      </span>
-    </label>
-  );
-
   return (
     <aside
       className="fixed z-[58] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col
@@ -320,18 +291,32 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
               {nights * Math.max(1, selection.roomIds.length)} of them.
             </p>
           )}
-          {radioRow(
-            'available',
-            'Available',
-            'Guests can book these nights.',
-            <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />,
-          )}
-          {radioRow(
-            'blocked',
-            'Blocked',
-            'Nobody can book. Use it for repairs, or when you need the place yourself.',
-            <Lock className="w-3.5 h-3.5 text-slate-500" />,
-          )}
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
+              {availability === 'blocked' ? (
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+              ) : (
+                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              )}
+              {availability === 'blocked' ? 'Blocked' : 'Available'}
+            </span>
+            {/* Available when on, Blocked when off (7 Sep 2026, explicit
+                request replacing the two radios above). A mixed selection
+                (availability === null) still renders on - Save stays gated
+                by the same isMixed/availability===null guard in
+                handleSave() either way, so this is a visual default only,
+                never an implicit "apply Available" - the amber note above
+                already says a real choice is required first. */}
+            <ToggleSwitch
+              enabled={availability !== 'blocked'}
+              onChange={(enabled) => setAvailability(enabled ? 'available' : 'blocked')}
+            />
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {availability === 'blocked'
+              ? 'Nobody can book. Use it for repairs, or when you need the place yourself.'
+              : 'Guests can book these nights.'}
+          </p>
         </div>
 
         {/* --- Nightly price --- */}
