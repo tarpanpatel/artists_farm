@@ -354,7 +354,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const [filterRoomId, setFilterRoomId] = useState<number | 'all'>('all');
 
   // Real-time hover preview date (Airbnb 2-click & hover track model)
-  const [hoverDate, setHoverDate] = useState<string | null>(null);
 
   const [bookingDrawerRoom, setBookingDrawerRoom] = useState<{
     roomId: number;
@@ -717,8 +716,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   };
 
   // Airbnb-style Date Range Highlighting & Preview Calculations
-  const effectiveEndDate = checkoutDate || (hoverDate && checkinDate && hoverDate > checkinDate ? hoverDate : '');
-  const isRangeTentative = Boolean(checkinDate && !checkoutDate && hoverDate && hoverDate > checkinDate);
+  // Was `checkoutDate || hoverDate` - the hover half existed only to preview a
+  // half-made click selection, which no longer exists. The chosen range is now
+  // simply the range in the fields, so there is no longer any such thing as a
+  // "tentative" range either (that flag greyed the end cap while a click
+  // selection was still half-made) - both are gone rather than left wired to a
+  // constant false.
+  const effectiveEndDate = checkoutDate;
 
   const previewNights = useMemo(() => {
     if (!checkinDate || !effectiveEndDate || effectiveEndDate <= checkinDate) return 0;
@@ -728,7 +732,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   }, [checkinDate, effectiveEndDate]);
 
   const BLANK_RANGE_STATUS = {
-    isStart: false, isEnd: false, isInRange: false, isSingleDayPick: false, isTentative: false,
+    isStart: false, isEnd: false, isInRange: false, isSingleDayPick: false,
   };
 
   /**
@@ -746,7 +750,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     // Only a check-in picked so far - mark just that cell.
     if (!lastNightStr) {
       return dStr === checkinDate
-        ? { ...BLANK_RANGE_STATUS, isSingleDayPick: true, isTentative: isRangeTentative }
+        ? { ...BLANK_RANGE_STATUS, isSingleDayPick: true }
         : BLANK_RANGE_STATUS;
     }
     if (dStr < checkinDate || dStr > lastNightStr) return BLANK_RANGE_STATUS;
@@ -759,7 +763,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       // than leaving it half-open against nothing.
       isSingleDayPick: isStart && isEnd,
       isInRange: !isStart && !isEnd,
-      isTentative: isRangeTentative,
     };
   };
 
@@ -922,62 +925,11 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     setFormError(null);
   };
 
-  // Unified Airbnb-Style Date Selection Handler
-  const handleDateSelection = (dateStr: string, room?: PublicRoom) => {
-    if (dateStr < todayStr) return;
-
-    // Fast-track: If range is already selected and user clicks directly on a room cell within that selected range, open drawer for that room
-    if (checkinDate && checkoutDate && dateStr >= checkinDate && dateStr < checkoutDate && room) {
-      handleOpenBookingDrawer(room, checkinDate, checkoutDate);
-      return;
-    }
-
-    // Fresh selection: no checkin set yet, or both already set, or clicked date is <= current checkin
-    if (!checkinDate || (checkinDate && checkoutDate) || dateStr <= checkinDate) {
-      setCheckinDate(dateStr);
-      setCheckoutDate('');
-      setHoverDate(null);
-      return;
-    }
-
-    // Second click: dateStr > checkinDate (Check-out selected)
-    // If a specific room was clicked, verify whether that room has any occupied night in the range
-    if (room) {
-      const cur = new Date(checkinDate + 'T00:00:00');
-      const end = new Date(dateStr + 'T00:00:00');
-      let hasConflict = false;
-      while (cur < end) {
-        const curStr = formatDateISO(cur);
-        if (isRoomOccupied(room.id, curStr)) {
-          hasConflict = true;
-          break;
-        }
-        cur.setDate(cur.getDate() + 1);
-      }
-      if (hasConflict) {
-        // Room has occupied nights in between; treat this click as a new check-in date
-        setCheckinDate(dateStr);
-        setCheckoutDate('');
-        setHoverDate(null);
-        return;
-      }
-    }
-
-    // Valid range selected!
-    setCheckoutDate(dateStr);
-    setHoverDate(null);
-
-    // Smoothly scroll to Available Options below so guest sees rates & room options
-    setTimeout(() => {
-      availableOptionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
-  };
-
-  // Top row date header click (Airbnb 2-click date range)
-  const handleTopRowDateClick = (dateStr: string, past: boolean) => {
-    if (past) return;
-    handleDateSelection(dateStr);
-  };
+  // handleDateSelection / handleTopRowDateClick were removed 7 Sep 2026. The
+  // calendar no longer selects anything: the Check-in/Check-out fields are the
+  // single source of the range, and the grid only reflects it. Two independent
+  // ways to set the same dates is what allowed the grid to highlight a day the
+  // fields did not agree was selected.
 
   // Submit direct reservation
   const handleConfirmReservation = async (e: React.FormEvent) => {
@@ -1643,14 +1595,21 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   checkoutDate={checkoutDate}
                   onCheckinChange={(d) => {
                     setCheckinDate(d);
-                    setHoverDate(null);
                     if (checkoutDate && d >= checkoutDate) {
                       setCheckoutDate('');
                     }
                   }}
                   onCheckoutChange={(d) => {
                     setCheckoutDate(d);
-                    setHoverDate(null);
+                    // Scroll down to the results, which the old click-to-select
+                    // flow used to do. These fields are now the only way to pick
+                    // dates, so this is the only place left that knows a complete
+                    // range was just chosen.
+                    if (d) {
+                      setTimeout(() => {
+                        availableOptionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 150);
+                    }
                   }}
                   disablePastDates
                   fromPlaceholder="Check-in date"
@@ -1705,7 +1664,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                   onClick={() => {
                     setCheckinDate('');
                     setCheckoutDate('');
-                    setHoverDate(null);
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 font-medium px-2"
                 >
@@ -1741,7 +1699,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 size="xs"
                 onClick={() => {
                   setCheckinDate('');
-                  setHoverDate(null);
                 }}
                 className="text-2xs text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"
               >
@@ -1898,7 +1855,6 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           {displayedRooms.length > 1 ? (
             <div
               className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
-              onMouseLeave={() => setHoverDate(null)}
             >
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table
@@ -1916,32 +1872,30 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                         const dayInitial = dayDate.toLocaleDateString('default', { weekday: 'narrow' });
                         const isToday = dStr === todayStr;
                         const isPast = dStr < todayStr;
-                        const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getNightRangeStatus(dStr);
+                        const { isStart, isEnd, isInRange, isSingleDayPick } = getNightRangeStatus(dStr);
 
                         return (
+                          // Read-only, exactly like the room cells below (7 Sep
+                          // 2026). Dates are entered in the Check-in/Check-out
+                          // fields and the grid reflects them - it is not a second
+                          // way to set them. That duplication is what let the grid
+                          // show a selection the fields did not have.
                           <th
                             key={d}
-                            onClick={() => handleTopRowDateClick(dStr, isPast)}
-                            onMouseEnter={() => {
-                              if (checkinDate && !checkoutDate && !isPast) {
-                                setHoverDate(dStr);
-                              }
-                            }}
-                            title={isPast ? 'Past date' : `Click to select ${dStr}`}
                             className={`p-1.5 font-semibold text-2xs border-r border-gray-200 dark:border-gray-700 min-w-[34px] select-none transition-colors ${
                               isPast
-                                ? 'opacity-40 cursor-not-allowed bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600'
+                                ? 'opacity-40 bg-gray-100/50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-600'
                                 : isSingleDayPick
-                                ? 'bg-blue-600 text-white font-bold cursor-pointer rounded-t-md'
+                                ? 'bg-blue-600 text-white font-bold rounded-t-md'
                                 : isStart
-                                ? 'bg-blue-600 text-white font-bold cursor-pointer rounded-tl-md'
+                                ? 'bg-blue-600 text-white font-bold rounded-tl-md'
                                 : isEnd
-                                ? `${isTentative ? 'bg-blue-500/90' : 'bg-blue-600'} text-white font-bold cursor-pointer rounded-tr-md`
+                                ? 'bg-blue-600 text-white font-bold rounded-tr-md'
                                 : isInRange
-                                ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-100 cursor-pointer font-bold'
+                                ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-100 font-bold'
                                 : isToday
-                                ? 'bg-blue-100/70 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/60'
-                                : 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-600 dark:hover:text-blue-300'
+                                ? 'bg-blue-100/70 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400'
+                                : ''
                             }`}
                           >
                             <div className="text-3xs opacity-80">{dayInitial}</div>
@@ -1964,7 +1918,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                             const isPast = dStr < todayStr;
                             const occupied = isRoomOccupied(room.id, dStr);
                             const rate = getRoomDailyPrice(room, dStr);
-                            const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRoomRangeStatus(room.id, dStr);
+                            const { isStart, isEnd, isInRange, isSingleDayPick } = getRoomRangeStatus(room.id, dStr);
 
                             // Dynamic restriction badges
                             const roomRestrictions = dailyRestrictionsMap[room.id] || {};
@@ -1988,7 +1942,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                                     : isStart
                                     ? 'bg-blue-600 text-white ring-1 ring-blue-600 rounded-l-md font-bold'
                                     : isEnd
-                                    ? `${isTentative ? 'bg-blue-500/90' : 'bg-blue-600'} text-white ring-1 ring-blue-600 rounded-r-md font-bold`
+                                    ? 'bg-blue-600 text-white ring-1 ring-blue-600 rounded-r-md font-bold'
                                     : isInRange
                                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100 font-bold'
                                     : 'bg-[#f0fdf4] dark:bg-emerald-950/20 text-[#15803d] dark:text-emerald-400 font-bold'
@@ -2032,8 +1986,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 <div
                   key={room.id}
                   className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
-                  onMouseLeave={() => setHoverDate(null)}
-                >
+                    >
                   <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 text-center">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dw) => (
                       <div key={dw} className="bg-gray-50 dark:bg-gray-800 py-2 text-2xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
@@ -2053,7 +2006,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                       const occupied = isRoomOccupied(room.id, dStr);
                       const rate = getRoomDailyPrice(room, dStr);
                       const isToday = dStr === todayStr;
-                      const { isStart, isEnd, isInRange, isSingleDayPick, isTentative } = getRoomRangeStatus(room.id, dStr);
+                      const { isStart, isEnd, isInRange, isSingleDayPick } = getRoomRangeStatus(room.id, dStr);
 
                       return (
                         // Read-only, same as the desktop table above - see that
@@ -2070,7 +2023,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                               : isStart
                               ? 'bg-blue-600 text-white rounded-l-lg ring-1 ring-blue-600 shadow-md font-bold z-10'
                               : isEnd
-                              ? `${isTentative ? 'bg-blue-500/90 text-white' : 'bg-blue-600 text-white'} rounded-r-lg ring-1 ring-blue-500 shadow-md font-bold z-10`
+                              ? 'bg-blue-600 text-white rounded-r-lg ring-1 ring-blue-500 shadow-md font-bold z-10'
                               : isInRange
                               ? 'bg-blue-100/90 dark:bg-blue-900/40 text-blue-900 dark:text-blue-100 font-semibold'
                               : 'bg-[#f0fdf4] dark:bg-emerald-950/20'
