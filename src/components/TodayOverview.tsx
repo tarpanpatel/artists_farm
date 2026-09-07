@@ -13,6 +13,7 @@ import { useToast } from './ToastContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
+import { OtaBadge } from './OtaBadge';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
@@ -1445,14 +1446,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                   {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) && (
                                     <div className="flex items-center justify-between text-2xs">
                                       <span className="text-gray-500 dark:text-gray-400">Source:</span>
-                                      <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1">
-                                        {OtaIcon ? (
-                                          <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
-                                        ) : (
-                                          <Globe className="w-2.5 h-2.5 shrink-0" />
-                                        )}
-                                        {guest.otaSourceLabel || guest.otaSource}
-                                      </span>
+                                      <OtaBadge source={guest.otaSource} sourceLabel={guest.otaSourceLabel} />
                                     </div>
                                   )}
                                   {hasPending && (

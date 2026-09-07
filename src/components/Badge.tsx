@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge as FlowbiteBadge, createTheme } from 'flowbite-react';
 import { Popover } from './Popover';
 
-type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
+type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'white';
 type BadgeSize = 'sm' | 'md';
 
 interface BadgeProps {
@@ -20,6 +20,7 @@ const dotVariantClasses: Record<BadgeVariant, string> = {
   warning: 'bg-yellow-500',
   info: 'bg-cyan-500',
   neutral: 'bg-gray-400',
+  white: 'bg-gray-400',
 };
 
 // Literal stock Tailwind/Flowbite tokens (19 Aug 2026: per-tenant CSS-variable
@@ -33,6 +34,7 @@ const badgeTheme = createTheme({
       warning: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700',
       info: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900 dark:text-cyan-300 dark:border-cyan-700',
       neutral: 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
+      white: 'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700',
     },
     size: {
       sm: 'text-[11px] px-2 py-0.5',

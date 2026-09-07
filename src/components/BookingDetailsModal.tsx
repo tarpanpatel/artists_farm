@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, Globe, AlertTriangle, X, ScanLine, Clock, ExternalLink } from './icons/FlowbiteIcons';
+import { Save, Trash2, IdCard, Loader2, Pencil, CheckCircle2, Share2, LogOut, Upload, CreditCard, AlertTriangle, X, ScanLine, Clock, ExternalLink } from './icons/FlowbiteIcons';
 import { Drawer as FlowbiteDrawer, DrawerItems, Checkbox, Modal } from 'flowbite-react';
 import { Button } from './Button';
-import { Badge } from './Badge';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB, uploadDocumentDB, verifyBookingPaymentDB, API_ROOT_BASE } from '../services/api';
 import { scanApplicantIdFromFile } from '../utils/cFormBarcodeScanner';
@@ -22,7 +21,7 @@ import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, fe
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
-import { getOtaIcon } from '../utils/otaIcons';
+import { OtaBadge } from './OtaBadge';
 import { t } from '../i18n/en';
 import {
   GUEST_STATUS_BOOKED,
@@ -600,7 +599,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // the unassigned-receiver warning would just be a false alarm on every
   // OTA booking. Same otaSource check already used above to hide Delete.
   const isOtaBooking = Boolean(guest.otaSource || g.ota_source);
-  const OtaBadgeIcon = getOtaIcon(guest.otaSourceLabel || guest.otaSource);
   
   const storedPending = g.pending_amount ?? g.pendingAmount;
   const extrasBaked = typeof storedPending === 'number'
@@ -960,29 +958,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               #{guest.id}
             </span>
             {guest.otaSource && (
-              // Click-triggered Popover (24 Aug 2026) - see BillingCheckout.tsx's
-              // matching room-card badge for why (was a hover-only Badge `title`,
-              // couldn't hold a link, mobile-tap-stuck-open risk). zIndex=70
-              // because this Drawer itself is z-60 (Popover.tsx's own comment on
-              // needing an explicit higher value for triggers inside a secondary
-              // modal, same fix ConvertOtaBookingModal already needed for its Help?
-              // popover). Room number already dropped from this badge above (24 Aug
-              // 2026) - redundant with "Assigned Place" a few fields down.
-              <Badge
-                variant="warning"
-                size="sm"
-                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}
-                className="booking-details-modal__ota-badge whitespace-nowrap shrink-0"
-              >
-                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                  {OtaBadgeIcon ? (
-                    <OtaBadgeIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
-                  ) : (
-                    <Globe className="w-3 h-3 shrink-0" />
-                  )}
-                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
-                </span>
-              </Badge>
+              <OtaBadge
+                source={guest.otaSource}
+                sourceLabel={guest.otaSourceLabel}
+                className="booking-details-modal__ota-badge"
+              />
             )}
           </h2>
           <button

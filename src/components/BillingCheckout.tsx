@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { Button } from './Button';
+import { OtaBadge } from './OtaBadge';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
@@ -18,7 +19,6 @@ import {
   MessageCircle,
   Home,
   Loader2,
-  Globe,
   Edit2,
   Pencil,
   Eye,
@@ -614,17 +614,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               </span>
                             )}
                             {guest.otaSource && (
-                              <Badge
-                                variant="warning"
-                                size="sm"
-                                title={t('ota_converted_badge_tooltip', 'Converted from an OTA calendar sync - editing this only changes this app, not the original platform.')}
-                                className="billing-checkout__ota-badge whitespace-nowrap shrink-0"
-                              >
-                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                  <Globe className="w-2.5 h-2.5 shrink-0" />
-                                  <span>{guest.otaSourceLabel || guest.otaSource}</span>
-                                </span>
-                              </Badge>
+                              <OtaBadge
+                                source={guest.otaSource}
+                                sourceLabel={guest.otaSourceLabel}
+                                className="billing-checkout__ota-badge"
+                              />
                             )}
                           </div>
                         </div>

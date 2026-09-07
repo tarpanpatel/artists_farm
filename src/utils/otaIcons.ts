@@ -45,3 +45,45 @@ export function getOtaIcon(source: string | null | undefined): OtaIconComponent 
 
   return null;
 }
+
+/**
+ * Normalizes raw OTA channel source strings (e.g. "AirBNB", "BookingComXml")
+ * into clean, human-readable brand names for badges and headers.
+ */
+export function formatOtaLabel(source: string | null | undefined): string {
+  if (!source) return '';
+  const raw = source.trim();
+  const lower = raw.toLowerCase();
+
+  if (lower === 'airbnb' || lower.includes('airbnb')) {
+    return 'Airbnb';
+  }
+  if (
+    lower === 'bookingcom' ||
+    lower === 'booking' ||
+    lower === 'bookingcomxml' ||
+    lower === 'bookingdotcom' ||
+    lower === 'bcom' ||
+    /^booking(\.|\s|_|-)?com(\s*\(xml\))?$/i.test(raw)
+  ) {
+    return 'Booking.com';
+  }
+  if (lower.includes('agoda')) {
+    return 'Agoda';
+  }
+  if (lower.includes('expedia')) {
+    return 'Expedia';
+  }
+  if (lower.includes('vrbo')) {
+    return 'Vrbo';
+  }
+  if (lower.includes('makemytrip') || lower.includes('mmt')) {
+    return 'MakeMyTrip';
+  }
+  if (lower.includes('goibibo')) {
+    return 'Goibibo';
+  }
+
+  return raw;
+}
+
