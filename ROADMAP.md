@@ -6,6 +6,23 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ## 🟢 Open Items
 
+### 💳 SaaS Pricing Model & Rate Card Alignment (Monthly-Only Payments Policy)
+
+- **Context & Decision**: Product decision confirmed that Ground Code operates strictly on **monthly billing/payments** — annual prepayment plans and annual discount structures are not offered.
+- **Problem & Current Mismatch**:
+  - The Root Admin Onboarding & Rate Card interface (`src/components/OnboardingManager.tsx` -> Tab 3: *Pricing & Per-Key Billing*) currently displays an **"Annual Discount (%)"** configuration input (set to 20%) alongside a **"Live Client Billing Simulator"** featuring a *"25-Room Resort (Annual with 20% Off)"* calculation (`calc25RoomsAnnual`).
+  - `src/components/SubscriptionPanel.tsx` and `php/api/configuration.php` still compute `annual_discount_pct` and `annualTotal` estimates.
+- **Action Items to Cross-Check & Update**:
+  - [ ] **Cross-Check Rate Card Figures**: Audit base monthly tariff (currently ₹1,499/mo) and per-key/per-room fee (currently ₹50/mo per extra room above base occupancy) against revised operational costs and current homestay/resort customer acquisition goals.
+  - [ ] **Retire Annual Billing Settings from Root Admin UI**:
+    - Remove the "Annual Discount (%)" field from `OnboardingManager.tsx` (Tab 3).
+    - Update the Live Client Billing Simulator to showcase monthly breakdowns exclusively (e.g. 5-Room Homestay vs. 15-Room Boutique Resort vs. 25-Room Resort, all strictly monthly).
+  - [ ] **Align Tenant Subscription Panel**:
+    - Strip annual equivalent estimates from `SubscriptionPanel.tsx` (`annualEstimate`, `annualTotal`, `billing_cycle === 'annual'`).
+    - Standardize renewal displays strictly around the monthly billing cycle.
+  - [ ] **Backend Configuration Cleanup (`php/api/configuration.php`)**:
+    - Deprecate `annual_discount_pct` in default onboarding configuration envelopes and ensure rate cards strictly emit monthly per-key structures.
+
 ### 💬 Custom WhatsApp-Powered SaaS Customer Support Desk (Planned - Sep 2026)
 
 - **Goal**: Build a 100% proprietary, zero-subscription customer support desk inside Ground Code powered directly by Meta's WhatsApp Cloud API (`php/whatsapp/sender.php`).
