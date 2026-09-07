@@ -155,18 +155,25 @@ All single monthly calendars across the platform (such as single-room booking ca
 Canonical reference: Airbnb's host Multicalendar (`airbnb.co.in/multicalendar`).
 
 **On ANY calendar that draws a stay as a bar/capsule across date cells, the capsule must NOT fill
-the check-in and check-out cells edge to edge. It occupies the last 20% of the check-in cell and
-the first 20% of the check-out cell.**
+the check-in and check-out cells edge to edge. It occupies the last 10% of the check-in cell and
+the first 10% of the check-out cell.**
 
 Given a stay whose check-in falls on column index `S` and check-out on column index `E`, with
 `w` = one cell's width:
 
 ```
-left  = (S + 0.8) * w          /* starts 80% into the arrival cell   */
-width = (E - S - 0.6) * w      /* ends   20% into the departure cell */
+left  = (S + 0.9) * w          /* starts 90% into the arrival cell   */
+width = (E - S - 0.8) * w      /* ends   10% into the departure cell */
 ```
 
-A 2-night stay 11 → 13 therefore spans 1.4 cells, not 2 and not 3.
+A 2-night stay 11 → 13 therefore spans 1.2 cells, not 2 and not 3.
+
+**Revised 7 Sep 2026, same day, after live comparison against Airbnb's own calendar.** The
+original cut was 20% per side (2-night stay = 1.4 cells) - correct in shape but too aggressive in
+practice: it read fine as an abstract formula but made a 1-night stay (0.4 cell wide at 20%) look
+like a stray sliver rather than a booking, and made the whole calendar feel gappier than Airbnb's
+own tighter, fuller-looking bars. 10% per side keeps the same mechanism and the same reasoning
+below - it's a magnitude correction, not a rule change.
 
 **Why.** A stay does not own the whole of either end day - the guest arrives in the afternoon and
 leaves in the morning (Airbnb's own reservation detail for these listings: check-in 1:00 pm,
@@ -184,9 +191,9 @@ check-out 11:00 am). Two consequences follow, and both are the real reason for t
 (`existing_start < new_end && existing_end > new_start`) exactly as it is - do not "fix" overlap
 detection to match the visuals, and do not treat the check-out date as an occupied night. A stay
 11 → 13 occupies the nights of the 11th and 12th; that is what any highlight, count or conflict
-check must use. The 20% inset is how that fact is drawn, not a change to what it means.
+check must use. The 10% inset is how that fact is drawn, not a change to what it means.
 
-**Where the 20% inset applies:** the two surfaces that actually draw stay capsules -
+**Where the 10% inset applies:** the two surfaces that actually draw stay capsules -
 `TodayOverview.tsx` and `OperationalDashboard.tsx` (both render them into a separate absolutely
 positioned overlay; grep `data-cal-capsule`). Any new capsule surface joins this list.
 

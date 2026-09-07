@@ -1786,20 +1786,25 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         via Playwright, not guessed. */}
                     <div className="absolute inset-x-0 top-[30px] sm:top-[32px] pointer-events-none grid grid-cols-7 px-1.5 sm:px-2">
                     {segments.map((seg, segIdx) => {
-                      // DESIGN.md capsule-inset rule, CSS-Grid version: a
-                      // percentage margin resolves against the grid item's
-                      // OWN grid-area width (the columns it spans), not one
-                      // cell - so for a box spanning N columns, insetting by
-                      // 0.8 of one cell is `0.8/N` on that side, not a flat
-                      // 80%. The right inset only has a column to bleed
-                      // into when the checkout day actually falls within
-                      // THIS week row (`seg.endCol < 6`); when checkout
-                      // lands on next row's Sunday, the row boundary itself
-                      // already reads as a break, so there's nothing to add.
+                      // DESIGN.md capsule-inset rule, CSS-Grid version
+                      // (revised 7 Sep 2026, 20%->10% per side after live
+                      // comparison against Airbnb's own calendar - see
+                      // DESIGN.md's dated note): a percentage margin
+                      // resolves against the grid item's OWN grid-area
+                      // width (the columns it spans), not one cell - so for
+                      // a box spanning N columns, insetting by 0.9 of one
+                      // cell (i.e. leaving a 0.1-cell gap) is `0.9/N` on
+                      // that side, not a flat 90%. The right inset only has
+                      // a column to bleed into when the checkout day
+                      // actually falls within THIS week row
+                      // (`seg.endCol < 6`); when checkout lands on next
+                      // row's Sunday, the row boundary itself already reads
+                      // as a break, so there's nothing to add.
+                      const CAPSULE_INSET_FRACTION = 0.1;
                       const nightsInSegment = seg.endCol - seg.startCol + 1;
                       const extendForCheckout = seg.isLastOfStay && seg.endCol < 6;
                       const gridSpanCols = nightsInSegment + (extendForCheckout ? 1 : 0);
-                      const insetPct = (0.8 / gridSpanCols) * 100;
+                      const insetPct = ((1 - CAPSULE_INSET_FRACTION) / gridSpanCols) * 100;
                       const gridColumn = `${seg.startCol + 1} / span ${gridSpanCols}`;
                       const capsuleStyle: React.CSSProperties = {
                         gridColumn,

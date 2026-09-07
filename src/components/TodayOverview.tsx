@@ -1321,20 +1321,24 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       {timelineLanesInfo.map((info, idx) => {
                         const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
                         // DESIGN.md "Booking Capsules Must Inset Into the Check-in and
-                        // Check-out Cells": a capsule occupies only the last 20% of its
-                        // check-in cell and the first 20% of its check-out cell, never
-                        // edge-to-edge - so same-day turnover (one guest out, another in,
-                        // on the same date) reads as a visible gap, not one merged bar
-                        // that looks like a double-booking. left = (S + 0.8) * w,
-                        // width = (E - S - 0.6) * w, where S = startCol - 1 (0-based
-                        // check-in column) and E - S = info.span (nights). No minimum-width
-                        // floor here on purpose - a 1-night stay's true inset width
-                        // (0.4 * columnWidth) is intentionally thin; clamping it wider
-                        // would push the capsule past the 20% mark and recreate the exact
-                        // collision this rule exists to prevent. A tiny floor guards only
-                        // against a literal zero/negative width, never against "too thin
-                        // to read" - detail lives in the click popover, not the bar.
-                        const CAPSULE_INSET_FRACTION = 0.2;
+                        // Check-out Cells" (revised 7 Sep 2026, 20%->10% per side after
+                        // live comparison against Airbnb's own calendar - the original
+                        // 20% cut made short stays read as a stray sliver and made the
+                        // whole calendar feel gappier than Airbnb's fuller-looking bars):
+                        // a capsule occupies only the last 10% of its check-in cell and
+                        // the first 10% of its check-out cell, never edge-to-edge - so
+                        // same-day turnover (one guest out, another in, on the same date)
+                        // reads as a visible gap, not one merged bar that looks like a
+                        // double-booking. left = (S + 0.9) * w, width = (E - S - 0.8) * w,
+                        // where S = startCol - 1 (0-based check-in column) and E - S =
+                        // info.span (nights). No minimum-width floor here on purpose - a
+                        // 1-night stay's true inset width (0.8 * columnWidth) is already
+                        // close to a full cell; clamping it wider would push the capsule
+                        // past the 10% mark and recreate the exact collision this rule
+                        // exists to prevent. A tiny floor guards only against a literal
+                        // zero/negative width, never against "too thin to read" - detail
+                        // lives in the click popover, not the bar.
+                        const CAPSULE_INSET_FRACTION = 0.1;
                         const commonStyle = {
                           left: `${(info.startCol - CAPSULE_INSET_FRACTION) * columnWidth}px`,
                           width: `${Math.max(2, (info.span - (1 - 2 * CAPSULE_INSET_FRACTION)) * columnWidth)}px`,
