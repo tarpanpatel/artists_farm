@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Tabs, TabItem, TabsRef } from 'flowbite-react';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { CashDrawerManager } from './CashDrawerManager';
 import { PettyCashManagement } from './PettyCashManagement';
 import { ExpenseItemsManagement } from './ExpenseItemsManagement';
 import { Landmark, FileText, Settings } from './icons/FlowbiteIcons';
+import { t } from '../i18n/en';
 
 interface FinancesHubProps {
   initialTab?: 'drawer' | 'expenses' | 'catalog';
@@ -18,6 +21,9 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
   onDispatchTelegram,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'drawer' | 'expenses' | 'catalog'>(initialTab);
+  const tabsRef = useRef<TabsRef>(null);
+
+  const subTabKeys: ('drawer' | 'expenses' | 'catalog')[] = ['drawer', 'expenses', 'catalog'];
 
   useEffect(() => {
     if (initialTab) {
@@ -25,48 +31,65 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
     }
   }, [initialTab]);
 
+  useEffect(() => {
+    const idx = subTabKeys.indexOf(activeSubTab);
+    if (idx >= 0) {
+      tabsRef.current?.setActiveTab(idx);
+    }
+  }, [activeSubTab]);
+
+  const handleTabChange = (index: number) => {
+    const key = subTabKeys[index];
+    if (key) {
+      setActiveSubTab(key);
+      if (typeof window !== 'undefined') {
+        if (key === 'drawer') window.location.hash = '#finances';
+        else if (key === 'expenses') window.location.hash = '#expenses';
+        else if (key === 'catalog') window.location.hash = '#edit_expense_items';
+      }
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Top Segmented Control */}
-      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
-        <div className="inline-flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('drawer')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all ${
-              activeSubTab === 'drawer'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <Landmark className="w-3.5 h-3.5" />
-            <span>Cash Drawer</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('expenses')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all ${
-              activeSubTab === 'expenses'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Daily Expenses</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('catalog')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all ${
-              activeSubTab === 'catalog'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span>Expense Items</span>
-          </button>
-        </div>
+    <div className="space-y-6 finances-hub">
+      {/* Attached Tabs Specification (DESIGN.md line 322) */}
+      <div className="finances-hub-tabs-desk">
+        <Tabs
+          ref={tabsRef}
+          aria-label="Finances Tabs"
+          variant="default"
+          theme={attachedTabsTheme}
+          clearTheme={attachedTabsClearTheme}
+          onActiveTabChange={handleTabChange}
+        >
+          <TabItem
+            active={activeSubTab === 'drawer'}
+            title={
+              <span className="inline-flex items-center gap-2">
+                <Landmark className="w-4 h-4" />
+                <span>{t('cash_drawer', 'Cash Drawer')}</span>
+              </span>
+            }
+          />
+          <TabItem
+            active={activeSubTab === 'expenses'}
+            title={
+              <span className="inline-flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                <span>{t('daily_expenses', 'Daily Expenses')}</span>
+              </span>
+            }
+          />
+          <TabItem
+            active={activeSubTab === 'catalog'}
+            title={
+              <span className="inline-flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                <span>{t('expense_items', 'Expense Items')}</span>
+              </span>
+            }
+          />
+        </Tabs>
       </div>
 
       {/* Sub-tab view */}
