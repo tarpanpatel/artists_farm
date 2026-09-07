@@ -20,14 +20,14 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { parseDateToYMD } from '../utils/dateUtils';
+import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
 import { BillingCheckout } from './BillingCheckout';
 import { t } from '../i18n/en';
-import { createBookingHoldDB } from '../services/api';
+import { createBookingHoldDB, fetchRateRulesDB } from '../services/api';
 
 interface Room {
   id: number;
@@ -184,7 +184,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // further below is unaffected: it runs before the optimistic add happens.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
-  const [guestNameTouched, setGuestNameTouched] = useState(false);
+  const [, setGuestNameTouched] = useState(false);
   const [phoneNumberTouched, setPhoneNumberTouched] = useState(false);
   const [datesTouched, setDatesTouched] = useState(false);
   const [roomTouched, setRoomTouched] = useState(false);
@@ -220,6 +220,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // resends - the staff member's own earlier quote for this room/dates is
   // superseded rather than blocking the new one (6 Sep 2026, reported live).
   const [sendingQuote, setSendingQuote] = useState(false);
+  const [sharingAllRooms, setSharingAllRooms] = useState(false);
   const [holdHours, setHoldHours] = useState('2');
 
   // Live duplicate-booking check (26 Aug 2026, part of the site-wide real-time
@@ -554,7 +555,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   };
 
-  const handleShareAllAvailableRooms = () => {
+  // Channex's own 2-letter day codes - matches room_rate_rules.days_of_week
+  // and the exact precedence OperationalDashboard.tsx/TodayOverview.tsx's own
+  // getDayPrice()/resolvedRateRules already use, so a night quoted here is
+  // the same price the calendar shows and Airbnb/Booking.com actually
+  // receive - reused rather than re-derived so all three call sites can
+  // never quietly drift apart on what a given night costs.
+  const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+
+  const handleShareAllAvailableRooms = async () => {
     if (!checkinDate || !expectedCheckout) {
       showToast('Pick check-in and check-out dates first.', { type: 'error' });
       return;
@@ -567,6 +576,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     const cIn = new Date(checkinDate + 'T00:00:00');
     const cOut = new Date(expectedCheckout + 'T00:00:00');
     const nights = Math.max(1, Math.round((cOut.getTime() - cIn.getTime()) / (1000 * 60 * 60 * 24)));
+    const nightDateStrs: string[] = [];
+    for (let i = 0; i < nights; i++) {
+      const d = new Date(cIn);
+      d.setDate(d.getDate() + i);
+      nightDateStrs.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
 
     // Filter available rooms for these dates
     const availableRooms = rooms.filter((r) => {
@@ -587,32 +602,75 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       return;
     }
 
-    const shareUrl = `${window.location.origin}${window.location.pathname}#book?checkin=${checkinDate}&checkout=${expectedCheckout}`;
-    const greeting = guestName.trim() ? `Hi ${guestName.trim()}, ` : 'Hi, ';
-    let waText = `${greeting}here are our available rooms for ${checkinDate} to ${expectedCheckout} (${nights} night${nights > 1 ? 's' : ''}):\n\n`;
+    setSharingAllRooms(true);
+    try {
+      // Real rates, not each room's flat default_tariff (7 Sep 2026, explicit
+      // report: "it is displaying base prices"). variable pricing_mode means
+      // a room's actual nightly rate can be overridden per date/day-of-week
+      // by room_rate_rules - skipping that and reading default_tariff
+      // straight off the room quoted a price the guest would never actually
+      // be charged.
+      const { rules, pricing_mode } = await fetchRateRulesDB();
+      const resolvedRules = [...rules].sort((a, b) => {
+        const roomA = a.room_id ? Number(a.room_id) : 0;
+        const roomB = b.room_id ? Number(b.room_id) : 0;
+        if (roomA !== roomB) return roomB - roomA;
+        const timeA = a.created_at ? Date.parse(a.created_at.replace(' ', 'T')) : 0;
+        const timeB = b.created_at ? Date.parse(b.created_at.replace(' ', 'T')) : 0;
+        if (timeA !== timeB) return timeB - timeA;
+        return Number(b.id || 0) - Number(a.id || 0);
+      });
 
-    availableRooms.forEach((r, idx) => {
-      const perNight = (r as any).baseRate || r.default_tariff || (r as any).roomTariff || (r as any).price || 0;
-      const totalTariff = perNight * nights;
-      waText += `${idx + 1}. *${r.name}* — ₹${perNight.toLocaleString('en-IN')}/night (Total: ₹${totalTariff.toLocaleString('en-IN')})\n`;
-    });
+      const getNightRate = (roomId: number | undefined, dateStr: string, fallback: number): number => {
+        if (pricing_mode === 'variable') {
+          const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
+          const match = resolvedRules.find((r) => {
+            const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
+            const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
+            return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr && r.rate_per_night != null;
+          });
+          if (match) return Number(match.rate_per_night);
+        }
+        return fallback;
+      };
 
-    waText += `\nTap here to view room details, photos, and book directly:\n${shareUrl}`;
+      const shareUrl = `${window.location.origin}${window.location.pathname}#book?checkin=${checkinDate}&checkout=${expectedCheckout}`;
+      const greeting = guestName.trim() ? `Hi ${guestName.trim()}, ` : 'Hi, ';
+      let waText = `${greeting}here are our available rooms for ${formatDateDDMMYYYY(checkinDate)} to ${formatDateDDMMYYYY(expectedCheckout)} (${nights} night${nights > 1 ? 's' : ''}):\n\n`;
 
-    // Target specific guest phone if entered
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
-    const waUrl = cleanPhone.length === 10
-      ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
-      : cleanPhone.length > 10
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
-      : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+      availableRooms.forEach((r, idx) => {
+        const fallbackRate = (r as any).baseRate || r.default_tariff || (r as any).roomTariff || (r as any).price || 0;
+        const nightlyRates = nightDateStrs.map((d) => getNightRate(r.id, d, fallbackRate));
+        const totalTariff = nightlyRates.reduce((sum, rate) => sum + rate, 0);
+        // Only worth showing a per-night figure when every night is the same
+        // rate - a mixed-rate stay (e.g. weekday/weekend) only has one
+        // honest number: the total.
+        const allSameRate = nightlyRates.every((rate) => rate === nightlyRates[0]);
+        const perNightLabel = allSameRate
+          ? ` — ₹${nightlyRates[0].toLocaleString('en-IN')}/night (Total: ₹${totalTariff.toLocaleString('en-IN')})`
+          : ` — Total: ₹${totalTariff.toLocaleString('en-IN')} (${nights} nights)`;
+        waText += `${idx + 1}. *${r.name}*${perNightLabel}\n`;
+      });
 
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(waText).catch(() => {});
+      waText += `\nTap here to view room details, photos, and book directly:\n${shareUrl}`;
+
+      // Target specific guest phone if entered
+      const cleanPhone = phoneNumber.replace(/\D/g, '');
+      const waUrl = cleanPhone.length === 10
+        ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
+        : cleanPhone.length > 10
+        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
+        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(waText).catch(() => {});
+      }
+
+      window.open(waUrl, '_blank');
+      showToast('Available rooms and rates ready to send on WhatsApp!', { type: 'success' });
+    } finally {
+      setSharingAllRooms(false);
     }
-
-    window.open(waUrl, '_blank');
-    showToast('Available rooms and rates ready to send on WhatsApp!', { type: 'success' });
   };
 
   if (activeMenuItemKey === 'guest_registration') {
@@ -634,7 +692,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
           
           <form noValidate className="app-form app-form--add-guest space-y-4" onSubmit={async (e) => {
             e.preventDefault();
-            setGuestNameTouched(true);
             setPhoneNumberTouched(true);
             setDatesTouched(true);
             setRoomTouched(true);
@@ -642,10 +699,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             const newCheckinStr = checkinTime ? `${checkinDate} ${checkinTime}:00` : checkinDate;
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
 
-            if (!guestName.trim()) {
-              showToast('Booking Rejected: Guest name is required.', { type: 'error' });
-              return;
-            }
             if (!phoneNumber.trim()) {
               showToast('Booking Rejected: Phone number is required.', { type: 'error' });
               return;
@@ -781,14 +834,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Row 0: Guest Name (Full width) */}
             <div>
               <Input
-                label={t('guest_name_label', 'Guest Name *')}
+                label={t('guest_name_label', 'Guest Name')}
                 type="text"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 onBlur={() => setGuestNameTouched(true)}
-                placeholder="Enter guest's full name"
-                required
-                error={guestNameTouched && !guestName.trim() ? 'Guest name is required' : undefined}
+                placeholder="Enter guest's full name (optional)"
+                helperText="Defaults to 'Resident Guest' if left blank."
               />
             </div>
 
@@ -1258,11 +1310,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <Button
                 type="button"
                 color="light"
+                disabled={sharingAllRooms}
                 onClick={handleShareAllAvailableRooms}
                 className="w-full mt-2 font-semibold flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
               >
-                <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>Share All Available Keys & Rates</span>
+                {sharingAllRooms ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>Checking Rates...</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>Share All Available Keys & Rates</span>
+                  </>
+                )}
               </Button>
             )}
           </form>

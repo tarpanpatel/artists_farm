@@ -74,8 +74,13 @@ require_once __DIR__ . '/../housekeeping/housekeeping.php';
 function validateGuestPiiInput(array $input): array {
     $validated = [];
 
+    // Guest name is optional (7 Sep 2026, explicit request) - a blank/
+    // whitespace-only value is treated the same as "not provided" rather
+    // than failing the 1-character minimum, matching the phone_number check
+    // right below. Callers that omit a real name still get one: add_guest's
+    // own $resolvedGuestName falls back to 'Resident Guest'.
     $name = $input['guest_name'] ?? $input['name'] ?? null;
-    if ($name !== null) {
+    if ($name !== null && trim((string)$name) !== '') {
         $validated['guest_name'] = InputValidator::validateString($name, 1, 120);
     }
 
@@ -621,6 +626,12 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                     break;
                 }
+                // Normalized once, reused everywhere a guest name is written or
+                // sent below (the INSERT, the ledger's party_name, the Telegram
+                // notification) - guest_name ?? name ?? 'Resident Guest' alone
+                // only catches a genuinely missing key, not the empty string an
+                // optional, left-blank form field now sends.
+                $resolvedGuestName = trim((string)($input['guest_name'] ?? $input['name'] ?? '')) ?: 'Resident Guest';
                 try {
                     // Wrap the guest INSERT + advance ledger post as one unit - previously
                     // these were two independent writes, so a failure between them (e.g. a
@@ -765,7 +776,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     }
                     $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, adults, children, property_id, is_foreign_guest, room_id, ota_source, ota_source_label, ical_external_event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
-                        $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
+                        $resolvedGuestName,
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
                         $input['checkin_date'] ?? date('Y-m-d'),
                         $input['expected_checkout'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
@@ -853,7 +864,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                             'payment_method' => $input['payment_method'] ?? 'Cash',
                             'party_type' => 'guest',
                             'party_id' => $newId,
-                            'party_name' => $input['guest_name'] ?? $input['name'] ?? 'Resident Guest',
+                            'party_name' => $resolvedGuestName,
                             'source_type' => 'guest_registration',
                             'source_id' => $newId,
                             'description' => 'Advance collected at guest registration',
@@ -874,7 +885,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->commit();
 
                     // Send Telegram notification for new guest booking
-                    $guestName = $input['guest_name'] ?? $input['name'] ?? 'Resident Guest';
+                    $guestName = $resolvedGuestName;
                     $checkinDate = $input['checkin_date'] ?? date('Y-m-d');
                     $checkoutDate = $input['expected_checkout'] ?? date('Y-m-d', strtotime('+1 day'));
                     $totalCharge = floatval($input['total_charge'] ?? 0);

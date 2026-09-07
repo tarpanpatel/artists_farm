@@ -52,7 +52,7 @@ export const strings: Record<string, string> = {
 
   // Guest Registration form
   add_guest_booking_header: "Add Booking",
-  guest_name_label: "Guest Name *",
+  guest_name_label: "Guest Name",
   contact_phone_label: "Phone Number *",
   assigned_room_label: "Assigned Place *",
   booking_source_label: "Booking Source",
