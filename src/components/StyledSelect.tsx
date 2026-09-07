@@ -113,7 +113,15 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
             disabled={disabled}
             className={twMerge(
               'app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none',
-              isFloating ? 'pb-1.5 pt-3 text-sm' : 'h-10 text-xs px-3',
+              // h-10 on BOTH branches (7 Sep 2026, reported: "Advance Received By
+              // and Pending Received By field height is not like others"). The
+              // floating branch had no height at all, so it was sized by its
+              // content while the Input beside it is a fixed h-10 - two controls
+              // on the same row that never quite lined up. The value span is
+              // `truncate`, so it is always one line and can never need more than
+              // 40px; fixing the height here makes every floating select match
+              // every floating input rather than each call site patching it.
+              isFloating ? 'h-10 pb-1.5 pt-3 text-sm' : 'h-10 text-xs px-3',
               disabled
                 ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-300 border-gray-300 dark:border-gray-600 cursor-not-allowed'
                 : error

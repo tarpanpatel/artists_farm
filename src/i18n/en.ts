@@ -67,7 +67,7 @@ export const strings: Record<string, string> = {
   guest_notes_label: "Guest Notes",
   foreign_national_guest_label: "Foreign National Guest",
   additional_charges_label: "Additional Charges",
-  save_guest_booking_button: "Save Guest Booking",
+  save_guest_booking_button: "Save Booking",
 
   // Operational Dashboard
   add_guest_button: "Add Guest",

@@ -208,6 +208,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // stays the total that occupancy pricing reads; this only says how many of
   // them are children, so the confirmation can say "3 adults, 2 children".
   const [childrenCount, setChildrenCount] = useState(0);
+  // Whether the kids field is shown at all (7 Sep 2026, explicit request: "no one
+  // does that in industry... give a check box to add kids"). An always-visible
+  // "Of which children" box asked every booking a question that is "no" almost
+  // every time, and asked it in a form nobody uses - the industry pattern is one
+  // guest count, with children declared only when there are any.
+  //
+  // Kept as its own flag rather than inferred from `childrenCount > 0`, because
+  // those differ in the state that matters: unticking must clear the count (see
+  // the toggle handler), while a ticked box showing 0 is a legitimate mid-typing
+  // state that must not collapse the field the user is typing into.
+  const [hasChildren, setHasChildren] = useState(false);
 
   // "Inquiry -> Instant Quote" (5 Sep 2026) - lets staff send a guest who
   // called or messaged a WhatsApp link with the room/dates/price already
@@ -275,10 +286,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         if (selectedRoom) {
           roomToSelect = selectedRoom.name;
         }
-      } else if (!roomNumber) {
-        // Otherwise, pre-select the first room
-        roomToSelect = rooms[0].name;
       }
+      // No fallback to rooms[0] (removed 7 Sep 2026, explicit request). The two
+      // branches above pre-select only when the drawer was opened FROM a specific
+      // room, where the answer is genuinely known. Reaching it via "Add Booking"
+      // carries no such context, and defaulting to whichever room happens to sort
+      // first is a guess presented as an answer - one Save away from putting a
+      // guest in the wrong unit, with nothing on screen ever having looked wrong.
+      // Left empty, the field reads as the required, unanswered question it is
+      // (its own `roomTouched` error already covers submitting without one).
 
       if (roomToSelect) {
         setRoomNumber(roomToSelect);
@@ -514,6 +530,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setShowGuestNotes(false);
     setIsForeignGuest(false);
     setNoOfGuests(2);
+    // Children were never reset here (found 7 Sep 2026 while adding the kids
+    // checkbox). A booking saved with 2 children left childrenCount at 2, so the
+    // NEXT booking silently carried them - previously only visible as a stale
+    // number in the "Of which children" box, now it would also leave the checkbox
+    // ticked. Both cleared together, since hasChildren gates the field.
+    setChildrenCount(0);
+    setHasChildren(false);
     setBookingRoomTariff(0);
     setTariffManuallyEdited(false);
     setBookingAdvance(0);
@@ -524,8 +547,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setPhoneNumberTouched(false);
     setDatesTouched(false);
     setRoomTouched(false);
+    // Same rule as the mount effect (7 Sep 2026): restore only a pre-selection
+    // the CONTEXT actually justifies, never rooms[0]. This is the reset after a
+    // successful save, so the form is a fresh "add booking" - if it was opened
+    // from a specific room, that room is still the context and comes back;
+    // otherwise the field returns to empty rather than silently arming the next
+    // booking with whichever room sorts first. The mount effect cannot cover this
+    // (its deps have not changed), so the rule has to be stated in both places.
     if (isMultiKeyProperty && rooms && rooms.length > 0) {
-      setRoomNumber(rooms[0].name);
+      const contextRoom =
+        (preSelectRoom && rooms.find((r) => r.name === preSelectRoom)?.name) ||
+        (selectedRoomSlug && rooms.find((r) => r.slug === selectedRoomSlug)?.name) ||
+        '';
+      setRoomNumber(contextRoom);
+    } else {
+      setRoomNumber('');
     }
   };
 
@@ -942,16 +978,44 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         : undefined}
                     />
                   </div>
-                  <div>
-                    <Input
-                      label={t('children_count_label', 'Of which children')}
-                      type="number"
-                      min="0"
-                      max={noOfGuests}
-                      value={childrenCount}
-                      onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                  {/* Kids are declared only when there are any (7 Sep 2026).
+                      The checkbox sits in the guests grid's second column so it
+                      lands directly under the count it qualifies, and the number
+                      field appears in its place once ticked. */}
+                  <div className="flex items-center gap-2 self-center">
+                    <Checkbox
+                      id="booking-has-children-cb"
+                      checked={hasChildren}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setHasChildren(on);
+                        // Unticking must clear the count, not just hide it -
+                        // otherwise a hidden non-zero silently rides along onto
+                        // the booking and the confirmation claims children the
+                        // staff member can no longer see or correct.
+                        if (!on) setChildrenCount(0);
+                      }}
                     />
+                    <label
+                      htmlFor="booking-has-children-cb"
+                      className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                    >
+                      Travelling with kids
+                    </label>
                   </div>
+                  {hasChildren && (
+                    <div>
+                      <Input
+                        label={t('children_count_label', 'Number of Kids')}
+                        type="number"
+                        min="0"
+                        max={noOfGuests}
+                        value={childrenCount}
+                        onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                        helperText="Included in the guest count above, not added to it."
+                      />
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -994,16 +1058,44 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         : undefined}
                     />
                   </div>
-                  <div>
-                    <Input
-                      label={t('children_count_label', 'Of which children')}
-                      type="number"
-                      min="0"
-                      max={noOfGuests}
-                      value={childrenCount}
-                      onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                  {/* Kids are declared only when there are any (7 Sep 2026).
+                      The checkbox sits in the guests grid's second column so it
+                      lands directly under the count it qualifies, and the number
+                      field appears in its place once ticked. */}
+                  <div className="flex items-center gap-2 self-center">
+                    <Checkbox
+                      id="booking-has-children-cb"
+                      checked={hasChildren}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setHasChildren(on);
+                        // Unticking must clear the count, not just hide it -
+                        // otherwise a hidden non-zero silently rides along onto
+                        // the booking and the confirmation claims children the
+                        // staff member can no longer see or correct.
+                        if (!on) setChildrenCount(0);
+                      }}
                     />
+                    <label
+                      htmlFor="booking-has-children-cb"
+                      className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                    >
+                      Travelling with kids
+                    </label>
                   </div>
+                  {hasChildren && (
+                    <div>
+                      <Input
+                        label={t('children_count_label', 'Number of Kids')}
+                        type="number"
+                        min="0"
+                        max={noOfGuests}
+                        value={childrenCount}
+                        onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                        helperText="Included in the guest count above, not added to it."
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -1079,6 +1171,74 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   onChange={e => handleTariffChange(Number(e.target.value))}
                   placeholder="Enter room rent in ₹"
                 />
+              </div>
+            )}
+
+            {/* Money sits directly under Room Rent (7 Sep 2026, explicit request:
+                "move advance paid below room rent"). Advance and Pending are both
+                derived from the rent - Pending is literally rent minus advance - so
+                separating them with the Guest Notes / Foreign National / Additional
+                Charges checkboxes put unrelated toggles in the middle of one
+                calculation. Both rows moved together rather than Advance alone,
+                since splitting a figure from the number it is subtracted from would
+                be worse than the original order. */}
+            {/* Advance Paid + Advance Received By (2 columns on all screens) */}
+            {bookingRoomTariff > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <Input
+                    label={t('advance_paid', 'Advance Paid (₹)')}
+                    type="number"
+                    value={bookingAdvance || ''}
+                    onChange={e => handleAdvanceChange(Number(e.target.value))}
+                    placeholder="0.00"
+                    error={advanceExceedsTotal
+                      ? `Can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')})`
+                      : undefined}
+                  />
+                </div>
+
+                {bookingAdvance > 0 ? (
+                  <div>
+                    <StyledSelect
+                      label={t('advance_received_by', 'Advance Received By *')}
+                      value={advanceReceivedBy}
+                      onChange={setAdvanceReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
+                    />
+                  </div>
+                ) : <div />}
+              </div>
+            )}
+
+            {/* Pending Balance + Pending Received By (2 columns on all screens) */}
+            {bookingAdvance > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <Input
+                    label={t('pending_balance_label', 'Pending Balance (₹)')}
+                    type="number"
+                    value={bookingPending || ''}
+                    onChange={e => handlePendingChange(Number(e.target.value))}
+                    placeholder="0.00"
+                    error={bookingPending < 0
+                      ? 'Pending balance cannot be negative — lower the advance paid'
+                      : undefined}
+                  />
+                </div>
+
+                {bookingPending > 0 ? (
+                  <div>
+                    <StyledSelect
+                      label={t('pending_received_by_label', 'Pending Received By')}
+                      value={pendingReceivedBy}
+                      onChange={setPendingReceivedBy}
+                      placeholder="-- Select Staff/User --"
+                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
+                    />
+                  </div>
+                ) : <div />}
               </div>
             )}
 
@@ -1223,66 +1383,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
-            {/* Advance Paid + Advance Received By (2 columns on all screens) */}
-            {bookingRoomTariff > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Input
-                    label={t('advance_paid', 'Advance Paid (₹)')}
-                    type="number"
-                    value={bookingAdvance || ''}
-                    onChange={e => handleAdvanceChange(Number(e.target.value))}
-                    placeholder="0.00"
-                    error={advanceExceedsTotal
-                      ? `Can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')})`
-                      : undefined}
-                  />
-                </div>
-
-                {bookingAdvance > 0 ? (
-                  <div>
-                    <StyledSelect
-                      label={t('advance_received_by', 'Advance Received By *')}
-                      value={advanceReceivedBy}
-                      onChange={setAdvanceReceivedBy}
-                      placeholder="-- Select Staff/User --"
-                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
-                    />
-                  </div>
-                ) : <div />}
-              </div>
-            )}
-
-            {/* Pending Balance + Pending Received By (2 columns on all screens) */}
-            {bookingAdvance > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Input
-                    label={t('pending_balance_label', 'Pending Balance (₹)')}
-                    type="number"
-                    value={bookingPending || ''}
-                    onChange={e => handlePendingChange(Number(e.target.value))}
-                    placeholder="0.00"
-                    error={bookingPending < 0
-                      ? 'Pending balance cannot be negative — lower the advance paid'
-                      : undefined}
-                  />
-                </div>
-
-                {bookingPending > 0 ? (
-                  <div>
-                    <StyledSelect
-                      label={t('pending_received_by_label', 'Pending Received By')}
-                      value={pendingReceivedBy}
-                      onChange={setPendingReceivedBy}
-                      placeholder="-- Select Staff/User --"
-                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
-                    />
-                  </div>
-                ) : <div />}
-              </div>
-            )}
-
             <Button
               type="submit"
               color="blue"
@@ -1295,7 +1395,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <span>{t('saving_booking_button', 'Saving Booking...')}</span>
                 </>
               ) : (
-                <span>{t('save_guest_booking_button', 'Save Guest Booking')}</span>
+                <span>{t('save_guest_booking_button', 'Save Booking')}</span>
               )}
             </Button>
 
@@ -1307,43 +1407,53 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 requires guest name + phone (a quote link can be sent before
                 either is known). Revising the price and clicking it again
                 just resends - see handleSendInstantQuote/booking_holds.php. */}
-            <div className="mt-2">
-              <StyledSelect
-                label="Hold Room For"
-                value={holdHours}
-                onChange={setHoldHours}
-                options={[
-                  { value: '0.25', label: '15 Minutes' },
-                  { value: '0.5', label: '30 Minutes' },
-                  { value: '1', label: '1 Hour' },
-                  { value: '2', label: '2 Hours' },
-                  { value: '4', label: '4 Hours' },
-                  { value: '6', label: '6 Hours' },
-                  { value: '12', label: '12 Hours' },
-                  { value: '24', label: '24 Hours (1 Day)' },
-                  { value: '48', label: '48 Hours (2 Days)' },
-                ]}
-              />
+            {/* Hold duration sits ON the same row as the button it configures
+                (7 Sep 2026, explicit request). Stacked above it, the two read as
+                unrelated controls and the hold length looked like another booking
+                field; side by side it reads as one action - "hold for N hours,
+                and send the link". The select is deliberately the narrower half:
+                it has a sensible default, the button is the thing being clicked.
+                Stacks back to two rows under `sm` so neither is squeezed on a
+                phone. */}
+            <div className="mt-2 flex flex-col sm:flex-row sm:items-end gap-2">
+              <div className="w-full sm:w-44 shrink-0">
+                <StyledSelect
+                  label="Hold Room For"
+                  value={holdHours}
+                  onChange={setHoldHours}
+                  options={[
+                    { value: '0.25', label: '15 Minutes' },
+                    { value: '0.5', label: '30 Minutes' },
+                    { value: '1', label: '1 Hour' },
+                    { value: '2', label: '2 Hours' },
+                    { value: '4', label: '4 Hours' },
+                    { value: '6', label: '6 Hours' },
+                    { value: '12', label: '12 Hours' },
+                    { value: '24', label: '24 Hours (1 Day)' },
+                    { value: '48', label: '48 Hours (2 Days)' },
+                  ]}
+                />
+              </div>
+              <Button
+                type="button"
+                color="green"
+                disabled={sendingQuote}
+                onClick={handleSendInstantQuote}
+                className="w-full sm:flex-1 font-semibold flex items-center justify-center gap-2"
+              >
+                {sendingQuote ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span>Creating Quote Link...</span>
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4 shrink-0" />
+                    <span>Share Quote and Payment Link</span>
+                  </>
+                )}
+              </Button>
             </div>
-            <Button
-              type="button"
-              color="green"
-              disabled={sendingQuote}
-              onClick={handleSendInstantQuote}
-              className="w-full mt-2 font-semibold flex items-center justify-center gap-2"
-            >
-              {sendingQuote ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  <span>Creating Quote Link...</span>
-                </>
-              ) : (
-                <>
-                  <MessageCircle className="w-4 h-4 shrink-0" />
-                  <span>Share Quote and Payment Link</span>
-                </>
-              )}
-            </Button>
             {isMultiKeyProperty && rooms && rooms.length > 1 && (
               <Button
                 type="button"
