@@ -479,6 +479,31 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   };
 
+  // "Go Back" on a room's own Edit Room page (MultiKeyPropertyOverview.tsx,
+  // shown when a room is selected AND activeTab === 'edit_property') needs to
+  // return to the PARENT property's Edit Property page - the one listing
+  // every room via RoomsManagement inside EditPropertyPage.tsx - not to the
+  // Dashboard/calendar overview handleNavigateToMultiKeyOverview above goes
+  // to. That button was wrongly reusing handleNavigateToMultiKeyOverview
+  // (reported 7 Sep 2026: "Go Back... doesn't take the user where it says").
+  // Mirrors the exact same room-override-clear + hash-write pattern as that
+  // function, just targeting 'edit_property' instead of 'dashboard'.
+  const handleBackToEditPropertyFromRoom = () => {
+    setSelectedRoomSlugOverride(null);
+    // EditPropertyPage (the parent-level rooms list) only renders under
+    // `!selectedRoomSlugOverride && activeTab === 'edit_property'` (see render
+    // below) - so both must land here together.
+    setActiveTab('edit_property');
+    setActiveMenuItemKey('edit_property');
+    // Same hash-clearing guard as handleNavigateToMultiKeyOverview above -
+    // without it the "restore room view on refresh" effect (keyed on
+    // selectedRoomSlugOverride) re-reads the still-room hash the instant we
+    // null the override and snaps straight back into the room.
+    if (typeof window !== 'undefined' && window.location.hash.replace('#', '').split('/')[0] !== 'edit_property') {
+      window.location.hash = '#edit_property';
+    }
+  };
+
   const handleNavigateToRoom = (roomSlug: string, initialTab: TabType = 'dashboard') => {
     sessionStorage.setItem('artists_farm_active_tab', initialTab);
     sessionStorage.setItem('artists_farm_active_menu_key', roomSlug);
@@ -2538,6 +2563,7 @@ ${itemsStr}
                   selectedRoomSlug={selectedRoomSlugOverride}
                   onNavigateToRoom={handleNavigateToRoom}
                   onBackToOverview={handleNavigateToMultiKeyOverview}
+                  onBackToEditProperty={handleBackToEditPropertyFromRoom}
                   activeTab={activeTab}
                   setActiveTab={handleNavigateTab}
                   guests={guests}
@@ -2625,6 +2651,7 @@ ${itemsStr}
                       selectedRoomSlug={null}
                       onNavigateToRoom={handleNavigateToRoom}
                       onBackToOverview={handleNavigateToMultiKeyOverview}
+                  onBackToEditProperty={handleBackToEditPropertyFromRoom}
                       activeTab={activeTab}
                       setActiveTab={handleNavigateTab}
                       guests={guests}

@@ -63,6 +63,11 @@ interface MultiKeyPropertyOverviewProps {
   propertySlug: string;
   onNavigateToRoom: (roomSlug: string) => void;
   onBackToOverview?: () => void;
+  // "Go Back" on THIS room's own Edit Room screen (below) needs a different
+  // destination than onBackToOverview above - the parent property's Edit
+  // Property page (its rooms list), not the Dashboard/calendar overview. See
+  // that button's own onClick comment for the full story (7 Sep 2026).
+  onBackToEditProperty?: () => void;
   selectedRoomSlug?: string | null;
   activeTab?: string;
   setActiveTab?: (tab: string) => void;
@@ -113,6 +118,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
   propertySlug,
   onNavigateToRoom: _onNavigateToRoom,
   onBackToOverview: _onBackToOverview,
+  onBackToEditProperty: _onBackToEditProperty,
   selectedRoomSlug,
   activeTab,
   setActiveTab,
@@ -374,12 +380,20 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                     <button
                       type="button"
                       onClick={() => {
-                        if (_onBackToOverview) {
-                          _onBackToOverview();
+                        // Was wrongly calling _onBackToOverview (the Dashboard/
+                        // calendar overview) - it "took the user where it said"
+                        // (a real Dashboard), just not the one this button
+                        // implies: the parent property's own Edit Property page
+                        // (its rooms list), which is what you were on right
+                        // before opening this specific room's Edit Room form.
+                        // Fixed 7 Sep 2026 (reported: "Go Back... doesn't take
+                        // the user where it says").
+                        if (_onBackToEditProperty) {
+                          _onBackToEditProperty();
                         } else if (setActiveTab) {
-                          setActiveTab('dashboard');
+                          setActiveTab('edit_property');
                         } else {
-                          window.location.hash = '#dashboard';
+                          window.location.hash = '#edit_property';
                         }
                       }}
                       className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-md group hover:border-slate-300"
