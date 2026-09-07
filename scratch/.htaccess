@@ -1,0 +1,19 @@
+# Deny-all for the whole scratch/ tree - ad-hoc debug/probe scripts and test
+# screenshots, never meant to be served. Emergency fix (8 Sep 2026): 57 files
+# under here (php/js probes + PNG screenshots) were committed and deployed to
+# staging's docroot with zero auth, including scripts that dump real guest
+# rows/rate tables to anyone who requested the URL - confirmed live (HTTP 200,
+# no auth) before this file existed. Matches the exact same convention
+# `_unwanted/.htaccess` already uses for this identical class of bug (see git
+# history: "chore: archive unauthenticated debug/admin scripts out of the web
+# root", 11 Aug 2026) - that incident should have made this rule obvious the
+# second time, but scratch/ had no guard of its own until now.
+<IfModule mod_authz_core.c>
+    # Apache 2.4+
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    # Apache 2.2 and earlier
+    Order deny,allow
+    Deny from all
+</IfModule>

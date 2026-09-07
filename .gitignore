@@ -22,6 +22,14 @@ tests/e2e/.auth/
 # by default now - no more per-file `!exceptions` needed as the suite grows.
 /test_*.php
 /fix_*.php
+# scratch/ - ad-hoc debug/probe scripts and screenshots. A blanket `git add -A`
+# swept 57 of these (incl. unauthenticated DB-dump scripts) into a real commit
+# and onto staging's docroot with zero auth (8 Sep 2026 incident - see
+# scratch/.htaccess's own comment). Ignored now so that can't repeat; the
+# .htaccess itself is still tracked so it actually deploys and protects the
+# directory even if something ends up in it again.
+/scratch/*
+!/scratch/.htaccess
 temp_*.sql
 temp_*.js
 temp_dump*.sql
