@@ -37,7 +37,6 @@ interface SaasPricingConfig {
   base_monthly_fee: number;
   per_key_monthly_fee: number;
   trial_days: number;
-  annual_discount_pct: number;
   gst_rate_pct: number;
   currency_symbol: string;
 }
@@ -128,8 +127,8 @@ const DEFAULT_CADENCE_STAGES: Record<string, CadenceStageConfig> = {
     stage_type: 'day_age',
     title: '14 Days Remaining in Your Trial',
     email_subject: 'Halfway through your Ground Code Trial — 14 Days Remaining',
-    email_body: "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}.",
-    telegram_message: "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Sync your Airbnb / OTA calendars in Settings.",
+    email_body: "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nConnect your Airbnb and Booking.com channels via the Channex Channel Manager in Settings → Channel Connections to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}.",
+    telegram_message: "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Connect your OTA channels via Channex in Settings → Channel Connections.",
   },
   day_21_renewal_plan: {
     enabled: true,
@@ -201,7 +200,6 @@ export const OnboardingManager: React.FC = () => {
     base_monthly_fee: 1499,
     per_key_monthly_fee: 50,
     trial_days: 30,
-    annual_discount_pct: 20,
     gst_rate_pct: 18,
     currency_symbol: '₹',
   });
@@ -365,7 +363,7 @@ export const OnboardingManager: React.FC = () => {
       .replace(/{temp_passcode}/g, '492815')
       .replace(/{expiry_date}/g, '26 Sep 2026')
       .replace(/{expires_at}/g, '26 Sep 2026')
-      .replace(/{plan_type}/g, 'Growth')
+      .replace(/{plan_type}/g, 'Monthly')
       .replace(/{days_left}/g, '30')
       .replace(/{support_phone}/g, support.support_phone);
   };
@@ -375,9 +373,9 @@ export const OnboardingManager: React.FC = () => {
   const calc10RoomsGst = calc10RoomsMonthly * (pricing.gst_rate_pct / 100);
   const calc10RoomsTotal = calc10RoomsMonthly + calc10RoomsGst;
 
-  const calc25RoomsAnnual = (pricing.base_monthly_fee + (25 * pricing.per_key_monthly_fee)) * 12 * (1 - (pricing.annual_discount_pct / 100));
-  const calc25RoomsGst = calc25RoomsAnnual * (pricing.gst_rate_pct / 100);
-  const calc25RoomsTotal = calc25RoomsAnnual + calc25RoomsGst;
+  const calc25RoomsMonthly = (pricing.base_monthly_fee + (25 * pricing.per_key_monthly_fee));
+  const calc25RoomsGst = calc25RoomsMonthly * (pricing.gst_rate_pct / 100);
+  const calc25RoomsTotal = calc25RoomsMonthly + calc25RoomsGst;
 
   if (isLoading) {
     return (
@@ -478,7 +476,7 @@ export const OnboardingManager: React.FC = () => {
                   <option value="day_1_welcome">Day 1 — Welcome & Quick Setup Checklist</option>
                   <option value="day_3_features">Day 3 — Cash Drawer & Petty Cash Control</option>
                   <option value="day_7_milestone">Day 7 — 1-Week Operations Milestone</option>
-                  <option value="day_14_halfway">Day 14 — Halfway Check-in & iCal Sync</option>
+                  <option value="day_14_halfway">Day 14 — Halfway Check-in &amp; Channex Channels</option>
                   <option value="day_21_renewal_plan">Day 21 — 9 Days Left: Subscription Plan</option>
                   <option value="day_23_7d_notice">Day 23 — ⚠️ 7-Day Expiry Notice</option>
                   <option value="day_28_2d_notice">Day 28 — 🚨 48-Hour Urgent Notice</option>
@@ -910,7 +908,7 @@ export const OnboardingManager: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <Input
                   type="number"
                   min={7}
@@ -918,14 +916,6 @@ export const OnboardingManager: React.FC = () => {
                   label="Default Trial (Days)"
                   value={pricing.trial_days}
                   onChange={(e) => setPricing({ ...pricing, trial_days: Number(e.target.value) })}
-                />
-                <Input
-                  type="number"
-                  min={0}
-                  max={50}
-                  label="Annual Discount (%)"
-                  value={pricing.annual_discount_pct}
-                  onChange={(e) => setPricing({ ...pricing, annual_discount_pct: Number(e.target.value) })}
                 />
                 <Input
                   type="number"
@@ -971,26 +961,26 @@ export const OnboardingManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* 25-Room Property Annual Breakdown */}
+              {/* 25-Room Property Monthly Breakdown */}
               <div className="p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">25-Room Resort (Annual with {pricing.annual_discount_pct}% Off)</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">25-Room Resort (Monthly Billing)</span>
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                    ₹{calc25RoomsTotal.toLocaleString('en-IN')}/yr
+                    ₹{calc25RoomsTotal.toLocaleString('en-IN')}/mo
                   </span>
                 </div>
                 <div className="text-2xs text-slate-500 space-y-0.5">
                   <div className="flex justify-between">
-                    <span>Monthly Rate:</span>
-                    <span>₹{pricing.base_monthly_fee + (25 * pricing.per_key_monthly_fee)}</span>
+                    <span>Base Fee:</span>
+                    <span>₹{pricing.base_monthly_fee}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Annual Discount ({pricing.annual_discount_pct}% off):</span>
-                    <span>-₹{((pricing.base_monthly_fee + (25 * pricing.per_key_monthly_fee)) * 12 * (pricing.annual_discount_pct / 100)).toFixed(0)}</span>
+                    <span>25 Keys @ ₹{pricing.per_key_monthly_fee}/key:</span>
+                    <span>₹{25 * pricing.per_key_monthly_fee}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Total with GST:</span>
-                    <span>₹{calc25RoomsTotal.toLocaleString('en-IN')}</span>
+                    <span>GST ({pricing.gst_rate_pct}%):</span>
+                    <span>₹{calc25RoomsGst.toFixed(0)}</span>
                   </div>
                 </div>
               </div>

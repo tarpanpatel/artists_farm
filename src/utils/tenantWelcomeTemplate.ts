@@ -15,9 +15,15 @@ export interface WelcomeTemplateVariable {
 
 export const TENANT_WELCOME_VARIABLES: WelcomeTemplateVariable[] = [
   { token: '{tenant_name}', label: 'Tenant Name' },
+  { token: '{property_name}', label: 'Property Name' },
   { token: '{login_url}', label: 'Login URL' },
   { token: '{username}', label: 'Username (Phone)' },
   { token: '{temp_passcode}', label: 'Temporary Passcode' },
+  { token: '{expiry_date}', label: 'Trial Expiry Date (welcome messages)' },
+  { token: '{expires_at}', label: 'Subscription Expiry Date (cadence messages)' },
+  { token: '{plan_type}', label: 'Current Plan Type (e.g. Monthly)' },
+  { token: '{days_left}', label: 'Days Left in Trial' },
+  { token: '{support_phone}', label: 'Support Phone Number' },
 ];
 
 export const DEFAULT_TENANT_WELCOME_TEMPLATE =

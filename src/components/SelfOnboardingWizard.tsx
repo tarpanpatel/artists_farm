@@ -299,7 +299,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                 <span>What happens after 30 days?</span>
               </div>
               <p className="leading-relaxed">
-                Zero automatic charges. We will notify you 7 days prior to expiry. You can choose a monthly/annual plan or your dashboard seamlessly pauses in read-only mode with all guest data preserved.
+                Zero automatic charges. We will notify you 7 days prior to expiry. You can choose a monthly plan or your dashboard seamlessly pauses in read-only mode with all guest data preserved.
               </p>
             </div>
           </div>

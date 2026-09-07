@@ -1246,7 +1246,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   style={{ height: `${dynamicHeight}px` }}
                 >
                   {/* Room Name */}
-                  <div className="w-24 min-w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-xs sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
+                  <div className="w-24 min-w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-[10px] sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
                     {room.name}
                   </div>
 

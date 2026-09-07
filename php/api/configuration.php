@@ -768,8 +768,8 @@ function getDefaultTrialCadenceStages(): array {
             'stage_type' => 'day_age',
             'title' => '14 Days Remaining in Your Trial',
             'email_subject' => 'Halfway through your Ground Code Trial — 14 Days Remaining',
-            'email_body' => "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}.",
-            'telegram_message' => "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Sync your Airbnb / OTA calendars in Settings.",
+            'email_body' => "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nConnect your Airbnb and Booking.com channels via the Channex Channel Manager in Settings → Channel Connections to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}.",
+            'telegram_message' => "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Connect your OTA channels via Channex in Settings → Channel Connections.",
         ],
         'day_21_renewal_plan' => [
             'enabled' => true,
@@ -831,7 +831,6 @@ function getSaasPlatformConfig(PDO $pdo) {
             'base_monthly_fee' => 1499,
             'per_key_monthly_fee' => 50,
             'trial_days' => 30,
-            'annual_discount_pct' => 20,
             'gst_rate_pct' => 18,
             'currency_symbol' => '₹',
         ];

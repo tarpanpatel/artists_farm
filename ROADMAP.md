@@ -35,10 +35,10 @@ This document tracks identified bugs, pending backend API integrations, and upco
     - Telegram strictly for staff operations; WhatsApp strictly for guests.
     - No fake placeholder URLs (`domain.com/path`).
 - **Action Items to Audit & Tally**:
-  - [ ] **Tally Setup Checklist**: Map each onboarding email/cadence step (Day 1, Day 3, Day 7, Day 14, Day 21, Day 28, Day 30) against actual live screens and routes in the frontend app.
-  - [ ] **Replace Legacy Mentions**: Sweep `OnboardingManager.tsx` templates to remove all mentions of iCal / Calendar Sync feeds, replacing them with Channex Channel Manager and direct booking links.
-  - [ ] **Sync Default Modules & Rate Cards**: Verify that initial modules provisioned during onboarding (`property_modules`) and default expenses/bills match the rate cards and defaults shown in Root Admin.
-  - [ ] **Verify Dynamic Template Tags**: Ensure all dynamic placeholders in Root Dashboard (`{tenant_name}`, `{property_name}`, `{login_url}`, `{expires_at}`, `{support_phone}`) correctly populate with real data across all communication channels.
+  - [x] **Tally Setup Checklist**: Map each onboarding email/cadence step (Day 1, Day 3, Day 7, Day 14, Day 21, Day 28, Day 30) against actual live screens and routes in the frontend app.
+  - [x] **Replace Legacy Mentions**: Sweep `OnboardingManager.tsx` templates to remove all mentions of iCal / Calendar Sync feeds, replacing them with Channex Channel Manager and direct booking links.
+  - [x] **Sync Default Modules & Rate Cards**: Verify that initial modules provisioned during onboarding (`property_modules`) and default expenses/bills match the rate cards and defaults shown in Root Admin.
+  - [x] **Verify Dynamic Template Tags**: Ensure all dynamic placeholders in Root Dashboard (`{tenant_name}`, `{property_name}`, `{login_url}`, `{expires_at}`, `{support_phone}`) correctly populate with real data across all communication channels.
 
 ### 💬 Custom WhatsApp-Powered SaaS Customer Support Desk (Planned - Sep 2026)
 

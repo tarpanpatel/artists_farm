@@ -42,7 +42,7 @@ interface SubscriptionSummary {
   plan_name: string;
   subscription_status: SubscriptionStatus;
   subscription_expires_at: string | null;
-  billing_cycle: 'monthly' | 'quarterly' | 'annual' | null;
+  billing_cycle: 'monthly' | 'quarterly' | null;
   key_count: number;
   open_request: ClosureRequest | null;
 }
@@ -50,7 +50,6 @@ interface SubscriptionSummary {
 interface SaasPricing {
   base_monthly_fee: number;
   per_key_monthly_fee: number;
-  annual_discount_pct: number;
   gst_rate_pct: number;
   currency_symbol: string;
 }
@@ -169,14 +168,6 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
   const monthlyEstimate = pricing ? pricing.base_monthly_fee + extraKeys * pricing.per_key_monthly_fee : null;
   const monthlyGst = pricing && monthlyEstimate !== null ? monthlyEstimate * (pricing.gst_rate_pct / 100) : null;
   const monthlyTotal = monthlyEstimate !== null && monthlyGst !== null ? monthlyEstimate + monthlyGst : null;
-  // Matches OnboardingManager.tsx's own annual formula exactly (base+per-key,
-  // times 12, less the configured annual discount, plus GST) - this screen
-  // and Root Admin's own pricing calculator must never show two different
-  // numbers for the same tenant.
-  const annualEstimate =
-    pricing && monthlyEstimate !== null ? monthlyEstimate * 12 * (1 - pricing.annual_discount_pct / 100) : null;
-  const annualGst = pricing && annualEstimate !== null ? annualEstimate * (pricing.gst_rate_pct / 100) : null;
-  const annualTotal = annualEstimate !== null && annualGst !== null ? annualEstimate + annualGst : null;
 
   const trialDayNumber = daysRemaining !== null ? Math.min(TRIAL_DAYS, Math.max(0, TRIAL_DAYS - daysRemaining)) : null;
 
@@ -298,11 +289,6 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
             <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-100 dark:border-gray-700">
               <span>Monthly</span><span>{pricing.currency_symbol}{monthlyTotal.toFixed(0)}</span>
             </div>
-            {summary.billing_cycle === 'annual' && annualTotal !== null && (
-              <div className="flex justify-between text-gray-500 dark:text-gray-400">
-                <span>Annual equivalent</span><span>{pricing.currency_symbol}{annualTotal.toFixed(0)}</span>
-              </div>
-            )}
           </div>
         </div>
       )}
