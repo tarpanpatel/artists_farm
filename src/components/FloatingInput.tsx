@@ -148,6 +148,11 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
               {rightIcon}
             </div>
           )}
+          {helperText && !errorMessage && !successMessage && (
+            <div className={`absolute inset-y-0 ${rightIcon ? 'end-8' : 'end-2.5'} flex items-center z-20`}>
+              <FieldHelpPopover content={helperText} title={label} />
+            </div>
+          )}
         </div>
 
         {/* Validation Error / Success / Helper Text */}
@@ -159,7 +164,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <p id={`${inputId}-success`} className="mt-1.5 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
-        ) : helperText ? (
+        ) : (!label && helperText) ? (
           <div id={`${inputId}-helper`} className="mt-1.5 flex items-center">
             <FieldHelpPopover content={helperText} title={label} />
           </div>

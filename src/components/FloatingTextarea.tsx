@@ -93,6 +93,11 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           >
             {label}
           </label>
+          {helperText && !errorMessage && !successMessage && (
+            <div className="absolute top-2.5 end-2.5 flex items-center z-20">
+              <FieldHelpPopover content={helperText} title={label} />
+            </div>
+          )}
         </div>
 
         {/* Validation Error / Success / Helper Text */}
@@ -104,7 +109,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           <p id={`${textareaId}-success`} className="mt-1.5 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
-        ) : helperText ? (
+        ) : (!label && helperText) ? (
           <div id={`${textareaId}-helper`} className="mt-1.5 flex items-center">
             <FieldHelpPopover content={helperText} title={label} />
           </div>

@@ -722,6 +722,7 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
                 // multi-key property silently ignore its tenant default - the
                 // exact class of bug the tenant_is_demo comment above records.
                 'tenant_whatsapp_voucher_template' => getTenantVoucherTemplate($pdo, (int)$property['tenant_id']),
+                'system_whatsapp_voucher_template' => getSystemVoucherTemplate($pdo),
                 'room_count' => count($rooms),
                 'rooms' => $rooms,
                 'shared_data' => $shared_data

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { Modal } from 'flowbite-react';
 import { useToast } from './ToastContext';
-import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X, Sparkles } from './icons/FlowbiteIcons';
+import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X, Sparkles, FileText, RotateCcw } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -105,10 +106,66 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   // same as a property whose override happens to equal the inherited text, and
   // the two must stay distinguishable or every save would freeze a copy.
   const [voucherTemplate, setVoucherTemplate] = useState(property.whatsapp_voucher_template || '');
-  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
-  const inheritedTemplate = property.tenant_whatsapp_voucher_template || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE;
-  const inheritedFrom = property.tenant_whatsapp_voucher_template ? 'your account' : 'the Ground Code default';
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [modalTemplate, setModalTemplate] = useState('');
+  const voucherTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const rootDefaultTemplate =
+    ((property as any).system_whatsapp_voucher_template && (property as any).system_whatsapp_voucher_template.trim()) ||
+    DEFAULT_WHATSAPP_VOUCHER_TEMPLATE;
+
+  const inheritedTemplate =
+    (property.tenant_whatsapp_voucher_template && property.tenant_whatsapp_voucher_template.trim()) ||
+    rootDefaultTemplate;
+
+  const inheritedFrom = property.tenant_whatsapp_voucher_template
+    ? t('whatsapp_template_inherited_tenant', 'your account default')
+    : (property as any).system_whatsapp_voucher_template
+    ? t('whatsapp_template_inherited_root', 'the Root Dashboard default')
+    : t('whatsapp_template_inherited_system', 'the Ground Code default');
+
   const effectiveTemplate = voucherTemplate.trim() || inheritedTemplate;
+
+  const handleOpenVoucherModal = () => {
+    setModalTemplate(voucherTemplate.trim() || inheritedTemplate);
+    setShowVoucherModal(true);
+  };
+
+  const handleResetToRootDefault = () => {
+    setModalTemplate(rootDefaultTemplate);
+  };
+
+  const insertTokenAtCursor = (token: string) => {
+    const ta = voucherTextareaRef.current;
+    if (!ta) {
+      setModalTemplate((prev) => (prev ? prev + ' ' + token : token));
+      return;
+    }
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    const before = ta.value.substring(0, start);
+    const after = ta.value.substring(end);
+    setModalTemplate(before + token + after);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + token.length, start + token.length);
+    }, 0);
+  };
+
+  const handleDropToken = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const token = e.dataTransfer.getData('text/plain');
+    if (token) insertTokenAtCursor(token);
+  };
+
+  const handleSaveVoucherModal = () => {
+    if (modalTemplate.trim() === inheritedTemplate.trim()) {
+      setVoucherTemplate('');
+    } else {
+      setVoucherTemplate(modalTemplate.trim());
+    }
+    setShowVoucherModal(false);
+  };
   // Guest-facing arrival info (6 Sep 2026). NOT gated on !isRoom like the
   // contact/address block below: in a multi-key property each room is its own
   // Airbnb listing with its own network and its own house manual, so these are
@@ -974,59 +1031,31 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                 {t('whatsapp_preview_subtitle', 'Updates live as you edit the fields above - this is exactly what guests receive.')}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowTemplateEditor((prev) => !prev)}
-              className="ms-auto text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer shrink-0"
-            >
-              {showTemplateEditor
-                ? t('whatsapp_template_hide', 'Done editing')
-                : t('whatsapp_template_edit', 'Edit wording')}
-            </button>
-          </div>
-
-          {showTemplateEditor && (
-            <div className="mb-3 space-y-2">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {voucherTemplate.trim()
-                  ? t('whatsapp_template_overridden', 'This property has its own wording.')
-                  : `${t('whatsapp_template_inherited', 'Currently using')} ${inheritedFrom}. ${t('whatsapp_template_inherited_hint', 'Type below to give this property its own wording.')}`}
-              </p>
-              <textarea
-                value={voucherTemplate}
-                onChange={(e) => setVoucherTemplate(e.target.value)}
-                placeholder={inheritedTemplate}
-                rows={12}
-                spellCheck={false}
-                className="w-full px-3 py-2 text-[11px] font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-              />
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 space-y-1">
-                <p className="font-semibold text-slate-700 dark:text-slate-300">
-                  {t('whatsapp_template_tokens_heading', 'Available tokens - each is replaced with the real value:')}
-                </p>
-                {/* A line whose token has no value is dropped ENTIRELY rather than
-                    sent with an empty label - see renderWhatsappVoucherTemplate's
-                    optionalTokens. That is what lets one template serve clients
-                    with different policies: a property that takes no deposit
-                    simply never fills it in and never shows the line. */}
-                <p className="font-mono break-words leading-relaxed">
-                  {VOUCHER_TOKENS.join('  ')}
-                </p>
-                <p>
-                  {t('whatsapp_template_optional_note', 'A line whose value is empty is removed automatically, so you can keep lines you only sometimes use.')}
-                </p>
-              </div>
+            <div className="ms-auto flex items-center gap-2">
               {voucherTemplate.trim() && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={() => setVoucherTemplate('')}
-                  className="text-[10px] font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                  className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
                 >
-                  {t('whatsapp_template_reset', 'Remove this property\'s wording and go back to')} {inheritedFrom}
-                </button>
+                  <RotateCcw className="w-3 h-3 mr-1" />
+                  <span>{t('reset_to_default_button', 'Reset')}</span>
+                </Button>
               )}
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                onClick={handleOpenVoucherModal}
+                className="flex items-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>{t('whatsapp_template_edit', 'Edit wording')}</span>
+              </Button>
             </div>
-          )}
+          </div>
           <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
             <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
               <MessageQrPreview
@@ -1055,6 +1084,124 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           {submitLabel || t('save_changes_button', 'Save Changes')}
         </Button>
       </div>
+      {/* Edit Booking Confirmation Voucher Modal */}
+      <Modal
+        show={showVoucherModal}
+        onClose={() => setShowVoucherModal(false)}
+        size="2xl"
+        dismissible
+        className="z-50"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <MessageCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white m-0 leading-tight">
+                {t('edit_booking_voucher_modal_title', 'Edit Booking Confirmation Voucher')}
+              </h3>
+              <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5 m-0">
+                {t('edit_booking_voucher_modal_subtitle', 'Customise the message guests receive when a booking is created or shared on WhatsApp.')}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowVoucherModal(false)}
+            aria-label={t('close_button', 'Close')}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+            <span className="text-slate-600 dark:text-slate-300">
+              {modalTemplate.trim() && modalTemplate.trim() !== inheritedTemplate.trim()
+                ? t('whatsapp_template_overridden', 'Custom wording active for this property.')
+                : `${t('whatsapp_template_inherited', 'Currently matching')} ${inheritedFrom}.`}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="xs"
+              onClick={handleResetToRootDefault}
+              className="flex items-center gap-1 shrink-0 text-slate-700 dark:text-slate-200"
+            >
+              <RotateCcw className="w-3 h-3 text-slate-500" />
+              <span>{t('reset_to_root_default_button', 'Reset to Root Dashboard Default')}</span>
+            </Button>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+              {t('voucher_template_text_label', 'Voucher Template Text')}
+            </label>
+            <textarea
+              ref={voucherTextareaRef}
+              value={modalTemplate}
+              onChange={(e) => setModalTemplate(e.target.value)}
+              placeholder={inheritedTemplate}
+              rows={13}
+              spellCheck={false}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }}
+              onDrop={handleDropToken}
+              className="w-full px-3 py-2 text-xs font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-2xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                {t('available_tokens_label', 'Available Tokens (Click to insert or drag & drop):')}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-700/80">
+              {VOUCHER_TOKENS.map((token) => (
+                <span
+                  key={token}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', token);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  onClick={() => insertTokenAtCursor(token)}
+                  className="text-2xs font-mono px-2 py-1 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-grab active:cursor-grabbing select-none transition-colors"
+                >
+                  + {token}
+                </span>
+              ))}
+            </div>
+            <p className="text-2xs text-slate-500 dark:text-slate-400">
+              {t('whatsapp_template_optional_note', 'A line whose value is empty is removed automatically, so you can keep lines you only sometimes use.')}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowVoucherModal(false)}
+          >
+            {t('cancel_button', 'Cancel')}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={handleSaveVoucherModal}
+          >
+            {t('apply_changes_button', 'Apply Changes')}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

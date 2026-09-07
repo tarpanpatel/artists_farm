@@ -72,13 +72,16 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           // mb-2/mt-2 match Flowbite's own canonical form spacing (27 Aug 2026, same report
           // as Input.tsx's identical fix - see that file's comment for the full why).
-          <div className="mb-2 block">
+          <div className="mb-2 flex items-center gap-1.5">
             <FlowbiteLabel
               htmlFor={textareaId}
               className="text-xs font-semibold text-slate-700 dark:text-slate-200 textarea__label"
             >
               {label}
             </FlowbiteLabel>
+            {helperText && !errorMessage && (
+              <FieldHelpPopover content={helperText} title={label} />
+            )}
           </div>
         )}
         <FlowbiteTextarea
@@ -94,7 +97,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           <p id={`${textareaId}-error`} className="mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 textarea__error">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMessage}
           </p>
-        ) : helperText ? (
+        ) : (!label && helperText) ? (
           <div id={`${textareaId}-helper`} className="mt-2 flex items-center textarea__helper">
             <FieldHelpPopover content={helperText} title={label} />
           </div>

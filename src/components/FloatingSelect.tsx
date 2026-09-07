@@ -89,13 +89,18 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
           <div className="absolute inset-y-0 end-0 pe-2.5 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
             <ChevronDown className="w-4 h-4" />
           </div>
+          {helperText && !errorMessage && (
+            <div className="absolute inset-y-0 end-8 flex items-center z-20">
+              <FieldHelpPopover content={helperText} title={label} />
+            </div>
+          )}
         </div>
 
         {errorMessage ? (
           <p id={`${selectId}-error`} className="mt-1.5 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 font-medium">
             <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {errorMessage}
           </p>
-        ) : helperText ? (
+        ) : (!label && helperText) ? (
           <div id={`${selectId}-helper`} className="mt-1.5 flex items-center">
             <FieldHelpPopover content={helperText} title={label} />
           </div>

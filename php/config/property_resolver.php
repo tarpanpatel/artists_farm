@@ -211,6 +211,21 @@ function getTenantVoucherTemplate(PDO $pdo, int $tenantId): ?string {
     }
 }
 
+/**
+ * Global default booking confirmation voucher template configured in Root Dashboard
+ * under system_settings (key: default_whatsapp_voucher_template).
+ */
+function getSystemVoucherTemplate(PDO $pdo): ?string {
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'default_whatsapp_voucher_template' LIMIT 1");
+        $stmt->execute();
+        $val = $stmt->fetchColumn();
+        return ($val !== false && $val !== null && trim((string)$val) !== '') ? (string)$val : null;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
 // Shared by router.php's get_current_property case AND getMultiKeyProperty() (28 Aug 2026 -
 // the latter previously hand-built its own response array with no tenant_is_demo/is_public_demo
 // at all, so any MULTI_KEY property's currentProperty - which DataLoader.tsx REPLACES wholesale

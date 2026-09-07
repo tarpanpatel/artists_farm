@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from 'flowbite-react';
-import { Mail, Send, Loader2, CheckCircle2, XCircle } from './icons/FlowbiteIcons';
+import { Mail, Send, Loader2, CheckCircle2, XCircle, MessageCircle } from './icons/FlowbiteIcons';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { TENANT_WELCOME_VARIABLES, DEFAULT_TENANT_WELCOME_TEMPLATE, renderTenantWelcomeTemplate } from '../utils/tenantWelcomeTemplate';
+import {
+  DEFAULT_WHATSAPP_VOUCHER_TEMPLATE,
+  VOUCHER_TOKENS,
+  renderWhatsappVoucherTemplate,
+} from '../utils/whatsappVoucherTemplate';
 import { t } from '../i18n/en';
 
 /**
@@ -29,6 +34,7 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
   const [fromEmail, setFromEmail] = useState('');
   const [encryption, setEncryption] = useState<'tls' | 'ssl' | 'none'>('tls');
   const [template, setTemplate] = useState('');
+  const [voucherTemplate, setVoucherTemplate] = useState('');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +66,12 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
           setFromName(d.smtp_from_name || 'Ground Code');
           setFromEmail(d.smtp_from_email || '');
           setEncryption((d.smtp_encryption as any) || 'tls');
-          setTemplate(d.tenant_welcome_template || '');
+          let welcomeTpl = d.tenant_welcome_template || '';
+          if (welcomeTpl.includes('??')) {
+            welcomeTpl = DEFAULT_TENANT_WELCOME_TEMPLATE;
+          }
+          setTemplate(welcomeTpl);
+          setVoucherTemplate(d.default_whatsapp_voucher_template || '');
         }
       } catch (err) {
         console.error('Failed to load email settings:', err);
@@ -94,6 +105,7 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
         saveSetting('smtp_from_email', fromEmail),
         saveSetting('smtp_encryption', encryption),
         saveSetting('tenant_welcome_template', template),
+        saveSetting('default_whatsapp_voucher_template', voucherTemplate),
       ]);
       setSaveStatus(results.every(Boolean) ? 'success' : 'error');
     } catch (err) {
@@ -283,7 +295,7 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
           <h3 className="text-base font-bold text-gray-900 dark:text-white email-settings-panel__section-title">{t('tenant_welcome_message_heading', 'Tenant Welcome Message')}</h3>
           <button
             type="button"
-            onClick={() => setTemplate('')}
+            onClick={() => setTemplate(DEFAULT_TENANT_WELCOME_TEMPLATE)}
             className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-semibold"
           >
             {t('reset_to_default_button', 'Reset to default')}
@@ -298,22 +310,32 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
           onChange={(e) => setTemplate(e.target.value)}
           placeholder={DEFAULT_TENANT_WELCOME_TEMPLATE}
           rows={10}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const token = e.dataTransfer.getData('text/plain');
+            if (token) setTemplate((prev) => (prev || DEFAULT_TENANT_WELCOME_TEMPLATE) + ' ' + token);
+          }}
           className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-2">
-          {t('template_helper_text', 'Blank = use the default shown above as a placeholder. Click a variable to insert it:')}
+          {t('template_helper_text', 'Click a variable to insert it, or drag and drop into text:')}
         </p>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {TENANT_WELCOME_VARIABLES.map((v) => (
-            <button
+            <span
               key={v.token}
-              type="button"
-              onClick={() => setTemplate((prev) => (prev || DEFAULT_TENANT_WELCOME_TEMPLATE) + v.token)}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', v.token);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              onClick={() => setTemplate((prev) => (prev || DEFAULT_TENANT_WELCOME_TEMPLATE) + ' ' + v.token)}
               title={v.label}
-              className="text-xs font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-pointer"
+              className="text-xs font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-grab active:cursor-grabbing border border-indigo-200 dark:border-indigo-800 select-none transition-colors"
             >
               + {v.token}
-            </button>
+            </span>
           ))}
         </div>
 
@@ -328,8 +350,98 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
             })}
           </pre>
         </details>
+      </Card>
 
-        <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700">
+      {/* Guest Booking Confirmation Voucher Template (Root Global Default) */}
+      <Card className="border-gray-200 dark:border-gray-700 email-settings-panel__section">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-emerald-500" />
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              {t('default_voucher_template_heading', 'Guest Booking Confirmation Voucher Template')}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVoucherTemplate(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE)}
+            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-semibold"
+          >
+            {t('reset_to_default_button', 'Reset to default')}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          {t('default_voucher_template_description', 'Global default booking confirmation voucher sent to guests across all properties. Property managers can customize their own wording or reset back to this default version at any time.')}
+        </p>
+
+        <Textarea
+          value={voucherTemplate}
+          onChange={(e) => setVoucherTemplate(e.target.value)}
+          placeholder={DEFAULT_WHATSAPP_VOUCHER_TEMPLATE}
+          rows={14}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const token = e.dataTransfer.getData('text/plain');
+            if (token) setVoucherTemplate((prev) => (prev || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE) + ' ' + token);
+          }}
+          className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-2">
+          {t('voucher_tokens_drag_hint', 'Click to insert or drag and drop tokens into the message:')}
+        </p>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {VOUCHER_TOKENS.map((tok) => (
+            <span
+              key={tok}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', tok);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              onClick={() => setVoucherTemplate((prev) => (prev || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE) + ' ' + tok)}
+              className="text-xs font-mono px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 cursor-grab active:cursor-grabbing border border-emerald-200 dark:border-emerald-800 transition-colors select-none"
+            >
+              + {tok}
+            </span>
+          ))}
+        </div>
+
+        <details className="text-xs">
+          <summary className="cursor-pointer text-gray-500 dark:text-gray-400 font-semibold">{t('preview_sample_data_label', 'Preview with sample data')}</summary>
+          <pre className="mt-2 whitespace-pre-wrap font-mono bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-gray-700 dark:text-gray-300">
+            {renderWhatsappVoucherTemplate(voucherTemplate || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, {
+              booking_id: '1042',
+              guest_name: 'Tarpan Patel',
+              guest_phone: '98765 43210',
+              room_name: 'Room 101',
+              checkin_date: '08/08/2026',
+              checkin_time: '14:00',
+              checkout_date: '11/08/2026',
+              checkout_time: '11:00',
+              nights: '3',
+              guest_count: '5',
+              guest_breakdown: '3 adults, 2 children',
+              room_tariff: '4,500.00',
+              advance_paid: '2,000.00',
+              payments_list: '₹1,000 on 15/07/2026 (UPI), ₹1,000 on 25/07/2026 (Cash)',
+              balance_due: '2,500.00',
+              security_deposit: '',
+              address: 'Jaipur, Rajasthan, India',
+              contact_phone: '98765 43210',
+              maps_link: 'https://maps.google.com/?q=26.9124,75.7873',
+              upi_id: 'hotel@upi',
+              upi_qr_code_url: '',
+              other_notes: 'Quiet hours start at 10 PM. Swimming pool accessible from 7 AM to 8 PM.',
+              wifi_network: 'GroundCode_Guest',
+              wifi_password: 'welcome_guest',
+              house_manual: 'https://ground-code.com/manual/jaipur',
+              voucher_link: 'https://ground-code.com/voucher/demo',
+              property_name: 'Patel Colony Resort',
+            })}
+          </pre>
+        </details>
+
+        <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <Button
             variant="primary"
             size="md"
@@ -338,6 +450,11 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
           >
             {isSaving ? t('saving_ellipsis_button', 'Saving...') : t('save_settings_button', 'Save Settings')}
           </Button>
+          {saveStatus === 'success' && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" /> Settings saved successfully
+            </span>
+          )}
         </div>
       </Card>
     </div>

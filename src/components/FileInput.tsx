@@ -67,13 +67,16 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
     return (
       <div className={`app-file-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} file-input`}>
         {label && (
-          <div className="mb-1.5 block">
+          <div className="mb-1.5 flex items-center gap-1.5">
             <FlowbiteLabel
               htmlFor={inputId}
               className="app-label text-xs font-semibold text-slate-700 dark:text-slate-200 file-input__label"
             >
               {label}
             </FlowbiteLabel>
+            {helperText && !errorMessage && (
+              <FieldHelpPopover content={helperText} title={label} />
+            )}
           </div>
         )}
         <FlowbiteFileInput
@@ -90,7 +93,7 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
           <p id={`${inputId}-error`} className="app-error-text mt-1 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 file-input__error">
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
           </p>
-        ) : helperText ? (
+        ) : (!label && helperText) ? (
           <div id={`${inputId}-helper`} className="app-helper-text mt-1 flex items-center file-input__helper">
             <FieldHelpPopover content={helperText} title={label} />
           </div>

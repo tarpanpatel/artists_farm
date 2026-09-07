@@ -4581,6 +4581,7 @@ switch ($action) {
                     }
                 } catch (Exception $eTenantSub) {}
             }
+            $currentProperty['system_whatsapp_voucher_template'] = getSystemVoucherTemplate($pdo);
             echo json_encode(['status' => 'success', 'data' => $currentProperty]);
         }
         break;
