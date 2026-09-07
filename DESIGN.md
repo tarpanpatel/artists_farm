@@ -155,41 +155,50 @@ All single monthly calendars across the platform (such as single-room booking ca
 Canonical reference: Airbnb's host Multicalendar (`airbnb.co.in/multicalendar`).
 
 **On ANY calendar that draws a stay as a bar/capsule across date cells, the capsule must NOT fill
-the check-in and check-out cells edge to edge. It occupies the last 35% of the check-in cell and
-the first 35% of the check-out cell.**
+the check-in and check-out cells edge to edge - and the two ends are NOT the same size.** A stay's
+check-in edge shows the last 70% of its check-in cell; its check-out edge shows only the first 20%
+of its check-out cell. The two are asymmetric on purpose - see "Why asymmetric" below.
 
 Given a stay whose check-in falls on column index `S` and check-out on column index `E`, with
-`w` = one cell's width:
+`w` = one cell's width, `v_in` = 0.7 (check-in visible fraction) and `v_out` = 0.2 (check-out
+visible fraction):
 
 ```
-left  = (S + 0.65) * w         /* starts 65% into the arrival cell   */
-width = (E - S - 0.3) * w      /* ends   35% into the departure cell */
+left  = (S + (1 - v_in)) * w              /* = (S + 0.3) * w - starts 30% into the arrival cell */
+width = (E - S - (1 - v_in - v_out)) * w  /* = (E - S - 0.1) * w */
 ```
 
-A 2-night stay 11 → 13 therefore spans 1.7 cells, not 2 and not 3.
+A 2-night stay 11 → 13 therefore spans 1.9 cells; a 1-night stay spans 0.9 cell - both far fuller
+than an edge-to-edge fill would suggest they should be trimmed, while still leaving a gap (below).
 
-**Why 35%, not higher:** the two visible slivers (checkout side + checkin side) share ONE date
-cell on a same-day turnover, so they only avoid overlapping when they sum to under 100% - any
-value over 50% per side guarantees the two capsules visually merge on that shared day (a 30%/70%
-split still sums to 100%, leaving literally zero gap; anything above that overlaps). 35%/35%
-sums to 70%, leaving a real 30%-of-a-cell gap - the largest fill that still reads as a gap rather
-than a seam. **Both sides use the same fraction, always** - an asymmetric split (checkout side
-bigger than checkin side, on the reasoning that a checkout-morning guest occupied more of the day)
-does not help: it still consumes the same shared-cell budget and only worsens whichever side is
-larger.
+**Why asymmetric, not the same fraction on both ends:** a stay's check-out edge and the NEXT
+stay's check-in edge only ever share ONE cell, on a same-day turnover - and their visible
+fractions only need to sum to under 100% for a gap to survive there
+(`v_out + (1 - v_in) < 1`, i.e. `v_out < v_in`), regardless of the individual values. 20%+70%=90%,
+leaving a real 10%-of-a-cell gap. This lets the check-in side be pushed much fuller than a
+symmetric split could ever allow at the same gap size - which also happens to match the real-world
+asymmetry the "Why" section below describes: a departing guest's morning-only presence on the
+check-out day is a small tail; an arriving guest's afternoon-through-next-morning presence on the
+check-in day is most of it.
 
-**Revision history.** Both revisions happened 7 Sep 2026, the same day this rule was added, after
-two rounds of live comparison against Airbnb's own calendar:
-1. Original cut: 20% per side (2-night stay = 1.4 cells) - correct in shape but too aggressive in
-   practice, making a 1-night stay (0.4 cell wide) read as a stray sliver rather than a booking.
-2. First correction: dropped to 10% per side - this was a mistake in the wrong direction (a
-   smaller per-side fraction shrinks the visible capsule further, it does not grow it - a 1-night
-   stay at 10%/side is 0.2 cell wide, thinner than the original 20% version, not fuller). Caught
-   when the user proposed even larger numbers (30%/70%) and the arithmetic was re-checked from
-   scratch.
-3. Current: 35% per side (2-night = 1.7 cells, 1-night = 0.7 cell) - the corrected, symmetric fix
-   for "capsules should occupy more space, closer to Airbnb's fuller bars," landing at the largest
-   value that still leaves a same-day-turnover gap (see "Why 35%" above).
+**Revision history.** All four revisions happened 7 Sep 2026, the same day this rule was added,
+across live comparisons against Airbnb's own calendar and its own host Multicalendar screenshots:
+1. Original cut: 20% per side, symmetric (2-night stay = 1.4 cells) - correct in shape but too
+   aggressive, making a 1-night stay (0.4 cell wide) read as a stray sliver rather than a booking.
+2. First correction: dropped to 10% per side - a mistake in the wrong direction (a smaller
+   per-side fraction shrinks the capsule further, it does not grow it - 10%/side is thinner than
+   the original 20%, not fuller). Caught when larger numbers were proposed next and the arithmetic
+   was re-checked from scratch.
+3. Second correction: 35% per side, symmetric (2-night = 1.7 cells, 1-night = 0.7 cell) - fixed
+   the direction, but its own write-up here claimed an asymmetric split "does not help - it
+   still consumes the same shared-cell budget" - that claim was wrong (see "Why asymmetric"
+   above: it is specifically the size relationship between the two sides that matters, not their
+   sum against some fixed budget). This version briefly shipped alongside a same-day-turnover
+   marker UI in `TodayOverview.tsx` (a small combined ↔ badge + popover, added and then removed
+   the same day once the asymmetric gap below made it unnecessary).
+4. Current: asymmetric 70%/20% (2-night = 1.9 cells, 1-night = 0.9 cell) - the check-out side is
+   kept deliberately small specifically so the check-in side can be pushed much fuller than any
+   symmetric split allows at the same 10%-of-a-cell gap (see "Why asymmetric" above).
 
 **Why.** A stay does not own the whole of either end day - the guest arrives in the afternoon and
 leaves in the morning (Airbnb's own reservation detail for these listings: check-in 1:00 pm,
@@ -207,9 +216,9 @@ check-out 11:00 am). Two consequences follow, and both are the real reason for t
 (`existing_start < new_end && existing_end > new_start`) exactly as it is - do not "fix" overlap
 detection to match the visuals, and do not treat the check-out date as an occupied night. A stay
 11 → 13 occupies the nights of the 11th and 12th; that is what any highlight, count or conflict
-check must use. The 35% inset is how that fact is drawn, not a change to what it means.
+check must use. The asymmetric inset is how that fact is drawn, not a change to what it means.
 
-**Where the 35% inset applies:** the two surfaces that actually draw stay capsules -
+**Where the asymmetric inset applies:** the two surfaces that actually draw stay capsules -
 `TodayOverview.tsx` and `OperationalDashboard.tsx` (both render them into a separate absolutely
 positioned overlay; grep `data-cal-capsule`). Any new capsule surface joins this list.
 

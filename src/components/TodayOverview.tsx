@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, ArrowRightLeft } from './icons/FlowbiteIcons';
+import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -122,12 +122,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // setOtaConversionTarget's own write-only comment) - only the popover's
   // trigger mode is the actual parity gap being closed here.
   const [openOtaPopoverId, setOpenOtaPopoverId] = useState<string | null>(null);
-  // Same-day-turnover combined marker (7 Sep 2026, explicit request): even
-  // with the capsule inset above leaving a real gap, a checkout tail and a
-  // check-in head sitting right next to each other on one shared date can
-  // still be fiddly to tell apart or tap precisely on a narrow mobile
-  // column - see the marker rendered near `turnoverPoints` below.
-  const [openTurnoverPopoverId, setOpenTurnoverPopoverId] = useState<string | null>(null);
 
   /**
    * Airbnb-Multi-Calendar-style rectangular selection (6 Sep 2026, explicit
@@ -1241,33 +1235,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               const minRowHeight = 44;
               const dynamicHeight = Math.max(minRowHeight, maxLanes * laneHeight + 12);
 
-              // Same-day turnover marker (7 Sep 2026, explicit request): find
-              // every pair of items in this room where one's checkout date
-              // equals the other's check-in date - i.e. the exact case the
-              // capsule inset above exists to keep legible. Rendered as one
-              // small combined marker on the shared date instead of relying
-              // on the two capsules' own tails/heads alone, since on a
-              // narrow mobile column those can still be fiddly to tell apart
-              // or tap precisely even with a real gap between them. O(n^2)
-              // over this room's own items only - always a small handful in
-              // the visible window, never worth a smarter algorithm.
-              type TurnoverPoint = {
-                dateStr: string;
-                dayIdx: number;
-                outInfo: (typeof timelineLanesInfo)[number];
-                inInfo: (typeof timelineLanesInfo)[number];
-              };
-              const turnoverPoints: TurnoverPoint[] = [];
-              for (const outInfo of timelineLanesInfo) {
-                for (const inInfo of timelineLanesInfo) {
-                  if (outInfo === inInfo) continue;
-                  if (!isSameDate(outInfo.item.end, inInfo.item.start)) continue;
-                  const dayIdx = getDaysDiff(outInfo.item.end, windowStart);
-                  if (dayIdx < 0 || dayIdx >= daysArray.length) continue; // shared date outside the visible window
-                  turnoverPoints.push({ dateStr: formatDateStr(outInfo.item.end), dayIdx, outInfo, inInfo });
-                }
-              }
-
               return (
                 <div
                   key={room.id}
@@ -1354,31 +1321,27 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       {timelineLanesInfo.map((info, idx) => {
                         const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + info.lane * laneHeight + (laneHeight - capsuleHeight) / 2;
                         // DESIGN.md "Booking Capsules Must Inset Into the Check-in and
-                        // Check-out Cells" - current value 35% per side, see that file's
-                        // own revision-history note for how this number was reached (a
-                        // same-day turnover's checkout tail + checkin head share ONE date
-                        // cell, so they only avoid overlapping when the two visible
-                        // fractions sum under 100% - 35%+35%=70% leaves a real 30%-of-a-
-                        // cell gap, the fullest a capsule can get while that gap still
-                        // reads as a gap, not a seam). CAPSULE_INSET_FRACTION below is
-                        // that visible fraction v - NOT how much is trimmed away, so a
-                        // BIGGER v means a FULLER capsule (this was flipped backwards in
-                        // an earlier pass here - 10% was mistakenly thinner than the
-                        // original 20%, not fuller as intended; caught when even larger
-                        // numbers were proposed and the arithmetic was re-checked). left =
-                        // (S + (1-v)) * w, width = (E - S - (1-2v)) * w, where
-                        // S = startCol - 1 (0-based check-in column) and E - S =
-                        // info.span (nights). No minimum-width floor here on purpose - a
-                        // 1-night stay's true inset width (0.7 * columnWidth at v=0.35) is
-                        // already close to a full cell; clamping it wider would push the
-                        // capsule past the v mark and recreate the exact collision this
-                        // rule exists to prevent. A tiny floor guards only against a
-                        // literal zero/negative width, never against "too thin to read" -
-                        // detail lives in the click popover, not the bar.
-                        const CAPSULE_INSET_FRACTION = 0.35;
+                        // Check-out Cells" - now ASYMMETRIC per that file's revision
+                        // history: a stay's check-in edge shows the last 70% of its
+                        // check-in cell (v_in), its check-out edge shows only the first
+                        // 20% of its check-out cell (v_out). On a same-day turnover the
+                        // two share one date cell - the outgoing capsule's tail occupies
+                        // [0%, 20%] of it, the incoming capsule's head occupies
+                        // [30%, 100%] (100% - 70%) - the two never touch, and a real
+                        // 10%-of-a-cell gap (20%+10%+70%=100%) always separates them.
+                        // left = (S + (1 - v_in)) * w = (startCol - v_in) * w [S =
+                        // startCol - 1], width = (span - (1 - v_in - v_out)) * w. No
+                        // minimum-width floor on purpose - even a 1-night stay is 90% of
+                        // a cell wide at these values (1 - (1-0.9) = 0.9), so there is no
+                        // "too thin to read" case left to guard against; a floor here
+                        // would only exist to push a capsule past the safe boundary
+                        // above, which is exactly what this rule prevents. A tiny floor
+                        // still guards against a literal zero/negative width.
+                        const CAPSULE_CHECKIN_VISIBLE = 0.7; // v_in
+                        const CAPSULE_CHECKOUT_VISIBLE = 0.2; // v_out
                         const commonStyle = {
-                          left: `${(info.startCol - CAPSULE_INSET_FRACTION) * columnWidth}px`,
-                          width: `${Math.max(2, (info.span - (1 - 2 * CAPSULE_INSET_FRACTION)) * columnWidth)}px`,
+                          left: `${(info.startCol - CAPSULE_CHECKIN_VISIBLE) * columnWidth}px`,
+                          width: `${Math.max(2, (info.span - (1 - CAPSULE_CHECKIN_VISIBLE - CAPSULE_CHECKOUT_VISIBLE)) * columnWidth)}px`,
                           top: `${topOffset}px`,
                           height: `${capsuleHeight}px`,
                         };
@@ -1519,82 +1482,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               </span>
                               <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                             </div>
-                          </Popover>
-                        );
-                      })}
-
-                      {/* Same-day turnover markers (7 Sep 2026, explicit
-                          request): a small combined marker on the shared
-                          date, on top of the two capsules (z-30 above
-                          their z-20), so a fiddly tap between two adjacent
-                          tails/heads isn't the only way to tell them apart -
-                          tapping it lists both and lets you pick. Deliberately
-                          doesn't touch the two capsules' own name/rate labels;
-                          this is additive, not a replacement for them. */}
-                      {turnoverPoints.map((tp, tpIdx) => {
-                        const badgeLane = Math.min(tp.outInfo.lane, tp.inInfo.lane);
-                        const topOffset = (dynamicHeight - maxLanes * laneHeight) / 2 + badgeLane * laneHeight + (laneHeight - capsuleHeight) / 2;
-                        const turnoverKey = `turnover-${tp.dateStr}-${tpIdx}`;
-                        const describeItem = (info: (typeof timelineLanesInfo)[number]) =>
-                          info.item.kind === 'guest' ? info.item.guest.guestName : info.item.label;
-                        const viewItem = (info: (typeof timelineLanesInfo)[number]) => {
-                          if (info.item.kind === 'guest') {
-                            setSelectedGuest(info.item.guest);
-                          } else {
-                            const ownDays = new Set(expandRangeToDayStrings(info.item.block.event_start, info.item.block.event_end));
-                            setOtaConversionTarget({
-                              block: info.item.block,
-                              roomName: room.name,
-                              blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
-                            });
-                          }
-                          setOpenTurnoverPopoverId(null);
-                        };
-                        return (
-                          <Popover
-                            key={turnoverKey}
-                            trigger="click"
-                            placement="top"
-                            open={openTurnoverPopoverId === turnoverKey}
-                            onOpenChange={(isOpen) => setOpenTurnoverPopoverId(isOpen ? turnoverKey : null)}
-                            title={
-                              <h4 className="font-semibold text-gray-900 dark:text-white text-xs">
-                                {t('turnover_popover_title', '2 bookings on {{date}}').replace('{{date}}', formatDateDDMMYYYY(tp.dateStr))}
-                              </h4>
-                            }
-                            content={
-                              <div className="w-56 text-xs divide-y divide-gray-100 dark:divide-gray-700/60">
-                                <button
-                                  type="button"
-                                  onClick={() => viewItem(tp.outInfo)}
-                                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                                >
-                                  <span className="text-gray-500 dark:text-gray-400">{t('turnover_checkout_label', 'Checks out')}</span>
-                                  <span className="font-semibold text-gray-900 dark:text-white truncate ml-2">{describeItem(tp.outInfo)}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => viewItem(tp.inInfo)}
-                                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
-                                >
-                                  <span className="text-gray-500 dark:text-gray-400">{t('turnover_checkin_label', 'Checks in')}</span>
-                                  <span className="font-semibold text-gray-900 dark:text-white truncate ml-2">{describeItem(tp.inInfo)}</span>
-                                </button>
-                              </div>
-                            }
-                          >
-                            <button
-                              type="button"
-                              data-cal-capsule="1"
-                              aria-label={t('turnover_marker_label', 'Same-day turnover - view both bookings')}
-                              className="absolute flex items-center justify-center w-6 h-6 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md ring-2 ring-white dark:ring-slate-900 pointer-events-auto z-30 cursor-pointer hover:scale-110 transition-transform"
-                              style={{
-                                left: `${tp.dayIdx * columnWidth + columnWidth / 2 - 12}px`,
-                                top: `${topOffset + capsuleHeight / 2 - 12}px`,
-                              }}
-                            >
-                              <ArrowRightLeft className="w-3.5 h-3.5" />
-                            </button>
                           </Popover>
                         );
                       })}
