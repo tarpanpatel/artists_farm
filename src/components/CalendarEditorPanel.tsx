@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Plus, Lock, Check } from './icons/FlowbiteIcons';
+import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { ToggleSwitch } from './ToggleSwitch';
 import { useToast } from './ToastContext';
@@ -86,6 +86,7 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
 }) => {
   const { showToast } = useToast();
 
+  const [activeTab, setActiveTab] = useState<'rates' | 'booking'>('rates');
   const [price, setPrice] = useState('');
   const [minStay, setMinStay] = useState('');
   const [note, setNote] = useState('');
@@ -110,6 +111,7 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
     setMinStay('');
     setNote('');
     setAvailability(isMixed ? null : isAllBlocked ? 'blocked' : 'available');
+    setActiveTab('rates');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectionKey]);
 
@@ -121,12 +123,21 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
     return `${Math.round(priceLow)}-${Math.round(priceHigh)}`;
   }, [priceLow, priceHigh]);
 
+  const checkoutDateStr = useMemo(() => {
+    if (!selection) return '';
+    const d = new Date(selection.endDate + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, [selection]);
+
   if (!selection) return null;
 
   const unitLabel =
     selection.roomNames.length === 1
       ? selection.roomNames[0]
       : `${selection.roomNames.length} units`;
+
+  const isSingleAvailableUnit = selection.roomNames.length === 1 && bookedCells === 0;
 
   const currentAvailability = isMixed ? null : isAllBlocked ? 'blocked' : 'available';
   const availabilityChanged = availability !== null && availability !== currentAvailability;
@@ -225,22 +236,37 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {/* Which units, named. Never a bare count - a price about to reach
-            Airbnb should say out loud what it is about to change. */}
-        {selection.roomNames.length > 1 && (
-          <div className="flex flex-wrap gap-1">
-            {selection.roomNames.map((n) => (
-              <span
-                key={n}
-                className="px-2 py-0.5 text-2xs font-semibold rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-              >
-                {n}
-              </span>
-            ))}
-          </div>
-        )}
+      {/* Mode Switcher Tabs */}
+      <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 shrink-0">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/80 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => setActiveTab('rates')}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              activeTab === 'rates'
+                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-600'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Rates &amp; Availability</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('booking')}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+              activeTab === 'booking'
+                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-600'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>New Booking</span>
+          </button>
+        </div>
+      </div>
 
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Dates, still editable - a one-day nudge is faster typed than redrawn. */}
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
@@ -267,141 +293,239 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
           </label>
         </div>
 
-        {bookedCells > 0 && (
-          <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-2.5">
-            {bookedCells} night{bookedCells === 1 ? ' in this selection is' : 's in this selection are'} already
-            booked. Those stay exactly as they are &mdash; anything you save here applies to the free nights only.
-          </p>
-        )}
+        {activeTab === 'rates' && (
+          <>
+            {/* Which units, named. Never a bare count - a price about to reach
+                Airbnb should say out loud what it is about to change. */}
+            {selection.roomNames.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {selection.roomNames.map((n) => (
+                  <span
+                    key={n}
+                    className="px-2 py-0.5 text-2xs font-semibold rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                  >
+                    {n}
+                  </span>
+                ))}
+              </div>
+            )}
 
-        {onAddBooking && (
-          <Button variant="primary" block leftIcon={<Plus className="w-4 h-4" />} onClick={onAddBooking}>
-            Add booking for these dates
-          </Button>
-        )}
+            {bookedCells > 0 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-2.5">
+                {bookedCells} night{bookedCells === 1 ? ' in this selection is' : 's in this selection are'} already
+                booked. Those stay exactly as they are &mdash; anything you save here applies to the free nights only.
+              </p>
+            )}
 
-        {/* --- Availability --- */}
-        <div className="space-y-2">
-          <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Availability
-          </h4>
-          {isMixed && availability === null && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              Some of these nights are blocked and some are open. Pick one &mdash; it applies to all{' '}
-              {nights * Math.max(1, selection.roomIds.length)} of them.
-            </p>
-          )}
-          <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
-              {availability === 'blocked' ? (
-                <Lock className="w-3.5 h-3.5 text-slate-500" />
-              ) : (
-                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            {/* --- Availability --- */}
+            <div className="space-y-2">
+              <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Availability
+              </h4>
+              {isMixed && availability === null && (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Some of these nights are blocked and some are open. Pick one &mdash; it applies to all{' '}
+                  {nights * Math.max(1, selection.roomIds.length)} of them.
+                </p>
               )}
-              {availability === 'blocked' ? 'Blocked' : 'Available'}
-            </span>
-            {/* Available when on, Blocked when off (7 Sep 2026, explicit
-                request replacing the two radios above). A mixed selection
-                (availability === null) still renders on - Save stays gated
-                by the same isMixed/availability===null guard in
-                handleSave() either way, so this is a visual default only,
-                never an implicit "apply Available" - the amber note above
-                already says a real choice is required first. */}
-            <ToggleSwitch
-              enabled={availability !== 'blocked'}
-              onChange={(enabled) => setAvailability(enabled ? 'available' : 'blocked')}
-            />
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
+                  {availability === 'blocked' ? (
+                    <Lock className="w-3.5 h-3.5 text-slate-500" />
+                  ) : (
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  {availability === 'blocked' ? 'Blocked' : 'Available'}
+                </span>
+                <ToggleSwitch
+                  enabled={availability !== 'blocked'}
+                  onChange={(enabled) => setAvailability(enabled ? 'available' : 'blocked')}
+                />
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {availability === 'blocked'
+                  ? 'Nobody can book. Use it for repairs, or when you need the place yourself.'
+                  : 'Guests can book these nights.'}
+              </p>
+            </div>
+
+            {/* --- Nightly price --- */}
+            <div>
+              <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Nightly price
+              </h4>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm pointer-events-none">
+                  &#8377;
+                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder={priceHint}
+                  className="w-full ps-7 pe-3 py-2.5 text-base font-semibold rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
+                {priceHint
+                  ? priceHint.includes('-')
+                    ? `Currently between ₹${priceHint.split('-')[0]} and ₹${priceHint.split('-')[1]}. Leave empty to keep it.`
+                    : `Currently ₹${priceHint}. Leave empty to keep it.`
+                  : 'Leave empty to keep the current price.'}
+              </p>
+            </div>
+
+            {/* --- Minimum stay --- */}
+            <div>
+              <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Minimum stay
+              </h4>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={minStay}
+                  onChange={(e) => setMinStay(e.target.value)}
+                  placeholder="Any"
+                  className="w-24 px-3 py-2 text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  nights, for guests arriving on these dates
+                </span>
+              </div>
+            </div>
+
+            {/* --- Note --- */}
+            <div>
+              <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                Note <span className="font-normal normal-case tracking-normal text-slate-400">(optional)</span>
+              </h4>
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. Diwali weekend"
+                maxLength={120}
+                className="w-full px-3 py-2 text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {onOpenAllRules && (
+              <button
+                type="button"
+                onClick={onOpenAllRules}
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                See all pricing rules and base prices
+              </button>
+            )}
+          </>
+        )}
+
+        {activeTab === 'booking' && (
+          <div className="space-y-4">
+            {selection.roomNames.length > 1 ? (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>Multiple Rooms Selected</span>
+                </div>
+                <p>
+                  Direct guest reservations can only be created for 1 room at a time. You currently have{' '}
+                  <span className="font-semibold">{selection.roomNames.length} rooms</span> selected ({selection.roomNames.join(', ')}).
+                </p>
+                <p className="text-amber-700 dark:text-amber-400">
+                  Please select dates within a single room row on the calendar grid to create a direct booking.
+                </p>
+              </div>
+            ) : bookedCells > 0 ? (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>Dates Already Booked</span>
+                </div>
+                <p>
+                  {bookedCells} {bookedCells === 1 ? 'night' : 'nights'} in this date range already {bookedCells === 1 ? 'has' : 'have'} an active booking.
+                </p>
+                <p className="text-amber-700 dark:text-amber-400">
+                  Please choose open, unbooked dates to create a new reservation.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 space-y-3">
+                  <div className="text-xs font-bold uppercase tracking-wider text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Reservation Summary</span>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
+                      <span className="text-slate-500 dark:text-slate-400">Room</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{unitLabel}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
+                      <span className="text-slate-500 dark:text-slate-400">Check-in</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{shortDate(selection.startDate)}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
+                      <span className="text-slate-500 dark:text-slate-400">Check-out</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{shortDate(checkoutDateStr)}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
+                      <span className="text-slate-500 dark:text-slate-400">Duration</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{nights} night{nights === 1 ? '' : 's'}</span>
+                    </div>
+                    {priceLow > 0 && (
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-500 dark:text-slate-400">Estimated Tariff</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          &#8377;{(Math.round(priceLow) * nights).toLocaleString('en-IN')}
+                          {priceHigh > priceLow ? ` \u2013 \u20B9${(Math.round(priceHigh) * nights).toLocaleString('en-IN')}` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Opens the reservation form with these dates and room prefilled to record guest contact info, custom tariff, and advance payment.
+                </p>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {availability === 'blocked'
-              ? 'Nobody can book. Use it for repairs, or when you need the place yourself.'
-              : 'Guests can book these nights.'}
-          </p>
-        </div>
-
-        {/* --- Nightly price --- */}
-        <div>
-          <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-            Nightly price
-          </h4>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm pointer-events-none">
-              &#8377;
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder={priceHint}
-              className="w-full ps-7 pe-3 py-2.5 text-base font-semibold rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1">
-            {priceHint
-              ? priceHint.includes('-')
-                ? `Currently between ₹${priceHint.split('-')[0]} and ₹${priceHint.split('-')[1]}. Leave empty to keep it.`
-                : `Currently ₹${priceHint}. Leave empty to keep it.`
-              : 'Leave empty to keep the current price.'}
-          </p>
-        </div>
-
-        {/* --- Minimum stay --- */}
-        <div>
-          <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-            Minimum stay
-          </h4>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              value={minStay}
-              onChange={(e) => setMinStay(e.target.value)}
-              placeholder="Any"
-              className="w-24 px-3 py-2 text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-            />
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              nights, for guests arriving on these dates
-            </span>
-          </div>
-        </div>
-
-        {/* --- Note --- */}
-        <div>
-          <h4 className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-            Note <span className="font-normal normal-case tracking-normal text-slate-400">(optional)</span>
-          </h4>
-          <input
-            type="text"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. Diwali weekend"
-            maxLength={120}
-            className="w-full px-3 py-2 text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        {onOpenAllRules && (
-          <button
-            type="button"
-            onClick={onOpenAllRules}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-          >
-            See all pricing rules and base prices
-          </button>
         )}
       </div>
 
       {/* Footer */}
       <div className="p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:pb-4 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-900">
-        <Button variant="primary" block onClick={handleSave} disabled={isSaving || !canSave}>
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-        <p className="text-2xs text-slate-400 dark:text-slate-500 text-center mt-2">
-          Sent to Airbnb, Booking.com &amp; your own booking page
-        </p>
+        {activeTab === 'rates' ? (
+          <>
+            <Button variant="primary" block onClick={handleSave} disabled={isSaving || !canSave}>
+              {isSaving ? 'Saving...' : 'Save Rates & Sync'}
+            </Button>
+            <p className="text-2xs text-slate-400 dark:text-slate-500 text-center mt-2">
+              Sent to Airbnb, Booking.com &amp; your own booking page
+            </p>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="primary"
+              block
+              leftIcon={<Plus className="w-4 h-4" />}
+              onClick={onAddBooking}
+              disabled={!isSingleAvailableUnit || !onAddBooking}
+            >
+              Create Booking for these Dates
+            </Button>
+            <p className="text-2xs text-slate-400 dark:text-slate-500 text-center mt-2">
+              Opens the reservation form to enter guest details &amp; advance payment
+            </p>
+          </>
+        )}
       </div>
     </aside>
   );

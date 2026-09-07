@@ -51,6 +51,8 @@ export const Users = wrap(getOutline('UsersGroup') || getOutline('User'));
 export const User = wrap(getOutline('User'));
 export const UserRound = User;
 export const UserCheck = wrap(getOutline('UserCheck') || getOutline('User'));
+export const UserPlus = wrap(getOutline('UserAdd') || getOutline('User'));
+export const Tag = wrap(getOutline('Tag'));
 
 // Kitchen & Hospitality
 export const Utensils = wrap(getOutline('Utensils') || getOutline('Cart'));
