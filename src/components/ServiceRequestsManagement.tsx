@@ -563,7 +563,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       >
         <div className="flex items-center gap-2 flex-wrap">
           <PageHeaderButton variant="secondary" onClick={() => setIsManageModalOpen(true)} icon={Settings}>
-            Manage Custom Types
+            Manage Service Types
           </PageHeaderButton>
           <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
             {t('new_request_button', 'New Request')}
@@ -774,7 +774,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
                   onClick={() => setIsManageModalOpen(true)}
                   className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
                 >
-                  <Settings className="w-3.5 h-3.5" /> Manage Custom Types
+                  <Settings className="w-3.5 h-3.5" /> Manage Service Types
                 </button>
               </div>
               <StyledSelect
@@ -787,11 +787,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
 
             {newRequestType === '__CUSTOM__' && (
-              <div className="service-requests-management__form-group p-3.5 bg-blue-50/70 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+              <div className="service-requests-management__form-group space-y-3 pt-1">
                 <div>
                   <Input
                     label="Custom Service / Charge Name *"
-                    labelClassName="text-blue-900 dark:text-blue-200"
                     id="customRequestLabel"
                     type="text"
                     value={customRequestLabel}
@@ -861,7 +860,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
             <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Manage Custom Service Types
+            Manage Service Types
           </span>
           <button
             type="button"
@@ -872,10 +871,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Add New Custom Type Inline Form */}
-          <form onSubmit={handleCreateNewType} className="p-3.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
-            <h4 className="font-semibold text-xs text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+        <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          {/* Add New Service Type Form (Brought out, no blue block) */}
+          <form onSubmit={handleCreateNewType} className="space-y-3 pb-5 border-b border-gray-200 dark:border-gray-700">
+            <h4 className="font-semibold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Add New Service / Charge Type
             </h4>
             <div>
@@ -918,7 +917,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
             <div className="flex justify-end pt-1">
               <Button type="submit" variant="primary" size="sm" disabled={isCreatingType}>
-                {isCreatingType ? 'Adding...' : '+ Add Custom Type'}
+                {isCreatingType ? 'Adding...' : '+ Add Service Type'}
               </Button>
             </div>
           </form>
@@ -926,7 +925,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           {/* List of Custom Types */}
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-              Existing Custom Service Types ({requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length})
+              Existing Service Types ({requestTypes.filter((rt) => !rt.isSystemDefault || rt.source === 'custom').length})
             </h4>
 
             <div className="space-y-2">
