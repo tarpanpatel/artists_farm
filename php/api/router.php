@@ -1189,7 +1189,13 @@ if (in_array($action, $channex_ops_actions, true)) {
 // executed, "Sign Out Terminal" silently did nothing server-side, and the
 // very next request on the same still-valid cookie re-authenticated the
 // same user. See the 'logout' case's own comment for the full story.)
-if ($action !== 'login_user' && $action !== 'logout') {
+// register_tenant_trial added 8 Sep 2026 - it establishes a brand new login
+// session the same way login_user does (registerTenantTrial() in
+// configuration.php writes $_SESSION directly), so it needs the same
+// exemption for the same reason: every write after session_write_close() is
+// silently discarded, and the account it just created came back 401 on its
+// very next request as if nobody had ever logged in.
+if ($action !== 'login_user' && $action !== 'logout' && $action !== 'register_tenant_trial') {
     session_write_close();
 }
 

@@ -647,13 +647,25 @@ function registerTenantTrial($pdo) {
 
         $pdo->commit();
 
-        // Set session state
+        // Set session state. Requires register_tenant_trial to be exempted
+        // from router.php's blanket session_write_close() (same exemption
+        // login_user already has, same reason) - found 8 Sep 2026 that it
+        // wasn't: every write below was silently discarded, so the very next
+        // request from this new account (the onboarding wizard's next step)
+        // came back 401 as if nobody had ever logged in.
         $_SESSION['user_id'] = $userId;
         $_SESSION['username'] = $phone;
         $_SESSION['full_name'] = $fullName;
         $_SESSION['role'] = 'Admin';
         $_SESSION['tenant_id'] = $tenantId;
         $_SESSION['property_id'] = $propertyId;
+        // Same cookie re-issue every other login path uses (unified_login.php)
+        // so this new session actually gets the 30-day "remember me" cookie
+        // attributes rather than whatever PHP's default automatic Set-Cookie
+        // refresh would produce.
+        if (function_exists('appSetSessionCookie')) {
+            appSetSessionCookie(session_id());
+        }
 
         // Send WhatsAPI notification if configured
         if (function_exists('sendWhatsAppTemplateMessage')) {
