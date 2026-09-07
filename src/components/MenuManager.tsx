@@ -50,9 +50,6 @@ import { t } from '../i18n/en';
 import { SYSTEM_ROLES, NAV_CATEGORIES } from '../data/appConfig';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from './ToastContext';
-import { shareTextContent } from '../utils/shareText';
-import { Share2 } from './icons/FlowbiteIcons';
 
 interface MenuManagerProps {
   foodMenu: MenuItem[];
@@ -104,12 +101,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   onUpdateNavItems,
   activeMenuItemKey,
   kitchenModuleEnabled = true,
-  propertySlug,
-  propertyName,
+  propertySlug: _propertySlug,
+  propertyName: _propertyName,
 }) => {
   const { staff } = useStaff();
   const { currentUser, activeRole } = useAuth();
-  const { showToast } = useToast();
   const getInitialMenuSubTab = (): 'food_menu' | 'nav_menu' => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '').trim().toLowerCase();
@@ -143,22 +139,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
-
-  const handleShareFoodMenu = () => {
-    if (!propertySlug) {
-      showToast('Save the property before sharing its menu link.', { type: 'warning' });
-      return;
-    }
-    const menuUrl = `${window.location.origin}/food_menu/${propertySlug}/`;
-    const message = `🍽️ Check out the menu at ${propertyName || 'our place'}!\n${menuUrl}`;
-    shareTextContent(
-      `${propertyName || 'Food'} Menu`,
-      message,
-      showToast,
-      'Menu link copied - paste it wherever you\'d like to share it.',
-      'Could not share or copy the menu link.',
-    );
-  };
 
   // Super Admin / Tenant name for passcode modal
   const tenantAdmin = staff.find(s => s.role === 'Super Admin') || staff.find(s => s.role === 'Admin') || currentUser;
@@ -642,10 +622,6 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                   </button>
                 </div>
               </div>
-
-              <Button variant="secondary" size="sm" onClick={handleShareFoodMenu} leftIcon={<Share2 className="w-4 h-4" />}>
-                <span>{t('share_food_menu_button', 'Share Food Menu')}</span>
-              </Button>
 
               <Button variant="primary" size="sm" onClick={handleOpenAddFood} leftIcon={<Plus className="w-4 h-4" />}>
                 <span>{t('add_food_menu_item_button', 'Add Food Menu Item')}</span>

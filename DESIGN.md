@@ -150,6 +150,45 @@ All single monthly calendars across the platform (such as single-room booking ca
   - Today date badge: highlighted with a blue circular badge (`inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs`).
   - Event / Booking pills: `rounded-md px-2 py-1 text-xs font-medium shadow-2xs` using Flowbite semantic color tokens (`blue`, `purple`, `emerald`, `amber`, `gray`).
 
+## Booking Capsules Must Inset Into the Check-in and Check-out Cells (added 7 Sep 2026, explicit request)
+
+Canonical reference: Airbnb's host Multicalendar (`airbnb.co.in/multicalendar`).
+
+**On ANY calendar that draws a stay as a bar/capsule across date cells, the capsule must NOT fill
+the check-in and check-out cells edge to edge. It occupies the last 20% of the check-in cell and
+the first 20% of the check-out cell.**
+
+Given a stay whose check-in falls on column index `S` and check-out on column index `E`, with
+`w` = one cell's width:
+
+```
+left  = (S + 0.8) * w          /* starts 80% into the arrival cell   */
+width = (E - S - 0.6) * w      /* ends   20% into the departure cell */
+```
+
+A 2-night stay 11 → 13 therefore spans 1.4 cells, not 2 and not 3.
+
+**Why.** A stay does not own the whole of either end day - the guest arrives in the afternoon and
+leaves in the morning (Airbnb's own reservation detail for these listings: check-in 1:00 pm,
+check-out 11:00 am). Two consequences follow, and both are the real reason for this rule:
+
+- **Same-day turnover has to stay readable.** One guest checks out on the 13th and another checks in
+  on the 13th; that is legal and routine (see CLAUDE.md's half-open overlap rule). If both capsules
+  fill the 13th edge to edge they collide into one continuous bar and read as a double-booking - the
+  single most alarming thing this app can show a property owner. Insetting leaves a visible gap that
+  says "this room turns over today."
+- **A blank-looking end cell is a lie in the other direction.** Filling the check-out cell entirely
+  also implies the room is unavailable that night, when it is in fact bookable.
+
+**This is presentation only.** The underlying availability maths stays half-open
+(`existing_start < new_end && existing_end > new_start`) exactly as it is - do not "fix" overlap
+detection to match the visuals, and do not treat the check-out date as an occupied night. A stay
+11 → 13 occupies the nights of the 11th and 12th; that is what any highlight, count or conflict
+check must use. The 20% inset is how that fact is drawn, not a change to what it means.
+
+Applies to every stay-bar surface: `TodayOverview.tsx`, `OperationalDashboard.tsx`, and the public
+booking engine's availability grid.
+
 ## Date/Time Input Fields (found 21 Aug 2026)
 
 The spec above governs full monthly **calendar views**. It says nothing about single date/time
