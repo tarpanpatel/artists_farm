@@ -15,6 +15,50 @@ import {
   Upload,
   MessageCircle,
   Calendar,
+  Users,
+  Wifi,
+  Snowflake,
+  Tv,
+  Bath,
+  ShowerHead,
+  Bed,
+  BedDouble,
+  Coffee,
+  Utensils,
+  ChefHat,
+  WashingMachine,
+  Refrigerator,
+  Microwave,
+  Fan,
+  Car,
+  ParkingCircle,
+  Dumbbell,
+  Waves,
+  Flame,
+  Droplet,
+  Plug,
+  Speaker,
+  Sofa,
+  Shirt,
+  Toilet,
+  Umbrella,
+  Leaf,
+  Lightbulb,
+  Laptop,
+  Monitor,
+  Gamepad2,
+  BookOpen,
+  Camera,
+  Wind,
+  Clock,
+  Home,
+  Info,
+  Package,
+  KeyRound,
+  ShieldCheck,
+  Music,
+  Sun,
+  Armchair,
 } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
@@ -59,6 +103,94 @@ const parseJsonArray = (raw?: string | null): any[] => {
   } catch {
     return [];
   }
+};
+
+/**
+ * Amenity key -> Flowbite icon (7 Sep 2026). Amenity keys arrive from Airbnb in
+ * SCREAMING_SNAKE_CASE ("WIRELESS_INTERNET", "AIR_CONDITIONING") and the list is
+ * open-ended, so this matches on SUBSTRINGS of the normalised key rather than
+ * trying to enumerate every value Airbnb might send - "POOL", "PRIVATE_POOL" and
+ * "SHARED_POOL" all want the same icon and none of them is worth its own entry.
+ *
+ * Order matters: the first match wins, so the more specific term goes above the
+ * more general one it contains ("HAIR_DRYER" before "DRYER", "BEACH" before
+ * "BED"). Anything unmatched falls back to a neutral check icon - never nothing,
+ * so the list stays visually even.
+ *
+ * Flowbite icons only, per DESIGN.md's standing rule. Every name here is
+ * verified to exist in ./icons/FlowbiteIcons - a missing export is a build
+ * error, not a silently blank cell.
+ */
+const AMENITY_ICON_EXACT: Record<string, React.FC<{ className?: string }>> = {
+  // Keys too short to be safe as substrings. "AC" is a real Airbnb key and is a
+  // substring of TERRACE, ACCESS, BACKUP and plenty more, so it can only ever be
+  // matched exactly - which is also why this table is consulted first.
+  AC: Snowflake,
+  TV: Tv,
+  WIFI: Wifi,
+  IRON: Shirt,
+  POOL: Waves,
+  GYM: Dumbbell,
+};
+
+const AMENITY_ICON_RULES: Array<[string[], React.FC<{ className?: string }>]> = [
+  [['WIFI', 'WIRELESS', 'INTERNET'], Wifi],
+  [['AIR_CONDITION', 'AIRCON', 'AC_UNIT', 'COOLING'], Snowflake],
+  // Safety sits ABOVE the vehicle rule on purpose: CARBON_MONOXIDE_ALARM
+  // contains "CAR", and a smoke alarm rendered with a car icon is exactly the
+  // kind of quiet nonsense a substring matcher produces if the order is casual.
+  [['SMOKE', 'CARBON_MONOXIDE', 'ALARM', 'EXTINGUISHER', 'FIRST_AID', 'SAFETY', 'SECURE'], ShieldCheck],
+  [['HEAT', 'FIREPLACE', 'GEYSER', 'WATER_HEATER'], Flame],
+  [['TV', 'TELEVISION', 'NETFLIX', 'CABLE'], Tv],
+  [['HAIR_DRYER'], Wind],
+  [['WASHER', 'WASHING', 'LAUNDRY', 'DRYER'], WashingMachine],
+  [['REFRIGERATOR', 'FRIDGE', 'FREEZER'], Refrigerator],
+  [['MICROWAVE', 'OVEN', 'TOASTER'], Microwave],
+  [['COFFEE', 'TEA', 'KETTLE'], Coffee],
+  [['KITCHEN', 'COOKING', 'STOVE'], ChefHat],
+  [['DISHES', 'SILVERWARE', 'CUTLERY', 'UTENSIL'], Utensils],
+  [['BATHTUB', 'BATH'], Bath],
+  [['SHOWER'], ShowerHead],
+  [['TOILET', 'BIDET'], Toilet],
+  [['BEACH', 'POOL', 'LAKE', 'OCEAN', 'HOT_TUB', 'JACUZZI', 'WATERFRONT'], Waves],
+  [['LINEN', 'BEDDING', 'PILLOW', 'BLANKET', 'MATTRESS'], Bed],
+  [['BED'], BedDouble],
+  [['PARKING', 'GARAGE'], ParkingCircle],
+  [['CAR', 'TRANSPORT', 'AIRPORT'], Car],
+  [['GYM', 'FITNESS', 'EXERCISE'], Dumbbell],
+  [['FAN', 'CEILING_FAN'], Fan],
+  [['DESK', 'WORKSPACE', 'LAPTOP'], Laptop],
+  [['MONITOR', 'PROJECTOR'], Monitor],
+  [['GAME', 'CONSOLE', 'PLAYSTATION', 'XBOX'], Gamepad2],
+  [['BOOK', 'READING', 'LIBRARY'], BookOpen],
+  [['SOUND', 'SPEAKER', 'STEREO', 'BLUETOOTH'], Speaker],
+  [['MUSIC', 'PIANO', 'GUITAR'], Music],
+  [['SOFA', 'LOUNGE', 'LIVING'], Sofa],
+  [['CHAIR', 'SEATING', 'PATIO', 'BALCONY', 'TERRACE'], Armchair],
+  [['HANGER', 'CLOSET', 'WARDROBE', 'IRON', 'CLOTH'], Shirt],
+  [['SHAMPOO', 'SOAP', 'TOILETRIES', 'ESSENTIAL'], Droplet],
+  // Generic water, last of the water-ish rules so HOT_TUB/WATERFRONT/WATER_HEATER
+  // have all had their more specific turn above.
+  [['WATER', 'DRINKING'], Droplet],
+  [['GARDEN', 'PLANT', 'BACKYARD', 'OUTDOOR'], Leaf],
+  [['LIGHT', 'LAMP'], Lightbulb],
+  [['POWER', 'CHARGER', 'SOCKET', 'OUTLET', 'BACKUP'], Plug],
+  [['UMBRELLA', 'RAIN'], Umbrella],
+  [['CAMERA', 'CCTV'], Camera],
+  [['LOCK', 'KEYPAD', 'SELF_CHECK', 'ENTRANCE', 'ACCESS'], KeyRound],
+  [['BREAKFAST', 'MEAL', 'FOOD'], Coffee],
+  [['SUN', 'VIEW', 'GARDEN_VIEW'], Sun],
+  [['STORAGE', 'LUGGAGE'], Package],
+  [['HOME', 'HOUSE', 'PRIVATE'], Home],
+];
+
+const amenityIconFor = (key: string): React.FC<{ className?: string }> => {
+  const k = key.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (AMENITY_ICON_EXACT[k]) return AMENITY_ICON_EXACT[k];
+  for (const [needles, Icon] of AMENITY_ICON_RULES) {
+    if (needles.some((n) => k.includes(n))) return Icon;
+  }
+  return Check;
 };
 
 /**
@@ -256,6 +388,20 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [numGuests, setNumGuests] = useState(2);
+
+  // Party size for the SEARCH toolbar (7 Sep 2026, explicit request: "not all
+  // properties have same space"). Deliberately separate from numGuests above,
+  // which belongs to the booking form: this one filters which rooms are offered,
+  // that one is what gets written on the booking. handleOpenBookingDrawer seeds
+  // numGuests from this so the guest is not asked the same question twice.
+  //
+  // Defaults to 2 to match numGuests and the app-wide "default 2 guests" rule -
+  // a filter and a form that disagree on the starting party size would be its
+  // own small bug.
+  const [partySize, setPartySize] = useState(2);
+
+  // Room whose "Unit Details" slide-over is open, or null.
+  const [detailsRoom, setDetailsRoom] = useState<PublicRoom | null>(null);
   const [specialRequests, setSpecialRequests] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -665,12 +811,31 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   };
 
   // Real-Time Available Rooms Calculation for selected Check-in & Check-out dates
+  // Largest capacity on the property, for the party-size dropdown's ceiling.
+  // Falls back to 8 only when NOTHING has a capacity set - without a fallback the
+  // dropdown would collapse to a single "1 Guest" option on a property that has
+  // not filled the field in yet, which is worse than offering a few too many.
+  const maxPropertyCapacity = useMemo(() => {
+    const caps = rooms.map((r) => Number(r.max_capacity) || 0).filter((n) => n > 0);
+    return caps.length ? Math.max(...caps) : 8;
+  }, [rooms]);
+
   const availableRoomResults = useMemo(() => {
     if (!checkinDate || !checkoutDate || checkinDate >= checkoutDate) {
       return [];
     }
 
-    const eligibleRooms = filterRoomId === 'all' ? rooms : rooms.filter((r) => r.id === filterRoomId);
+    const byRoomFilter = filterRoomId === 'all' ? rooms : rooms.filter((r) => r.id === filterRoomId);
+
+    // Party-size filter. Only excludes a room whose capacity is actually KNOWN and
+    // too small - a room with max_capacity 0/null has simply never had the field
+    // set (it is the "never answered" sentinel, see PropertyEditForm), and hiding
+    // those would empty this list entirely for any property that has not filled in
+    // capacities yet. An unknown capacity is not a small one.
+    const eligibleRooms = byRoomFilter.filter((r) => {
+      const cap = Number(r.max_capacity) || 0;
+      return cap <= 0 || cap >= partySize;
+    });
     const results: Array<{
       room: PublicRoom;
       nights: number;
@@ -707,7 +872,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
     }
 
     return results;
-  }, [checkinDate, checkoutDate, filterRoomId, rooms, occupiedBlocks, dailyRatesMap, property]);
+  }, [checkinDate, checkoutDate, filterRoomId, partySize, rooms, occupiedBlocks, dailyRatesMap, property]);
 
   // Share all available room options and rates for selected dates via WhatsApp
   const handleShareAvailability = () => {
@@ -758,11 +923,17 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
       avgNightlyRate: nights > 0 ? Math.round(total / nights) : total,
       maxCapacity: room.max_capacity ?? null,
     });
-    // numGuests defaults to 2 and persists between drawer opens, so without this
-    // a 1-guest room would open showing "2 Guests" with no such option in the
-    // list - and submit a booking for more people than the room holds.
+    // Seed the booking form from the party size the guest already chose in the
+    // toolbar (7 Sep 2026) - they picked "4 Guests" to find this room, so opening
+    // the form on anything else asks the same question twice and invites a
+    // mismatch between what was searched and what gets booked.
+    //
+    // Still clamped to the room's own capacity: numGuests persists between drawer
+    // opens, and without the clamp a 1-guest room would open showing a number its
+    // own dropdown does not offer - and submit a booking for more people than the
+    // room holds.
     const cap = Number(room.max_capacity) || 0;
-    if (cap > 0) setNumGuests((n) => Math.min(n, cap));
+    setNumGuests(cap > 0 ? Math.min(partySize, cap) : partySize);
     setFormError(null);
   };
 
@@ -1502,6 +1673,28 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                 />
               </div>
 
+              {/* Party size (7 Sep 2026). Sits beside the dates because it is the
+                  same question - "who is coming, and when" - and because rooms
+                  here differ in capacity, so dates alone do not decide what is
+                  actually bookable. Capped at the largest capacity on the
+                  property: offering "8 guests" where the biggest room sleeps 5
+                  can only ever return an empty list. */}
+              <div className="w-full sm:w-auto min-w-[150px]">
+                <StyledSelect
+                  value={String(partySize)}
+                  onChange={(val) => setPartySize(Number(val) || 1)}
+                  options={Array.from(
+                    { length: Math.max(1, maxPropertyCapacity) },
+                    (_, i) => i + 1
+                  ).map((n) => ({
+                    value: String(n),
+                    label: `${n} Guest${n > 1 ? 's' : ''}`,
+                  }))}
+                  className="w-full"
+                  buttonClassName="h-10 text-xs font-semibold min-w-[150px]"
+                />
+              </div>
+
               {rooms.length > 1 && (
                 <div className="w-full sm:w-auto min-w-[180px] sm:min-w-[200px]">
                   <StyledSelect
@@ -1636,37 +1829,27 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                             ) : null;
                           })()}
 
-                          {room.description ? (
-                            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                              {room.description}
-                            </p>
-                          ) : null}
-
-                          {(() => {
-                            const amenities = parseJsonArray(room.amenities).filter(
-                              (a): a is string => typeof a === 'string'
-                            );
-                            if (!amenities.length) return null;
-                            const shown = amenities.slice(0, 6);
-                            const rest = amenities.length - shown.length;
-                            return (
-                              <div className="mt-1.5 flex flex-wrap gap-1">
-                                {shown.map((a) => (
-                                  <span
-                                    key={a}
-                                    className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-2xs font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                                  >
-                                    {humanizeKey(a)}
-                                  </span>
-                                ))}
-                                {rest > 0 ? (
-                                  <span className="px-1 py-0.5 text-2xs font-medium text-gray-400 dark:text-gray-500">
-                                    +{rest} more
-                                  </span>
-                                ) : null}
-                              </div>
-                            );
-                          })()}
+                          {/* The description paragraph and the amenity chips used
+                              to render here (7 Sep 2026, explicit request). A room
+                              with a full Airbnb import carries a multi-line
+                              description and 20+ amenities, so five rooms of it
+                              buried the one thing this list exists to answer -
+                              price and "Book Now" - under a wall of prose. They
+                              moved wholesale into the Unit Details slide-over
+                              below; nothing was dropped, only relocated. The
+                              one-line facts summary stays, because capacity/beds/
+                              baths is exactly what a guest compares rooms ON. */}
+                          {(room.description || parseJsonArray(room.amenities).length > 0 ||
+                            parseJsonArray(room.bed_configuration).length > 0) && (
+                            <button
+                              type="button"
+                              onClick={() => setDetailsRoom(room)}
+                              className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                              Unit Details
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -1941,6 +2124,197 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
           )}
         </section>
       </main>
+
+      {/* SLIDE-OVER UNIT DETAILS DRAWER (7 Sep 2026)
+          A right slide-over, not a centred popup, per DESIGN.md's "Flowbite
+          Modals & Drawers Specification" - and matching the booking drawer
+          directly below it, since two different overlay styles on one public page
+          would read as two different products. Backdrop click closes it, wired by
+          hand (onClick on the backdrop + stopPropagation on the panel) because
+          this is a hand-rolled slide-over, not flowbite-react's <Drawer> which
+          gets that for free - the exact case DESIGN.md calls out. */}
+      {detailsRoom && (
+        <div
+          className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fade-in"
+          onClick={() => setDetailsRoom(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-white dark:bg-gray-800 h-full shadow-2xl flex flex-col border-l border-gray-200 dark:border-gray-700 animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-750 shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white truncate">{detailsRoom.name}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Unit details</p>
+              </div>
+              <button
+                onClick={() => setDetailsRoom(null)}
+                aria-label="Close unit details"
+                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+              {/* At-a-glance facts as icon tiles rather than a run-on sentence */}
+              {(() => {
+                const tiles: Array<{ icon: React.FC<{ className?: string }>; label: string; value: string }> = [];
+                if (detailsRoom.max_capacity && detailsRoom.max_capacity > 0) {
+                  tiles.push({ icon: Users, label: 'Sleeps', value: `${detailsRoom.max_capacity} guest${detailsRoom.max_capacity > 1 ? 's' : ''}` });
+                }
+                if (detailsRoom.bedrooms && detailsRoom.bedrooms > 0) {
+                  tiles.push({ icon: Home, label: 'Bedrooms', value: String(detailsRoom.bedrooms) });
+                }
+                if (detailsRoom.beds_count && detailsRoom.beds_count > 0) {
+                  tiles.push({ icon: BedDouble, label: 'Beds', value: String(detailsRoom.beds_count) });
+                }
+                if (detailsRoom.bathrooms && detailsRoom.bathrooms > 0) {
+                  tiles.push({ icon: Bath, label: 'Bathrooms', value: String(detailsRoom.bathrooms) });
+                }
+                if (!tiles.length) return null;
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {tiles.map((tl) => (
+                      <div
+                        key={tl.label}
+                        className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-center dark:border-gray-700 dark:bg-gray-900/40"
+                      >
+                        <tl.icon className="w-4 h-4 mx-auto text-blue-600 dark:text-blue-400" />
+                        <div className="mt-1 text-xs font-bold text-gray-900 dark:text-white">{tl.value}</div>
+                        <div className="text-2xs font-medium text-gray-500 dark:text-gray-400">{tl.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Description - full text here, since truncating it was the whole
+                  reason it did not belong on the card. */}
+              {detailsRoom.description ? (
+                <section>
+                  <h4 className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                    About this space
+                  </h4>
+                  <p className="whitespace-pre-line text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+                    {detailsRoom.description}
+                  </p>
+                </section>
+              ) : null}
+
+              {/* Bed configuration, per sleeping area */}
+              {(() => {
+                const bedRooms = parseJsonArray(detailsRoom.bed_configuration).filter(
+                  (br: any) => br && Array.isArray(br.beds) && br.beds.length
+                );
+                if (!bedRooms.length) return null;
+                return (
+                  <section>
+                    <h4 className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                      Sleeping arrangement
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {bedRooms.map((br: any, i: number) => (
+                        <div
+                          key={i}
+                          className="rounded-lg border border-gray-200 p-2.5 dark:border-gray-700"
+                        >
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900 dark:text-white">
+                            <Bed className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                            {humanizeKey(String(br.room_type || `Area ${i + 1}`))}
+                          </div>
+                          <p className="mt-1 text-2xs font-medium text-gray-500 dark:text-gray-400">
+                            {br.beds
+                              .filter((b: any) => b?.type)
+                              .map((b: any) => `${Number(b.quantity) || 1} ${humanizeKey(String(b.type))}`)
+                              .join(' · ')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })()}
+
+              {/* Amenities - every one, each with its own Flowbite icon. No
+                  "+N more": this drawer exists precisely to be the place with no
+                  truncation. */}
+              {(() => {
+                const amenities = parseJsonArray(detailsRoom.amenities).filter(
+                  (a): a is string => typeof a === 'string' && a.trim() !== ''
+                );
+                if (!amenities.length) return null;
+                return (
+                  <section>
+                    <h4 className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                      What this place offers
+                      <span className="ms-1.5 font-semibold text-gray-400 dark:text-gray-500">({amenities.length})</span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                      {amenities.map((a) => {
+                        const Icon = amenityIconFor(a);
+                        return (
+                          <div key={a} className="flex items-center gap-2 py-0.5">
+                            <Icon className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" />
+                            <span className="text-xs text-gray-700 dark:text-gray-300">{humanizeKey(a)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })()}
+
+              {/* Arrival / departure times */}
+              {(detailsRoom.checkin_time || detailsRoom.checkout_time) && (
+                <section>
+                  <h4 className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5">
+                    Check-in &amp; check-out
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {detailsRoom.checkin_time && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+                        <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        Check-in from {detailsRoom.checkin_time}
+                      </span>
+                    )}
+                    {detailsRoom.checkout_time && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+                        <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        Check-out by {detailsRoom.checkout_time}
+                      </span>
+                    )}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            {/* Footer - pinned, so it needs the safe-area inset per DESIGN.md's
+                bottom-anchored drawer footer rule. */}
+            <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+              <Button variant="ghost" size="sm" onClick={() => setDetailsRoom(null)}>
+                Close
+              </Button>
+              {checkinDate && checkoutDate && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const r = detailsRoom;
+                    setDetailsRoom(null);
+                    handleOpenBookingDrawer(r, checkinDate, checkoutDate);
+                  }}
+                >
+                  Book Now
+                  <ArrowRight className="w-3.5 h-3.5 ms-1.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SLIDE-OVER BOOKING DRAWER */}
       {bookingDrawerRoom && (
