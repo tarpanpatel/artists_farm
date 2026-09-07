@@ -578,8 +578,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   // scroll event.
   const [visibleMonthLabel, setVisibleMonthLabel] = useState('');
 
-  const monthYearLabel = (d: Date) => d.toLocaleString('default', { month: 'long', year: 'numeric' });
-  const monthOnlyLabel = (d: Date) => d.toLocaleString('default', { month: 'long' });
+  // 'short' per explicit request (7 Sep 2026) - "Sep 2026" not "September 2026".
+  const monthYearLabel = (d: Date) => d.toLocaleString('default', { month: 'short', year: 'numeric' });
+  const monthOnlyLabel = (d: Date) => d.toLocaleString('default', { month: 'short' });
 
   const updateVisibleMonthLabel = (days: Date[]) => {
     const el = scrollRef.current;
@@ -1411,7 +1412,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             onOpenChange={(isOpen) => setOpenGuestPopoverId(isOpen ? guestPopoverKey : null)}
                             title={
                               <div className="flex items-center justify-between gap-2">
-                                <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{guest.guestName}</h4>
+                                <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate flex items-center gap-1.5">
+                                  {isOtaBooking && (OtaIcon ? (
+                                    <OtaIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
+                                  ) : (
+                                    <Globe className="w-3 h-3 shrink-0" />
+                                  ))}
+                                  <span className="truncate">{guest.guestName}</span>
+                                </h4>
                                 {info.nightlyRate > 0 && (
                                   <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
                                     ₹{info.nightlyRate}/night
@@ -1432,6 +1440,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                       {formatDateDDMMYYYY(guest.checkinDate)} — {formatDateDDMMYYYY(guest.expectedCheckout || (guest as any).checkoutDate)}
                                     </span>
                                   </div>
+                                  {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) && (
+                                    <div className="flex items-center justify-between text-2xs">
+                                      <span className="text-gray-500 dark:text-gray-400">Source:</span>
+                                      <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1">
+                                        {OtaIcon ? (
+                                          <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
+                                        ) : (
+                                          <Globe className="w-2.5 h-2.5 shrink-0" />
+                                        )}
+                                        {guest.otaSourceLabel || guest.otaSource}
+                                      </span>
+                                    </div>
+                                  )}
                                   {hasPending && (
                                     <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
                                       <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
@@ -1475,10 +1496,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 ) : (
                                   <Globe className="w-2.5 h-2.5 shrink-0" />
                                 ))}
-                                <span className="truncate">
-                                  {getFirstName(guest.guestName)}
-                                  {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) ? ` (${guest.otaSourceLabel || guest.otaSource})` : ''}
-                                </span>
+                                <span className="truncate">{getFirstName(guest.guestName)}</span>
                               </span>
                               <span className="text-[10px] font-medium opacity-90 whitespace-nowrap leading-none shrink-0">₹{info.nightlyRate}</span>
                             </div>

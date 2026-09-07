@@ -1818,6 +1818,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       if (seg.kind === 'booking') {
                         const dayBooking = seg.info.dayBooking!;
                         const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
+                        const OtaIcon = isOtaBooking ? getOtaIcon((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource) : null;
                         const dayPendingReasons = getGuestPendingReasons(dayBooking);
                         const hasDayPending = dayPendingReasons.length > 0;
                         const popoverKey = `${dayBooking.id}-${seg.info.dateStr}`;
@@ -1830,7 +1831,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               onOpenChange={(isOpen) => setOpenBookingPopoverId(isOpen ? popoverKey : null)}
                               title={
                                 <div className="flex items-center justify-between gap-2">
-                                  <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{dayBooking.guestName}</h4>
+                                  <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate flex items-center gap-1.5">
+                                    {isOtaBooking && (OtaIcon ? (
+                                      <OtaIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />
+                                    ) : (
+                                      <Globe className="w-3 h-3 shrink-0" />
+                                    ))}
+                                    <span className="truncate">{dayBooking.guestName}</span>
+                                  </h4>
                                   {nightlyRate > 0 && (
                                     <span className="text-2xs font-bold text-blue-600 dark:text-blue-400 shrink-0">
                                       ₹{nightlyRate}/night
@@ -1853,6 +1861,19 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                         {formatDateDDMMYYYY(dayBooking.checkinDate)} → {formatDateDDMMYYYY(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
                                       </span>
                                     </div>
+                                    {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource) && (
+                                      <div className="flex items-center justify-between text-2xs">
+                                        <span className="text-gray-500 dark:text-gray-400">Source:</span>
+                                        <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1">
+                                          {OtaIcon ? (
+                                            <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
+                                          ) : (
+                                            <Globe className="w-2.5 h-2.5 shrink-0" />
+                                          )}
+                                          {(dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource}
+                                        </span>
+                                      </div>
+                                    )}
                                     {hasDayPending && (
                                       <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
                                         <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
@@ -1888,20 +1909,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 {hasDayPending && (
                                   <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/50" />
                                 )}
-                                {isOtaBooking && (() => {
-                                  const OtaIcon = getOtaIcon((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource);
-                                  return OtaIcon ? (
-                                    <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
-                                  ) : (
-                                    <Globe className="w-2.5 h-2.5 shrink-0" />
-                                  );
-                                })()}
-                                <span className="truncate font-semibold min-w-0">
-                                  {getFirstName(dayBooking.guestName)}
-                                  {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource)
-                                    ? ` (${(dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource})`
-                                    : ''}
-                                </span>
+                                {isOtaBooking && (OtaIcon ? (
+                                  <OtaIcon className="w-3 h-3 shrink-0 rounded-[2px]" />
+                                ) : (
+                                  <Globe className="w-2.5 h-2.5 shrink-0" />
+                                ))}
+                                <span className="truncate font-semibold min-w-0">{getFirstName(dayBooking.guestName)}</span>
                                 {nightlyRate > 0 && <span className="text-2xs font-normal opacity-85 shrink-0 ml-auto">₹{nightlyRate}</span>}
                               </button>
                             </Popover>
