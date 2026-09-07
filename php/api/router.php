@@ -440,7 +440,17 @@ if (!isSchemaVerified('schema_properties_guestinfo_v1')) {
 // the public booking engine, which until now showed a room name, a price and an
 // availability grid and nothing else. Per-row like the guest info above - each
 // room of a multi-key property is its own listing with its own copy.
-if (!isSchemaVerified('schema_properties_content_v1')) {
+//
+// BUMPED TO _v2 (7 Sep 2026): `cancellation_policy` was added to this block on
+// 7 Sep WITHOUT bumping the key, so every environment that had already marked
+// `schema_properties_content_v1` verified (APCu / the 1h /tmp marker) skipped
+// the whole block and never got the column - while getMultiKeyProperty() had
+// meanwhile started SELECTing it by name, so a MULTI_KEY dashboard 500'd on
+// "Unknown column 'cancellation_policy'" and rendered "No rooms available"
+// until the stale marker aged out. IF YOU ADD A COLUMN TO THIS BLOCK, BUMP THE
+// KEY (_v2 -> _v3). The SHOW COLUMNS check inside is only reached when the key
+// is unverified.
+if (!isSchemaVerified('schema_properties_content_v2')) {
     try {
         $propContentCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
         if (!in_array('description', $propContentCols)) {
@@ -488,7 +498,7 @@ if (!isSchemaVerified('schema_properties_content_v1')) {
             $pdo->exec("ALTER TABLE properties ADD COLUMN `default_max_nights` INT NULL");
         }
     } catch (Exception $e) {}
-    markSchemaVerified('schema_properties_content_v1');
+    markSchemaVerified('schema_properties_content_v2');
 }
 
 // Self-healing column check for `tenants.subscription_expires_at` and `tenants.plan_type` (26 Aug 2026)

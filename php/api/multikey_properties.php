@@ -631,18 +631,33 @@ function getMultiKeyProperty($pdo, $propertyId = 0, $currentProperty = []) {
         // opening a freshly-imported room and pressing Save discarded exactly what
         // the Airbnb importer had just written. Add a field to that form, add its
         // column here too.
-        $stmt = $pdo->prepare("
-            SELECT id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time, max_capacity,
-                   included_occupancy, extra_guest_charge, cleaning_fee, security_deposit,
-                   wifi_network, wifi_password, house_manual, description,
-                   house_rules, cancellation_policy, amenities, bed_configuration,
-                   bedrooms, beds_count, bathrooms
-            FROM properties
-            WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0
-            ORDER BY room_order ASC
-        ");
-        $stmt->execute([$property_id]);
-        $rooms = $stmt->fetchAll();
+        // Split into a guaranteed-safe CORE set (everything the dashboard calendar
+        // and day-to-day operations need) and an EXTENDED set (the room's own Edit
+        // form / Airbnb-import fields). The extended columns are only guaranteed
+        // present by a best-effort, TTL'd self-heal in router.php - if one is
+        // transiently missing (a self-heal ALTER still running, or a column added
+        // to an already-verified schema block - see the _v2 bump in router.php,
+        // 7 Sep 2026), SELECTing it by name threw a PDOException that this whole
+        // function caught as a 500, so a MULTI_KEY dashboard rendered "No rooms
+        // available" until the schema settled. A missing OPTIONAL column must
+        // never blank out the entire property - fall back to the core set, and
+        // the Edit form fields fill in on the next request once healed.
+        $coreRoomCols = "id, name, slug, room_order, is_active, created_at, default_tariff, checkin_time, checkout_time, max_capacity";
+        $extendedRoomCols = "included_occupancy, extra_guest_charge, cleaning_fee, security_deposit, "
+            . "wifi_network, wifi_password, house_manual, description, "
+            . "house_rules, cancellation_policy, amenities, bed_configuration, "
+            . "bedrooms, beds_count, bathrooms";
+        $roomWhere = "FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND is_deleted = 0 ORDER BY room_order ASC";
+        try {
+            $stmt = $pdo->prepare("SELECT $coreRoomCols, $extendedRoomCols $roomWhere");
+            $stmt->execute([$property_id]);
+            $rooms = $stmt->fetchAll();
+        } catch (PDOException $eRoomCols) {
+            error_log('getMultiKeyProperty: extended room columns unavailable, falling back to core set - ' . $eRoomCols->getMessage());
+            $stmt = $pdo->prepare("SELECT $coreRoomCols $roomWhere");
+            $stmt->execute([$property_id]);
+            $rooms = $stmt->fetchAll();
+        }
         foreach ($rooms as &$room) {
             $room['default_tariff'] = $room['default_tariff'] !== null ? (float)$room['default_tariff'] : null;
             // Same treatment for the occupancy-pricing columns - PDO hands DECIMAL
