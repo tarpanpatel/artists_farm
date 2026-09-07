@@ -8,6 +8,7 @@ import { WhatsAppEditor } from './WhatsAppEditor';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, VOUCHER_TOKENS, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { MessageQrPreview } from './MessageQrPreview';
+import { humanizeKey } from '../utils/humanizeKey';
 
 /**
  * Shared "Edit Property" form - property details only (name, contact,
@@ -123,15 +124,19 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
 
   // Amenities + Bed Configuration (7 Sep 2026) - both already round-trip
   // through the Airbnb importer's own JSON columns, and PublicBookingEngine.tsx
-  // already reads and displays both to guests (see its own humanizeKey/
-  // parseJsonArray helpers), but until now there was no manual editor for
-  // either anywhere in the app - a property with no Airbnb connection (or one
-  // whose owner just wants to add something Airbnb doesn't know about) had no
-  // way to fill these in at all. Stored as plain human-readable strings
-  // (not Airbnb's snake_case keys) - PublicBookingEngine's humanizeKey() only
-  // lowercases+title-cases, so a manually-typed "Air Conditioning" renders
-  // identically to an imported "air_conditioning" without needing to match
-  // Airbnb's own vocabulary.
+  // already reads and displays both to guests through the shared humanizeKey()
+  // helper, but until now there was no manual editor for either anywhere in
+  // the app - a property with no Airbnb connection (or one whose owner just
+  // wants to add something Airbnb doesn't know about) had no way to fill
+  // these in at all.
+  // humanizeKey() is applied once here, at load time, to whatever the DB
+  // actually holds - an Airbnb-imported value arrives as a raw snake_case
+  // key ("double_bed", "air_conditioning") and looked exactly like a
+  // variable name in this edit form (reported live 7 Sep 2026) even though
+  // guests never saw it that way, since PublicBookingEngine already ran it
+  // through the same helper. Humanizing on load, not on every render, keeps
+  // this a one-time cleanup - free typing after that (e.g. "WiFi") is left
+  // exactly as typed, not re-normalized on each keystroke.
   const parseJsonArraySafe = (raw: any): any[] => {
     if (Array.isArray(raw)) return raw;
     if (typeof raw !== 'string' || !raw.trim()) return [];
@@ -143,7 +148,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     }
   };
   const [amenities, setAmenities] = useState<string[]>(() =>
-    parseJsonArraySafe((property as any).amenities).filter((a): a is string => typeof a === 'string')
+    parseJsonArraySafe((property as any).amenities)
+      .filter((a): a is string => typeof a === 'string')
+      .map((a) => humanizeKey(a))
   );
   const [newAmenity, setNewAmenity] = useState('');
   const addAmenity = () => {
@@ -164,9 +171,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   }
   const [bedConfig, setBedConfig] = useState<BedRoomEntry[]>(() =>
     parseJsonArraySafe((property as any).bed_configuration).map((r: any) => ({
-      room_type: typeof r?.room_type === 'string' ? r.room_type : '',
+      room_type: typeof r?.room_type === 'string' ? humanizeKey(r.room_type) : '',
       beds: Array.isArray(r?.beds)
-        ? r.beds.map((b: any) => ({ type: typeof b?.type === 'string' ? b.type : '', quantity: Number(b?.quantity) || 1 }))
+        ? r.beds.map((b: any) => ({
+            type: typeof b?.type === 'string' ? humanizeKey(b.type) : '',
+            quantity: Number(b?.quantity) || 1,
+          }))
         : [],
     }))
   );
