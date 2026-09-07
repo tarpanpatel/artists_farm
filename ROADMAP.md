@@ -23,6 +23,23 @@ This document tracks identified bugs, pending backend API integrations, and upco
   - [ ] **Backend Configuration Cleanup (`php/api/configuration.php`)**:
     - Deprecate `annual_discount_pct` in default onboarding configuration envelopes and ensure rate cards strictly emit monthly per-key structures.
 
+### 🔄 Root Dashboard Onboarding vs. Frontend Client Flows Alignment
+
+- **Context & Goal**: Audit and reconcile all onboarding configuration, copy, trial cadences, and feature highlights managed in Root Dashboard (`src/components/OnboardingManager.tsx` -> `#onboarding`) with what actual tenant users experience in the frontend (`SelfOnboardingWizard.tsx`, `PropertySetupWizard.tsx`, `DemoOnboardingTour.tsx`, and `SubscriptionPanel.tsx`).
+- **Problem & Identified Gaps**:
+  - **Outdated Integration References**: Root Dashboard onboarding templates still instruct new hosts to *"connect Airbnb and Booking.com iCal feeds in Settings → Calendar Sync"*, whereas iCal has been decommissioned/archived in favor of Channex OTA Channel Manager.
+  - **Cadence & Feature List Discrepancies**: Email/WhatsApp/Telegram cadence messages in Root Dashboard reference setup steps and terminology that need to strictly match the actual frontend wizard sequence (e.g. multi-room setup, Telegram staff alerts, staff roles, menu/kitchen setup).
+  - **Brand Manifesto Compliance**: Ensure all onboarding messaging, tip sequences, and trial emails adhere to the Ground Code Brand Manifesto:
+    - Punchy lines (<= 10 words per line).
+    - Friendly homestay host tone (no corporate jargon).
+    - Telegram strictly for staff operations; WhatsApp strictly for guests.
+    - No fake placeholder URLs (`domain.com/path`).
+- **Action Items to Audit & Tally**:
+  - [ ] **Tally Setup Checklist**: Map each onboarding email/cadence step (Day 1, Day 3, Day 7, Day 14, Day 21, Day 28, Day 30) against actual live screens and routes in the frontend app.
+  - [ ] **Replace Legacy Mentions**: Sweep `OnboardingManager.tsx` templates to remove all mentions of iCal / Calendar Sync feeds, replacing them with Channex Channel Manager and direct booking links.
+  - [ ] **Sync Default Modules & Rate Cards**: Verify that initial modules provisioned during onboarding (`property_modules`) and default expenses/bills match the rate cards and defaults shown in Root Admin.
+  - [ ] **Verify Dynamic Template Tags**: Ensure all dynamic placeholders in Root Dashboard (`{tenant_name}`, `{property_name}`, `{login_url}`, `{expires_at}`, `{support_phone}`) correctly populate with real data across all communication channels.
+
 ### 💬 Custom WhatsApp-Powered SaaS Customer Support Desk (Planned - Sep 2026)
 
 - **Goal**: Build a 100% proprietary, zero-subscription customer support desk inside Ground Code powered directly by Meta's WhatsApp Cloud API (`php/whatsapp/sender.php`).
