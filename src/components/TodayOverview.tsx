@@ -105,6 +105,23 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, []);
 
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
+  // Popover-first click on a booking capsule (7 Sep 2026, explicit request:
+  // "just like it is in single calendar") - matches OperationalDashboard.tsx's
+  // own booking-segment Popover exactly: click shows a quick-info popover with
+  // a "View More" button, rather than jumping straight to the full
+  // BookingDetailsModal on the first tap. Was previously trigger="hover" with
+  // an immediate onClick on the capsule itself - the same
+  // stuck-open-on-mobile-tap problem documented in CLAUDE.md's Popover mistake
+  // #15 (a touch device fires a synthetic hover with no matching "leave"), and
+  // the single calendar was already fixed for exactly this reason 22 Aug 2026.
+  const [openGuestPopoverId, setOpenGuestPopoverId] = useState<string | null>(null);
+  // Same fix, same reason, for the OTA-blocked capsule's own popover just
+  // below - OperationalDashboard.tsx's equivalent was already click-
+  // triggered (22 Aug 2026), this one wasn't. The "Convert to Booking"
+  // action itself is inert in both calendars post-iCal-retirement (see
+  // setOtaConversionTarget's own write-only comment) - only the popover's
+  // trigger mode is the actual parity gap being closed here.
+  const [openOtaPopoverId, setOpenOtaPopoverId] = useState<string | null>(null);
 
   /**
    * Airbnb-Multi-Calendar-style rectangular selection (6 Sep 2026, explicit
@@ -1301,33 +1318,43 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
                         if (info.item.kind === 'ota') {
                           const otaItem = info.item;
+                          const otaPopoverKey = `ota-${idx}`;
+                          const handleConvert = () => {
+                            const ownDays = new Set(expandRangeToDayStrings(otaItem.block.event_start, otaItem.block.event_end));
+                            setOtaConversionTarget({
+                              block: otaItem.block,
+                              roomName: room.name,
+                              blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
+                            });
+                            setOpenOtaPopoverId(null);
+                          };
                           return (
                             <Popover
-                              key={`ota-${idx}`}
-                              trigger="hover"
+                              key={otaPopoverKey}
+                              trigger="click"
                               placement="top"
+                              open={openOtaPopoverId === otaPopoverKey}
+                              onOpenChange={(isOpen) => setOpenOtaPopoverId(isOpen ? otaPopoverKey : null)}
                               title={
                                 <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{otaItem.label}</h4>
                               }
                               content={
-                                <div className="w-64 p-3 space-y-1 text-xs text-gray-600 dark:text-gray-300">
-                                  <div>{otaItem.tooltip}</div>
-                                  <div className="text-2xs text-blue-600 dark:text-blue-400 font-semibold pt-1">
-                                    Click to convert into booking
+                                <div className="w-64 text-xs">
+                                  <div className="p-3 space-y-1 text-gray-600 dark:text-gray-300">
+                                    <div>{otaItem.tooltip}</div>
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={handleConvert}
+                                    className="w-full text-center py-2 text-2xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700/60 transition-colors"
+                                  >
+                                    {t('convert_to_booking_button', 'Convert to Booking')} →
+                                  </button>
                                 </div>
                               }
                             >
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const ownDays = new Set(expandRangeToDayStrings(otaItem.block.event_start, otaItem.block.event_end));
-                                  setOtaConversionTarget({
-                                    block: otaItem.block,
-                                    roomName: room.name,
-                                    blockedDateStrings: roomOccupiedDateStrings.filter((d) => !ownDays.has(d)),
-                                  });
-                                }}
                                 data-cal-capsule="1"
                                 className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center z-20 overflow-hidden transition-colors"
                                 style={commonStyle}
@@ -1344,11 +1371,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                         const isCheckedOut = isCheckedOutStatus(guest.status);
                         const pendingReasons = getGuestPendingReasons(guest);
                         const hasPending = pendingReasons.length > 0;
+                        const guestPopoverKey = `${guest.id}-${idx}`;
                         return (
                           <Popover
-                            key={`${guest.id}-${idx}`}
-                            trigger="hover"
+                            key={guestPopoverKey}
+                            trigger="click"
                             placement="top"
+                            open={openGuestPopoverId === guestPopoverKey}
+                            onOpenChange={(isOpen) => setOpenGuestPopoverId(isOpen ? guestPopoverKey : null)}
                             title={
                               <div className="flex items-center justify-between gap-2">
                                 <h4 className="font-semibold text-gray-900 dark:text-white text-xs truncate">{guest.guestName}</h4>
@@ -1360,23 +1390,37 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               </div>
                             }
                             content={
-                              <div className="w-64 p-3 text-xs space-y-1.5 text-gray-600 dark:text-gray-300">
-                                <div className="flex items-center justify-between text-2xs">
-                                  <span className="text-gray-500 dark:text-gray-400">Room:</span>
-                                  <span className="font-semibold text-gray-900 dark:text-white">{room.name}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-2xs">
-                                  <span className="text-gray-500 dark:text-gray-400">Dates:</span>
-                                  <span className="font-medium text-gray-700 dark:text-gray-200">
-                                    {formatDateDDMMYYYY(guest.checkinDate)} — {formatDateDDMMYYYY(guest.expectedCheckout || (guest as any).checkoutDate)}
-                                  </span>
-                                </div>
-                                {hasPending && (
-                                  <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
-                                    <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
-                                    <span>Action Pending: {pendingReasons.join(', ')}</span>
+                              <div className="w-64 text-xs">
+                                <div className="p-3 space-y-1.5 text-gray-600 dark:text-gray-300">
+                                  <div className="flex items-center justify-between text-2xs">
+                                    <span className="text-gray-500 dark:text-gray-400">Room:</span>
+                                    <span className="font-semibold text-gray-900 dark:text-white">{room.name}</span>
                                   </div>
-                                )}
+                                  <div className="flex items-center justify-between text-2xs">
+                                    <span className="text-gray-500 dark:text-gray-400">Dates:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-200">
+                                      {formatDateDDMMYYYY(guest.checkinDate)} — {formatDateDDMMYYYY(guest.expectedCheckout || (guest as any).checkoutDate)}
+                                    </span>
+                                  </div>
+                                  {hasPending && (
+                                    <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-amber-600 dark:text-amber-400 text-2xs font-semibold flex items-center gap-1.5">
+                                      <span className="flex w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full shrink-0 shadow-xs ring-1 ring-yellow-600/40" />
+                                      <span>Action Pending: {pendingReasons.join(', ')}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-gray-50/50 dark:bg-gray-800/50">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedGuest(guest);
+                                      setOpenGuestPopoverId(null);
+                                    }}
+                                    className="w-full text-center text-2xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                                  >
+                                    {t('view_more_button', 'View More')} →
+                                  </button>
+                                </div>
                               </div>
                             }
                           >
@@ -1389,7 +1433,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               } pointer-events-auto shadow-md flex items-center justify-between gap-1.5 z-20 overflow-hidden`}
                               data-cal-capsule="1"
                               style={commonStyle}
-                              onClick={() => setSelectedGuest(guest)}
                             >
                               <span className="font-semibold truncate text-[11px] leading-none flex items-center gap-1.5 min-w-0">
                                 {hasPending && (
@@ -1428,6 +1471,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       {/* Multi-Calendar Legend Footer */}
       <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-start gap-3 text-xs font-medium text-slate-600 dark:text-slate-300">
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          {/* "Today" swatch (7 Sep 2026, feature-parity pass) - this grid
+              highlights today's column in blue (see the isToday styling on
+              the date header/day cells above) exactly like
+              OperationalDashboard.tsx's month grid does, so it needs the
+              same legend entry explaining the convention. Its own legend
+              comment used to claim this calendar "doesn't need" a Today
+              swatch since it "has no month-grid to mark a day within" - that
+              was true when written, not any more: this calendar visually
+              marks today the same way the single-property one does. */}
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-3.5 rounded-xs bg-blue-50 dark:bg-blue-900/50 border border-blue-400 inline-block shadow-md" />
+            <span>{t('legend_today', 'Today')}</span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-md" />
             <span>{t('legend_direct_booking', 'Direct Booking')}</span>

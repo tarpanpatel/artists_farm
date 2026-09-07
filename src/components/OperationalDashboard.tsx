@@ -486,6 +486,22 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     setIsPanelOpen(false);
   };
 
+  // Escape key cancels an active date-range selection or closes the rate
+  // editor panel (7 Sep 2026, feature-parity pass: "single calendar and
+  // multi calendar are identical except the layout... make sure it has all
+  // the features and functions like multi calendar"). TodayOverview.tsx
+  // already had this; there was no keyboard escape hatch out of a selection
+  // here besides clicking elsewhere.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (selAnchorDate || isPanelOpen)) {
+        clearSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selAnchorDate, isPanelOpen]);
+
   /**
    * Which day cell is under the pointer. Coordinate hit-testing rather than
    * onPointerEnter because touch takes implicit pointer capture on the cell the
@@ -1882,9 +1898,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             Aug 2026, explicit style-parity request), reusing its same i18n
             keys so one translation entry drives both calendars' labels
             instead of two separately-maintained near-duplicates. The
-            "Today" swatch is kept as an extra first item - a real thing
-            this calendar highlights that the other doesn't need to (it has
-            no month-grid to mark a day within), not a mismatch to fix. */}
+            "Today" swatch used to be listed here as an extra, single-
+            calendar-only item - corrected 7 Sep 2026: TodayOverview.tsx
+            visually highlights today's column exactly the same way (see its
+            own isToday styling), so it carries this same swatch too now. */}
         <div className="pt-4 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-start gap-3 text-xs font-medium text-gray-600 dark:text-gray-300">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-2">
