@@ -31,6 +31,11 @@ export interface Guest {
   cFormDocumentUrl?: string | null;
   otaSource?: string | null;
   otaSourceLabel?: string | null;
+  // The OTA's own guest-facing confirmation code (Airbnb's "HM4D9SCN3Q" etc,
+  // see channex/webhook_receiver.php) - the only shared reference staff have
+  // when matching a guest at the door against the OTA, and what powers the
+  // "View on Airbnb" link on OtaBadge's popover.
+  otaReservationCode?: string | null;
   icalExternalEventId?: string | null;
   otaCancelledDetectedAt?: string | null;
   // Set by the server on every write; sent back unchanged when saving an edit

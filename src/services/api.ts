@@ -1149,6 +1149,7 @@ export async function fetchGuestsFromDB(): Promise<any[]> {
           cFormFiledAt: g.cFormFiledAt || g.c_form_filed_at || null,
           otaSource: g.otaSource || g.ota_source || null,
           otaSourceLabel: g.otaSourceLabel || g.ota_source_label || null,
+          otaReservationCode: g.otaReservationCode || g.ota_reservation_code || null,
           icalExternalEventId: g.icalExternalEventId || g.ical_external_event_id || null,
           otaCancelledDetectedAt: g.otaCancelledDetectedAt || g.ota_cancelled_detected_at || null,
           // Concurrency token echoed back on save so the backend can reject an

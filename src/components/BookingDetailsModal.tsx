@@ -988,6 +988,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               <OtaBadge
                 source={guest.otaSource}
                 sourceLabel={guest.otaSourceLabel}
+                reservationCode={guest.otaReservationCode}
                 className="booking-details-modal__ota-badge"
               />
             )}

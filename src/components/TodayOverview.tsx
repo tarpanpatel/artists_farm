@@ -1475,7 +1475,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                   {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) && (
                                     <div className="flex items-center justify-between text-2xs">
                                       <span className="text-gray-500 dark:text-gray-400">Source:</span>
-                                      <OtaBadge source={guest.otaSource} sourceLabel={guest.otaSourceLabel} />
+                                      <OtaBadge source={guest.otaSource} sourceLabel={guest.otaSourceLabel} reservationCode={guest.otaReservationCode} />
                                     </div>
                                   )}
                                   {hasPending && (

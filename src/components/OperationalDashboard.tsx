@@ -1866,7 +1866,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource) && (
                                       <div className="flex items-center justify-between text-2xs">
                                         <span className="text-gray-500 dark:text-gray-400">Source:</span>
-                                        <OtaBadge source={(dayBooking as any).otaSource} sourceLabel={(dayBooking as any).otaSourceLabel} />
+                                        <OtaBadge source={(dayBooking as any).otaSource} sourceLabel={(dayBooking as any).otaSourceLabel} reservationCode={(dayBooking as any).otaReservationCode} />
                                       </div>
                                     )}
                                     {hasDayPending && (

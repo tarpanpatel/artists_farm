@@ -247,6 +247,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
                 <OtaBadge
                   source={guest.otaSource}
                   sourceLabel={guest.otaSourceLabel}
+                  reservationCode={guest.otaReservationCode}
                   className="billing-checkout__ota-badge"
                 />
               </div>
