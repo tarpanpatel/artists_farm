@@ -1,37 +1,21 @@
-import React, { useState } from 'react';
-import { Drawer } from 'flowbite-react';
+import React, { useState, useEffect } from 'react';
+import { Drawer, Modal } from 'flowbite-react';
 import {
-  Home, Phone, Wallet, Clock, FileText, Building,
+  Home, Phone, Wallet, Clock, Building, Smartphone,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle, ExternalLink,
+  Share, PlusSquare, MoreVertical,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Textarea } from './Textarea';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
+import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 
 /**
- * Restyled 26 Aug 2026 (explicit request: "this property wizard should now
- * replicate what we did on property owner dashboard") to match
- * PropertyCreationWizard.tsx's visual language, its exact 5-step set
- * (Basics/Contact & Tax/Payments/Operations/Notes & Finish - replacing the
- * previous, unrelated Address/Team/Units concept), AND its exact footer
- * button set/behavior (Back / Save & Exit / Skip / Next Step / Finish Setup -
- * explicit follow-up: "it should have exactly same buttons... exactly same
- * UI"). A property created via PropertyCreationWizard only requires step 0
- * (Basics) to publish; steps 1-4 are explicitly skippable there - this
- * checklist is the same 5 steps surfaced again on the property's own
- * dashboard afterward, so whatever got skipped at creation still gets a
- * nudge to come back and fill in, using the identical linear flow.
+ * PropertySetupWizard: Linear 5-step property onboarding guide
+ * (Basics -> Contact -> Payments -> Rooms/Operations -> App).
  *
- * Team/Units nudges from the old version are gone (explicit product
- * decision, 26 Aug 2026: "same number of steps... which were shown while
- * creating the property" - creation has no such steps, so this checklist no
- * longer does either).
- *
- * Saves call update_property directly and reload on success - same
- * established pattern EditPropertyPage.tsx already uses for these exact same
- * fields (onSaved={() => window.location.reload()}).
+ * Saves call update_property directly and reload on success.
  */
 
 interface PropertySetupWizardProps {
@@ -57,24 +41,11 @@ interface PropertySetupWizardProps {
   onSaved: () => void;
 }
 
-type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'notes';
+type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'app';
 
 /**
  * A MULTI_KEY parent gets a Rooms step where a single-unit property gets
- * Operations (6 Sep 2026).
- *
- * The Operations step asks for check-in/out time and a nightly tariff and saves
- * them to the property row. On a multi-key parent that row is a BUILDING, not a
- * bookable unit: every booking reads its own room's times and its own tariff, so
- * answering those questions here changed nothing a guest would ever see. Patel
- * Colony made it obvious - the parent held NULL times and a 3500 tariff while
- * its seven rooms held real times and their own 2400/3111 rates.
- *
- * The old code already half-knew this (`default_tariff` was hidden for
- * multi-key, and the whole step was auto-marked done) - it just kept rendering
- * the step and writing to the wrong row. And the real setup work for a 7-room
- * property is per room, which the checklist never mentioned at all: it could
- * read "complete" with every room still empty.
+ * Operations. Step 5 is the Mobile App install guide.
  */
 const buildStepDefs = (isMultiKey: boolean): { key: StepKey; label: string; icon: React.ElementType }[] => [
   { key: 'basics', label: 'Basics', icon: Home },
@@ -83,7 +54,7 @@ const buildStepDefs = (isMultiKey: boolean): { key: StepKey; label: string; icon
   isMultiKey
     ? { key: 'rooms', label: 'Rooms', icon: Building }
     : { key: 'operations', label: 'Operations', icon: Clock },
-  { key: 'notes', label: 'Notes', icon: FileText },
+  { key: 'app', label: 'App', icon: Smartphone },
 ];
 
 /** One room's readiness, as shown in the Rooms step. */
@@ -106,16 +77,14 @@ function roomGaps(r: any): string[] {
   return missing;
 }
 
-// "Do it later" (added 27 Aug 2026, explicit request): the drawer used to auto-reopen on
-// every single page load/navigation with no way to say "not now, but don't nag me again
-// today" - only the X/Save & Exit, which just collapse it to the slim strip for the rest of
-// THIS component instance's lifetime, not across a reload. Scoped per-property (not global)
-// since a multi-property tenant could have one property mid-setup and another finished.
+// 6-hour snooze window for "Do It Later" / dismissal
 const SETUP_WIZARD_SNOOZE_KEY_PREFIX = 'ground_code_setup_wizard_snoozed_until_';
-const SETUP_WIZARD_SNOOZE_MS = 24 * 60 * 60 * 1000;
+const SETUP_WIZARD_SNOOZE_HOURS = 6;
+const SETUP_WIZARD_SNOOZE_MS = SETUP_WIZARD_SNOOZE_HOURS * 60 * 60 * 1000;
 
-function isSetupWizardSnoozed(propertyId: number): boolean {
+function isSetupWizardSnoozed(propertyId: number | string | undefined | null): boolean {
   try {
+    if (!propertyId) return false;
     const raw = localStorage.getItem(`${SETUP_WIZARD_SNOOZE_KEY_PREFIX}${propertyId}`);
     return raw !== null && Date.now() < Number(raw);
   } catch {
@@ -123,8 +92,9 @@ function isSetupWizardSnoozed(propertyId: number): boolean {
   }
 }
 
-function snoozeSetupWizard(propertyId: number): void {
+function snoozeSetupWizard(propertyId: number | string | undefined | null): void {
   try {
+    if (!propertyId) return;
     localStorage.setItem(`${SETUP_WIZARD_SNOOZE_KEY_PREFIX}${propertyId}`, String(Date.now() + SETUP_WIZARD_SNOOZE_MS));
   } catch {}
 }
@@ -143,8 +113,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   checkinTime = '14:00',
   checkoutTime = '11:00',
   defaultTariff,
-  walkInTableCount,
-  instructions = '',
+  walkInTableCount: _walkInTableCount,
+  instructions: _instructions = '',
   rooms = [],
   onSaved,
 }) => {
@@ -153,13 +123,21 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   // Open by default (auto-surfaces the checklist the moment a property with
   // incomplete setup loads) - dismissible via the Drawer's own X, at which
   // point the slim strip below takes over as the way back in. Starts closed
-  // instead if "Do it later" was chosen within the last 24h (see
-  // snoozeSetupWizard above) - the slim strip still renders either way, so
-  // there's still a quiet way back in, it just won't force itself open.
+  // instead if "Do it later" was chosen within the last 6h (see
+  // snoozeSetupWizard above) - the slim strip still renders either way.
+  const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(() => !isSetupWizardSnoozed(propertyId));
+  const [showDoItLaterModal, setShowDoItLaterModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
+
+  // Sync snooze state if propertyId changes or loads asynchronously
+  useEffect(() => {
+    if (isSetupWizardSnoozed(propertyId)) {
+      setIsOpen(false);
+    }
+  }, [propertyId]);
 
   // --- Local editable copies, one per step (mirrors PropertyCreationWizard) ---
   const [editAddress, setEditAddress] = useState(address);
@@ -172,21 +150,13 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [editCheckinTime, setEditCheckinTime] = useState(checkinTime);
   const [editCheckoutTime, setEditCheckoutTime] = useState(checkoutTime);
   const [editDefaultTariff, setEditDefaultTariff] = useState(defaultTariff != null ? String(defaultTariff) : '');
-  const [editWalkInTableCount, setEditWalkInTableCount] = useState(walkInTableCount != null ? String(walkInTableCount) : '10');
-  const [editInstructions, setEditInstructions] = useState(instructions);
 
   const basicsDone = !!name.trim() && (!!editAddress.trim() || !!address.trim());
   const contactDone = !!(editEmail.trim() || editPhone.trim() || email.trim() || phone.trim());
   const paymentsDone = !!(editUpiId.trim() || editGstin.trim() || upiId.trim() || upiQrCodeUrl.trim() || gstin.trim());
   const operationsDone = isMultiKey || !!editCheckinTime || !!checkinTime || (editDefaultTariff.trim() !== '') || (defaultTariff != null && String(defaultTariff).trim() !== '');
 
-  // Rooms readiness. This step used to be auto-marked done for every multi-key
-  // property (`operationsDone = isMultiKey || ...`), which is why a 7-room
-  // property could report "complete" with every room still blank. Now it is
-  // done when the rooms can actually take a booking: a rate and a check-in/out
-  // time on each. Capacity and description are surfaced as gaps but do not
-  // block - a room without them still sells correctly, it just reads thinner
-  // on the booking page.
+  // Rooms readiness for multi-key properties
   const roomReadiness: RoomReadiness[] = (rooms || []).map((r: any) => ({
     id: Number(r?.id),
     name: String(r?.name || 'Room'),
@@ -196,7 +166,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     (r) => r.missing.includes('rate') || r.missing.includes('times')
   );
   const roomsDone = roomReadiness.length > 0 && blockingRooms.length === 0;
-  const notesDone = !!(editInstructions.trim() || instructions.trim());
+  // Step 5 (App) is always complete and welcoming
+  const appDone = true;
 
   const doneMap: Partial<Record<StepKey, boolean>> = {
     basics: basicsDone,
@@ -204,7 +175,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     payments: paymentsDone,
     operations: operationsDone,
     rooms: roomsDone,
-    notes: notesDone,
+    app: appDone,
   };
 
   const steps = buildStepDefs(isMultiKey).map((s) => ({ ...s, isDone: !!doneMap[s.key] }));
@@ -240,15 +211,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           ? {
               checkin_time: editCheckinTime,
               checkout_time: editCheckoutTime,
-              walk_in_table_count: editWalkInTableCount,
               ...(isMultiKey ? {} : { default_tariff: editDefaultTariff }),
             }
-          : activeStep.key === 'rooms'
-          ? // Only the genuinely property-level field. Times reach the ROOMS via
-            // "Apply to all rooms" below, never the parent - writing them here is
-            // what made the old Operations step a no-op for multi-key.
-            { walk_in_table_count: editWalkInTableCount }
-          : { instructions: editInstructions };
+          : {};
 
       const res = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
@@ -276,17 +241,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   const handleSkip = () => {
-    // Purely optional steps (1-3) can be skipped without even attempting a save of empty fields.
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   };
 
   const handleBack = () => setStepIndex((i) => Math.max(i - 1, 0));
 
-  // Clickable stepper circles (per DESIGN.md "Wizard / Setup Stepper"). Forward
-  // jumps persist the current step and apply the same first-step gate as "Next
-  // Step", but never validate/save/auto-fill the steps skipped over - those just
-  // render in the existing amber "passed but incomplete" state via the position-
-  // based logic below. Backward jumps are a plain move, matching handleBack.
   const handleStepClick = async (idx: number) => {
     if (saving || finished || idx === stepIndex) return;
     if (idx < stepIndex) {
@@ -302,9 +261,18 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     if (ok) setStepIndex(idx);
   };
 
-  // Dismisses without saving (unlike Save & Exit) and suppresses the drawer's auto-open for
-  // 24h - a "not now" for the whole checklist, not just the current step (that's Skip's job).
   const handleDoItLater = () => {
+    setShowDoItLaterModal(true);
+  };
+
+  const confirmDoItLater = () => {
+    snoozeSetupWizard(propertyId);
+    setShowDoItLaterModal(false);
+    setIsOpen(false);
+    showToast(`Setup reminder snoozed for ${SETUP_WIZARD_SNOOZE_HOURS} hours`, { type: 'warning' });
+  };
+
+  const handleCloseDrawer = () => {
     snoozeSetupWizard(propertyId);
     setIsOpen(false);
   };
@@ -356,9 +324,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   }
 
   return (
-    <Drawer
-      open={isOpen}
-      onClose={() => setIsOpen(false)}
+    <>
+      <Drawer
+        open={isOpen}
+      onClose={handleCloseDrawer}
       position="right"
       className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between property-setup-wizard"
     >
@@ -380,7 +349,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         </div>
         <button
           type="button"
-          onClick={() => setIsOpen(false)}
+          onClick={handleCloseDrawer}
           className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
         >
           <X className="w-5 h-5" />
@@ -544,15 +513,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 helperText="Pre-fills the rate when creating a new booking - still editable per booking."
               />
             )}
-            <Input
-              type="number"
-              min={1}
-              max={200}
-              label="Number of Tables (Walk-in Orders)"
-              value={editWalkInTableCount}
-              onChange={(e) => setEditWalkInTableCount(e.target.value)}
-              placeholder="10"
-            />
           </div>
         )}
 
@@ -590,9 +550,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   ))}
                 </div>
 
-                {/* The single biggest lever, and previously invisible from here:
-                    connecting Airbnb fills every room's rate, capacity, times and
-                    description in one pass instead of retyping them per room. */}
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
                   <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
                     Already listed on Airbnb?
@@ -601,13 +558,6 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     Connect it and import - rates, times, capacity, descriptions and amenities come
                     across for every unit at once.
                   </p>
-                  {/* Opens in a NEW TAB (7 Sep 2026, explicit correction: "go to
-                      connect shouldnt take me off setup pgage") rather than
-                      navigating this tab and closing the drawer - the user is
-                      still mid-checklist here (unsaved "Number of Tables" etc.
-                      on this same step) and shouldn't lose that just to glance
-                      at Connect Channels. Same window.open(...#hash...) pattern
-                      PlatformPropertyManagement.tsx already uses for this. */}
                   <Button
                     type="button"
                     variant="secondary"
@@ -619,55 +569,72 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     <ExternalLink className="w-3 h-3" />
                   </Button>
                 </div>
-
               </>
             )}
-
-            <Input
-              type="number"
-              min={1}
-              max={200}
-              label="Number of Tables (Walk-in Orders)"
-              value={editWalkInTableCount}
-              onChange={(e) => setEditWalkInTableCount(e.target.value)}
-              placeholder="10"
-            />
           </div>
         )}
 
-        {activeStep.key === 'notes' && (
+        {activeStep.key === 'app' && (
           <div className="space-y-4">
             {finished ? (
               <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">Setup saved!</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Setup saved successfully!</p>
               </div>
             ) : (
-              <Textarea
-                label="Other Notes (optional)"
-                value={editInstructions}
-                onChange={(e) => setEditInstructions(e.target.value)}
-                placeholder="e.g. How to reach, check-in instructions, parking notes…"
-                rows={4}
-              />
+              <div className="space-y-3">
+                <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-200 m-0">
+                        Add GroundCode to Your Phone
+                      </h4>
+                      <p className="text-2xs text-indigo-800/80 dark:text-indigo-300/80 m-0">
+                        Run your property from your home screen with 1 tap.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {/* Apple Safari Instructions */}
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
+                      <span className="text-sm">🍏</span> On iPhone (Safari):
+                    </div>
+                    <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
+                      <li>Tap <Share className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Share</strong> in Safari's bottom toolbar</li>
+                      <li>Scroll down &amp; tap <PlusSquare className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Add to Home Screen</strong></li>
+                      <li>Tap <strong>Add</strong> in the top-right corner</li>
+                    </ol>
+                  </div>
+
+                  {/* Android Chrome Instructions */}
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
+                      <span className="text-sm">🤖</span> On Android (Chrome):
+                    </div>
+                    <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
+                      <li>Tap <MoreVertical className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>3 Dots</strong> in Chrome top-right</li>
+                      <li>Tap <strong>Install App</strong> or <strong>Add to Home screen</strong></li>
+                      <li>Tap <strong>Install</strong> to confirm</li>
+                    </ol>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-2xs text-emerald-800 dark:text-emerald-300">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span>Your property details, rates, and payments are configured! Click <strong>Finish Setup</strong> below to start managing.</span>
+                </div>
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Footer - exact same button set/behavior as PropertyCreationWizard's:
-          Back / Save & Exit on the left, Skip / Next Step / Finish Setup on the right. "Do it
-          later" (added 27 Aug 2026) sits alongside them unconditionally - unlike Skip (which
-          only advances past the current step) it dismisses the whole checklist and snoozes
-          its auto-open for 24h, so it needs to be reachable from every step, not just step 0.
-          (Bug fixed 5 Sep 2026: it was wired as an either/or with Back - `stepIndex > 0 ? Back
-          : Do It Later` - so past step 0 it was replaced by Back and unreachable entirely,
-          contradicting this very comment's stated intent. Now rendered unconditionally
-          alongside Back/Save & Exit instead of substituting for either.) */}
-      {/* pb-[calc(1rem+env(safe-area-inset-bottom))] per DESIGN.md's "Bottom-Anchored Drawer
-          Footer Safe Area" rule - this footer is a shrink-0 child pinned to the drawer's
-          physical bottom edge, so on a home-indicator device a plain p-4 leaves the primary
-          action button with zero breathing room. Mirrors SelfOnboardingWizard.tsx's footer. */}
       <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0 flex-wrap sm:flex-nowrap">
         <div className="flex items-center gap-2">
           {stepIndex > 0 && !finished && (
@@ -713,5 +680,58 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         )}
       </div>
     </Drawer>
+
+    {/* Do It Later Confirmation Modal (Flowbite standard per DESIGN.md) */}
+    <Modal
+      show={showDoItLaterModal}
+      size="md"
+      popup
+      onClose={() => setShowDoItLaterModal(false)}
+      className="z-9999"
+    >
+      <div className="p-5 text-center bg-white dark:bg-gray-800 rounded-lg">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex items-center justify-center mx-auto mb-3 text-amber-600 dark:text-amber-400">
+          <Clock className="w-6 h-6" />
+        </div>
+        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">
+          Setup Paused
+        </h3>
+        <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300 mb-5 text-left bg-gray-50 dark:bg-gray-700/50 p-3.5 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>We will remind you again in 6 hours.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Your property is not fully bookable yet.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Guests cannot view rates or pay online.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="text-amber-500 font-bold">•</span>
+            <span>Resume anytime from the top reminder bar.</span>
+          </div>
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowDoItLaterModal(false)}
+          >
+            Keep Setting Up
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={confirmDoItLater}
+          >
+            Got It (Remind in 6 hrs)
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 };

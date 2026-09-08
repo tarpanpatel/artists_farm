@@ -144,9 +144,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   const [defaultTariff, setDefaultTariff] = useState(
     existingProperty?.default_tariff != null ? String(existingProperty.default_tariff) : ''
   );
-  const [walkInTableCount, setWalkInTableCount] = useState(
-    existingProperty?.walk_in_table_count != null ? String(existingProperty.walk_in_table_count) : '10'
-  );
+  const walkInTableCount = existingProperty?.walk_in_table_count != null ? String(existingProperty.walk_in_table_count) : '10';
 
   // --- Step 4: Notes ---
   const [instructions, setInstructions] = useState(existingProperty?.instructions || '');
@@ -615,16 +613,6 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                 helperText="Pre-fills the rate when creating a new booking - still editable per booking."
               />
             )}
-            <Input
-              type="number"
-              min={1}
-              max={200}
-              label="Number of Tables (Walk-in Orders)"
-              value={walkInTableCount}
-              onChange={(e) => setWalkInTableCount(e.target.value)}
-              placeholder="10"
-              helperText="How many number of tables the Kitchen can serve."
-            />
           </div>
         )}
 

@@ -136,17 +136,77 @@ interface KitchenManagementProps {
 const NEW_WALKIN_CUSTOMER_VALUE = '__new_customer__';
 
 /**
- * Synthesize a clean, non-intrusive dual-tone chime (D5 -> A5) via Web Audio API.
- * 100% offline resilient and works in any modern browser without external audio files.
+ * Kitchen order chime - a synthesized dual-tone (D5 -> A5) rather than an audio
+ * file, so it still sounds with no network: a kitchen tablet on hotel wifi
+ * can't be relied on to fetch an mp3 at the exact moment an order lands.
+ *
+ * Rewritten 8 Sep 2026, reported as "it does play the chime but only on pc".
+ * Three separate defects, every one of which only ever bites on mobile:
+ *
+ *  1. `ctx.resume()` was called but never awaited. It is asynchronous, and the
+ *     old code read `ctx.currentTime` and scheduled both tones in the same
+ *     tick, while the context was still suspended. A phone ALWAYS starts the
+ *     context suspended (autoplay policy), and on resume the clock jumps
+ *     forward to the audio hardware's own time - so both tones had already
+ *     been scheduled entirely in the past and nothing was ever audible. A
+ *     desktop context is usually `running` before anyone clicks, so that
+ *     branch never even ran there: exactly why it worked on PC and only PC.
+ *  2. A brand-new AudioContext was built on every call and never closed. iOS
+ *     Safari hard-caps a document at 4 live contexts and throws on the next
+ *     one; Chrome caps around 6. Paired with the empty `catch`, that made the
+ *     chime die silently part-way through a shift on the exact class of device
+ *     a kitchen actually runs on. One context is now created lazily and reused
+ *     for the life of the page.
+ *  3. Nothing ever unlocked audio. The auto-chime fires from an effect on
+ *     `orders.length` - no user gesture anywhere near it - which mobile blocks
+ *     outright, so the feature that actually matters (tell staff an order
+ *     arrived) could never fire on a phone even once. The unlock listener
+ *     below resumes the context on the first real tap, so the context is
+ *     already running by the time an order lands.
+ *
+ * Still outside our control: iOS silences Web Audio when the physical
+ * ring/silent switch is on - unlike an <audio> element, which ignores it. If
+ * the button reports success and the phone stays quiet, that switch is the
+ * first thing to check.
  */
-export const playKitchenChime = () => {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+export type ChimeResult = 'played' | 'blocked' | 'unsupported';
+
+let chimeCtx: AudioContext | null = null;
+
+const getChimeContext = (): AudioContext | null => {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioCtx) return null;
+  // A context can end up 'closed' (some browsers close it after a PWA has been
+  // backgrounded long enough), and a closed one can never be reopened - so
+  // replace it rather than hand back a dead object that silently plays nothing.
+  if (!chimeCtx || chimeCtx.state === 'closed') {
+    try {
+      chimeCtx = new AudioCtx();
+    } catch {
+      return null;
     }
+  }
+  return chimeCtx;
+};
+
+export const playKitchenChime = async (): Promise<ChimeResult> => {
+  const ctx = getChimeContext();
+  if (!ctx) return 'unsupported';
+
+  if (ctx.state === 'suspended') {
+    // Awaiting this is the whole of fix 1 - `currentTime` below is meaningless
+    // until the context is genuinely running.
+    try {
+      await ctx.resume();
+    } catch {
+      // Rejected because we're outside a user gesture. Not an error worth
+      // shouting about: the unlock listener will catch the next real tap.
+    }
+  }
+  if (ctx.state !== 'running') return 'blocked';
+
+  try {
     const now = ctx.currentTime;
     // Tone 1: 587.33 Hz (D5)
     const osc1 = ctx.createOscillator();
@@ -171,8 +231,44 @@ export const playKitchenChime = () => {
     gain2.connect(ctx.destination);
     osc2.start(now + 0.15);
     osc2.stop(now + 0.65);
-  } catch (e) {}
+    return 'played';
+  } catch {
+    return 'unsupported';
+  }
 };
+
+/**
+ * Resume the chime's context on the first real user gesture, so an order that
+ * arrives later can sound without one (fix 3 above).
+ *
+ * Installed at module scope rather than from a component effect on purpose:
+ * this file is lazy-loaded, so the listeners attach the moment staff navigate
+ * into Kitchen, and any tap after that unlocks audio - including taps that
+ * have nothing to do with the chime, which is the point. They are passive and
+ * remove themselves as soon as the context is running.
+ */
+if (typeof window !== 'undefined') {
+  const events: Array<keyof WindowEventMap> = ['pointerdown', 'touchend', 'keydown'];
+  const stopListening = () => events.forEach((e) => window.removeEventListener(e, unlockChimeAudio));
+  function unlockChimeAudio() {
+    const ctx = getChimeContext();
+    if (!ctx) {
+      stopListening();
+      return;
+    }
+    if (ctx.state === 'running') {
+      stopListening();
+      return;
+    }
+    ctx.resume().then(() => {
+      if (ctx.state === 'running') stopListening();
+    }).catch(() => {});
+  }
+  events.forEach((e) => window.addEventListener(e, unlockChimeAudio, { passive: true }));
+  // Desktop usually allows this with no gesture at all - try immediately so the
+  // very first chime isn't wasted waiting for a tap that isn't needed there.
+  unlockChimeAudio();
+}
 
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   guests,
@@ -257,7 +353,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const prevOrdersCountRef = useRef<number | null>(null);
   useEffect(() => {
     if (prevOrdersCountRef.current !== null && orders.length > prevOrdersCountRef.current) {
-      playKitchenChime();
+      // Fire-and-forget: this is now async (it awaits the audio context's
+      // resume), but there is nothing useful to do with the result here. If it
+      // comes back 'blocked' the device simply hasn't been tapped yet, and the
+      // ticket is on screen regardless - the chime is the nudge, not the alert.
+      void playKitchenChime();
     }
     prevOrdersCountRef.current = orders.length;
   }, [orders.length]);
@@ -1572,7 +1672,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => playKitchenChime()}
+                  onClick={async () => {
+                    // This button exists to ANSWER "will I hear an order?", so
+                    // it has to say something when the answer is no. It used to
+                    // swallow every failure, which is how a phone that could
+                    // never chime still looked identical to one that could.
+                    const result = await playKitchenChime();
+                    if (result === 'blocked') {
+                      showToast('Sound is blocked by the browser. Tap anywhere on the page once, then try again.', { type: 'error' });
+                    } else if (result === 'unsupported') {
+                      showToast('This browser cannot play the chime. Watch the ticket board instead.', { type: 'error' });
+                    } else {
+                      // It genuinely played. If the room is still silent the
+                      // cause is now on the device - and on an iPhone the
+                      // ring/silent switch mutes Web Audio specifically, which
+                      // is not something the page can detect or override.
+                      showToast('Chime played. Heard nothing? Check the volume, and the silent switch on iPhone.', { type: 'success' });
+                    }
+                  }}
                   leftIcon={<Bell className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />}
                   className="h-8 text-xs font-semibold shadow-none text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400"
                   aria-label="Test kitchen order chime sound"

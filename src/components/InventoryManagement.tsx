@@ -1672,6 +1672,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     return (
       <div data-tour="stock-requisition">
+      <div className="mb-3.5 p-3 bg-blue-50/70 dark:bg-gray-800/80 rounded-lg border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center shrink-0">
+            <Boxes className="w-3.5 h-3.5" />
+          </div>
+          <div>
+            <span className="font-semibold text-gray-900 dark:text-white">How Grocery Requests Work: </span>
+            <span className="text-gray-600 dark:text-gray-300">
+              1. Cook requests items &rarr; 2. Shows in Pending Requests &rarr; 3. Tap &quot;Received&quot; when bought to restock automatically.
+            </span>
+          </div>
+        </div>
+      </div>
       {/* attachedTabsTheme/attachedTabsClearTheme, not an ad-hoc one-off theme
           (2 Sep 2026, user report: "Requisitions page is not following design
           rules like bookings page") - this was the only Tabs usage in the
