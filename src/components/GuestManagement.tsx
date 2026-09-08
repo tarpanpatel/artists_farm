@@ -1407,74 +1407,108 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 requires guest name + phone (a quote link can be sent before
                 either is known). Revising the price and clicking it again
                 just resends - see handleSendInstantQuote/booking_holds.php. */}
-            {/* Hold duration sits ON the same row as the button it configures
-                (7 Sep 2026, explicit request). Stacked above it, the two read as
-                unrelated controls and the hold length looked like another booking
-                field; side by side it reads as one action - "hold for N hours,
-                and send the link". The select is deliberately the narrower half:
-                it has a sensible default, the button is the thing being clicked.
-                Stacks back to two rows under `sm` so neither is squeezed on a
-                phone. */}
-            <div className="mt-2 flex flex-col sm:flex-row sm:items-end gap-2">
-              <div className="w-full sm:w-44 shrink-0">
-                <StyledSelect
-                  label="Hold Room For"
-                  value={holdHours}
-                  onChange={setHoldHours}
-                  options={[
-                    { value: '0.25', label: '15 Minutes' },
-                    { value: '0.5', label: '30 Minutes' },
-                    { value: '1', label: '1 Hour' },
-                    { value: '2', label: '2 Hours' },
-                    { value: '4', label: '4 Hours' },
-                    { value: '6', label: '6 Hours' },
-                    { value: '12', label: '12 Hours' },
-                    { value: '24', label: '24 Hours (1 Day)' },
-                    { value: '48', label: '48 Hours (2 Days)' },
-                  ]}
-                />
+            {/* "Send to guest" group (8 Sep 2026, explicit request: put the hold
+                and the share button "in a box so that user can understand that
+                they both are connected").
+
+                The box is not decoration - it states something true that the old
+                stacked layout got wrong. `holdHours` is read by exactly ONE
+                thing, handleSendInstantQuote; Save Booking never looks at it.
+                Sitting directly under the Save button, the hold select read as a
+                booking field that applied to saving. Fencing both share actions
+                off, with Save deliberately OUTSIDE the fence, says what actually
+                depends on what.
+
+                Both actions belong in here because they share one premise - the
+                dates typed into this form - and answer the two inquiries a host
+                actually gets: "is that room free?" (quote one room, hold it, send
+                a payment link) and "what have you got?" (list everything free
+                with rates). The hold select is attached to the Quote row only,
+                which is accurate: it has no effect on the all-rooms share. */}
+            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 p-3 space-y-2">
+              <div>
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Send to Guest</h4>
+                {/* Carries what the button label no longer says. "Share Quote"
+                    had to get short enough to fit beside the select on a phone,
+                    but the payment link is the most persuasive part of it for
+                    staff - so it moved here rather than being dropped. */}
+                <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Holds the room for the chosen time and sends a payment link.
+                </p>
               </div>
-              <Button
-                type="button"
-                color="green"
-                disabled={sendingQuote}
-                onClick={handleSendInstantQuote}
-                className="w-full sm:flex-1 font-semibold flex items-center justify-center gap-2"
-              >
-                {sendingQuote ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                    <span>Creating Quote Link...</span>
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle className="w-4 h-4 shrink-0" />
-                    <span>Share Quote and Payment Link</span>
-                  </>
-                )}
-              </Button>
+
+              {/* One row at every width now (8 Sep 2026). It was already
+                  side-by-side from `sm` up; the phone kept stacking, which is the
+                  screen the request came from. Shortening the button label is
+                  what makes ~190px enough for it next to a ~140px select - the
+                  duration options were shortened for the same reason. */}
+              <div className="flex flex-row items-end gap-2">
+                <div className="w-32 sm:w-44 shrink-0">
+                  <StyledSelect
+                    label="Hold Room For"
+                    value={holdHours}
+                    onChange={setHoldHours}
+                    options={[
+                      { value: '0.25', label: '15 min' },
+                      { value: '0.5', label: '30 min' },
+                      { value: '1', label: '1 hour' },
+                      { value: '2', label: '2 hours' },
+                      { value: '4', label: '4 hours' },
+                      { value: '6', label: '6 hours' },
+                      { value: '12', label: '12 hours' },
+                      { value: '24', label: '24 hours' },
+                      { value: '48', label: '48 hours' },
+                    ]}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  color="green"
+                  disabled={sendingQuote}
+                  onClick={handleSendInstantQuote}
+                  className="flex-1 min-w-0 font-semibold flex items-center justify-center gap-2"
+                >
+                  {sendingQuote ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      <span className="truncate">Creating Link...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Share Quote</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* The other inquiry. Quieter than the Quote button but kept, not
+                  removed - it is NOT the same as the sidebar's "Share
+                  Availability", which only sends a link to the public booking
+                  page with no dates and no prices. This one computes what is
+                  actually free for the dates in this form and sends the rates. */}
+              {isMultiKeyProperty && rooms && rooms.length > 1 && (
+                <Button
+                  type="button"
+                  color="light"
+                  disabled={sharingAllRooms}
+                  onClick={handleShareAllAvailableRooms}
+                  className="w-full font-semibold flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                >
+                  {sharingAllRooms ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>Checking Rates...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>Share All Available Keys &amp; Rates</span>
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
-            {isMultiKeyProperty && rooms && rooms.length > 1 && (
-              <Button
-                type="button"
-                color="light"
-                disabled={sharingAllRooms}
-                onClick={handleShareAllAvailableRooms}
-                className="w-full mt-2 font-semibold flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-              >
-                {sharingAllRooms ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>Checking Rates...</span>
-                  </>
-                ) : (
-                  <>
-                    <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>Share All Available Keys & Rates</span>
-                  </>
-                )}
-              </Button>
-            )}
           </form>
         </div>
       </div>
