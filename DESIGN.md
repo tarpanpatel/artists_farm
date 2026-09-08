@@ -453,9 +453,9 @@ All guest booking cards across the platform—including **Today**, **Upcoming**,
    - **OTA Badge Right-Aligned**: The official OTA platform badge (`<OtaBadge>`) must strictly be placed on the **right side** of the dates container (`flex items-center justify-between gap-2`). It must never be placed in the guest name header row where it crowds name text and wraps awkwardly on mobile viewports.
 3. **Financial Summary Grid**:
    - 4-quadrant layout displaying:
-     - `Room Charges` (or `Not set` italic when 0)
-     - `Food & Incidentals` (rendered when > 0)
-     - `Total Paid`
+     - `Room Charges` (or `Not set` italic when 0; omitted on OTA bookings when room charges equal total paid to avoid duplicate display).
+     - `Food & Incidentals` (rendered when > 0).
+     - Paid amount: strictly labeled `Advance Paid:` for offline/direct bookings, and `Total Paid:` for OTA bookings.
      - `Amount Due` (highlighted in red) or `Refund Due` (highlighted in amber) only when an outstanding balance or refund exists.
 4. **Action Buttons**:
    - Primary view action: `<Button variant="secondary" size="sm">` ("View Booking" / "View") to open `BookingDetailsModal`.

@@ -129,6 +129,21 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   const roomCharges = Number(guest.totalAmount ?? guest.roomRate ?? 0);
   const advancePaid = Number(guest.advanceAmount ?? 0);
   const foodBill = Number(guest.foodBill ?? 0);
+  const isOtaBooking = Boolean(
+    guest.otaSource ||
+    (guest as any).ota_source ||
+    guest.bookingSource === 'AIRBNB' ||
+    guest.bookingSource === 'BOOKING_COM' ||
+    guest.bookingSource === 'AGODA' ||
+    guest.bookingSource === 'EXPEDIA' ||
+    guest.bookingSource === 'VRBO' ||
+    guest.otaReservationCode
+  );
+  // Hide Room Charges for OTA bookings when room charges equals total paid
+  const shouldHideRoomCharges = isOtaBooking && roomCharges > 0 && Math.abs(roomCharges - advancePaid) < 0.01;
+  const paidAmountLabel = isOtaBooking
+    ? t('total_paid_label', 'Total Paid:')
+    : t('advance_paid_label', 'Advance Paid:');
 
   return (
     <div
@@ -256,22 +271,24 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         </div>
       </div>
 
-      {/* Financial Breakdown: Shows Total Paid, Room Charges (or Not set), and Due ONLY when due */}
+      {/* Financial Breakdown: Shows Total Paid (or Advance Paid for offline), Room Charges (or Not set, hidden if OTA and room charges = total paid), and Due ONLY when due */}
       <div className="billing-checkout__guest-card-financials space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
-        {roomCharges > 0 ? (
-          <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-            <span>{t('room_charges_label', 'Room Charges:')}</span>
-            <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">
-              ₹{roomCharges.toFixed(2)}
-            </span>
-          </div>
-        ) : (
-          <div className="flex justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-            <span>{t('room_charges_label', 'Room Charges:')}</span>
-            <span className="tabular-nums text-slate-400 dark:text-slate-500 italic">
-              {t('pending_tariff_label', 'Not set')}
-            </span>
-          </div>
+        {!shouldHideRoomCharges && (
+          roomCharges > 0 ? (
+            <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
+              <span>{t('room_charges_label', 'Room Charges:')}</span>
+              <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                ₹{roomCharges.toFixed(2)}
+              </span>
+            </div>
+          ) : (
+            <div className="flex justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+              <span>{t('room_charges_label', 'Room Charges:')}</span>
+              <span className="tabular-nums text-slate-400 dark:text-slate-500 italic">
+                {t('pending_tariff_label', 'Not set')}
+              </span>
+            </div>
+          )
         )}
 
         {foodBill > 0 && (
@@ -284,7 +301,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
         )}
 
         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-          <span>{t('total_paid_label', 'Total Paid:')}</span>
+          <span>{paidAmountLabel}</span>
           <span className={`summary-line summary-line--total-paid font-semibold tabular-nums ${advancePaid > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
             ₹{advancePaid.toFixed(2)}
           </span>

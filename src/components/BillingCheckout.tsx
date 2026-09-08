@@ -655,7 +655,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             <span className="tabular-nums text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
-            <span>{t('total_paid_label', 'Total Paid:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
+            <span>
+              {Boolean(row.otaSource || (row as any).ota_source || row.otaReservationCode)
+                ? t('total_paid_label', 'Total Paid:')
+                : t('advance_paid_label', 'Advance Paid:')}{' '}
+              ₹{(row.advanceAmount ?? 0).toFixed(2)}
+            </span>
             {calculateGuestTotal(row) > 0 && (
               <span className="text-amber-600 dark:text-amber-400 font-semibold">
                 {t('due_label', 'Due')}: ₹{calculateGuestTotal(row).toFixed(2)}
