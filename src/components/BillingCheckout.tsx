@@ -320,6 +320,28 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     }
   };
 
+  // Same variant -> color families Badge.tsx itself uses (success=green,
+  // warning=yellow, info=cyan, danger=red, neutral=gray) - reused here so the
+  // guest-card accent bar and the highlighted check-in/checkout date always
+  // agree with whatever color the stay-status Badge above them is already
+  // showing, rather than inventing a second, drifting palette (8 Sep 2026,
+  // reported: hard to tell two bookings in one room apart, and check-in/
+  // checkout dates didn't stand out).
+  const stayStatusAccentClasses: Record<ReturnType<typeof getGuestStayStatus>['variant'], string> = {
+    success: 'border-green-500 dark:border-green-500',
+    warning: 'border-yellow-500 dark:border-yellow-500',
+    info: 'border-cyan-500 dark:border-cyan-500',
+    danger: 'border-red-500 dark:border-red-500',
+    neutral: 'border-gray-300 dark:border-gray-600',
+  };
+  const stayStatusDateTextClasses: Record<ReturnType<typeof getGuestStayStatus>['variant'], string> = {
+    success: 'text-green-700 dark:text-green-400',
+    warning: 'text-yellow-700 dark:text-yellow-400',
+    info: 'text-cyan-700 dark:text-cyan-400',
+    danger: 'text-red-700 dark:text-red-400',
+    neutral: '',
+  };
+
   // Deduplicate and sanitize guests array to ensure no invalid/orphan cards ever appear
   const uniqueGuests = useMemo(() => {
     const seenIds = new Set<string>();
@@ -559,17 +581,30 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 return (
                   <div
                     key={guest.id}
-                    // No bg/border/shadow/rounded/padding here - the parent
-                    // Card (billing-checkout__room-card) already provides
-                    // that frame; giving each guest its own box on top of it
-                    // read as a nested "card inside a card" with doubled
-                    // padding, since room-card-body already applies its own
-                    // p-4 (found 19 Aug 2026). A room can only ever have one
-                    // active booking (see CLAUDE.md's "1 room = 1 active
-                    // booking maximum"), so this is virtually always a single
-                    // item - space-y-4 on the parent is enough separation
-                    // for the rare case of more than one.
-                    className="billing-checkout__guest-card flex flex-col justify-between space-y-3 first:pt-0 pt-4 border-t border-slate-200 dark:border-slate-700 first:border-t-0"
+                    // No full bg/border/shadow/rounded box here for the common
+                    // single-guest case (see CLAUDE.md's "1 room = 1 active
+                    // booking maximum") - giving every guest its own full box
+                    // on top of the parent Card read as a nested "card inside
+                    // a card" with doubled padding (found 19 Aug 2026), and
+                    // that reasoning still holds when there's only one.
+                    // BUT a room legitimately shows two guests stacked here on
+                    // a same-day turnover (one checking out, the next
+                    // checking in - CLAUDE.md: "not an overlap and must keep
+                    // working"), and reported 8 Sep 2026 as genuinely hard to
+                    // tell apart in that case - the thin top border alone
+                    // reads as just another internal divider among several
+                    // already inside each guest's own stacked info. Only THEN
+                    // (never for the single-guest case) add a colored left
+                    // accent bar tied to this guest's own stay-status color
+                    // (green=staying, yellow=checkout, matching the Badge
+                    // right above) plus a faint tint, so each guest's block
+                    // reads as one distinct unit at a glance without
+                    // reintroducing the full boxed-card look.
+                    className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 first:pt-0 pt-4 border-t border-slate-200 dark:border-slate-700 first:border-t-0 ${
+                      group.guests.length > 1
+                        ? `border-l-4 ${stayStatusAccentClasses[stayStatus.variant]} pl-3 bg-slate-50/60 dark:bg-white/[0.03] rounded-r-md`
+                        : ''
+                    }`}
                   >
                     {/* Top Header: Guest Name & Status Badge */}
                     <div>
@@ -669,10 +704,36 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
 
                       {/* Stay Dates */}
+                      {/* Check-in/checkout dates were rendered in one uniform
+                          color regardless of stay status, so a guest arriving
+                          or leaving TODAY read no differently from any other
+                          date on the card (reported 8 Sep 2026). The relevant
+                          side now bolds + colors to match this guest's own
+                          stay-status Badge above, with a small "Today" tag
+                          right next to it - the other date (not today) stays
+                          plain, so the ONE that matters is what stands out. */}
                       <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
                         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="inline-flex items-center gap-1 tabular-nums">{formatDate(guest.checkinDate)} <ArrowRight className="w-3 h-3 text-slate-400" /> {formatDate(guest.expectedCheckout)}</span>
+                          <span className="inline-flex items-center gap-1 tabular-nums flex-wrap">
+                            <span className={stayStatus.key === 'staying' ? `font-bold ${stayStatusDateTextClasses.success}` : undefined}>
+                              {formatDate(guest.checkinDate)}
+                            </span>
+                            {stayStatus.key === 'staying' && (
+                              <span className="text-2xs font-bold px-1 rounded bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                {t('today_tag', 'TODAY')}
+                              </span>
+                            )}
+                            <ArrowRight className="w-3 h-3 text-slate-400" />
+                            <span className={stayStatus.key === 'checkout' ? `font-bold ${stayStatusDateTextClasses.warning}` : undefined}>
+                              {formatDate(guest.expectedCheckout)}
+                            </span>
+                            {stayStatus.key === 'checkout' && (
+                              <span className="text-2xs font-bold px-1 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                                {t('today_tag', 'TODAY')}
+                              </span>
+                            )}
+                          </span>
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">
                           {nightsDisplay}

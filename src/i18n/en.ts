@@ -1086,6 +1086,7 @@ export const strings: Record<string, string> = {
   no_guest_records_description: "No guest records match the current tab filter or search term. Switch tabs or room filter to view other reservations.",
   checked_in_today_badge: "Checked In Today",
   checkout_today_badge: "Checkout Today",
+  today_tag: "TODAY",
   upcoming_booking_badge: "Upcoming Booking",
   past_booking_badge: "Past Booking",
   cancelled_badge: "Cancelled",
