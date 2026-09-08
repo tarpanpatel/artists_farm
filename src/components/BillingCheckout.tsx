@@ -9,7 +9,6 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
   Calendar,
   CheckCircle2,
-  LogIn,
   LogOut,
   Search,
   AlertCircle,
@@ -632,38 +631,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         : 'border border-slate-200 dark:border-slate-700/70 shadow-2xs'
                     }`}
                   >
-                    {/* Top Turnover Banner: clearly identifies Check-Out vs Check-In within the same room */}
-                    {isTurnoverRoom && (
-                      <div className={`flex items-center justify-between pb-2 border-b text-xs font-bold ${
-                        stayStatus.key === 'checkout' || stayStatus.key === 'checkin_pending'
-                          ? 'text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
-                          : stayStatus.key === 'staying'
-                          ? 'text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
-                          : 'text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                      }`}>
-                        <span className="flex items-center gap-1.5 uppercase tracking-wide text-2xs">
-                          {stayStatus.key === 'checkout' ? (
-                            <>
-                              <LogOut className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              <span>{t('checking_out_today_banner', 'Checking Out Today')}</span>
-                            </>
-                          ) : stayStatus.key === 'checkin_pending' ? (
-                            <>
-                              <LogIn className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              <span>{t('checkin_pending_banner', 'Check-in Pending')}</span>
-                            </>
-                          ) : stayStatus.key === 'staying' ? (
-                            <>
-                              <LogIn className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span>{t('checking_in_today_banner', 'Checking In Today')}</span>
-                            </>
-                          ) : (
-                            <span>{stayStatus.label}</span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-
                     {/* Guest Name, Contact & Status Badge */}
                     <div>
                       <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">

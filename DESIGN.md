@@ -64,8 +64,9 @@ one - it gives every future change a plausible-looking but wrong thing to match 
 - **Flowbite Toast Exact Styling Standard Rule**: All toast notifications across the entire platform (success, error/danger, warning, interactive feedback) must strictly follow the official Flowbite Toast component specifications ([https://flowbite.com/docs/components/toast/](https://flowbite.com/docs/components/toast/)) using `<Toast>` / `<ToastToggle>` or `src/components/ToastContext.tsx`. Never build custom unstyled centered floating green pills, ad-hoc alert toasts, or borderless toast notifications. Toasts must always feature: (1) `rounded-lg` container with dark mode token support (`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg`), (2) `w-8 h-8 rounded-lg` colored icon badge chip (`bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200` for success, `bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200` for error, `bg-orange-100 text-orange-500 dark:bg-orange-700 dark:text-orange-200` for warning), (3) `ms-3 text-sm font-normal text-gray-900 dark:text-white` body typography, and (4) standard dismiss toggle button.
 - **Z-index**: governed by the scale documented directly in `src/index.css` - never adjust
   header/sidebar/modal z-index in isolation.
+- **All Badges Must Be Flowbite Default Badges Rule (Strict Standard)**: All badges, status chips, count tags, and indicator labels across the entire platform must strictly adhere to Flowbite's official Default Badge specifications ([https://github.com/themesberg/flowbite/blob/main/content/components/badge.md](https://github.com/themesberg/flowbite/blob/main/content/components/badge.md)). Never use `rounded-full` (capsule/pill badges); Flowbite explicitly classifies `rounded-full` as a separate non-default pill variant (`## Pill badges`). All badges must strictly use Flowbite's default badge geometry with standard `rounded` (or `rounded-md`, 4px) corners, `text-xs font-medium` (or `text-2xs font-semibold`), and standard padding (`px-2.5 py-0.5 rounded` or `px-2 py-0.5 rounded`), combined with a subtle matching border accent (`border border-{color}-300 dark:border-{color}-700`).
 - **Bordered Count & Number Badges Rule**: All count pills, number badges, and indicator badges across the entire site (including tab counters, card header counts, alert badges, notification counts, filter count pills, and table status/number badges) must strictly have borders (e.g. `border border-blue-200 dark:border-blue-800`, `border border-slate-200 dark:border-slate-700`, `border border-red-200 dark:border-red-800`, `border border-amber-200 dark:border-amber-800`, `border border-emerald-200 dark:border-emerald-800`, `border border-gray-200 dark:border-gray-700`). Never render a count badge with a solid or pastel background without its corresponding border token in both light and dark modes.
-- **Non-Interactive Badges & Button Exclusivity Rule**: Badges (`<Badge>`) and status/count chips are strictly passive, non-interactive visual indicators. Anything that performs an action, triggers navigation, jumps dates (e.g. 'Today'), or opens dialogs must NEVER be rendered as a badge or in badge-like chip styles (`bg-blue-50 text-blue-600 rounded-full`). Interactive actions must strictly use formal Flowbite `<Button>` components (`variant="primary"`, `variant="secondary"`, `variant="outline"`, or `variant="ghost"`) so users have unambiguous visual button affordances.
+- **Non-Interactive Badges & Button Exclusivity Rule**: Badges (`<Badge>`) and status/count chips are strictly passive, non-interactive visual indicators. Anything that performs an action, triggers navigation, jumps dates (e.g. 'Today'), or opens dialogs must NEVER be rendered as a badge or in badge-like chip styles (`bg-blue-50 text-blue-600 rounded-md`). Interactive actions must strictly use formal Flowbite `<Button>` components (`variant="primary"`, `variant="secondary"`, `variant="outline"`, or `variant="ghost"`) so users have unambiguous visual button affordances.
 - **OTA Badges & Branding Rule**: Everywhere OTA sources and channel names are displayed across the site (e.g. Airbnb, Booking.com, Agoda, Expedia, Vrbo), they must strictly be rendered in a badge with a clean white background in light mode and gray-800 in dark mode (`bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700`), preceded by the official OTA platform brand logo before the name (e.g. `<OtaBadge>` / `<AirbnbIcon>` / `<BookingComIcon>`). Never render OTA badges with yellow/amber or colored backgrounds, and never display OTA names as plain unbranded text.
 - **Colors**: not a separate hand-picked palette - follow `flowbite-react`'s own semantic color
   tokens per `node_modules/flowbite-react/dist/components/*/theme.js` rather than hand-picking
@@ -338,7 +339,7 @@ All primary sub-page and section tab bars across the platform (e.g. `#take_food_
   - Exclusively render buttons via the shared Flowbite `<Button>` component (`src/components/Button.tsx`).
   - Standard corner radius is strictly `rounded-lg` (8px), matching Flowbite's default button specification.
   - Buttons must use standard Flowbite sizing: `size="sm"` (`h-8` / 32px, `px-3 text-xs font-semibold`), `size="md"` (`h-10` / 40px), or `size="lg"` (`h-12` / 48px). At `h-8` (32px), `rounded-lg` (8px) maintains a crisp, rectangular button silhouette with rounded corners, never collapsing into a stadium/capsule shape.
-  - Capsule (`rounded-full`) geometry is reserved strictly for non-interactive status badges/chips (`<Badge>`), count indicator pills, or round icon/avatar indicators. Never use capsule geometry for interactive action buttons.
+  - Capsule (`rounded-full`) geometry is strictly reserved for circular avatar indicators or round icon chips. All badges, status chips, and count indicators must strictly use Flowbite's default badge style (`rounded` / `rounded-md`, never `rounded-full` pills) per the Badges Specification. Never use capsule geometry for interactive action buttons.
 
 ## Form Controls (Checkboxes, Radios, Toggles, Selects)
 
@@ -407,5 +408,33 @@ The multi-step "timeline stepper" at the top of a setup/creation wizard (`Proper
 - **Skipped-over steps keep the existing position-based status logic** (`idx < stepIndex && !step.isDone` → the amber "passed but incomplete" `AlertCircle` state; `step.isDone` → the emerald "complete" state). Clicking "Notes" straight after "Basics" leaves Contact/Payments/Operations showing amber-incomplete, exactly as clicking "Next" past them would. **Do not add per-step "visited" tracking** - status is purely a function of `stepIndex` + each step's own `isDone`, so navigating back returns the forward steps to their untouched grey.
 - **Jumping backward** is a plain `setStepIndex(idx)` with no persist/validation (matches the "Back" button), so a half-typed invalid field on the current step never traps the user on it.
 - Disable the circle buttons while `saving` or once the wizard is `finished`.
+
+## Badges Specification (Flowbite Default Badge Standard)
+
+Canonical Flowbite Badges reference: https://github.com/themesberg/flowbite/blob/main/content/components/badge.md
+
+All status badges, count chips, indicator labels, and entity tags across the application must strictly adhere to Flowbite's official **Default Badges** specification:
+
+1. **Strict Default Badge Geometry (`rounded`, NOT `rounded-full`)**:
+   - In Flowbite, default badges feature standard rounded corners: `rounded` (or `rounded-md`, ~4px corner radius).
+   - Capsule or pill geometry (`rounded-full`) is explicitly a separate, non-default variant in Flowbite ("Pill badges").
+   - **Never render badges as `rounded-full` capsules.** All badges across the platform must strictly use the default `rounded` (or `rounded-md`) shape.
+2. **Typography & Padding**:
+   - **Standard Badge**: `text-xs font-medium px-2.5 py-0.5 rounded` (or `text-2xs font-semibold px-2 py-0.5 rounded`).
+   - **Large Badge** (when specifically required for high-visibility banners): `text-sm font-medium px-3 py-1 rounded`.
+3. **Bordered Accents & Dark Mode Tokens**:
+   - Following Flowbite's **Bordered badges** specification, all badges include a clean border accent with dark mode parity:
+     - **Default / Blue**: `bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-700`
+     - **Gray / Neutral / Alternative**: `bg-gray-100 text-gray-800 border border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600`
+     - **Red / Failure / Danger**: `bg-red-100 text-red-800 border border-red-300 dark:bg-red-900 dark:text-red-300 dark:border-red-700`
+     - **Green / Success**: `bg-green-100 text-green-800 border border-green-300 dark:bg-green-900 dark:text-green-300 dark:border-green-700`
+     - **Yellow / Amber / Warning**: `bg-yellow-100 text-yellow-800 border border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700`
+     - **Cyan / Info**: `bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-900 dark:text-cyan-300 dark:border-cyan-700`
+     - **White (OTA Badges)**: `bg-white text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700`
+4. **Shared Component Usage**:
+   - Exclusively use the shared `<Badge>` component (`src/components/Badge.tsx`) or direct Flowbite markup matching the classes above.
+5. **Passive Indicator Exclusivity**:
+   - Badges are strictly passive, non-interactive visual indicators.
+   - Never use a badge as a clickable button, date-picker trigger, or modal launcher. All interactive actions must strictly be formal Flowbite `<Button>` components (`variant="primary"`, `variant="secondary"`, `variant="outline"`, or `variant="ghost"`).
 
 
