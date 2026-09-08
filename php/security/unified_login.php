@@ -145,14 +145,25 @@ if (!function_exists('performUnifiedLogin')) {
                     // Property-switcher fields (28 Aug 2026) - computed here too so the icon
                     // appears immediately after a fresh login, not only after the next
                     // check_session/reload picks it up.
+                    $switcherTenantId = $user['default_tenant_id'] ?? null;
+                    if (!$switcherTenantId && !empty($requestedPropertyId)) {
+                        try {
+                            $pStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+                            $pStmt->execute([$requestedPropertyId]);
+                            $switcherTenantId = $pStmt->fetchColumn() ?: null;
+                        } catch (Exception $e) {}
+                    }
                     $ownerTenantSlug = null;
-                    if (!empty($user['default_tenant_id'])) {
+                    if ($switcherTenantId) {
                         try {
                             $ownerTSlugStmt = $pdo->prepare("SELECT slug FROM tenants WHERE id = ? LIMIT 1");
-                            $ownerTSlugStmt->execute([$user['default_tenant_id']]);
+                            $ownerTSlugStmt->execute([$switcherTenantId]);
                             $ownerTenantSlug = $ownerTSlugStmt->fetchColumn() ?: null;
                         } catch (Exception $e) {}
                     }
+
+                    $isPlatformOrSuper = $is_platform_admin || in_array(strtolower($role ?? ''), ['root_admin', 'super_admin', 'admin']);
+                    $canSwitch = (!empty($user['default_tenant_id']) || $isPlatformOrSuper) && $ownerTenantSlug;
 
                     return ['status_code' => 200, 'body' => [
                         'success' => true,
@@ -165,8 +176,8 @@ if (!function_exists('performUnifiedLogin')) {
                             'is_platform_admin' => $is_platform_admin,
                             'default_tenant_id' => $user['default_tenant_id'] ?? null,
                             'must_change_passcode' => (bool)($user['must_change_passcode'] ?? false),
-                            'can_switch_properties' => !empty($user['default_tenant_id']) && $ownerTenantSlug ? true : false,
-                            'tenant_id' => $user['default_tenant_id'] ?? null,
+                            'can_switch_properties' => $canSwitch ? true : false,
+                            'tenant_id' => $switcherTenantId,
                             'tenant_slug' => $ownerTenantSlug,
                         ],
                     ]];

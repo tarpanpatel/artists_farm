@@ -1851,9 +1851,18 @@ switch ($action) {
             // the two underlying mechanisms - it just gets "can this session switch, and to
             // which tenant".
             $switcherTenantId = $_SESSION['staff_tenant_id'] ?? $_SESSION['default_tenant_id'] ?? null;
-            $canSwitchProperties = !empty($_SESSION['staff_access_all_properties']) || !empty($_SESSION['default_tenant_id']);
+            if (!$switcherTenantId && (!empty($_SESSION['property_id']) || !empty($propertyId))) {
+                $pid = !empty($_SESSION['property_id']) ? (int)$_SESSION['property_id'] : (int)$propertyId;
+                try {
+                    $pTenantStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? LIMIT 1");
+                    $pTenantStmt->execute([$pid]);
+                    $switcherTenantId = $pTenantStmt->fetchColumn() ?: null;
+                } catch (Exception $e) {}
+            }
+            $isPlatformOrSuper = !empty($_SESSION['is_platform_admin']) || in_array(strtolower($_SESSION['role'] ?? ''), ['root_admin', 'root admin', 'super_admin', 'super admin', 'admin']);
+            $canSwitchProperties = !empty($_SESSION['staff_access_all_properties']) || !empty($_SESSION['default_tenant_id']) || $isPlatformOrSuper;
             $switcherTenantSlug = null;
-            if ($canSwitchProperties && $switcherTenantId) {
+            if ($switcherTenantId) {
                 try {
                     $tSlugStmt = $pdo->prepare("SELECT slug FROM tenants WHERE id = ? LIMIT 1");
                     $tSlugStmt->execute([$switcherTenantId]);
@@ -4563,9 +4572,10 @@ switch ($action) {
             // scoped strictly to this property's own tenant_id.
             if (!empty($currentProperty['tenant_id'])) {
                 try {
-                    $tstmt = $pdo->prepare("SELECT plan_type, subscription_status, subscription_expires_at, is_demo, whatsapp_voucher_template FROM tenants WHERE id = ? LIMIT 1");
+                    $tstmt = $pdo->prepare("SELECT slug, plan_type, subscription_status, subscription_expires_at, is_demo, whatsapp_voucher_template FROM tenants WHERE id = ? LIMIT 1");
                     $tstmt->execute([$currentProperty['tenant_id']]);
                     if ($trow = $tstmt->fetch(PDO::FETCH_ASSOC)) {
+                        $currentProperty['tenant_slug'] = $trow['slug'];
                         $currentProperty['tenant_plan_type'] = $trow['plan_type'];
                         $currentProperty['tenant_subscription_status'] = $trow['subscription_status'];
                         $currentProperty['tenant_subscription_expires_at'] = $trow['subscription_expires_at'];

@@ -1452,6 +1452,7 @@ export const strings: Record<string, string> = {
   install_app_aria: "Install app on this device",
   switch_property_tooltip: "Switch property",
   switch_property_aria: "Switch property",
+  view_all_properties: "View all properties...",
   notifications_label: "Notifications",
   recent_service_requests_label: "Guest Service Requests",
   recently_served_orders_label: "Recently Served Orders",

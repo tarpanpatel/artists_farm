@@ -737,21 +737,33 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // authenticated owner/access_all_properties session (currentUser.canSwitchProperties).
   const [isSwitchingProperty, setIsSwitchingProperty] = useState(false);
 
-  // Root Admin's "View site as Super Admin" preview (Header.tsx's Eye dropdown) must also
-  // show the switcher, since a real Super Admin always can - Root Admin's own currentUser
-  // has no canSwitchProperties/tenantId/tenantSlug of their own (Root Admin isn't scoped to
-  // one tenant), so this falls back to whichever property Root Admin is CURRENTLY viewing -
-  // exactly the tenant a real Super Admin of that property would be switching within.
+  // Property switcher permissions and tenant resolution:
+  // Root Admin (including previewing Super Admin), Super Admin, or authorized multi-property staff
+  const isPlatformAdmin =
+    !!currentUser?.isPlatformAdmin ||
+    (currentUser?.role || '').toLowerCase().replace(/_/g, ' ').trim() === 'root admin' ||
+    activeRole === 'Root Admin';
+
+  const isSuperAdmin =
+    (currentUser?.role || '').toLowerCase().replace(/_/g, ' ').trim() === 'super admin' ||
+    activeRole === 'Super Admin';
+
   const isRootAdminPreviewingSuperAdmin =
     activeRole === 'Super Admin' &&
     (currentUser?.role || '').toLowerCase().replace(/_/g, ' ').trim() === 'root admin';
-  const effectiveCanSwitchProperties = !!currentUser?.canSwitchProperties || isRootAdminPreviewingSuperAdmin;
-  const effectiveSwitchTenantId = currentUser?.canSwitchProperties
-    ? currentUser.tenantId
-    : (preloadedData.currentProperty?.tenant_id ?? null);
-  const effectiveSwitchTenantSlug = currentUser?.canSwitchProperties
-    ? currentUser.tenantSlug
-    : getPropertyAndRoomSlugs().tenantSlug;
+
+  const effectiveCanSwitchProperties =
+    !!currentUser?.canSwitchProperties || isPlatformAdmin || isSuperAdmin || isRootAdminPreviewingSuperAdmin;
+
+  const effectiveSwitchTenantId =
+    currentUser?.tenantId ||
+    (preloadedData.currentProperty?.tenant_id ?? null);
+
+  const effectiveSwitchTenantSlug =
+    currentUser?.tenantSlug ||
+    (preloadedData.currentProperty as any)?.tenant_slug ||
+    getPropertyAndRoomSlugs().tenantSlug ||
+    'artists-farm';
 
   const handleLoginFailed = (username: string) => {
     logAudit(`Staff User ${username} failed login attempt`, { status: 'Failed', module: 'login', user: username });
