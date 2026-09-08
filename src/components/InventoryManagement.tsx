@@ -5,7 +5,7 @@ import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, ClipboardList, ChefHat, ArrowRight, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -1672,16 +1672,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     return (
       <div data-tour="stock-requisition">
-      <div className="mb-3.5 p-3 bg-blue-50/70 dark:bg-gray-800/80 rounded-lg border border-blue-200 dark:border-blue-800 flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2.5">
+      <div className="mb-3.5 p-3 bg-blue-50/70 dark:bg-gray-800/80 rounded-lg border border-blue-200 dark:border-blue-800 text-xs">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center shrink-0">
             <Boxes className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">How Grocery Requests Work: </span>
-            <span className="text-gray-600 dark:text-gray-300">
-              1. Cook requests items &rarr; 2. Shows in Pending Requests &rarr; 3. Tap &quot;Received&quot; when bought to restock automatically.
-            </span>
+          <span className="font-semibold text-gray-900 dark:text-white">How Grocery Requests Work</span>
+          <div className="hidden sm:block h-5 border-l border-blue-200 dark:border-blue-800" />
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-600 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5"><ChefHat className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> <strong>1.</strong> Cook requests items</span>
+            <ArrowRight className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
+            <span className="inline-flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> <strong>2.</strong> Shows in Pending Requests</span>
+            <ArrowRight className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
+            <span className="inline-flex items-center gap-1.5"><PackagePlus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> <strong>3.</strong> Tap “Received” when bought to restock automatically</span>
           </div>
         </div>
       </div>
@@ -1692,22 +1695,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           scratch instead of the shared utils/tabsTheme.ts, which is why it
           rendered as a grey segmented pill control instead of the individual
           bordered/attached tabs every other page uses. Merged in (rather than
-          replaced outright) since the flex-nowrap/overflow-x-auto variant
-          fix below is still needed and isn't part of the shared theme. */}
+          replaced outright) with only the local layout adjustments below:
+          this page keeps the request-creation tab first and lets both tabs
+          wrap on very narrow screens instead of adding a scrollbar. */}
       <Tabs
         aria-label="Stock Request Tabs"
         variant="default"
+        className="gap-0"
         theme={{
           ...attachedTabsTheme,
           tablist: {
             ...attachedTabsTheme.tablist,
-            // flex-nowrap + overflow-x-auto: flowbite's default tablist is
-            // flex-wrap, which was dropping "Request Materials" onto its own
-            // second row on mobile once the first tab's title pushed past the
-            // available width - both tabs now stay on one row, scrolling
-            // horizontally instead of wrapping if a title is ever still too
-            // long for a very narrow screen (found 21 Aug 2026).
-            variant: { default: 'flex-nowrap overflow-x-auto' },
+            // Keep the creation tab visually first and flush left. Wrapping
+            // is preferable to a horizontal scrollbar for these two tabs.
+            base: 'justify-end flex-row-reverse',
+            variant: { default: 'flex-wrap overflow-visible' },
           },
         }}
         clearTheme={attachedTabsClearTheme}

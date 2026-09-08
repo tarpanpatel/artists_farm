@@ -3,13 +3,14 @@ import { Drawer } from 'flowbite-react';
 import {
   User, Home, Layers, ChefHat,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck, X, AlertCircle,
-  Smartphone, Share, PlusSquare, MoreVertical, ExternalLink, RefreshCw,
+  Smartphone, Share, PlusSquare, MoreVertical, ExternalLink, RefreshCw, Apple, Monitor, Download,
 } from './icons/FlowbiteIcons';
 import { AirbnbIcon } from './icons/AirbnbIcon';
 import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
+import { detectInstallPlatform } from '../utils/installPlatform';
 
 interface SelfOnboardingWizardProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   onSuccess,
 }) => {
   const { showToast } = useToast();
+  const installPlatform = detectInstallPlatform();
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -910,30 +912,43 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
 
             <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-3">
               <div className="flex items-center gap-2 font-bold text-xs text-indigo-900 dark:text-indigo-200">
-                <Smartphone className="w-4 h-4 text-indigo-600" />
-                <span>📱 Add Dashboard as an App on Your Mobile</span>
+                <img src="/app-icons/icon-source.png" alt="GroundCode" className="w-5 h-5" />
+                <span>Add GroundCode as an App on Your Mobile</span>
               </div>
               <p className="text-2xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 Add this resort dashboard to your phone's home screen for 1-tap instant access and fast offline loading!
               </p>
 
-              <div className="space-y-2 pt-2 border-t border-indigo-100 dark:border-indigo-900 text-2xs">
+              <div className="pt-2 border-t border-indigo-100 dark:border-indigo-900 text-2xs">
                 <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <div className="font-semibold text-slate-900 dark:text-white mb-1">🍏 On iPhone (Safari):</div>
-                  <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
-                    <li>Tap <Share className="w-3 h-3 inline text-indigo-600" /> <strong>Share</strong> in Safari's bottom bar</li>
-                    <li>Scroll down & tap <PlusSquare className="w-3 h-3 inline text-indigo-600" /> <strong>Add to Home Screen</strong></li>
-                    <li>Tap <strong>Add</strong> in top-right corner</li>
-                  </ol>
-                </div>
-
-                <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                  <div className="font-semibold text-slate-900 dark:text-white mb-1">🤖 On Android (Chrome):</div>
-                  <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
-                    <li>Tap <MoreVertical className="w-3 h-3 inline text-indigo-600" /> <strong>3 Dots Menu</strong> in top-right</li>
-                    <li>Tap <strong>Install App</strong> or <strong>Add to Home screen</strong></li>
-                    <li>Tap <strong>Install</strong> to confirm</li>
-                  </ol>
+                  {installPlatform === 'ios' ? (
+                    <>
+                      <div className="font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5"><Apple className="w-3.5 h-3.5" /> On iPhone or iPad (Safari):</div>
+                      <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
+                        <li>Tap <Share className="w-3 h-3 inline text-indigo-600" /> <strong>Share</strong> in Safari's toolbar</li>
+                        <li>Scroll down and tap <PlusSquare className="w-3 h-3 inline text-indigo-600" /> <strong>Add to Home Screen</strong></li>
+                        <li>Tap <strong>Add</strong> to confirm</li>
+                      </ol>
+                    </>
+                  ) : installPlatform === 'android' ? (
+                    <>
+                      <div className="font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5" /> On Android (Chrome):</div>
+                      <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
+                        <li>Tap <MoreVertical className="w-3 h-3 inline text-indigo-600" /> <strong>3 Dots Menu</strong> in Chrome's top-right corner</li>
+                        <li>Tap <strong>Install App</strong> or <strong>Add to Home screen</strong></li>
+                        <li>Tap <strong>Install</strong> to confirm</li>
+                      </ol>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-1.5"><Monitor className="w-3.5 h-3.5" /> On desktop (Chrome or Edge):</div>
+                      <ol className="list-decimal pl-4 space-y-0.5 text-slate-600 dark:text-slate-300">
+                        <li>Click the <Download className="w-3 h-3 inline text-indigo-600" /> <strong>Install</strong> icon at the right of the address bar</li>
+                        <li>Or open <MoreVertical className="w-3 h-3 inline text-indigo-600" /> the browser menu and choose <strong>Install GroundCode</strong></li>
+                        <li>Click <strong>Install</strong> to confirm</li>
+                      </ol>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

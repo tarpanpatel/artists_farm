@@ -3016,10 +3016,30 @@ export async function depleteStockForDish(menuItemId: number, quantity: number):
   }
 }
 
+export interface StaffMealIngredient {
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface StaffMealOption {
   id: number;
   name: string;
   cost: number;
+  ingredients?: StaffMealIngredient[];
+}
+
+export interface StaffMealDeduction {
+  item: string;
+  deducted: number;
+  unit: string;
+  original: string;
+}
+
+export interface AddStaffMealLogResult {
+  success: boolean;
+  id?: number;
+  deductions?: StaffMealDeduction[];
 }
 
 export async function fetchStaffMealOptionsFromDB(): Promise<StaffMealOption[]> {
@@ -3027,7 +3047,12 @@ export async function fetchStaffMealOptionsFromDB(): Promise<StaffMealOption[]> 
     const res = await apiFetch(`${API_BASE}?action=get_staff_meal_options`);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) {
-      return json.data.map((o: any) => ({ id: Number(o.id), name: o.name, cost: Number(o.cost) || 0 }));
+      return json.data.map((o: any) => ({
+        id: Number(o.id),
+        name: o.name,
+        cost: Number(o.cost) || 0,
+        ingredients: Array.isArray(o.ingredients) ? o.ingredients : [],
+      }));
     }
   } catch (err) {
     console.error('Failed to fetch staff meal options:', err);
@@ -3035,12 +3060,12 @@ export async function fetchStaffMealOptionsFromDB(): Promise<StaffMealOption[]> 
   return [];
 }
 
-export async function addStaffMealOptionToDB(name: string, cost: number): Promise<boolean> {
+export async function addStaffMealOptionToDB(name: string, cost: number, ingredients?: StaffMealIngredient[]): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_staff_meal_option`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, cost }),
+      body: JSON.stringify({ name, cost, ingredients: ingredients || [] }),
     });
     const json = await res.json();
     return json.status === 'success';
@@ -3081,14 +3106,27 @@ export async function fetchStaffMealLogsFromDB(): Promise<StaffMealLog[]> {
   return [];
 }
 
-export async function addStaffMealLogToDB(staffNames: string, foodDescription: string, isLeftoverBuffer: boolean, loggedAt?: string): Promise<boolean> {
+export async function addStaffMealLogToDB(
+  staffNames: string,
+  foodDescription: string,
+  isLeftoverBuffer: boolean,
+  loggedAt?: string,
+  mealOptionId?: number,
+  quantity?: number
+): Promise<AddStaffMealLogResult> {
   try {
     // loggedAt (optional): the "Date & Time of Record" field's native
     // datetime-local value ("YYYY-MM-DDTHH:mm") - converted to a MySQL
     // DATETIME string here rather than at the call site, so every caller
     // sends the same shape. Omitted entirely -> backend falls back to
     // NOW(). See php/kitchen/menu.php's add_staff_meal_log case.
-    const body: Record<string, unknown> = { staff_names: staffNames, food_description: foodDescription, is_leftover_buffer: isLeftoverBuffer };
+    const body: Record<string, unknown> = {
+      staff_names: staffNames,
+      food_description: foodDescription,
+      is_leftover_buffer: isLeftoverBuffer,
+      meal_option_id: mealOptionId,
+      quantity: quantity || 1,
+    };
     if (loggedAt) body.logged_at = `${loggedAt.replace('T', ' ')}:00`;
     const res = await apiFetch(`${API_BASE}?action=add_staff_meal_log`, {
       method: 'POST',
@@ -3096,10 +3134,14 @@ export async function addStaffMealLogToDB(staffNames: string, foodDescription: s
       body: JSON.stringify(body),
     });
     const json = await res.json();
-    return json.status === 'success';
+    return {
+      success: json.status === 'success',
+      id: json.id,
+      deductions: Array.isArray(json.deductions) ? json.deductions : [],
+    };
   } catch (err) {
     console.error('Failed to add staff meal log:', err);
-    return false;
+    return { success: false };
   }
 }
 

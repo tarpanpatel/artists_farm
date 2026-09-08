@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Modal } from 'flowbite-react';
 import {
-  Home, Phone, Wallet, Clock, Building, Smartphone,
+  Home, Phone, Wallet, Clock, Building, Smartphone, Apple, Monitor, Download,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle, ExternalLink,
   Share, PlusSquare, MoreVertical,
 } from './icons/FlowbiteIcons';
@@ -10,6 +10,7 @@ import { Input } from './Input';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
+import { detectInstallPlatform } from '../utils/installPlatform';
 
 /**
  * PropertySetupWizard: Linear 5-step property onboarding guide
@@ -118,6 +119,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   rooms = [],
   onSaved,
 }) => {
+  const installPlatform = detectInstallPlatform();
   const isMultiKey = propertyType === 'MULTI_KEY';
 
   // Open by default (auto-surfaces the checklist the moment a property with
@@ -585,8 +587,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               <div className="space-y-3">
                 <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-lg space-y-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                      <Smartphone className="w-4 h-4" />
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 flex items-center justify-center shrink-0">
+                      <img src="/app-icons/icon-source.png" alt="GroundCode" className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-200 m-0">
@@ -599,30 +601,41 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2.5">
-                  {/* Apple Safari Instructions */}
-                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
-                      <span className="text-sm">🍏</span> On iPhone (Safari):
-                    </div>
-                    <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
-                      <li>Tap <Share className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Share</strong> in Safari's bottom toolbar</li>
-                      <li>Scroll down &amp; tap <PlusSquare className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Add to Home Screen</strong></li>
-                      <li>Tap <strong>Add</strong> in the top-right corner</li>
-                    </ol>
-                  </div>
-
-                  {/* Android Chrome Instructions */}
-                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
-                      <span className="text-sm">🤖</span> On Android (Chrome):
-                    </div>
-                    <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
-                      <li>Tap <MoreVertical className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>3 Dots</strong> in Chrome top-right</li>
-                      <li>Tap <strong>Install App</strong> or <strong>Add to Home screen</strong></li>
-                      <li>Tap <strong>Install</strong> to confirm</li>
-                    </ol>
-                  </div>
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  {installPlatform === 'ios' ? (
+                    <>
+                      <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
+                        <Apple className="w-4 h-4 text-slate-700 dark:text-slate-300" /> On iPhone or iPad (Safari):
+                      </div>
+                      <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
+                        <li>Tap <Share className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Share</strong> in Safari's toolbar</li>
+                        <li>Scroll down and tap <PlusSquare className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Add to Home Screen</strong></li>
+                        <li>Tap <strong>Add</strong> to confirm</li>
+                      </ol>
+                    </>
+                  ) : installPlatform === 'android' ? (
+                    <>
+                      <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
+                        <Smartphone className="w-4 h-4 text-slate-700 dark:text-slate-300" /> On Android (Chrome):
+                      </div>
+                      <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
+                        <li>Tap <MoreVertical className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>3 Dots</strong> in Chrome's top-right corner</li>
+                        <li>Tap <strong>Install App</strong> or <strong>Add to Home screen</strong></li>
+                        <li>Tap <strong>Install</strong> to confirm</li>
+                      </ol>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 font-semibold text-xs text-gray-900 dark:text-white mb-2">
+                        <Monitor className="w-4 h-4 text-slate-700 dark:text-slate-300" /> On desktop (Chrome or Edge):
+                      </div>
+                      <ol className="list-decimal pl-4 space-y-1 text-2xs text-gray-600 dark:text-gray-300">
+                        <li>Click the <Download className="w-3 h-3 inline text-blue-600 mx-0.5" /> <strong>Install</strong> icon at the right of the address bar</li>
+                        <li>Or open <MoreVertical className="w-3 h-3 inline text-blue-600 mx-0.5" /> the browser menu and choose <strong>Install GroundCode</strong></li>
+                        <li>Click <strong>Install</strong> to confirm</li>
+                      </ol>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-2xs text-emerald-800 dark:text-emerald-300">

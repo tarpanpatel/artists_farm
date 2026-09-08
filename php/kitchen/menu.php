@@ -353,6 +353,15 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 markSchemaVerified('nav_menu_self_heal_v14');
             }
 
+            // v15 (8 Sep 2026): Move Recipe Builder (beta_recipe_builder) from Admin Controls to Kitchen
+            // and grant access to Kitchen roles (Staff Kitchen, Staff Supervisor, Admin, Super Admin).
+            if (!isSchemaVerified('nav_menu_self_heal_v15')) {
+                try {
+                    $pdo->exec("UPDATE nav_menu_items SET parent_id = 'nav-kitchen-overview', roles_json = '[\"Super Admin\",\"Admin\",\"Staff Kitchen\",\"Staff Supervisor\"]', is_visible = 1 WHERE unique_key = 'beta_recipe_builder'");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v15');
+            }
+
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 
@@ -816,20 +825,116 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_staff_meal_options':
             try {
+                // Self-heal ingredients column
+                if (!isSchemaVerified('schema_staff_meal_ingredients_v1')) {
+                    try {
+                        $pdo->exec("ALTER TABLE staff_meal_options ADD COLUMN IF NOT EXISTS ingredients LONGTEXT DEFAULT NULL");
+                    } catch (Exception $e) {}
+                    markSchemaVerified('schema_staff_meal_ingredients_v1');
+                }
+
+                $stapleDishes = [
+                    ['Yellow Dal Tadka', 35, [
+                        ['name' => 'Dal', 'quantity' => 50, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 10, 'unit' => 'ml'],
+                        ['name' => 'Onion', 'quantity' => 30, 'unit' => 'gm'],
+                        ['name' => 'Tomato', 'quantity' => 30, 'unit' => 'gm'],
+                    ]],
+                    ['Steamed Rice / Chawal', 25, [
+                        ['name' => 'Rice', 'quantity' => 100, 'unit' => 'gm'],
+                    ]],
+                    ['Roti / Chapati (4 pcs)', 20, [
+                        ['name' => 'Atta', 'quantity' => 100, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 10, 'unit' => 'ml'],
+                    ]],
+                    ['Aloo Gobi Sabzi', 40, [
+                        ['name' => 'Potato', 'quantity' => 100, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 15, 'unit' => 'ml'],
+                        ['name' => 'Onion', 'quantity' => 25, 'unit' => 'gm'],
+                    ]],
+                    ['Seasonal Mix Veg Sabzi', 40, [
+                        ['name' => 'Cooking Oil', 'quantity' => 15, 'unit' => 'ml'],
+                        ['name' => 'Onion', 'quantity' => 25, 'unit' => 'gm'],
+                    ]],
+                    ['Paneer Bhurji / Sabzi', 60, [
+                        ['name' => 'Paneer', 'quantity' => 100, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 15, 'unit' => 'ml'],
+                        ['name' => 'Onion', 'quantity' => 30, 'unit' => 'gm'],
+                        ['name' => 'Tomato', 'quantity' => 30, 'unit' => 'gm'],
+                    ]],
+                    ['Fresh Green Salad', 20, [
+                        ['name' => 'Tomato', 'quantity' => 50, 'unit' => 'gm'],
+                        ['name' => 'Onion', 'quantity' => 30, 'unit' => 'gm'],
+                    ]],
+                    ['Khichdi', 35, [
+                        ['name' => 'Rice', 'quantity' => 60, 'unit' => 'gm'],
+                        ['name' => 'Dal', 'quantity' => 40, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 10, 'unit' => 'ml'],
+                    ]],
+                    ['Egg Curry', 50, [
+                        ['name' => 'Eggs', 'quantity' => 2, 'unit' => 'pcs'],
+                        ['name' => 'Cooking Oil', 'quantity' => 15, 'unit' => 'ml'],
+                        ['name' => 'Onion', 'quantity' => 40, 'unit' => 'gm'],
+                        ['name' => 'Tomato', 'quantity' => 40, 'unit' => 'gm'],
+                    ]],
+                    ['Staff Thali (Dal + Chawal + Roti + Sabzi)', 50, [
+                        ['name' => 'Atta', 'quantity' => 100, 'unit' => 'gm'],
+                        ['name' => 'Rice', 'quantity' => 80, 'unit' => 'gm'],
+                        ['name' => 'Dal', 'quantity' => 40, 'unit' => 'gm'],
+                        ['name' => 'Potato', 'quantity' => 80, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 20, 'unit' => 'ml'],
+                    ]],
+                ];
 
                 $countStmt = $pdo->prepare("SELECT COUNT(*) FROM staff_meal_options WHERE property_id = ?");
                 $countStmt->execute([$propertyId]);
-                if ((int)$countStmt->fetchColumn() === 0) {
-                    // Seed defaults on first use for this property - no hardcoded
-                    // options at runtime, just a one-time starting point.
-                    $seed = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, is_system_default) VALUES (?, ?, ?, 1)");
-                    $seed->execute([$propertyId, 'Rice, daal and sabzi', 50]);
-                    $seed->execute([$propertyId, 'Chapati & Chicken Curry', 80]);
+                $optCount = (int)$countStmt->fetchColumn();
+
+                if ($optCount === 0) {
+                    $seed = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, ingredients, is_system_default) VALUES (?, ?, ?, ?, 1)");
+                    foreach ($stapleDishes as $s) {
+                        $seed->execute([$propertyId, $s[0], $s[1], json_encode($s[2])]);
+                    }
+                } else {
+                    // Fill in ingredients for older default rows that have NULL ingredients
+                    $pdo->prepare("UPDATE staff_meal_options SET ingredients = ? WHERE property_id = ? AND (ingredients IS NULL OR ingredients = '' OR ingredients = '[]') AND name LIKE '%Rice, daal%'")->execute([json_encode([
+                        ['name' => 'Rice', 'quantity' => 100, 'unit' => 'gm'],
+                        ['name' => 'Dal', 'quantity' => 50, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 15, 'unit' => 'ml'],
+                    ]), $propertyId]);
+
+                    $pdo->prepare("UPDATE staff_meal_options SET ingredients = ? WHERE property_id = ? AND (ingredients IS NULL OR ingredients = '' OR ingredients = '[]') AND name LIKE '%Chicken Curry%'")->execute([json_encode([
+                        ['name' => 'Atta', 'quantity' => 100, 'unit' => 'gm'],
+                        ['name' => 'Cooking Oil', 'quantity' => 20, 'unit' => 'ml'],
+                        ['name' => 'Onion', 'quantity' => 40, 'unit' => 'gm'],
+                    ]), $propertyId]);
+
+                    // Seed any missing staple items so property has the full suite
+                    if ($optCount < 6) {
+                        $seedMissing = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, ingredients, is_system_default) VALUES (?, ?, ?, ?, 1)");
+                        foreach ($stapleDishes as $s) {
+                            $chk = $pdo->prepare("SELECT COUNT(*) FROM staff_meal_options WHERE property_id = ? AND name = ?");
+                            $chk->execute([$propertyId, $s[0]]);
+                            if ((int)$chk->fetchColumn() === 0) {
+                                $seedMissing->execute([$propertyId, $s[0], $s[1], json_encode($s[2])]);
+                            }
+                        }
+                    }
                 }
 
-                $stmt = $pdo->prepare("SELECT id, name, cost FROM staff_meal_options WHERE property_id = ? ORDER BY id ASC");
+                $stmt = $pdo->prepare("SELECT id, name, cost, ingredients FROM staff_meal_options WHERE property_id = ? ORDER BY id ASC");
                 $stmt->execute([$propertyId]);
-                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $data = array_map(function($r) {
+                    $ings = !empty($r['ingredients']) ? json_decode($r['ingredients'], true) : [];
+                    return [
+                        'id' => (int)$r['id'],
+                        'name' => $r['name'],
+                        'cost' => (float)$r['cost'],
+                        'ingredients' => is_array($ings) ? $ings : [],
+                    ];
+                }, $rows);
+                echo json_encode(['status' => 'success', 'data' => $data]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);
             }
@@ -840,14 +945,15 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 $input = json_decode(file_get_contents('php://input'), true);
                 $name = trim($input['name'] ?? '');
                 $cost = floatval($input['cost'] ?? 0);
+                $ingredients = isset($input['ingredients']) && is_array($input['ingredients']) ? $input['ingredients'] : [];
                 if (!$name) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'name is required']);
                     break;
                 }
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, is_system_default) VALUES (?, ?, ?, 0)");
-                    $stmt->execute([$propertyId, $name, $cost]);
+                    $stmt = $pdo->prepare("INSERT INTO staff_meal_options (property_id, name, cost, ingredients, is_system_default) VALUES (?, ?, ?, ?, 0)");
+                    $stmt->execute([$propertyId, $name, $cost, !empty($ingredients) ? json_encode($ingredients) : null]);
                     echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -872,20 +978,14 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 $staffNames = trim($input['staff_names'] ?? '');
                 $foodDescription = trim($input['food_description'] ?? '');
                 $isLeftover = !empty($input['is_leftover_buffer']) ? 1 : 0;
+                $mealOptionId = isset($input['meal_option_id']) ? (int)$input['meal_option_id'] : 0;
+                $quantity = max(1, (int)($input['quantity'] ?? 1));
+
                 if (!$staffNames || !$foodDescription) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'staff_names and food_description are required']);
                     break;
                 }
-                // Optional custom timestamp from the "Date & Time of Record"
-                // field (src/components/KitchenManagement.tsx's Staff Meals
-                // tab) - previously never sent at all, so that field was
-                // decorative: logged_at always fell back to the column's own
-                // DEFAULT CURRENT_TIMESTAMP regardless of what was picked
-                // (found + fixed 21 Aug 2026). Validated via
-                // DateTime::createFromFormat rather than trusted as-is, since
-                // it's client-supplied; falls back to NOW() on anything
-                // missing/malformed rather than rejecting the whole request.
                 $loggedAtRaw = trim($input['logged_at'] ?? '');
                 $loggedAt = date('Y-m-d H:i:s');
                 if ($loggedAtRaw !== '') {
@@ -895,10 +995,74 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     }
                 }
                 try {
-
                     $stmt = $pdo->prepare("INSERT INTO staff_meal_logs (property_id, staff_names, food_description, is_leftover_buffer, logged_at) VALUES (?, ?, ?, ?, ?)");
                     $stmt->execute([$propertyId, $staffNames, $foodDescription, $isLeftover, $loggedAt]);
-                    echo json_encode(['status' => 'success', 'id' => $pdo->lastInsertId()]);
+                    $logId = $pdo->lastInsertId();
+
+                    $deductions = [];
+
+                    // Stock Depletion: ONLY if NOT made from leftover / buffer stock
+                    if (!$isLeftover) {
+                        $ings = [];
+                        if ($mealOptionId > 0) {
+                            $optStmt = $pdo->prepare("SELECT ingredients FROM staff_meal_options WHERE id = ? AND property_id = ? LIMIT 1");
+                            $optStmt->execute([$mealOptionId, $propertyId]);
+                            $optRow = $optStmt->fetch(PDO::FETCH_ASSOC);
+                            if ($optRow && !empty($optRow['ingredients'])) {
+                                $ings = json_decode($optRow['ingredients'], true) ?: [];
+                            }
+                        }
+                        if (empty($ings)) {
+                            // Search by option name match
+                            $optStmt2 = $pdo->prepare("SELECT ingredients FROM staff_meal_options WHERE property_id = ? AND (? LIKE CONCAT('%', name, '%') OR name LIKE ?) AND ingredients IS NOT NULL LIMIT 1");
+                            $optStmt2->execute([$propertyId, $foodDescription, '%' . $foodDescription . '%']);
+                            $optRow2 = $optStmt2->fetch(PDO::FETCH_ASSOC);
+                            if ($optRow2 && !empty($optRow2['ingredients'])) {
+                                $ings = json_decode($optRow2['ingredients'], true) ?: [];
+                            }
+                        }
+
+                        if (!empty($ings) && is_array($ings)) {
+                            foreach ($ings as $ing) {
+                                $ingName = trim($ing['name'] ?? '');
+                                $perPortionQty = (float)($ing['quantity'] ?? 0);
+                                $ingUnit = strtolower(trim($ing['unit'] ?? 'gm'));
+                                $totalNeeded = $perPortionQty * $quantity;
+                                if (!$ingName || $totalNeeded <= 0) continue;
+
+                                // Match against req_catalog
+                                $catStmt = $pdo->prepare("SELECT id, item_name, unit_label, current_stock FROM req_catalog WHERE property_id = ? AND (LOWER(item_name) = LOWER(?) OR LOWER(item_name) LIKE LOWER(?)) ORDER BY CASE WHEN LOWER(item_name) = LOWER(?) THEN 1 ELSE 2 END LIMIT 1");
+                                $catStmt->execute([$propertyId, $ingName, '%' . $ingName . '%', $ingName]);
+                                $catItem = $catStmt->fetch(PDO::FETCH_ASSOC);
+
+                                if ($catItem) {
+                                    $catUnit = strtolower(trim($catItem['unit_label'] ?? ''));
+                                    $qtyToDeduct = $totalNeeded;
+
+                                    // Unit conversion: grams to Kg, ml to Ltr
+                                    if (($ingUnit === 'gm' || $ingUnit === 'g' || $ingUnit === 'grams') && ($catUnit === 'kg' || $catUnit === 'kgs')) {
+                                        $qtyToDeduct = $totalNeeded / 1000.0;
+                                    } elseif (($ingUnit === 'ml' || $ingUnit === 'milliliters') && ($catUnit === 'ltr' || $catUnit === 'liter' || $catUnit === 'liters')) {
+                                        $qtyToDeduct = $totalNeeded / 1000.0;
+                                    } elseif (($ingUnit === 'kg' || $ingUnit === 'kgs') && ($catUnit === 'gm' || $catUnit === 'g')) {
+                                        $qtyToDeduct = $totalNeeded * 1000.0;
+                                    }
+
+                                    $updStmt = $pdo->prepare("UPDATE req_catalog SET current_stock = GREATEST(0, current_stock - ?) WHERE id = ?");
+                                    $updStmt->execute([$qtyToDeduct, $catItem['id']]);
+
+                                    $deductions[] = [
+                                        'item' => $catItem['item_name'],
+                                        'deducted' => round($qtyToDeduct, 3),
+                                        'unit' => $catItem['unit_label'],
+                                        'original' => "{$totalNeeded} {$ingUnit}"
+                                    ];
+                                }
+                            }
+                        }
+                    }
+
+                    echo json_encode(['status' => 'success', 'id' => $logId, 'deductions' => $deductions]);
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }

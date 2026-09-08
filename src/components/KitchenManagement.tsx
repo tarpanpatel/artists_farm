@@ -34,7 +34,7 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB } from '../services/api';
+import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB, type StaffMealOption } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
@@ -948,17 +948,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [smCustomMeal, setSmCustomMeal] = useState('');
   const [smEstCost, setSmEstCost] = useState('');
   const [smQuantity, setSmQuantity] = useState(1);
+  const [smIsLeftover, setSmIsLeftover] = useState(false);
   const [isCustomMealModalOpen, setIsCustomMealModalOpen] = useState(false);
   const [newMealName, setNewMealName] = useState('');
   const [newMealCost, setNewMealCost] = useState('');
-  const [smMealOptions, setSmMealOptions] = useState<{ name: string; cost: number }[]>([]);
+  const [smMealOptions, setSmMealOptions] = useState<StaffMealOption[]>([]);
   // Gated on isAuthenticated - see refreshWalkInTabs's effect above for why
   // (same 27 Aug 2026 fix, same reason: fires before the async demo auto-login
   // can complete otherwise, guaranteed 401 with no retry).
   useEffect(() => {
     if (!authChecked || !isAuthenticated) return;
     fetchStaffMealOptionsFromDB().then((options) => {
-      setSmMealOptions(options.map((o) => ({ name: o.name, cost: o.cost })));
+      setSmMealOptions(options);
     });
   }, [isAuthenticated, authChecked]);
   const [smLogs, setSmLogs] = useState<{ date: string; staff: string; food: string; hasTag: boolean }[]>([]);
@@ -992,20 +993,22 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     }
   }, [initialStaffName, smStaffList]);
 
-  const handleSaveCustomMeal = () => {
+  const handleSaveCustomMeal = async () => {
     if (!newMealName) return;
     const cost = parseFloat(newMealCost) || 0;
-    setSmMealOptions(prev => [...prev, { name: newMealName, cost }]);
+    const newOpt: StaffMealOption = { id: Date.now(), name: newMealName, cost, ingredients: [] };
+    setSmMealOptions(prev => [...prev, newOpt]);
     setSmCustomMeal(newMealName);
     setSmEstCost(cost.toString());
     setIsCustomMealModalOpen(false);
     setNewMealName('');
     setNewMealCost('');
-    addStaffMealOptionToDB(newMealName, cost);
+    await addStaffMealOptionToDB(newMealName, cost);
+    showToast(`Saved staff meal "${newMealName}"!`, { type: 'success' });
   };
   const [smError, setSmError] = useState('');
 
-  const handleLogStaffMeal = () => {
+  const handleLogStaffMeal = async () => {
     if (smSelectedStaff.length === 0) {
       setSmError("Please select at least one staff member.");
       return;
@@ -1035,22 +1038,41 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}, ${now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}`;
 
     const foodStr = smCustomMeal ? `${smQuantity}x ${smCustomMeal}` : `${smQuantity}x Staff Meal`;
-    const isLeftover = false;
+    const selectedOpt = smMealOptions.find(m => m.name === smCustomMeal);
+
     const newLog = {
       date: formattedDate,
       staff: smSelectedStaff.join(', '),
       food: foodStr,
-      hasTag: isLeftover
+      hasTag: smIsLeftover
     };
 
     setSmLogs(prev => [newLog, ...prev]);
-    addStaffMealLogToDB(smSelectedStaff.join(', '), foodStr, isLeftover, smDateRecord);
+
+    const result = await addStaffMealLogToDB(
+      smSelectedStaff.join(', '),
+      foodStr,
+      smIsLeftover,
+      smDateRecord,
+      selectedOpt?.id,
+      smQuantity
+    );
+
+    if (result && result.deductions && result.deductions.length > 0) {
+      const summary = result.deductions.map(d => `${d.deducted} ${d.unit} ${d.item}`).join(', ');
+      showToast(`Staff meal logged! Deducted: ${summary}`, { type: 'success' });
+    } else if (smIsLeftover) {
+      showToast('Staff meal logged (Leftovers / Buffer - stock untouched).', { type: 'success' });
+    } else {
+      showToast('Staff meal logged successfully!', { type: 'success' });
+    }
 
     // Reset Form
     setSmSelectedStaff([]);
     setSmQuantity(1);
     setSmCustomMeal('');
     setSmEstCost('');
+    setSmIsLeftover(false);
     setSmDateRecord(toDatetimeLocalValue(new Date()));
   };
 
@@ -1375,7 +1397,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // Requisition Form State
   const [isReqModalOpen, setIsReqModalOpen] = useState(false);
   const [reqItemName, setReqItemName] = useState('');
-  const [reqQty, setReqQty] = useState(10);
+  const [reqQty, setReqQty] = useState<number | string>(1);
   const [reqUnit, setReqUnit] = useState('kg');
   const [reqSearch, setReqSearch] = useState('');
   const [reqDesktopPage, setReqDesktopPage] = useState(1);
@@ -1546,7 +1568,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     const req: Requisition = {
       id: `REQ-${Math.floor(100 + Math.random() * 900)}`,
       itemName: reqItemName,
-      requestedQty: reqQty,
+      requestedQty: Number(reqQty) || 0,
       unit: reqUnit,
       requestedAt: `${new Date().toISOString().split('T')[0]} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
       status: 'Pending',
@@ -3164,6 +3186,73 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </div>
               </div>
 
+              {(() => {
+                const selectedMeal = smMealOptions.find(m => m.name === smCustomMeal);
+                if (!selectedMeal || !selectedMeal.ingredients || selectedMeal.ingredients.length === 0) return null;
+                return (
+                  <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 space-y-1.5">
+                    <div className="flex items-center justify-between flex-wrap gap-1">
+                      <span className="text-2xs font-semibold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <Boxes className="w-3.5 h-3.5 text-blue-600" />
+                        Raw Rations {smIsLeftover ? '(Bypassed for Leftovers)' : `(Total for ${smQuantity} plate${smQuantity > 1 ? 's' : ''})`}
+                      </span>
+                      {!smIsLeftover && (
+                        <span className="text-2xs text-blue-600 dark:text-blue-300 font-medium">Auto-deducts from Kitchen Stock</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {selectedMeal.ingredients.map((ing, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-blue-200 dark:border-blue-700 shadow-2xs font-medium">
+                          <strong className="text-blue-700 dark:text-blue-300">{ing.quantity * smQuantity} {ing.unit}</strong> {ing.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Meal Preparation Source: Freshly Cooked vs Leftovers */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                <div className="text-xs font-semibold text-gray-800 dark:text-gray-200">Meal Preparation Source:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSmIsLeftover(false)}
+                    className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
+                      !smIsLeftover
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 dark:border-emerald-500 shadow-xs'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${!smIsLeftover ? 'border-emerald-600 bg-emerald-600' : 'border-gray-400'}`}>
+                        {!smIsLeftover && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">Freshly Prepared</span>
+                    </div>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-1 ml-5.5">Deduct raw rations from stock</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSmIsLeftover(true)}
+                    className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
+                      smIsLeftover
+                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 dark:border-amber-500 shadow-xs'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${smIsLeftover ? 'border-amber-600 bg-amber-600' : 'border-gray-400'}`}>
+                        {smIsLeftover && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">From Leftovers / Buffer</span>
+                    </div>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-1 ml-5.5">Skip stock deduction (already cooked)</p>
+                  </button>
+                </div>
+              </div>
+
               <div className="pt-2">
                 {smError && (
                   <p className="text-red-500 text-xs font-medium mb-2 text-center">{smError}</p>
@@ -4098,8 +4187,10 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 <Input
                   label={t('quantity_label')}
                   type="number"
+                  step="any"
+                  min="0"
                   value={reqQty}
-                  onChange={(e) => setReqQty(Number(e.target.value))}
+                  onChange={(e) => setReqQty(e.target.value)}
                 />
               </div>
 
@@ -4110,9 +4201,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   onChange={setReqUnit}
                   options={[
                     { value: 'kg', label: 'kg' },
+                    { value: 'gm', label: 'gm' },
                     { value: 'liters', label: 'liters' },
+                    { value: 'ml', label: 'ml' },
                     { value: 'pcs', label: 'pcs' },
                     { value: 'packets', label: 'packets' },
+                    { value: 'doz', label: 'doz' },
                   ]}
                 />
               </div>
