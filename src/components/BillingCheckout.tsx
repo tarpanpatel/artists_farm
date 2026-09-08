@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { Button } from './Button';
+import { Card, Drawer, TextInput, Tabs, TabItem } from 'flowbite-react';
 import { BookingCard } from './BookingCard';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
@@ -10,10 +9,7 @@ import {
   Search,
   Building,
   Plus,
-  Home,
   Loader2,
-  Pencil,
-  Eye,
   X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
@@ -25,13 +21,9 @@ import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
-import { BookingContactActions } from './BookingContactActions';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
-import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
-import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
-import { markCFormFiled } from '../services/api';
 
 interface BillingCheckoutProps {
   guests: Guest[];
@@ -184,7 +176,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // dashboard or notification or bookings page this whole process should
   // happen"). null for the ordinary Edit/View Booking path.
   const [detailsModalFocusSection, setDetailsModalFocusSection] = useState<'c_form' | 'checkin' | 'id_verification' | null>(null);
-  const [savingCFormId, setSavingCFormId] = useState<string | null>(null);
 
   const handleOpenWhatsApp = async (phoneNumber: string) => {
     const confirmed = await confirm({
@@ -314,40 +305,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   }, [guests]);
 
 
-  const isCheckedInGuest = (g: Guest): boolean => {
-    const s = String(g.status || '').toLowerCase().trim();
-    return s === 'checked in' || s === 'active';
-  };
 
-  // Helper for badge labels on cards
-  const getGuestStayStatus = (guest: Guest) => {
-    // A cancelled booking is otherwise indistinguishable from a genuinely
-    // finished/upcoming one - getGuestDetailedStatus() now files it by its
-    // original dates like any other booking (8 Sep 2026), so this override
-    // stays regardless of which tab it lands in, always showing "Cancelled"
-    // rather than "Past Booking" / "Upcoming Booking" / etc.
-    if (String(guest.status || '') === 'Cancelled') {
-      return { key: 'cancelled', label: t('cancelled_badge', 'Cancelled'), variant: 'danger' as const };
-    }
-    const cat = getGuestDetailedStatus(guest);
-    if (cat === 'checkin_today') {
-      const isCheckedIn = isCheckedInGuest(guest);
-      if (!isCheckedIn) {
-        return {
-          key: 'checkin_pending',
-          label: t('checkin_pending_badge', 'Check-in Pending'),
-          variant: 'warning' as const,
-        };
-      }
-      return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), variant: 'success' as const };
-    } else if (cat === 'checkout_today') {
-      return { key: 'checkout', label: t('checkout_today_badge', 'Checkout Today'), variant: 'warning' as const };
-    } else if (cat === 'upcoming') {
-      return { key: 'upcoming', label: t('upcoming_booking_badge', 'Upcoming Booking'), variant: 'info' as const };
-    } else {
-      return { key: 'past', label: t('past_booking_badge', 'Past Booking'), variant: 'neutral' as const };
-    }
-  };
 
   // Deduplicate and sanitize guests array to ensure no invalid/orphan cards ever appear
   const uniqueGuests = useMemo(() => {
@@ -480,21 +438,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
 
 
-  // Calculate totals for a guest
-  const calculateGuestTotal = (guest: Guest): number => {
-    // guest.roomRate is the PER-NIGHT rate (services/api.ts maps it from
-    // per_night_charges); guest.totalAmount is the actual full-stay charge
-    // (total_charge, i.e. nights x rate). This previously read roomRate
-    // first with totalAmount only as a fallback - since roomRate is always
-    // truthy for a real booking, totalAmount was never actually used. For
-    // any stay of 2+ nights that made the (correctly-computed, ~30%-of-total)
-    // advance look larger than a single night's rate, flipping this into a
-    // bogus "Refund Due to Guest" even though nothing was actually owed back.
-    const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;
-    const advancePaid = guest.advanceAmount ?? 0;
-    const foodBill = guest.foodBill ?? 0;
-    return roomCharges - advancePaid + foodBill;
-  };
 
   // Handle edit only. focusSection is optional (see detailsModalFocusSection
   // above) - the plain Edit/View Booking buttons call this with none.
@@ -506,19 +449,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // C-Form filing toggle for the Past Bookings table (moved here from the
   // removed GuestHistory/"Past Guests" page - same API call, same instant-
   // mutate-then-bubble-up pattern BookingDetailsModal already uses).
-  const handleToggleCForm = async (guest: Guest, newFiledState: boolean) => {
-    setSavingCFormId(guest.id);
-    const ok = await markCFormFiled(guest.id, newFiledState);
-    if (ok) {
-      const filedAt = newFiledState ? new Date().toISOString() : null;
-      onCFormFiledUpdated?.(guest.id, filedAt);
-      showToast(newFiledState ? `C-Form marked as filed for ${guest.guestName}` : `C-Form marked as pending for ${guest.guestName}`, { type: 'success' });
-    } else {
-      showToast('Failed to update C-Form status', { type: 'error' });
-    }
-    setSavingCFormId(null);
-  };
-
   // Handle edit and checkout
   const handleEditAndCheckoutGuest = (guest: Guest) => {
     setGuestForReceipt(guest);
@@ -585,177 +515,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     </div>
   );
 
-
-  const pastBookingsColumns = [
-    {
-      name: t('booking_id_column', 'Booking ID'),
-      cell: (row: Guest) => (
-        <span className="text-xs font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-          #{row.id}
-        </span>
-      ),
-    },
-    {
-      name: t('guest_details_column', 'Guest Details'),
-      cell: (row: Guest) => (
-        <div className="flex flex-col py-1">
-          <div className="font-bold text-gray-900 dark:text-white text-sm">{row.guestName}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
-            <span>({row.numberOfGuests || 1} {(row.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})</span>
-            {row.phoneNumber ? (
-              <BookingContactActions phoneNumber={row.phoneNumber} compact onOpenWhatsApp={handleOpenWhatsApp} />
-            ) : (
-              <span>{t('no_contact', 'No contact')}</span>
-            )}
-          </div>
-        </div>
-      ),
-    },
-    {
-      name: t('stay_dates_column', 'Stay Dates'),
-      cell: (row: Guest) => (
-        <div className="flex flex-col py-1 text-xs">
-          <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
-            <span className="text-2xs font-semibold uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">{t('checkin_badge', 'IN')}</span>
-            <span>{formatDateOrdinal(row.checkinDate)}</span>
-          </div>
-          <div className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1">
-            <span className="text-2xs font-semibold uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">{t('checkout_badge', 'OUT')}</span>
-            <span>{formatDateOrdinal(row.checkoutDate || row.expectedCheckout) || '—'}</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      name: t('cottage_room_column', 'Cottage / Room'),
-      cell: (row: Guest) => (
-        <div className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-white text-xs">
-          <Home className="w-4 h-4 text-gray-400" />
-          <span>{row.roomNumber || t('unassigned_label', 'Unassigned')}</span>
-        </div>
-      ),
-    },
-    {
-      name: t('stay_status_column', 'Stay Status'),
-      cell: (row: Guest) => {
-        const status = getGuestStayStatus(row);
-        return (
-          <Badge variant={status.variant} size="sm">
-            {status.label}
-          </Badge>
-        );
-      },
-    },
-    {
-      name: t('financial_ledger_column', 'Financial Ledger'),
-      cell: (row: Guest) => (
-        <div className="flex flex-col py-1 text-xs">
-          <div className="flex items-center gap-1 font-semibold text-gray-900 dark:text-white">
-            <span>{t('bill_field', 'Bill:')}</span>
-            <span className="tabular-nums text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
-          </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
-            <span>
-              {Boolean(row.otaSource || (row as any).ota_source || row.otaReservationCode)
-                ? t('total_paid_label', 'Total Paid:')
-                : t('advance_paid_label', 'Advance Paid:')}{' '}
-              ₹{(row.advanceAmount ?? 0).toFixed(2)}
-            </span>
-            {calculateGuestTotal(row) > 0 && (
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                {t('due_label', 'Due')}: ₹{calculateGuestTotal(row).toFixed(2)}
-              </span>
-            )}
-            {calculateGuestTotal(row) < 0 && (
-              <span className="text-rose-600 dark:text-rose-400 font-semibold">
-                {t('refund_due_to_guest_label', 'Refund Due to Guest:')} ₹{Math.abs(calculateGuestTotal(row)).toFixed(2)}
-              </span>
-            )}
-          </div>
-        </div>
-      ),
-    },
-    {
-      name: t('c_form_filing_column', 'C-Form Filing'),
-      cell: (row: Guest) => {
-        if (!row.isForeignGuest) {
-          return <span className="text-gray-400 dark:text-gray-500 text-xs">{t('na_indian_national_label', 'N/A (Indian National)')}</span>;
-        }
-        // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) - see that
-        // helper's own comment. cFormMissingProof covers the case this very checkbox used to
-        // CAUSE: it toggled filed=true with no way to enter a confirmation number at all, so
-        // every "Filed" it produced was exactly the unproven state the helper now excludes.
-        const isFiled = isCFormGenuinelyFiled(row);
-        const cFormMissingProof = !!row.cFormFiledAt && !isFiled;
-        const isSaving = savingCFormId === row.id;
-        return (
-<label className="flex items-center gap-2 cursor-pointer py-1 text-xs select-none">
-                  <Checkbox
-                    checked={isFiled}
-                    disabled={isSaving}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        // FIXED 25 Aug 2026 (live report: a booking showed "Filed" with an
-                        // empty confirmation number, traced back to exactly this checkbox -
-                        // it had no field to ever collect one) - checking this now opens the
-                        // real C-Form section (which requires a number/document before it
-                        // will save) instead of blindly toggling filed=true with nothing
-                        // behind it. Unchecking still toggles directly - clearing "filed"
-                        // never needed a number either, on this checkbox or in the modal.
-                        handleEditGuest(row, 'c_form');
-                      } else {
-                        handleToggleCForm(row, false);
-                      }
-                    }}
-                  />{" "}
-                  <span className={`font-semibold ${cFormMissingProof ? 'text-amber-600 dark:text-amber-400' : isFiled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
-              {cFormMissingProof ? (
-                <span>{t('filed_no_reference_badge', 'Filed (no reference)')}</span>
-              ) : isFiled ? (
-                <span className="flex items-center gap-1">
-                  <span>{t('filed_badge', 'Filed')}</span>
-                  <span className="text-2xs text-gray-400 font-normal">({formatDateDDMMYYYY(row.cFormFiledAt)})</span>
-                </span>
-              ) : (
-                <span>{t('pending_filing_badge', 'Pending Filing')}</span>
-              )}
-            </span>
-            {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
-          </label>
-        );
-      },
-    },
-    {
-      name: t('actions_column', 'Actions'),
-      cell: (row: Guest) => (
-        // Standard <Button size="sm"> per DESIGN.md's DataTable Action
-        // Buttons rule (20 Aug 2026) - was a hand-rolled <button> that had
-        // drifted from the shared Button component used for this exact same
-        // action elsewhere on this page (the room-card Edit button above).
-        <div className="whitespace-nowrap flex items-center gap-2">
-          {canActOnBooking ? (
-            <Button
-              variant="edit"
-              size="sm"
-              onClick={() => handleEditGuest(row)}
-              leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-            >
-              {t('edit_booking_button', 'Edit Booking')}
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleEditGuest(row)}
-              leftIcon={<Eye className="w-3.5 h-3.5 shrink-0" />}
-            >
-              {t('view_booking_button', 'View Booking')}
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   return (
     <div data-tour="bookings-manager" className="billing-checkout space-y-6">
@@ -891,7 +650,18 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               since they fill this whole area rather than sitting alongside
               other items in it. */}
           <div className="billing-checkout__list-content border-t border-gray-200 pt-4 dark:border-gray-700 px-1 sm:px-0">
-          {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop Flowbite Table on md+ */}
+          {/* Upcoming & Past Bookings: same <BookingCard> the Today grid uses,
+              on every viewport - single-column stack on phones
+              (MobileBookingCardStack), a responsive grid on md+ (below).
+              Used to be a completely different Flowbite <Table> on desktop -
+              exactly the inconsistency the Universal Booking Card
+              Consistency Rule (AGENTS.md/DESIGN.md) already calls for (8 Sep
+              2026, explicit report + screenshot: "make sure how booking
+              cards are on Today tab, they should look the same on upcoming
+              and past"). Flat, not room-grouped like Today - a chronological
+              Upcoming/Past list spans many rooms, so each card carries its
+              own room badge (showRoomBadge) instead of a shared group
+              header; that's the "content can differ as per logic" part. */}
           {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
             <>
               <div className="md:hidden">
@@ -916,9 +686,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 />
               </div>
 
-              <div className="hidden md:block billing-checkout__past-table overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="hidden md:block billing-checkout__past-cards">
                 {searchedGuests.length === 0 ? (
-                  <div className="p-12 text-center">
+                  <div className="p-12 text-center rounded-lg border border-gray-200 dark:border-gray-700">
                     {isLoading ? (
                       <div className="flex flex-col items-center justify-center">
                         <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-3" />
@@ -941,24 +711,23 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                   </div>
                 ) : (
                   <>
-                    <Table hoverable>
-                      <TableHead>
-                        <TableRow>
-                          {pastBookingsColumns.map((col) => (
-                            <TableHeadCell key={col.name}>{col.name}</TableHeadCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {searchedGuests.slice((pastBookingsDesktopPage - 1) * PAST_BOOKINGS_PAGE_SIZE, pastBookingsDesktopPage * PAST_BOOKINGS_PAGE_SIZE).map((row) => (
-                          <TableRow key={row.id} className="bg-white dark:bg-gray-800">
-                            {pastBookingsColumns.map((col) => (
-                              <TableCell key={col.name}>{col.cell(row)}</TableCell>
-                            ))}
-                          </TableRow>
+                    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {searchedGuests
+                        .slice((pastBookingsDesktopPage - 1) * PAST_BOOKINGS_PAGE_SIZE, pastBookingsDesktopPage * PAST_BOOKINGS_PAGE_SIZE)
+                        .map((guest) => (
+                          <BookingCard
+                            key={guest.id}
+                            guest={guest}
+                            showRoomBadge
+                            canActOnBooking={canActOnBooking}
+                            canCheckoutBookingRole={canCheckoutBookingRole}
+                            onEditGuest={handleEditGuest}
+                            onEditAndCheckoutGuest={handleEditAndCheckoutGuest}
+                            onOpenWhatsApp={(phone) => handleOpenWhatsApp(phone)}
+                            isProcessing={isProcessing}
+                          />
                         ))}
-                      </TableBody>
-                    </Table>
+                    </div>
                     <TablePagination
                       page={pastBookingsDesktopPage}
                       totalItems={searchedGuests.length}
