@@ -1123,7 +1123,7 @@ export const strings: Record<string, string> = {
   edit_booking_button: "Edit Booking",
   view_booking_button: "View Booking",
   ota_converted_badge_tooltip: "Converted from an OTA calendar sync - editing this only changes this app, not the original platform.",
-  view_on_airbnb_button: "View on Airbnb",
+  view_on_airbnb_button: "View Booking on Airbnb",
   manage_calendar_sync_link: "Manage Calendar Sync Settings",
   notes_prefix: "Notes:",
 

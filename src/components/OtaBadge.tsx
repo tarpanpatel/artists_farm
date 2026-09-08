@@ -85,7 +85,7 @@ export const OtaBadge: React.FC<OtaBadgeProps> = ({
               className="app-badge inline-flex items-center justify-center gap-1.5 self-start rounded font-medium text-2xs px-2.5 py-1 bg-white text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 shadow-2xs hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors"
             >
               {OtaIcon && <OtaIcon className="w-3.5 h-3.5 shrink-0 rounded-[2px]" />}
-              {t('view_on_airbnb_button', 'View on Airbnb')}
+              {t('view_on_airbnb_button', 'View Booking on Airbnb')}
               <ExternalLink className="w-3 h-3 shrink-0" />
             </a>
           </div>
