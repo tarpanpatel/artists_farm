@@ -884,7 +884,43 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
 
                     $pdo->commit();
 
-                    // Send Telegram notification for new guest booking
+                    // Respond to the client NOW, before any of the notification/outbox
+                    // work below - same convention as the C-Form save fix (24 Aug 2026,
+                    // see its own comment further down this file) and ROADMAP.md's P1
+                    // "Asynchronous Webhook & Alert Dispatch" item. The DB write is
+                    // already committed, so there's nothing left that needs the client
+                    // to keep waiting. Before this fix, sendWhatsAppTemplateMessage()
+                    // below ran synchronously (bounded by its own 5s connect + 10s total
+                    // curl timeout) BEFORE the response was even echoed - a slow/down
+                    // Meta API added up to ~10-15s to every "Save Booking" click. The
+                    // Telegram send already went through enqueueTelegramMessage()'s
+                    // outbox (a fast DB insert, not a live API call) so it was never the
+                    // actual cause of the reported hang - moving it here too costs
+                    // nothing and keeps every post-commit side effect in one place.
+                    $response = ['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully'];
+                    if ($overlapWarning !== null) {
+                        $response['overlap_warning'] = $overlapWarning;
+                    }
+                    echo json_encode($response);
+                    if (function_exists('fastcgi_finish_request')) {
+                        // PHP-FPM: actually closes the client connection now: the rest of
+                        // this request keeps running server-side, but the browser's
+                        // fetch() resolves immediately instead of waiting on it.
+                        fastcgi_finish_request();
+                    } else {
+                        // mod_php/CLI dev server fallback (no true fastcgi_finish_request):
+                        // flush what's buffered so far. Doesn't close the TCP connection
+                        // the way fastcgi_finish_request() does, but browsers resolve
+                        // fetch()/XHR as soon as the response body they asked for has
+                        // fully arrived, so this still unblocks the frontend the same way
+                        // in practice.
+                        ignore_user_abort(true);
+                        if (ob_get_level() > 0) { @ob_end_flush(); }
+                        @flush();
+                    }
+
+                    // Send Telegram notification for new guest booking - now happens
+                    // AFTER the client has already gotten its response (see above).
                     $guestName = $resolvedGuestName;
                     $checkinDate = $input['checkin_date'] ?? date('Y-m-d');
                     $checkoutDate = $input['expected_checkout'] ?? date('Y-m-d', strtotime('+1 day'));
@@ -944,12 +980,6 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $roomLabel = $input['room_number'] ?? $input['roomNumber'] ?? 'your assigned room';
                         sendWhatsAppTemplateMessage($phone, 'new_booking_cofirmation', [$guestName, $checkinDateFormatted, $roomLabel]);
                     }
-
-                    $response = ['status' => 'success', 'id' => $newId, 'message' => 'Resident registered successfully'];
-                    if ($overlapWarning !== null) {
-                        $response['overlap_warning'] = $overlapWarning;
-                    }
-                    echo json_encode($response);
 
                     // Channel Manager Outbox (31 Aug 2026): a booking here enqueued an
                     // availability change above, but nothing ever drained it - it just

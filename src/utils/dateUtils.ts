@@ -49,6 +49,36 @@ export const parseDateToYMD = (dateStr?: string | null): [number, number, number
 
 export const formatDateDDMMYY = formatDateDDMMYYYY;
 
+/**
+ * Formats a date into ordinal day and short month (e.g. "3rd Sep", "8th Sep", "21st Oct").
+ */
+export const formatDateOrdinal = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  const ymd = parseDateToYMD(dateStr);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const getOrdinal = (n: number): string => {
+    if (n > 3 && n < 21) return `${n}th`;
+    switch (n % 10) {
+      case 1: return `${n}st`;
+      case 2: return `${n}nd`;
+      case 3: return `${n}rd`;
+      default: return `${n}th`;
+    }
+  };
+
+  if (ymd) {
+    const [, m, d] = ymd;
+    return `${getOrdinal(d)} ${months[m - 1] || ''}`;
+  }
+
+  const dt = new Date(dateStr);
+  if (!isNaN(dt.getTime())) {
+    return `${getOrdinal(dt.getDate())} ${months[dt.getMonth()] || ''}`;
+  }
+
+  return String(dateStr);
+};
+
 export const formatDateTimeDDMMYYYY = (dateStr?: string | null): string => {
   if (!dateStr) return '';
   const cleaned = String(dateStr).trim();

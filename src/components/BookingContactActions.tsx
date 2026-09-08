@@ -21,7 +21,6 @@ export const BookingContactActions: React.FC<BookingContactActionsProps> = ({
   compact = false,
   onOpenWhatsApp,
 }) => {
-  const buttonSize = compact ? 'h-6 w-6' : 'h-7 w-7';
   const iconSize = compact ? 'w-3 h-3' : 'w-3.5 h-3.5';
 
   return (
@@ -47,7 +46,7 @@ export const BookingContactActions: React.FC<BookingContactActionsProps> = ({
           type="button"
           onClick={(event) => event.stopPropagation()}
           aria-label={`Show phone number for ${phoneNumber}`}
-          className={`inline-flex ${buttonSize} items-center justify-center rounded-lg border border-blue-200 bg-blue-50/70 text-blue-600 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors`}
+          className="inline-flex items-center justify-center p-1 rounded text-blue-600 hover:text-blue-700 hover:bg-blue-50/60 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/40 focus:outline-none transition-colors"
         >
           <Phone className={iconSize} />
         </button>
@@ -59,7 +58,7 @@ export const BookingContactActions: React.FC<BookingContactActionsProps> = ({
           onOpenWhatsApp(phoneNumber);
         }}
         aria-label={`Open WhatsApp chat with ${phoneNumber}`}
-        className={`inline-flex ${buttonSize} items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50/70 text-emerald-600 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition-colors`}
+        className="inline-flex items-center justify-center p-1 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/60 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950/40 focus:outline-none transition-colors"
       >
         <WhatsappIcon className={iconSize} />
       </button>

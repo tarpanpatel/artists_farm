@@ -19,7 +19,6 @@ import {
   ArrowRight,
   Home,
   Loader2,
-  Edit2,
   Pencil,
   Eye,
   IdCard,
@@ -38,7 +37,7 @@ import { BookingContactActions } from './BookingContactActions';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { cleanGuestNotes } from '../utils/otaNotesCleaner';
 import { markCFormFiled } from '../services/api';
@@ -217,10 +216,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return `${y}-${m}-${day}`;
   }, []);
 
-  // Format date for display
+  // Format date for display in Today tab cards (ordinal e.g. "3rd Sep", "8th Sep")
   const formatDate = (dateStr: string): string => {
     if (!dateStr) return '—';
-    return formatDateDDMMYYYY(dateStr) || '—';
+    return formatDateOrdinal(dateStr) || '—';
   };
 
   // Fine-grained status (used for per-guest badges, and to derive the
@@ -684,14 +683,15 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         </div>
                         {/* Right Side Stack: Stay Status Badge + Warnings */}
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          <Badge variant={stayStatus.variant} size="sm" className="whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                              {stayStatus.key === 'checkin_pending' && <AlertTriangle className="w-3 h-3 shrink-0" />}
-                              {stayStatus.key === 'staying' && <CheckCircle2 className="w-3 h-3 shrink-0" />}
-                              {stayStatus.key === 'checkout' && <LogOut className="w-3 h-3 shrink-0" />}
-                              <span>{stayStatus.label}</span>
-                            </span>
-                          </Badge>
+                          {stayStatus.key !== 'staying' && (
+                            <Badge variant={stayStatus.variant} size="sm" className="whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                                {stayStatus.key === 'checkin_pending' && <AlertTriangle className="w-3 h-3 shrink-0" />}
+                                {stayStatus.key === 'checkout' && <LogOut className="w-3 h-3 shrink-0" />}
+                                <span>{stayStatus.label}</span>
+                              </span>
+                            </Badge>
+                          )}
 
                           {guest.isForeignGuest && (
                             isCFormGenuinelyFiled(guest) ? (
@@ -715,7 +715,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               </Badge>
                             )
                           )}
-                          {guest.idVerificationStatus !== 'Complete' && (
+                          {isCheckedIn && guest.idVerificationStatus !== 'Complete' && (
                             <Badge
                               variant="danger"
                               size="sm"
@@ -820,7 +820,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       )}
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Action Buttons: View or View Booking */}
                     {!canActOnBooking ? (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
                         <Button
@@ -828,15 +828,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           size="sm"
                           block
                           onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Eye className="w-3.5 h-3.5 shrink-0" />}
+                          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         >
                           {t('view_booking_button', 'View Booking')}
                         </Button>
                       </div>
                     ) : canCheckout && canCheckoutBookingRole ? (
                       <div className="billing-checkout__guest-card-actions grid grid-cols-2 gap-2 pt-0.5">
-                        <Button variant="edit" size="sm" onClick={() => handleEditGuest(guest)} leftIcon={<Edit2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
-                          {t('edit_button', 'Edit')}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleEditGuest(guest)}
+                          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+                        >
+                          {t('view_button', 'View')}
                         </Button>
                         <Button
                           variant="warning"
@@ -851,14 +856,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     ) : (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
                         <Button
-                          variant="edit"
+                          variant="secondary"
                           size="sm"
                           block
                           disabled={isProcessing}
                           onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+                          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
                         >
-                          {t('edit_booking_button', 'Edit Booking')}
+                          {t('view_booking_button', 'View Booking')}
                         </Button>
                       </div>
                     )}

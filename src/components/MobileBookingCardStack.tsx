@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Pencil, Eye, LogIn, LogOut, Users, IndianRupee, CheckCircle2, IdCard, AlertTriangle } from './icons/FlowbiteIcons';
+import { Eye, LogIn, LogOut, Users, IndianRupee, CheckCircle2, IdCard, AlertTriangle } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Badge } from './Badge';
 import { BookingContactActions } from './BookingContactActions';
 import { useConfirm } from './ConfirmDialogContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
 import { getWhatsAppPhone } from '../utils/phoneUtils';
 
 interface MobileBookingCardStackProps {
@@ -30,7 +30,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
   onAddBooking: _onAddBooking,
   selectedGuestId,
   hideSearchAndFilter = false,
-  canEdit = true,
+  canEdit: _canEdit = true,
   canCheckout = true,
 }) => {
   const { confirm } = useConfirm();
@@ -243,15 +243,23 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     </div>
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-1.5 whitespace-nowrap">
-                    {getStatusBadge(guest)}
-                    {guest.idVerificationStatus !== 'Complete' && (
-                      <Badge variant="danger" size="sm">
-                        <span className="inline-flex items-center gap-1">
-                          <IdCard className="w-3 h-3 shrink-0" />
-                          <span>ID Pending</span>
-                        </span>
-                      </Badge>
-                    )}
+                    {(() => {
+                      const s = (guest.status || '').toLowerCase();
+                      const isCheckedIn = s === 'checked in' || s === 'active';
+                      return (
+                        <>
+                          {!isCheckedIn && getStatusBadge(guest)}
+                          {isCheckedIn && guest.idVerificationStatus !== 'Complete' && (
+                            <Badge variant="danger" size="sm">
+                              <span className="inline-flex items-center gap-1">
+                                <IdCard className="w-3 h-3 shrink-0" />
+                                <span>ID Pending</span>
+                              </span>
+                            </Badge>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -262,7 +270,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-In</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {guest.checkinDate ? formatDateDDMMYYYY(guest.checkinDate) : 'N/A'}
+                        {guest.checkinDate ? (formatDateOrdinal(guest.checkinDate) || formatDateDDMMYYYY(guest.checkinDate)) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -272,7 +280,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     <div className="min-w-0">
                       <div className="text-[9px] text-slate-400 font-semibold uppercase">Check-Out</div>
                       <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                        {guest.checkoutDate || guest.expectedCheckout ? formatDateDDMMYYYY(guest.checkoutDate || guest.expectedCheckout) : 'N/A'}
+                        {guest.checkoutDate || guest.expectedCheckout ? (formatDateOrdinal(guest.checkoutDate || guest.expectedCheckout) || formatDateDDMMYYYY(guest.checkoutDate || guest.expectedCheckout)) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -351,8 +359,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                     }}
                     className="min-h-11 flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
                   >
-                    {canEdit ? <Pencil className="w-4 h-4 text-blue-600 shrink-0" /> : <Eye className="w-4 h-4 text-blue-600 shrink-0" />}
-                    <span>{canEdit ? 'Edit' : 'View'}</span>
+                    <Eye className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>View Booking</span>
                   </button>
 
                   {canCheckout && isCheckedIn && onCheckoutGuest && (
