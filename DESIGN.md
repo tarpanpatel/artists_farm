@@ -441,4 +441,30 @@ All status badges, count chips, indicator labels, and entity tags across the app
    - Badges are strictly passive, non-interactive visual indicators.
    - Never use a badge as a clickable button, date-picker trigger, or modal launcher. All interactive actions must strictly be formal Flowbite `<Button>` components (`variant="primary"`, `variant="secondary"`, `variant="outline"`, or `variant="ghost"`).
 
+## Universal Booking Card Consistency Rule (added 8 Sep 2026, explicit request)
+
+All guest booking cards across the platform—including **Today**, **Upcoming**, and **Past** tabs on both mobile viewports and desktop grid layouts—must strictly use the unified `<BookingCard>` component (`src/components/BookingCard.tsx`) to ensure visual, typographic, and architectural consistency:
+
+1. **Card Header**:
+   - Left side: Guest full name, booking `#ID`, optional room/cottage name chip (displayed when `showRoomBadge={true}` in multi-room views such as Upcoming and Past tabs), total guest count, and contact utility icons (`BookingContactActions` for WhatsApp and direct call).
+   - Right side: Status badge stack (e.g. `Checked In Today`, `Check-in Pending`, `ID Pending`, `C-Form Filed / Pending`, `Cancelled`).
+2. **Stay Dates & OTA Platform Badge Container (`billing-checkout__guest-card-dates`)**:
+   - Dates container displays stay dates on the left (`<Calendar /> Checkin → Checkout` with calculated nights count directly below).
+   - **OTA Badge Right-Aligned**: The official OTA platform badge (`<OtaBadge>`) must strictly be placed on the **right side** of the dates container (`flex items-center justify-between gap-2`). It must never be placed in the guest name header row where it crowds name text and wraps awkwardly on mobile viewports.
+3. **Financial Summary Grid**:
+   - 4-quadrant layout displaying:
+     - `Room Charges` (or `Not set` italic when 0)
+     - `Food & Incidentals` (rendered when > 0)
+     - `Total Paid`
+     - `Amount Due` (highlighted in red) or `Refund Due` (highlighted in amber) only when an outstanding balance or refund exists.
+4. **Action Buttons**:
+   - Primary view action: `<Button variant="secondary" size="sm">` ("View Booking" / "View") to open `BookingDetailsModal`.
+   - Checkout action: `<Button variant="warning" size="sm">` ("Checkout") rendered whenever checkout is eligible.
+   - All buttons must strictly use Flowbite `<Button>` components (`rounded-lg`).
+5. **Guest Notes Alert**:
+   - When sanitized OTA guest notes exist, render as a compact alert container (`cleanGuestNotes`) at the bottom of the card.
+6. **Search & Filter Empty States**:
+   - When any search or filter query is active (`searchTerm.trim().length > 0`), the empty state across all tabs must strictly display: `"No bookings found matching your criteria."` (`t('no_bookings_matching_criteria')`).
+   - Default empty states (e.g. `"No bookings today."`, `"No upcoming bookings."`, `"No past bookings."`) are strictly reserved for when no search or filter query is entered.
+
 

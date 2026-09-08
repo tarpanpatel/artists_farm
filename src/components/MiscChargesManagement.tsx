@@ -464,7 +464,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                               setEditForm(row);
                               setIsCreatingCategoryInline(false);
                             }}
-                            className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
+                            className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-semibold text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0"
                           >
                             <Pencil className="w-3 h-3" />
                             <span>{t('edit_button', 'Edit')}</span>

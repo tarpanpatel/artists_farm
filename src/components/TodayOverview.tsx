@@ -14,7 +14,7 @@ import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
 import { OtaBadge } from './OtaBadge';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateOrdinal } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 
@@ -1469,7 +1469,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                   <div className="flex items-center justify-between text-2xs">
                                     <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                     <span className="font-medium text-gray-700 dark:text-gray-200">
-                                      {formatDateDDMMYYYY(guest.checkinDate)} — {formatDateDDMMYYYY(guest.expectedCheckout || (guest as any).checkoutDate)}
+                                      {formatDateOrdinal(guest.checkinDate)} — {formatDateOrdinal(guest.expectedCheckout || (guest as any).checkoutDate)}
                                     </span>
                                   </div>
                                   {isOtaBooking && (guest.otaSourceLabel || guest.otaSource) && (

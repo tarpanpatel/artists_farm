@@ -2,25 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Card, Drawer, TextInput, Checkbox, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
 import { Button } from './Button';
-import { OtaBadge } from './OtaBadge';
+import { BookingCard } from './BookingCard';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
-  Calendar,
-  CheckCircle2,
-  LogOut,
   Search,
-  AlertCircle,
-  AlertTriangle,
   Building,
   Plus,
-  ArrowRight,
   Home,
   Loader2,
   Pencil,
   Eye,
-  IdCard,
   X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
@@ -38,7 +31,6 @@ import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
-import { cleanGuestNotes } from '../utils/otaNotesCleaner';
 import { markCFormFiled } from '../services/api';
 
 interface BillingCheckoutProps {
@@ -215,11 +207,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     return `${y}-${m}-${day}`;
   }, []);
 
-  // Format date for display in Today tab cards (ordinal e.g. "3rd Sep", "8th Sep")
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '—';
-    return formatDateOrdinal(dateStr) || '—';
-  };
 
   // Fine-grained status (used for per-guest badges, and to derive the
   // coarser tab category below) - distinguishes checking-in-today from
@@ -539,19 +526,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     setReceiptModalOpen(true);
   };
 
-  // Calculate nights
-  const calculateNights = (checkin: string, checkout: string): number => {
-    if (!checkin || !checkout) return 0;
-    try {
-      const checkinDate = new Date(checkin);
-      const checkoutDate = new Date(checkout);
-      if (isNaN(checkinDate.getTime()) || isNaN(checkoutDate.getTime())) return 0;
-      const diffTime = checkoutDate.getTime() - checkinDate.getTime();
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    } catch {
-      return 0;
-    }
-  };
 
   // Renders the room-column grid for a given set of room groups - shared by
   // the main Today/Past view and each date-section under Upcoming, so the
@@ -581,7 +555,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     {t('turnover_badge', 'Turnover (2 Bookings)')}
                   </Badge>
                 ) : (
-                  <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                  <span className="text-2xs font-semibold px-2 py-0.5 rounded bg-slate-200/70 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                     {group.guests.length} {group.guests.length === 1 ? 'Booking' : 'Bookings'}
                   </span>
                 )}
@@ -590,255 +564,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
             {/* Guest Card(s) stacked inside Room Column */}
             <div className={`billing-checkout__room-card-body p-3.5 sm:p-4 space-y-6 ${isTurnoverRoom ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''}`}>
-              {group.guests.map((guest) => {
-                const amountDue = calculateGuestTotal(guest);
-                const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
-                const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : t('same_day_stay', 'Same day stay');
-                const stayStatus = getGuestStayStatus(guest);
-                const isCheckedIn = isCheckedInGuest(guest);
-                const canCheckout = isCheckedIn && (stayStatus.key === 'staying' || stayStatus.key === 'checkout');
-                const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;
-                const advancePaid = guest.advanceAmount ?? 0;
-                const foodBill = guest.foodBill ?? 0;
+              {group.guests.map((guest) => (
+                <BookingCard
+                  key={guest.id}
+                  guest={guest}
+                  isTurnoverRoom={isTurnoverRoom}
+                  canActOnBooking={canActOnBooking}
+                  canCheckoutBookingRole={canCheckoutBookingRole}
+                  onEditGuest={handleEditGuest}
+                  onEditAndCheckoutGuest={handleEditAndCheckoutGuest}
+                  onOpenWhatsApp={(phone) => handleOpenWhatsApp(phone)}
+                  isProcessing={isProcessing}
+                />
+              ))}
 
-                return (
-                  <div
-                    key={guest.id}
-                    className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 p-3 sm:p-3.5 rounded-lg bg-white dark:bg-slate-800 transition-all ${
-                      isTurnoverRoom
-                        ? stayStatus.key === 'checkout'
-                          ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
-                          : stayStatus.key === 'checkin_pending'
-                          ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
-                          : stayStatus.key === 'staying'
-                          ? 'border-2 border-emerald-300 dark:border-emerald-700/80 shadow-sm'
-                          : 'border border-slate-200 dark:border-slate-700 shadow-sm'
-                        : 'border border-slate-200 dark:border-slate-700/70 shadow-2xs'
-                    }`}
-                  >
-                    {/* Guest Name, Contact & Status Badge */}
-                    <div>
-                      <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-                            <h4 className="text-sm font-semibold text-slate-900 dark:text-white m-0">
-                              {guest.guestName}
-                            </h4>
-                            <span className="inline-flex items-center px-1.5 py-0.5 text-2xs font-semibold rounded bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                              #{guest.id}
-                            </span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
-                              ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
-                            </span>
-                            {guest.phoneNumber ? (
-                              <BookingContactActions phoneNumber={guest.phoneNumber} onOpenWhatsApp={handleOpenWhatsApp} />
-                            ) : (
-                              <span className="text-xs text-slate-400 dark:text-slate-500 italic shrink-0">
-                                ({t('no_contact', 'No contact')})
-                              </span>
-                            )}
-                            {guest.otaSource && (
-                              <OtaBadge
-                                source={guest.otaSource}
-                                sourceLabel={guest.otaSourceLabel}
-                                className="billing-checkout__ota-badge"
-                              />
-                            )}
-                          </div>
-                        </div>
-                        {/* Right Side Stack: Stay Status Badge + Warnings */}
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          {stayStatus.key !== 'staying' && (
-                            <Badge variant={stayStatus.variant} size="sm" className="whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                {stayStatus.key === 'checkin_pending' && <AlertTriangle className="w-3 h-3 shrink-0" />}
-                                {stayStatus.key === 'checkout' && <LogOut className="w-3 h-3 shrink-0" />}
-                                <span>{stayStatus.label}</span>
-                              </span>
-                            </Badge>
-                          )}
-
-                          {guest.isForeignGuest && (
-                            isCFormGenuinelyFiled(guest) ? (
-                              <Badge variant="success" size="sm" className="whitespace-nowrap">
-                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                  <span>{t('c_form_filed_badge', 'C-Form Filed')}</span>
-                                </span>
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="danger"
-                                size="sm"
-                                title={t('c_form_pending_popover_text', 'This foreign guest still needs a C-Form filed.')}
-                                className="whitespace-nowrap"
-                              >
-                                <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                  <AlertTriangle className="w-3 h-3 shrink-0" />
-                                  <span>{t('c_form_pending_badge', 'C-Form Pending')}</span>
-                                </span>
-                              </Badge>
-                            )
-                          )}
-                          {isCheckedIn && guest.idVerificationStatus !== 'Complete' && (
-                            <Badge
-                              variant="danger"
-                              size="sm"
-                              title={t('id_pending_popover_text', 'This guest\'s ID verification is still incomplete.')}
-                              className="whitespace-nowrap"
-                            >
-                              <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                <IdCard className="w-3 h-3 shrink-0" />
-                                <span>{t('id_verification_pending_badge', 'ID Pending')}</span>
-                              </span>
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Stay Dates */}
-                      <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
-                        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="inline-flex items-center gap-1.5 tabular-nums flex-wrap">
-                            <span>
-                              {formatDate(guest.checkinDate)}
-                            </span>
-                            <ArrowRight className="w-3 h-3 text-slate-400" />
-                            <span>
-                              {formatDate(guest.expectedCheckout)}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">
-                          {nightsDisplay}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Financial Breakdown: Shows Total Paid, Room Charges (or Not set), and Due ONLY when due */}
-                    <div className="billing-checkout__guest-card-financials space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
-                      {roomCharges > 0 ? (
-                        <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                          <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">
-                            ₹{roomCharges.toFixed(2)}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between text-slate-500 dark:text-slate-400 text-[11px]">
-                          <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="tabular-nums text-slate-400 dark:text-slate-500 italic">
-                            {t('pending_tariff_label', 'Not set')}
-                          </span>
-                        </div>
-                      )}
-
-                      {foodBill > 0 && (
-                        <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                          <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
-                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">
-                            ₹{foodBill.toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                        <span>{t('total_paid_label', 'Total Paid:')}</span>
-                        <span className={`summary-line summary-line--total-paid font-semibold tabular-nums ${advancePaid > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                          ₹{advancePaid.toFixed(2)}
-                        </span>
-                      </div>
-
-                      {/* Only show Due if amountDue > 0 */}
-                      {amountDue > 0 && (
-                        <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
-                          <span className="text-amber-700 dark:text-amber-300 font-medium">
-                            {t('amount_due_label', 'Amount Due:')}
-                          </span>
-                          <span className="summary-line summary-line--amount-due font-bold text-amber-700 dark:text-amber-300 text-sm tabular-nums">
-                            ₹{amountDue.toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Refund if amountDue < 0 */}
-                      {amountDue < 0 && (
-                        <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
-                          <span className="text-rose-600 dark:text-rose-400 font-medium">
-                            {t('refund_due_to_guest_label', 'Refund Due to Guest:')}
-                          </span>
-                          <span className="summary-line summary-line--amount-due font-bold text-rose-600 dark:text-rose-400 text-sm tabular-nums">
-                            ₹{Math.abs(amountDue).toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Buttons: View or View Booking */}
-                    {!canActOnBooking ? (
-                      <div className="billing-checkout__guest-card-actions pt-0.5">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          block
-                          onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-                        >
-                          {t('view_booking_button', 'View Booking')}
-                        </Button>
-                      </div>
-                    ) : canCheckout && canCheckoutBookingRole ? (
-                      <div className="billing-checkout__guest-card-actions grid grid-cols-2 gap-2 pt-0.5">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-                        >
-                          {t('view_button', 'View')}
-                        </Button>
-                        <Button
-                          variant="warning"
-                          size="sm"
-                          onClick={() => handleEditAndCheckoutGuest(guest)}
-                          disabled={isProcessing}
-                          leftIcon={<LogOut className="w-3.5 h-3.5 shrink-0" />}
-                        >
-                          {t('checkout_button', 'Checkout')}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="billing-checkout__guest-card-actions pt-0.5">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          block
-                          disabled={isProcessing}
-                          onClick={() => handleEditGuest(guest)}
-                          leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-                        >
-                          {t('view_booking_button', 'View Booking')}
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Guest Notes */}
-                    {(() => {
-                      const cleaned = cleanGuestNotes(guest.notes);
-                      if (!cleaned) return null;
-                      return (
-                        <div className="p-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg flex gap-1.5 text-[10px]">
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                          <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
-                            <span className="font-semibold">{t('notes_prefix', 'Notes:')}</span> {cleaned}
-                          </p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })}
             </div>
           </Card>
         );
@@ -877,12 +616,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       cell: (row: Guest) => (
         <div className="flex flex-col py-1 text-xs">
           <div className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
-            <span className="text-2xs font-semibold uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">{t('checkin_badge', 'IN')}</span>
-            <span>{formatDateDDMMYYYY(row.checkinDate)}</span>
+            <span className="text-2xs font-semibold uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">{t('checkin_badge', 'IN')}</span>
+            <span>{formatDateOrdinal(row.checkinDate)}</span>
           </div>
           <div className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5 mt-1">
-            <span className="text-2xs font-semibold uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">{t('checkout_badge', 'OUT')}</span>
-            <span>{formatDateDDMMYYYY(row.checkoutDate || row.expectedCheckout) || '—'}</span>
+            <span className="text-2xs font-semibold uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">{t('checkout_badge', 'OUT')}</span>
+            <span>{formatDateOrdinal(row.checkoutDate || row.expectedCheckout) || '—'}</span>
           </div>
         </div>
       ),
@@ -1184,7 +923,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       <>
                         <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                         <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
-                          {activeTab === 'upcoming'
+                          {searchTerm.trim()
+                            ? t('no_bookings_matching_criteria', 'No bookings found matching your criteria.')
+                            : activeTab === 'upcoming'
                             ? t('no_upcoming_bookings', 'No upcoming bookings.')
                             : activeTab === 'past_bookings'
                             ? t('no_past_bookings', 'No past bookings.')
@@ -1247,7 +988,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <>
                   <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                   <h3 className="billing-checkout__subtitle text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    {t('no_bookings_today', 'No bookings today.')}
+                    {searchTerm.trim()
+                      ? t('no_bookings_matching_criteria', 'No bookings found matching your criteria.')
+                      : t('no_bookings_today', 'No bookings today.')}
                   </h3>
                 </>
               )}

@@ -7,3 +7,6 @@
     "model": "mistralai/mistral-embed-2312"
   }
 }
+"external_directory": [
+  "C:/xampp/htdocs/artists_farm*"
+]

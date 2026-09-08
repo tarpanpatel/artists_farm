@@ -495,7 +495,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       />
                       <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">{item.label}</span>
                       {item.badge && (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                           {item.badge}
                         </span>
                       )}

@@ -41,7 +41,7 @@ import { Button } from './Button';
 import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
@@ -1089,11 +1089,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {t('alerts_heading', 'Booking Alerts')}
               </h3>
               {totalAlerts > 0 ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300">
                   {totalAlerts}
                 </span>
               ) : (
-                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-700">
+                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
                   All Clear
                 </span>
               )}
@@ -1226,7 +1226,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   <Utensils className="w-4 h-4 text-blue-600" />
                   {t('live_kitchen_tickets_heading', 'Live Kitchen Orders')}
                 </h3>
-                <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700">
+                <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
                   {pendingOrders.length}
                 </span>
               </div>
@@ -1248,10 +1248,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
                           ord.status === 'Pending'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
                             : ord.status === 'Preparing'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
                         }`}
                       >
                         {ord.status}
@@ -1293,7 +1293,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <AlertTriangle className="w-4 h-4 text-red-600" />
                 {t('stock_requests_label', 'Stock Requests')}
               </h3>
-              <span className="bg-red-100 text-red-800 text-[10px] font-semibold px-2 py-0.5 rounded border border-red-200">
+              <span className="bg-red-100 text-red-800 text-[10px] font-semibold px-2 py-0.5 rounded">
                 {pendingStockRequests.length} {t('pending_suffix', 'Pending')}
               </span>
             </div>
@@ -1683,7 +1683,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                         >
                           <div className="flex items-center justify-between">
                             {isToday ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs border border-blue-500">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
                                 {d}
                               </span>
                             ) : (
@@ -1723,7 +1723,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 content={
                                   <div className="w-60 p-2">
                                     <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 px-1 pb-2">
-                                      {formatDateDDMMYYYY(dateStr)} · {dayBookingsForDate.length} bookings
+                                      {formatDateOrdinal(dateStr)} · {dayBookingsForDate.length} bookings
                                     </div>
                                     <div className="space-y-1 max-h-64 overflow-y-auto">
                                       {dayBookingsForDate.map((g) => {
@@ -1860,7 +1860,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     <div className="flex items-center justify-between text-2xs">
                                       <span className="text-gray-500 dark:text-gray-400">Dates:</span>
                                       <span className="font-medium text-gray-700 dark:text-gray-200">
-                                        {formatDateDDMMYYYY(dayBooking.checkinDate)} → {formatDateDDMMYYYY(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
+                                        {formatDateOrdinal(dayBooking.checkinDate)} → {formatDateOrdinal(dayBooking.expectedCheckout || (dayBooking as any).checkoutDate)}
                                       </span>
                                     </div>
                                     {isOtaBooking && ((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource) && (

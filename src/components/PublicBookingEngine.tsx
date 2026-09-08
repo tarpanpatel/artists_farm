@@ -2154,7 +2154,7 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
                               <span className="text-2xs uppercase font-bold text-blue-600 dark:text-blue-400">Today</span>
                             )}
                             {isEnd && previewNights > 0 && (
-                              <span className="text-2xs px-1.5 py-0.5 rounded-full bg-white/20 text-white font-bold border border-white/30 backdrop-blur-xs">
+                              <span className="text-2xs px-1.5 py-0.5 rounded bg-white/20 text-white font-bold backdrop-blur-xs">
                                 {previewNights}N
                               </span>
                             )}

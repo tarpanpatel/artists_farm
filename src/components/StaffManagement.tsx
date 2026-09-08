@@ -1808,7 +1808,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="font-bold text-slate-900 dark:text-white text-sm">{s.name}</div>
-                      <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 inline-block mt-0.5">
+                      <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md inline-block mt-0.5">
                         {s.role}
                       </span>
                     </div>

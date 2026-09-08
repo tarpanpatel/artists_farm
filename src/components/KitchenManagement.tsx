@@ -1564,7 +1564,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               <span className="inline-flex items-center gap-1.5">
                 <span>{t('live_active_orders_label', 'Live Tickets')}</span>
                 {pendingOrdersCount > 0 && (
-                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
                     {pendingOrdersCount}
                   </span>
                 )}
@@ -1743,21 +1743,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       </p>
                     </div>
                     {completionPhase === 'processing' ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 flex items-center gap-1">
                         <span className="inline-block w-3 h-3 shrink-0 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" /> {t('processing_label', 'Processing...')}
                       </span>
                     ) : completionPhase === 'completed' ? (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                         {t('completed_label', 'Completed')}
                       </span>
                     ) : (
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
                           ord.status === 'Fulfilled'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
                             : ord.status === 'Preparing'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                         }`}>
                           {ord.status === 'Pending'
                             ? t('status_in_queue', 'In Queue')
@@ -1791,7 +1791,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       {/* Amber = walk-in/non-resident (Toast/Cloudbeds standard;
                           slate blended in and was visually identical to the
                           room-service blue pill on dark mode). */}
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                         {t('walk_in_badge', 'Walk-in')}{ord.guestName && ord.guestName !== 'Walk-in' ? ` · ${ord.guestName}` : ''}
                       </span>
                     </div>
@@ -1802,7 +1802,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     // way to see the destination room on the ticket itself
                     // until after it was already served).
                     <div className="mb-2.5 -mt-1">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                         {ord.roomNumber || t('room_service_badge', 'Room Service')}{ord.guestName ? ` · ${ord.guestName}` : ''}
                       </span>
                     </div>
@@ -2529,7 +2529,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <ShoppingCart className="w-4 h-4 text-gray-700 dark:text-gray-400" />
                       <span>{t('order_cart_header')}</span>
                     </h3>
-                    <span className="text-2xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+                    <span className="text-2xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md">
                       {totalCartCount} Items
                     </span>
                   </div>
@@ -3153,7 +3153,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </div>
                     <div className="flex flex-wrap gap-1.5 pt-0.5">
                       {selectedMeal.ingredients.map((ing, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-blue-200 dark:border-blue-700 shadow-2xs font-medium">
+                        <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-2xs font-medium">
                           <strong className="text-blue-700 dark:text-blue-300">{ing.quantity * smQuantity} {ing.unit}</strong> {ing.name}
                         </span>
                       ))}
@@ -3234,7 +3234,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       <span className="font-mono text-2xs font-medium text-gray-500 dark:text-gray-400">
                         {row.date}
                       </span>
-                      <span className="font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 text-2xs">
+                      <span className="font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md text-2xs">
                         {row.type || 'Staff Meal'}
                       </span>
                     </div>

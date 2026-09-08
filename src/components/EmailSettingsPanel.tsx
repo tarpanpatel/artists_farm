@@ -332,7 +332,7 @@ export const EmailSettingsPanel: React.FC<EmailSettingsPanelProps> = ({ onLogout
               }}
               onClick={() => setTemplate((prev) => (prev || DEFAULT_TENANT_WELCOME_TEMPLATE) + ' ' + v.token)}
               title={v.label}
-              className="text-xs font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-grab active:cursor-grabbing border border-indigo-200 dark:border-indigo-800 select-none transition-colors"
+              className="text-xs font-mono px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 cursor-grab active:cursor-grabbing select-none transition-colors"
             >
               + {v.token}
             </span>

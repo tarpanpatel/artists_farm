@@ -35,7 +35,7 @@ const formatSchedule = (job: CronJob): string => {
 const StatusBadge: React.FC<{ status: string | null }> = ({ status }) => {
   if (!status) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
         Never run
       </span>
     );

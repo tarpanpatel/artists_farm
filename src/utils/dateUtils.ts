@@ -51,6 +51,7 @@ export const formatDateDDMMYY = formatDateDDMMYYYY;
 
 /**
  * Formats a date into ordinal day and short month (e.g. "3rd Sep", "8th Sep", "21st Oct").
+ * When the date is NOT in the current year, appends the 4-digit year (e.g. "7th Jan 2027", "15th Dec 2025").
  */
 export const formatDateOrdinal = (dateStr?: string | null): string => {
   if (!dateStr) return '';
@@ -66,14 +67,19 @@ export const formatDateOrdinal = (dateStr?: string | null): string => {
     }
   };
 
+  const currentYear = new Date().getFullYear();
+
   if (ymd) {
-    const [, m, d] = ymd;
-    return `${getOrdinal(d)} ${months[m - 1] || ''}`;
+    const [y, m, d] = ymd;
+    const yearSuffix = y !== currentYear ? ` ${y}` : '';
+    return `${getOrdinal(d)} ${months[m - 1] || ''}${yearSuffix}`;
   }
 
   const dt = new Date(dateStr);
   if (!isNaN(dt.getTime())) {
-    return `${getOrdinal(dt.getDate())} ${months[dt.getMonth()] || ''}`;
+    const y = dt.getFullYear();
+    const yearSuffix = y !== currentYear ? ` ${y}` : '';
+    return `${getOrdinal(dt.getDate())} ${months[dt.getMonth()] || ''}${yearSuffix}`;
   }
 
   return String(dateStr);

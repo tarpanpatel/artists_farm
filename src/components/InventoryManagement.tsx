@@ -1384,7 +1384,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                           </div>
                                         }
                                       >
-                                        <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                        <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300 flex items-center justify-center text-[10px] font-bold shrink-0">
                                           ✓
                                         </span>
                                       </Popover>

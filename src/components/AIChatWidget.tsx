@@ -438,7 +438,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
               className={`flex gap-2.5 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {m.sender === 'ai' && (
-                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center shrink-0 mt-0.5">
                   <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
               )}
@@ -451,7 +451,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
               >
                 <p className="whitespace-pre-wrap wrap-break-word">{m.text}</p>
                 {m.actionText && (
-                  <span className="block mt-1.5 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 text-2xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  <span className="block mt-1.5 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-2xs font-semibold text-emerald-700 dark:text-emerald-300">
                     {m.actionText}
                   </span>
                 )}
@@ -483,7 +483,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           ))}
           {loading && (
             <div className="flex gap-2.5 items-center">
-              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center shrink-0">
                 <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="p-3 bg-white dark:bg-gray-800 rounded-2xl rounded-tl-none border border-gray-200/80 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs flex items-center gap-2">
@@ -532,7 +532,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
           <button
             type="button"
             onClick={() => handleSend('add booking')}
-            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
+            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer"
           >
             ⚡ + Add Booking
           </button>
@@ -556,7 +556,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
             href={SUPPORT_WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline ml-auto"
+            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-lg text-2xs font-semibold whitespace-nowrap transition-colors cursor-pointer no-underline ml-auto"
           >
             Talk to a person
           </a>

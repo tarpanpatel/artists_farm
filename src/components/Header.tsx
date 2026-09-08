@@ -693,7 +693,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 ord.status === 'Pending'
                                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300'
                                   : ord.status === 'Preparing'
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-300'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
                                   : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300'
                               }`}
                             >
@@ -714,7 +714,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {t('property_bookings_label', 'Property Bookings')}
                         </span>
                         <span className="flex items-center gap-1.5">
-                          <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                           <span className="header__section-badge text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                             {t('today_tomorrow_badge', 'Today & Tomorrow')}
                           </span>
                           <button
@@ -732,7 +732,7 @@ export const Header: React.FC<HeaderProps> = ({
                           const checkin = guest.checkinDate?.split(' ')[0] || guest.checkinDate?.split('T')[0] || '';
                           const checkout = guest.expectedCheckout?.split(' ')[0] || guest.expectedCheckout?.split('T')[0] || '';
                           let badgeText = t('checked_in_badge', 'Active Stay');
-                          let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+                           let badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
                           if (checkin === todayStr) {
                             badgeText = t('checkin_today_badge', 'Check-in Today');
                             badgeStyle = 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800';

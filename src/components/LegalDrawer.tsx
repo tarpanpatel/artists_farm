@@ -394,7 +394,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                   Operational Manual &amp; FAQs
                 </span>
               </div>
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-md border border-blue-200 dark:border-blue-800">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-md">
                 {filteredItems.length} {filteredItems.length === 1 ? 'guide' : 'guides'}
               </span>
             </div>
@@ -436,7 +436,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                             <ol className="space-y-2 pl-0 list-none pt-1">
                               {item.steps.map((step, idx) => (
                                 <li key={idx} className="flex items-start gap-2.5 leading-relaxed">
-                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold text-xs shrink-0 mt-0.5 border border-blue-200 dark:border-blue-800">
+                                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 font-bold text-xs shrink-0 mt-0.5">
                                     {idx + 1}
                                   </span>
                                   <span className="text-slate-600 dark:text-slate-300">{step}</span>
