@@ -24,7 +24,6 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   User,
   Filter,
   LayoutGrid,
@@ -1639,7 +1638,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   disabled={isSendingKitchenPush}
                   leftIcon={
                     isSendingKitchenPush
-                      ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+                      ? <span className="inline-block w-3.5 h-3.5 shrink-0 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
                       : <Bell className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                   }
                   className="h-8 text-xs font-semibold shadow-none text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400"
@@ -1661,7 +1660,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     disabled={isEnablingPush}
                     leftIcon={
                       isEnablingPush
-                        ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" />
+                        ? <span className="inline-block w-3.5 h-3.5 shrink-0 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
                         : <Bell className="w-3.5 h-3.5 shrink-0" />
                     }
                     className="h-8 text-xs font-semibold shadow-none"
@@ -1745,7 +1744,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     </div>
                     {completionPhase === 'processing' ? (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin" /> {t('processing_label', 'Processing...')}
+                        <span className="inline-block w-3 h-3 shrink-0 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" /> {t('processing_label', 'Processing...')}
                       </span>
                     ) : completionPhase === 'completed' ? (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
@@ -3343,7 +3342,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   if (smLogsLoading) {
                     return (
                       <div className="p-8 flex items-center justify-center gap-2 text-slate-400 dark:text-slate-500 font-semibold text-xs">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Loading meal logs...
+                        <span className="inline-block w-4 h-4 shrink-0 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" /> Loading meal logs...
                       </div>
                     );
                   }

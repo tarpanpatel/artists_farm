@@ -767,6 +767,27 @@ if (!function_exists('ensureTelegramOutboxSchema')) {
                 markSchemaVerified('schema_telegram_outbox');
             }
         } catch (PDOException $e) {}
+
+        // Separate key (8 Sep 2026) - added AFTER the block above already shipped
+        // and got marked verified on real environments, so it MUST be its own
+        // isSchemaVerified() key rather than folded into 'schema_telegram_outbox'.
+        // Reusing that key would mean this ALTER never runs anywhere that had
+        // already cached it as verified (the exact class of bug CLAUDE.md
+        // documents under "Self-Healing DB Schema" - a column silently missing
+        // on every environment that got here before this line existed).
+        // `claimed_at` backs drainTelegramOutbox()'s atomic-claim fix (ROADMAP.md
+        // P3): a row a crashed/killed process claimed but never finished sending
+        // would otherwise sit in 'sending' forever, since nothing else matches
+        // that status - this lets the drain reclaim it after it's been stale
+        // for too long instead of losing the message silently.
+        if (!function_exists('isSchemaVerified') || !isSchemaVerified('schema_telegram_outbox_claimed_at')) {
+            try {
+                $pdo->exec("ALTER TABLE `telegram_outbox` ADD COLUMN IF NOT EXISTS `claimed_at` DATETIME NULL");
+                if (function_exists('markSchemaVerified')) {
+                    markSchemaVerified('schema_telegram_outbox_claimed_at');
+                }
+            } catch (PDOException $e) {}
+        }
     }
 }
 
@@ -815,10 +836,11 @@ if (!function_exists('drainTelegramOutbox')) {
         ensureTelegramOutboxSchema($pdo);
         try {
             $stmt = $pdo->prepare("
-                SELECT id, property_id, category, message, reply_markup, template_key, guest_id, guest_field
+                SELECT id, property_id, category, message, reply_markup, template_key, guest_id, guest_field, status
                 FROM telegram_outbox
                 WHERE status = 'pending'
                    OR (status = 'failed' AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW())
+                   OR (status = 'sending' AND claimed_at IS NOT NULL AND claimed_at <= DATE_SUB(NOW(), INTERVAL 2 MINUTE))
                 ORDER BY id ASC
                 LIMIT ?
             ");
@@ -840,6 +862,26 @@ if (!function_exists('drainTelegramOutbox')) {
                 $tKey = $row['template_key'] ?? null;
                 $guestId = $row['guest_id'] ?? null;
                 $guestField = $row['guest_field'] ?? null;
+
+                // Atomic claim (8 Sep 2026, ROADMAP.md P3 "Atomic Claim Locks in
+                // Telegram Outbox"). Without this, two concurrent drains - an
+                // event-triggered drain from a fresh booking racing an overlapping
+                // cron tick, or two cron ticks under load - could both SELECT the
+                // same still-'pending' row above and both actually dispatch it to
+                // Telegram: a real duplicate message delivered to staff, not just a
+                // duplicate DB write. The WHERE re-checks the exact status this row
+                // was just selected with, so only the process whose UPDATE actually
+                // matches a row (rowCount() === 1) has genuinely claimed it - no
+                // explicit transaction or SELECT ... FOR UPDATE needed, since a
+                // single UPDATE statement is already atomic per-row in MySQL/InnoDB.
+                $claim = $pdo->prepare("UPDATE telegram_outbox SET status = 'sending', claimed_at = NOW() WHERE id = ? AND status = ?");
+                $claim->execute([$outboxId, $row['status']]);
+                if ($claim->rowCount() !== 1) {
+                    // Another concurrent drain already claimed (or otherwise moved)
+                    // this row between our SELECT and this UPDATE - skip it rather
+                    // than sending a message someone else is already sending.
+                    continue;
+                }
 
                 try {
                     $res = sendPropertyTelegramMessage($pdo, $propId, $cat, $msg, $markup, $tKey);
