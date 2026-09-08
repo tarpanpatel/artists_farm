@@ -1111,6 +1111,8 @@ export const strings: Record<string, string> = {
   turnover_badge: "Turnover (2 Bookings)",
   checking_out_today_banner: "Checking Out Today",
   checking_in_today_banner: "Checking In Today",
+  checkin_pending_banner: "Check-in Pending",
+  checkin_pending_badge: "Check-in Pending",
   checkout_first_note: "Departs Today",
   checkin_after_note: "Arrives Today",
   open_whatsapp_title: "Open WhatsApp Chat?",

@@ -29,15 +29,43 @@ const OTA_METADATA_PATTERNS = [
   /^\s*Imported Booking\s*$/i,
 ];
 
+const INLINE_OTA_PATTERNS = [
+  /\bImported Booking\b/gi,
+  /\bListing Base Price\s*:\s*[^\s\r\n]+(?:\s*[A-Z]{3})?/gi,
+  /\bTransient Occupancy Tax(?:\s+Paid\s+Amount)?\s*:\s*[^\s\r\n]+/gi,
+  /\bListing Cancellation(?:\s+Payout|\s+Host\s+Fee)?\s*:\s*[^\s\r\n]+/gi,
+  /\bOccupancy Tax Amount(?:\s+Paid\s+To\s+Host)?\s*:\s*[^\s\r\n]+/gi,
+  /\bExtra Guest Fee\s*:\s*[^\s\r\n]+/gi,
+  /\bCohost Payout\s*:\s*[^\s\r\n]+/gi,
+  /\bNumber Of Pets\s*:\s*[^\s\r\n]+/gi,
+  /\bManagement Fee\s*:\s*[^\s\r\n]+/gi,
+  /\bListing Security Deposit\s*:\s*[^\s\r\n]+/gi,
+  /\bHost Payout\s*:\s*[^\s\r\n]+/gi,
+  /\bListing Cancellation\b[^\r\n]*/gi,
+];
+
 export function cleanGuestNotes(rawNotes?: string | null): string {
   if (!rawNotes) return '';
   const lines = rawNotes.split(/\r?\n/);
-  const filtered = lines.filter((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return false;
-    return !OTA_METADATA_PATTERNS.some((pattern) => pattern.test(trimmed));
-  });
-  return filtered.join('\n').trim();
+  const filteredLines = lines
+    .map((line) => {
+      let current = line;
+      for (const pattern of INLINE_OTA_PATTERNS) {
+        current = current.replace(pattern, ' ');
+      }
+      return current.replace(/\s+/g, ' ').replace(/^[:.,;-\s]+/, '').trim();
+    })
+    .filter((line) => {
+      if (!line) return false;
+      if (OTA_METADATA_PATTERNS.some((pattern) => pattern.test(line))) return false;
+      return /[a-zA-Z0-9]/.test(line);
+    });
+
+  const result = filteredLines.join('\n').trim();
+  if (!/[a-zA-Z0-9]/.test(result)) {
+    return '';
+  }
+  return result;
 }
 
 /**

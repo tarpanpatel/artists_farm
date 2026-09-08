@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Pencil, Eye, LogIn, LogOut, Users, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
+import { Pencil, Eye, LogIn, LogOut, Users, IndianRupee, CheckCircle2, IdCard, AlertTriangle } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Badge } from './Badge';
-import { WhatsappIcon } from './icons/WhatsappIcon';
 import { BookingContactActions } from './BookingContactActions';
 import { useConfirm } from './ConfirmDialogContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
@@ -92,8 +91,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
     };
   }, [guests]);
 
-  const getStatusBadge = (status: string) => {
-    const s = (status || '').toLowerCase();
+  const getStatusBadge = (guest: Guest) => {
+    const s = (guest.status || '').toLowerCase();
     if (s === 'checked in' || s === 'active') {
       return (
         <Badge variant="success" dot size="sm">
@@ -101,7 +100,16 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
         </Badge>
       );
     }
+    const checkin = (guest.checkinDate || '').split(' ')[0].split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
     if (s === 'booked' || s === 'upcoming' || s === 'reserved') {
+      if (checkin && checkin <= todayStr) {
+        return (
+          <Badge variant="warning" dot size="sm">
+            Check-in Pending
+          </Badge>
+        );
+      }
       return (
         <Badge variant="info" dot size="sm">
           Upcoming
@@ -234,7 +242,17 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="shrink-0 whitespace-nowrap">{getStatusBadge(guest.status)}</div>
+                  <div className="shrink-0 flex flex-col items-end gap-1.5 whitespace-nowrap">
+                    {getStatusBadge(guest)}
+                    {guest.idVerificationStatus !== 'Complete' && (
+                      <Badge variant="danger" size="sm">
+                        <span className="inline-flex items-center gap-1">
+                          <IdCard className="w-3 h-3 shrink-0" />
+                          <span>ID Pending</span>
+                        </span>
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* Sub-Grid: Check-In & Check-Out Dates */}
@@ -270,8 +288,8 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         <span>Filed ({formatDateDDMMYYYY(guest.cFormFiledAt)})</span>
                       </span>
                     ) : (
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold text-[11px] inline-flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 text-amber-500" />
+                      <span className="text-rose-600 dark:text-rose-400 font-semibold text-[11px] inline-flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-500" />
                         <span>Pending Filing</span>
                       </span>
                     )}
@@ -321,34 +339,10 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                       </span>
                     </div>
                   )}
-
-                  {pendingDue === 0 && (totalTariff > 0 || advancePaid > 0) && (
-                    <div>
-                      <span className="text-slate-400 text-2xs uppercase font-semibold block">Status</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 text-xs">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Settled
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {/* 44px Hit Target Bottom Action Buttons */}
                 <div className="flex items-center gap-2 pt-1">
-                  {guest.phoneNumber && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenWhatsApp(guest.phoneNumber);
-                      }}
-                      aria-label="Open WhatsApp"
-                      className="min-h-11 min-w-11 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center justify-center transition-colors shrink-0"
-                    >
-                      <WhatsappIcon className="w-4 h-4 text-emerald-600" />
-                    </button>
-                  )}
-
                   <button
                     type="button"
                     onClick={(e) => {

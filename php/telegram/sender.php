@@ -235,6 +235,20 @@ if (!function_exists('ensureTelegramWebhookSet')) {
         }
 
         try {
+            // `$ch = curl_init();` was dropped in 40750c7e, which rewrote the
+            // two lines below (adding the secret_token param) and deleted the
+            // init line along with the one it was replacing. Every other curl
+            // block in this file still has it. The result: curl_setopt() got
+            // an undefined $ch and threw a TypeError on EVERY Telegram send -
+            // and because TypeError extends Error, not Exception, the catch
+            // below never saw it, so it escaped to router.php's global handler
+            // as a bare HTTP 500 "Server error". Found 8 Sep 2026 from live
+            // staging logs.
+            $ch = curl_init();
+            if ($ch === false) {
+                return false;
+            }
+
             $secretToken = defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '';
             $setWebhookUrl = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($webhookUrl);
             if (!empty($secretToken)) {
@@ -251,7 +265,19 @@ if (!function_exists('ensureTelegramWebhookSet')) {
                 $webhookVerifiedCache[$tokenHash] = true;
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            // Throwable, not Exception - that narrower catch is exactly what
+            // let the bug above reach the user as a 500 instead of being
+            // logged and shrugged off here.
+            //
+            // This matters structurally, not just for that one bug: this
+            // function is best-effort housekeeping (registering a webhook),
+            // called by sendPropertyTelegramMessage() BEFORE it does any
+            // routing. Nothing that goes wrong in here should ever be able to
+            // stop an actual notification being sent - which is precisely what
+            // happened, and it also swallowed the "no groups configured yet"
+            // response that callers rely on to stay quiet about an
+            // un-onboarded property.
             error_log("Failed to set Telegram webhook: " . $e->getMessage());
         }
         return false;

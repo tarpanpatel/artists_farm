@@ -13,6 +13,7 @@ import {
   LogOut,
   Search,
   AlertCircle,
+  AlertTriangle,
   Building,
   Plus,
   ArrowRight,
@@ -21,6 +22,7 @@ import {
   Edit2,
   Pencil,
   Eye,
+  IdCard,
   X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
@@ -38,6 +40,7 @@ import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
+import { cleanGuestNotes } from '../utils/otaNotesCleaner';
 import { markCFormFiled } from '../services/api';
 
 interface BillingCheckoutProps {
@@ -314,6 +317,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   }, [guests]);
 
 
+  const isCheckedInGuest = (g: Guest): boolean => {
+    const s = String(g.status || '').toLowerCase().trim();
+    return s === 'checked in' || s === 'active';
+  };
+
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
     // A cancelled booking is otherwise indistinguishable from a genuinely
@@ -325,6 +333,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     }
     const cat = getGuestDetailedStatus(guest);
     if (cat === 'checkin_today') {
+      const isCheckedIn = isCheckedInGuest(guest);
+      if (!isCheckedIn) {
+        return {
+          key: 'checkin_pending',
+          label: t('checkin_pending_badge', 'Check-in Pending'),
+          variant: 'warning' as const,
+        };
+      }
       return { key: 'staying', label: t('checked_in_today_badge', 'Checked In Today'), variant: 'success' as const };
     } else if (cat === 'checkout_today') {
       return { key: 'checkout', label: t('checkout_today_badge', 'Checkout Today'), variant: 'warning' as const };
@@ -545,7 +561,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // the main Today/Past view and each date-section under Upcoming, so the
   // room card itself (guest list, financials, actions) only exists once.
   const renderRoomGroupsGrid = (groups: GroupedRoomBooking[]) => (
-    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-8 items-start">
+    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 sm:gap-12 md:gap-8 lg:gap-10 items-start">
       {groups.map((group) => {
         const isTurnoverRoom = group.guests.length > 1;
 
@@ -577,17 +593,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             )}
 
             {/* Guest Card(s) stacked inside Room Column */}
-            <div className={`billing-checkout__room-card-body p-3.5 sm:p-4 space-y-4 ${isTurnoverRoom ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''}`}>
+            <div className={`billing-checkout__room-card-body p-3.5 sm:p-4 space-y-6 ${isTurnoverRoom ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''}`}>
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
                 const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : t('same_day_stay', 'Same day stay');
                 const stayStatus = getGuestStayStatus(guest);
-                const canCheckout = stayStatus.key === 'staying' || stayStatus.key === 'checkout';
+                const isCheckedIn = isCheckedInGuest(guest);
+                const canCheckout = isCheckedIn && (stayStatus.key === 'staying' || stayStatus.key === 'checkout');
                 const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;
                 const advancePaid = guest.advanceAmount ?? 0;
                 const foodBill = guest.foodBill ?? 0;
-                const hasTariffOrPayment = roomCharges > 0 || advancePaid > 0 || foodBill > 0;
 
                 return (
                   <div
@@ -595,6 +611,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 p-3 sm:p-3.5 rounded-lg bg-white dark:bg-slate-800 transition-all ${
                       isTurnoverRoom
                         ? stayStatus.key === 'checkout'
+                          ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
+                          : stayStatus.key === 'checkin_pending'
                           ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
                           : stayStatus.key === 'staying'
                           ? 'border-2 border-emerald-300 dark:border-emerald-700/80 shadow-sm'
@@ -605,7 +623,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     {/* Top Turnover Banner: clearly identifies Check-Out vs Check-In within the same room */}
                     {isTurnoverRoom && (
                       <div className={`flex items-center justify-between pb-2 border-b text-xs font-bold ${
-                        stayStatus.key === 'checkout'
+                        stayStatus.key === 'checkout' || stayStatus.key === 'checkin_pending'
                           ? 'text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
                           : stayStatus.key === 'staying'
                           ? 'text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
@@ -617,6 +635,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               <LogOut className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               <span>{t('checking_out_today_banner', 'Checking Out Today')}</span>
                             </>
+                          ) : stayStatus.key === 'checkin_pending' ? (
+                            <>
+                              <LogIn className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>{t('checkin_pending_banner', 'Check-in Pending')}</span>
+                            </>
                           ) : stayStatus.key === 'staying' ? (
                             <>
                               <LogIn className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -625,9 +648,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           ) : (
                             <span>{stayStatus.label}</span>
                           )}
-                        </span>
-                        <span className="text-2xs font-normal opacity-80">
-                          {stayStatus.key === 'checkout' ? t('checkout_first_note', 'Departs Today') : t('checkin_after_note', 'Arrives Today')}
                         </span>
                       </div>
                     )}
@@ -665,7 +685,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         {/* Right Side Stack: Stay Status Badge + Warnings */}
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
                           <Badge variant={stayStatus.variant} size="sm" className="whitespace-nowrap">
-                            {stayStatus.label}
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                              {stayStatus.key === 'checkin_pending' && <AlertTriangle className="w-3 h-3 shrink-0" />}
+                              {stayStatus.key === 'staying' && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                              {stayStatus.key === 'checkout' && <LogOut className="w-3 h-3 shrink-0" />}
+                              <span>{stayStatus.label}</span>
+                            </span>
                           </Badge>
 
                           {guest.isForeignGuest && (
@@ -678,13 +703,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               </Badge>
                             ) : (
                               <Badge
-                                variant="warning"
+                                variant="danger"
                                 size="sm"
                                 title={t('c_form_pending_popover_text', 'This foreign guest still needs a C-Form filed.')}
                                 className="whitespace-nowrap"
                               >
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                  <AlertCircle className="w-3 h-3 shrink-0" />
+                                  <AlertTriangle className="w-3 h-3 shrink-0" />
                                   <span>{t('c_form_pending_badge', 'C-Form Pending')}</span>
                                 </span>
                               </Badge>
@@ -692,13 +717,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           )}
                           {guest.idVerificationStatus !== 'Complete' && (
                             <Badge
-                              variant="warning"
+                              variant="danger"
                               size="sm"
                               title={t('id_pending_popover_text', 'This guest\'s ID verification is still incomplete.')}
                               className="whitespace-nowrap"
                             >
                               <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                <IdCard className="w-3 h-3 shrink-0" />
                                 <span>{t('id_verification_pending_badge', 'ID Pending')}</span>
                               </span>
                             </Badge>
@@ -711,11 +736,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="inline-flex items-center gap-1 tabular-nums flex-wrap">
-                            <span className={stayStatus.key === 'staying' ? `font-bold ${stayStatusDateTextClasses.success}` : undefined}>
+                            <span className={stayStatus.key === 'staying' || stayStatus.key === 'checkin_pending' ? `font-bold ${stayStatusDateTextClasses[stayStatus.variant]}` : undefined}>
                               {formatDate(guest.checkinDate)}
                             </span>
-                            {stayStatus.key === 'staying' && (
-                              <span className="text-2xs font-bold px-1 rounded bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            {(stayStatus.key === 'staying' || stayStatus.key === 'checkin_pending') && (
+                              <span className={`text-2xs font-bold px-1 rounded ${stayStatus.key === 'staying' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'}`}>
                                 {t('today_tag', 'TODAY')}
                               </span>
                             )}
@@ -793,24 +818,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                           </span>
                         </div>
                       )}
-
-                      {/* Settled indicator if fully paid */}
-                      {amountDue === 0 && hasTariffOrPayment && (
-                        <div className="flex justify-end pt-0.5">
-                          <span className="inline-flex items-center gap-1 text-2xs font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                            <span>{t('paid_in_full_label', 'Paid in Full')}</span>
-                          </span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Action Buttons - canActOnBooking/canCheckoutBookingRole
-                        (ROLES.md, 24 Aug 2026): Staff Kitchen gets a single
-                        view-only button that opens the same modal in its
-                        already-read-only state; Staff gets Edit but never
-                        Checkout even when the stay-status-based `canCheckout`
-                        below would otherwise show it. */}
+                    {/* Action Buttons */}
                     {!canActOnBooking ? (
                       <div className="billing-checkout__guest-card-actions pt-0.5">
                         <Button
@@ -854,14 +864,18 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                     )}
 
                     {/* Guest Notes */}
-                    {guest.notes && (
-                      <div className="p-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg flex gap-1.5 text-[10px]">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
-                          <span className="font-semibold">{t('notes_prefix', 'Notes:')}</span> {guest.notes}
-                        </p>
-                      </div>
-                    )}
+                    {(() => {
+                      const cleaned = cleanGuestNotes(guest.notes);
+                      if (!cleaned) return null;
+                      return (
+                        <div className="p-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg flex gap-1.5 text-[10px]">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                          <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
+                            <span className="font-semibold">{t('notes_prefix', 'Notes:')}</span> {cleaned}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
