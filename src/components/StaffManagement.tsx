@@ -94,7 +94,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return 'control_center';
   };
 
-  const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff } = useStaff();
+  const { staff, staffLoading, attendance, addStaff, updateStaff, recordAttendance, refreshStaff, refreshAttendance } = useStaff();
   const [activeSubTab, setActiveSubTab] = useState<'control_center' | 'calendar' | 'roster'>(getInitialStaffSubTab);
   const isAttendancePage = activeMenuItemKey === 'attendance_calendar' || activeMenuItemKey === 'attendance_salaries';
 
@@ -705,16 +705,29 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       newStatus = 'Clear';
     }
 
+    // The repaint is optimistic (see recordAttendance) - report it if the save
+    // did not actually land, rather than leaving a mark on screen that is not
+    // in the database. That exact silence is what hid "attendance never saves"
+    // until 8 Sep 2026.
     recordAttendance({
       id: `att-${Date.now().toString().slice(-4)}`,
       date: dateStr,
       staffId: staffMember.id,
       staffName: staffMember.name,
       status: newStatus,
+    }).then((saved) => {
+      if (!saved) {
+        showToast(
+          t('attendance_save_failed', 'Could not save attendance. Please check your connection and try again.'),
+          { type: 'error' }
+        );
+        refreshAttendance();
+      }
     });
   };
 
   const applyBulkStatus = (status: AttendanceRecord['status'] | 'Clear') => {
+    const pending: Array<Promise<boolean>> = [];
     selectedCells.forEach((key) => {
       // Split on the LAST underscore, not the first (8 Sep 2026, reported live:
       // "cant mark attendance on tarpan patel only"). A cell key is
@@ -731,16 +744,30 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       const dateStr = sep === -1 ? key : key.slice(sep + 1);
       const member = staff.find((s) => s.id === staffId);
       if (member) {
-        recordAttendance({
+        pending.push(recordAttendance({
           id: `att-${Date.now().toString().slice(-4)}`,
           date: dateStr,
           staffId: member.id,
           staffName: member.name,
           status: status as any,
-        });
+        }));
       }
     });
     setSelectedCells(new Set());
+    // One toast for the batch, not one per cell - a dropped connection would
+    // otherwise fire a toast for every selected day at once.
+    if (pending.length) {
+      Promise.all(pending).then((results) => {
+        const failed = results.filter((ok) => !ok).length;
+        if (failed > 0) {
+          showToast(
+            t('attendance_bulk_save_failed', `${failed} of ${results.length} marks could not be saved. Please try again.`),
+            { type: 'error' }
+          );
+          refreshAttendance();
+        }
+      });
+    }
   };
 
   const handleSelectAllCells = () => {

@@ -5,6 +5,7 @@ import {
   fetchAttendanceFromDB,
   addStaffUserDB,
   updateStaffUserDB,
+  logAttendanceDB,
 } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -16,7 +17,8 @@ interface StaffContextValue {
   refreshStaff: () => Promise<void>;
   addStaff: (member: StaffMember) => Promise<boolean>;
   updateStaff: (id: string, updated: Partial<StaffMember>) => void;
-  recordAttendance: (record: AttendanceRecord) => void;
+  /** Resolves to whether the mark actually persisted; safe to ignore. */
+  recordAttendance: (record: AttendanceRecord) => Promise<boolean>;
 }
 
 interface StaffProviderProps {
@@ -201,7 +203,26 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
     onLogAudit?.(`${currentUserName} updated ${detail}`);
   };
 
-  const recordAttendance = (record: AttendanceRecord) => {
+  /**
+   * Optimistic local update, then persist (8 Sep 2026).
+   *
+   * This used to do the local half ONLY - no API call anywhere - so every mark
+   * on the Attendance Calendar was browser-session state that vanished on
+   * refresh and counted toward nobody's salary. Found live on Patel Colony:
+   * marks visible on screen, zero rows in staff_attendance. The one existing
+   * writer (CashDrawerManager's salary payout, via saveAttendanceToDB) only
+   * ran at payout time, by which point the marks it meant to save were long
+   * gone.
+   *
+   * Optimistic on purpose: the calendar cycles a cell through
+   * P -> A -> H -> L -> unmarked on rapid successive clicks, and waiting for a
+   * round trip before repainting would make that feel broken. The save is
+   * idempotent (the backend upserts on property/staff/day), so a fast triple
+   * click settles on whatever the last one said. Returns whether the write
+   * landed so a caller can surface a failure - callers that ignore the promise
+   * keep their old fire-and-forget behaviour.
+   */
+  const recordAttendance = (record: AttendanceRecord): Promise<boolean> => {
     setAttendance((prev) => {
       const filtered = prev.filter(
         (a) => !(a.staffId === record.staffId && a.date === record.date)
@@ -213,6 +234,13 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
     });
     const currentUserName = currentUser?.name || 'Admin';
     onLogAudit?.(`${currentUserName} marked ${record.staffName} ${record.status.toLowerCase()} on attendance calendar`);
+    return logAttendanceDB({
+      date: record.date,
+      staffId: record.staffId,
+      staffName: record.staffName,
+      status: record.status,
+      markedBy: currentUserName,
+    });
   };
 
   return (
