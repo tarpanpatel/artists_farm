@@ -362,21 +362,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     }
   };
 
-  // Same variant -> color families Badge.tsx itself uses (success=green,
-  // warning=yellow, info=cyan, danger=red, neutral=gray) - reused here so the
-  // guest-card accent bar and the highlighted check-in/checkout date always
-  // agree with whatever color the stay-status Badge above them is already
-  // showing, rather than inventing a second, drifting palette (8 Sep 2026,
-  // reported: hard to tell two bookings in one room apart, and check-in/
-  // checkout dates didn't stand out).
-  const stayStatusDateTextClasses: Record<ReturnType<typeof getGuestStayStatus>['variant'], string> = {
-    success: 'text-green-700 dark:text-green-400',
-    warning: 'text-yellow-700 dark:text-yellow-400',
-    info: 'text-cyan-700 dark:text-cyan-400',
-    danger: 'text-red-700 dark:text-red-400',
-    neutral: '',
-  };
-
   // Deduplicate and sanitize guests array to ensure no invalid/orphan cards ever appear
   const uniqueGuests = useMemo(() => {
     const seenIds = new Set<string>();
@@ -715,24 +700,14 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
                         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="inline-flex items-center gap-1 tabular-nums flex-wrap">
-                            <span className={stayStatus.key === 'staying' || stayStatus.key === 'checkin_pending' ? `font-bold ${stayStatusDateTextClasses[stayStatus.variant]}` : undefined}>
+                          <span className="inline-flex items-center gap-1.5 tabular-nums flex-wrap">
+                            <span>
                               {formatDate(guest.checkinDate)}
                             </span>
-                            {(stayStatus.key === 'staying' || stayStatus.key === 'checkin_pending') && (
-                              <span className={`text-2xs font-bold px-1 rounded ${stayStatus.key === 'staying' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'}`}>
-                                {t('today_tag', 'TODAY')}
-                              </span>
-                            )}
                             <ArrowRight className="w-3 h-3 text-slate-400" />
-                            <span className={stayStatus.key === 'checkout' ? `font-bold ${stayStatusDateTextClasses.warning}` : undefined}>
+                            <span>
                               {formatDate(guest.expectedCheckout)}
                             </span>
-                            {stayStatus.key === 'checkout' && (
-                              <span className="text-2xs font-bold px-1 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
-                                {t('today_tag', 'TODAY')}
-                              </span>
-                            )}
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 pl-5">

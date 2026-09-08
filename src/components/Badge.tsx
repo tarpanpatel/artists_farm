@@ -23,21 +23,20 @@ const dotVariantClasses: Record<BadgeVariant, string> = {
   white: 'bg-gray-400',
 };
 
-// Literal stock Tailwind/Flowbite tokens (19 Aug 2026: per-tenant CSS-variable
-// branding dropped in favor of one consistent Flowbite look site-wide).
+// Literal stock Flowbite default badge tokens (no borders, rounded corners, soft bg)
 const badgeTheme = createTheme({
   root: {
-    base: 'app-badge inline-flex items-center gap-1.5 font-semibold rounded-md border shadow-2xs select-none tabular-nums whitespace-nowrap',
+    base: 'app-badge inline-flex items-center gap-1.5 font-medium rounded select-none tabular-nums whitespace-nowrap',
     color: {
-      success: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-300 dark:border-green-700',
-      danger: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-300 dark:border-red-700',
-      warning: 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-300 dark:border-yellow-700',
-      info: 'bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900 dark:text-cyan-300 dark:border-cyan-700',
-      neutral: 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
-      white: 'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700',
+      success: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+      danger: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+      warning: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+      info: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
+      neutral: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      white: 'bg-white text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700',
     },
     size: {
-      sm: 'text-[11px] px-2 py-0.5',
+      sm: 'text-2xs px-2 py-0.5',
       md: 'text-xs px-2.5 py-0.5',
     },
   },
