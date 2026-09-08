@@ -161,6 +161,7 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const currentUserName = currentUser?.name || 'Admin';
 
@@ -230,8 +231,10 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
     }
 
     setIsUploadingDoc(true);
-    const result = await uploadDocumentDB(file, 'licenses');
+    setUploadProgress(0);
+    const result = await uploadDocumentDB(file, 'licenses', (pct) => setUploadProgress(pct));
     setIsUploadingDoc(false);
+    setUploadProgress(null);
     if (result) {
       setForm((prev) => ({ ...prev, document_url: result.url }));
     } else {
@@ -594,6 +597,8 @@ export const LicenseManagement: React.FC<LicenseManagementProps> = ({ onLogAudit
                   accept="application/pdf,image/jpeg,image/png,image/webp"
                   onChange={handleDocumentSelected}
                   helperText={t('upload_document_button', 'PDF, JPG, or PNG')}
+                  isUploading={isUploadingDoc}
+                  progress={uploadProgress}
                   // upload_document.php deliberately does NOT resize/recompress
                   // (unlike upload_image.php's thumbnailing pipeline) - this is
                   // compliance paperwork (FSSAI/homestay licence certificates)

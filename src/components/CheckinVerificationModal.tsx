@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IdCard, Trash2, CheckCircle2, AlertCircle, Loader2, Plus } from './icons/FlowbiteIcons';
+import { IdCard, Trash2, CheckCircle2, AlertCircle, Loader2 } from './icons/FlowbiteIcons';
 import { Modal, Alert } from 'flowbite-react';
 import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
@@ -38,14 +38,12 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
 }) => {
   const [documents, setDocuments] = useState<GuestIdDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadProgressLabel, setUploadProgressLabel] = useState<string>('');
   const [completing, setCompleting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  // Extra blank slots beyond whatever's required/already uploaded, added via
-  // "+ Add More Images" - covers front/back-of-ID as separate files, or
-  // guests who show up later than the original headcount.
-  const [extraSlots, setExtraSlots] = useState(0);
 
   const requiredCount = 1;
 
@@ -53,7 +51,9 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     if (!isOpen) return;
     setErrorMsg(null);
     setSuccessMsg(null);
-    setExtraSlots(0);
+    setIsUploading(false);
+    setUploadProgress(null);
+    setUploadProgressLabel('');
     setLoading(true);
     fetchIdDocumentsFromDB(guest.id).then((docs) => {
       setDocuments(docs);
@@ -61,42 +61,82 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     });
   }, [isOpen, guest.id]);
 
-  const docForIndex = (index: number) => documents.find((d) => d.guestIndex === index);
-
-  const handleFileSelected = async (index: number, file: File) => {
+  const handleFilesSelected = async (files: File[]) => {
+    if (!files || files.length === 0) return;
     setErrorMsg(null);
     setSuccessMsg(null);
-    setUploadingIndex(index);
-    // Downscale before it ever hits the network - a phone camera photo is
-    // routinely several MB, and that's almost the entire wait time on a
-    // resort's connection. No FileReader/base64 preview round-trip either,
-    // this flow never previews the image, only uploads it.
-    const resized = await resizeImageFile(file);
-    const { url: uploadedUrl, error: uploadError } = await uploadImageDBVerbose(resized, 'id_documents');
-    if (!uploadedUrl) {
-      // Surface the real server-side reason (auth/session expired, file too
-      // large, an image format the server couldn't decode, etc.) instead of
-      // one generic message no matter the cause - the old version gave no
-      // way to tell those apart on a real device with no devtools open
-      // (found 20 Aug 2026).
-      setErrorMsg(uploadError || 'Failed to upload the photo. Please try again.');
-      setUploadingIndex(null);
-      return;
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const total = files.length;
+    let successCount = 0;
+
+    // Keep track of indices already taken so each new file gets a distinct slot
+    const existingIndices = new Set(documents.map((d) => d.guestIndex));
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      let targetIndex = 0;
+      while (existingIndices.has(targetIndex)) {
+        targetIndex++;
+      }
+      existingIndices.add(targetIndex);
+
+      setUploadProgressLabel(
+        total > 1
+          ? `Uploading file ${i + 1} of ${total}: ${file.name}`
+          : `Uploading ${file.name}...`
+      );
+
+      const basePct = (i / total) * 100;
+      const slicePct = (1 / total) * 100;
+
+      try {
+        const resized = await resizeImageFile(file);
+        const { url: uploadedUrl, error: uploadError } = await uploadImageDBVerbose(
+          resized,
+          'id_documents',
+          (pct) => {
+            const currentPct = Math.round(basePct + (pct / 100) * slicePct);
+            setUploadProgress(currentPct);
+          }
+        );
+
+        if (!uploadedUrl) {
+          setErrorMsg(uploadError || `Failed to upload ${file.name}. Please try again.`);
+          continue;
+        }
+
+        const result = await saveIdDocumentToDB(guest.id, targetIndex, uploadedUrl);
+        if (result.success && result.document) {
+          setDocuments((prev) => [...prev.filter((d) => d.guestIndex !== targetIndex), result.document!]);
+          successCount++;
+        } else if (result.success) {
+          const refreshed = await fetchIdDocumentsFromDB(guest.id);
+          setDocuments(refreshed);
+          successCount++;
+        } else {
+          setErrorMsg(result.message || `Failed to save ${file.name}.`);
+        }
+      } catch (err: any) {
+        setErrorMsg(err?.message || `Failed to process ${file.name}.`);
+      }
     }
-    const result = await saveIdDocumentToDB(guest.id, index, uploadedUrl);
-    if (result.success && result.document) {
-      // Merge the one saved/changed row locally instead of a third
-      // round-trip re-fetching the entire document list.
-      setDocuments((prev) => [...prev.filter((d) => d.guestIndex !== index), result.document!]);
-    } else if (result.success) {
-      // Backend didn't return the row for some reason - fall back to a
-      // full refresh rather than leave the UI out of sync.
-      const refreshed = await fetchIdDocumentsFromDB(guest.id);
-      setDocuments(refreshed);
-    } else {
-      setErrorMsg(result.message || 'Failed to save the uploaded ID document.');
+
+    setUploadProgress(100);
+    setTimeout(() => {
+      setIsUploading(false);
+      setUploadProgress(null);
+      setUploadProgressLabel('');
+    }, 400);
+
+    if (successCount > 0) {
+      setSuccessMsg(
+        successCount === 1
+          ? 'ID document uploaded successfully.'
+          : `${successCount} ID documents uploaded successfully.`
+      );
     }
-    setUploadingIndex(null);
   };
 
   const handleDelete = async (docId: number) => {
@@ -119,8 +159,7 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     if (result.success) {
       setSuccessMsg('Check-in verification complete.');
       onVerificationComplete(String(guest.id));
-      // Brief pause so the success message is actually visible, then close -
-      // this used to stay open indefinitely until manually dismissed.
+      // Brief pause so the success message is actually visible, then close
       setTimeout(() => onClose(), 900);
     } else {
       setErrorMsg(result.message || 'Failed to complete check-in verification.');
@@ -131,149 +170,150 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const allUploaded = documents.length >= requiredCount;
   const alreadyComplete = guest.idVerificationStatus === 'Complete';
 
-  const highestUploadedIndex = documents.reduce((max, d) => Math.max(max, d.guestIndex), -1);
-  const initialSlotCount = 1;
-  const totalSlotCount = Math.max(initialSlotCount, highestUploadedIndex + 1) + extraSlots;
-
   return (
-    // Modal, not Drawer (25 Aug 2026, DESIGN.md's "nested dialogs never stack a second
-    // Drawer" rule) - this always opens from inside BookingDetailsModal, which is itself
-    // already an open Drawer. z-70 is the correct existing scale tier for "a secondary
-    // dialog stacking above an already-open page modal" (custom.css's own z-index scale) -
-    // unchanged from when this was a Drawer, only the shape changed.
     <Modal show={isOpen} onClose={onClose} dismissible size="lg" popup className="z-70 checkin-verification-modal__overlay">
       <div className="flex flex-col max-h-[85vh]">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-            <IdCard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+              <IdCard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h3 className="checkin-verification-modal__subtitle text-base font-semibold text-slate-800 dark:text-slate-100 m-0">
+                {t('complete_checkin_heading_prefix', 'Complete Check-in —')} {guest.guestName}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 m-0">
+                {guest.roomNumber} · {requiredCount} {t('id_documents_required_text', 'ID document')}{requiredCount > 1 ? 's' : ''} required
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="checkin-verification-modal__subtitle text-base font-semibold text-slate-800 dark:text-slate-100 m-0">
-              {t('complete_checkin_heading_prefix')} {guest.guestName}
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 m-0">
-              {guest.roomNumber} · {requiredCount} {t('id_documents_required_text')}{requiredCount > 1 ? 's' : ''} required
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {successMsg && (
-          <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-            <p className="text-xs font-medium">{successMsg}</p>
-          </Alert>
-        )}
-        {errorMsg && (
-          <Alert color="failure" icon={AlertCircle} className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-            <p className="text-xs font-medium">{errorMsg}</p>
-          </Alert>
-        )}
-        {alreadyComplete && !successMsg && (
-          <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-            <p className="text-xs font-medium">
-              {t('already_verified_message', "This booking's check-in is already verified. You can still replace a photo below if needed.")}
-            </p>
-          </Alert>
-        )}
 
-        {/* Upload slots */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
-          </div>
-        ) : (
-          <>
-            <div className="checkin-verification-modal__grid grid grid-cols-2 gap-3">
-              {Array.from({ length: totalSlotCount }, (_, index) => {
-                const doc = docForIndex(index);
-                const isUploading = uploadingIndex === index;
-                const isExtra = index >= requiredCount;
-                const label = isExtra ? `${t('extra_photo_label')} ${index - requiredCount + 1}` : `${t('guest_id_label')} ${index + 1} ID`;
-                return (
-                  <div key={index} className="space-y-1.5">
-                    {doc ? (
-                      <div className="flex items-center gap-2 p-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50/40 dark:bg-emerald-950/20">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {successMsg && (
+            <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+              <p className="text-xs font-medium">{successMsg}</p>
+            </Alert>
+          )}
+          {errorMsg && (
+            <Alert color="failure" icon={AlertCircle} className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+              <p className="text-xs font-medium">{errorMsg}</p>
+            </Alert>
+          )}
+          {alreadyComplete && !successMsg && (
+            <Alert color="success" icon={CheckCircle2} className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+              <p className="text-xs font-medium">
+                {t('already_verified_message', "This booking's check-in is already verified. You can still upload additional or replacement documents below.")}
+              </p>
+            </Alert>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Full-width Multi-File Upload Input */}
+              <div className="p-3.5 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-900/30 transition-colors">
+                <FileInput
+                  id="checkin-multi-id-upload"
+                  multiple
+                  accept="image/*"
+                  sizing="md"
+                  label={documents.length === 0 ? t('upload_guest_id_documents', 'Upload Guest ID Documents') : t('add_more_id_documents', 'Upload / Add More ID Documents')}
+                  helperText={t('multiple_id_upload_hint', 'You can select multiple photos in one go (front & back ID, Aadhaar, Passport).')}
+                  disabled={isUploading}
+                  isUploading={isUploading}
+                  progress={uploadProgress}
+                  uploadProgressLabel={uploadProgressLabel}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.files || []);
+                    if (selected.length > 0) handleFilesSelected(selected);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+
+              {/* Uploaded Documents List */}
+              {documents.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <span>{t('uploaded_documents_heading', 'Uploaded Documents')} ({documents.length})</span>
+                    <span className="text-2xs font-medium text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {t('ready_for_verification', 'Ready for verification')}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {documents.map((doc, idx) => (
+                      <div
+                        key={doc.id || idx}
+                        className="flex items-center gap-2.5 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 shadow-2xs"
+                      >
                         <img
                           src={idDocThumbUrl(doc.filePath)}
-                          alt={label}
+                          alt={`ID Document ${idx + 1}`}
                           loading="lazy"
-                          className="w-11 h-11 rounded-md object-cover shrink-0"
-                          // Documents uploaded before thumbnails existed have
-                          // no file at the thumbs/ path - fall back to the
-                          // full-size image rather than show a broken icon.
+                          className="w-12 h-12 rounded-md object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                           onError={(e) => {
                             const img = e.currentTarget;
                             if (img.src !== doc.filePath) img.src = doc.filePath;
                           }}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-2xs font-semibold text-slate-700 dark:text-slate-200 truncate">{label}</p>
-                          <p className="text-2xs text-slate-500 dark:text-slate-400">{formatUploadedAt(doc.uploadedAt)}</p>
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {t('guest_id_label', 'Guest ID')} #{idx + 1}
+                          </p>
+                          <p className="text-2xs text-slate-500 dark:text-slate-400">
+                            {formatUploadedAt(doc.uploadedAt)}
+                          </p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => handleDelete(doc.id)}
                           disabled={isUploading}
-                          className="text-red-500 hover:text-red-700 p-1 rounded cursor-pointer shrink-0 disabled:opacity-50"
-                          title={t('remove_reupload_tooltip', 'Remove and re-upload')}
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer shrink-0 disabled:opacity-50 transition-colors"
+                          title={t('remove_id_document', 'Remove ID document')}
                         >
-                          {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    ) : (
-                      <FileInput
-                        label={label}
-                        sizing="sm"
-                        accept="image/*"
-                        disabled={isUploading}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileSelected(index, file);
-                          e.target.value = '';
-                        }}
-                        helperText={isUploading ? t('uploading_label', 'Uploading...') : undefined}
-                      />
-                    )}
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              )}
             </div>
-            <button
-              onClick={() => setExtraSlots((n) => n + 1)}
-              className="w-full py-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-purple-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> {t('add_more_images_button', 'Add More Images')}
-            </button>
-          </>
-        )}
-      </div>
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col items-stretch gap-3 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center m-0">
-          {requiredUploadedCount} of {requiredCount} required ID document uploaded
-        </p>
-        <button
-          onClick={handleCompleteCheckin}
-          disabled={!allUploaded || completing}
-          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
-        >
-          {completing ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" /> {t('completing_button', 'Completing...')}
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-4 h-4" /> {t('checkin_complete_button', 'Check-in Complete')}
-            </>
           )}
-        </button>
-      </div>
+        </div>
+
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col items-stretch gap-3 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium text-center m-0">
+            {requiredUploadedCount} of {requiredCount} required ID document uploaded
+          </p>
+          <button
+            onClick={handleCompleteCheckin}
+            disabled={!allUploaded || completing || isUploading}
+            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
+          >
+            {completing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" /> {t('completing_button', 'Completing...')}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" /> {t('checkin_complete_button', 'Check-in Complete')}
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </Modal>
   );

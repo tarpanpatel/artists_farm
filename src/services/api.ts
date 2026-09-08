@@ -605,21 +605,83 @@ export async function resizeImageFile(file: File, maxDim: number = 1600): Promis
 // message no matter the cause (found 20 Aug 2026 - see CheckinVerificationModal.tsx,
 // where a real device's "Failed to upload the photo" gave no way to tell
 // an auth/session problem apart from a file-too-large or invalid-image one).
+/**
+ * Uploads form data using XMLHttpRequest to capture granular upload progress
+ * (percentage) for Flowbite progress bars, falling back to standard apiFetch if needed.
+ */
+function uploadFormDataWithProgress(
+  url: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void
+): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    if (typeof XMLHttpRequest === 'undefined') {
+      apiFetch(url, { method: 'POST', body: formData })
+        .then(async (res) => {
+          onProgress?.(100);
+          resolve({ status: res.status, text: await res.text() });
+        })
+        .catch(reject);
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    const urlObj = new URL(url, window.location.origin);
+    urlObj.searchParams.set('property_slug', getPropertySlug());
+
+    xhr.open('POST', urlObj.toString(), true);
+    xhr.withCredentials = true;
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && e.total > 0) {
+          const percent = Math.min(99, Math.round((e.loaded / e.total) * 100));
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      onProgress?.(100);
+      resolve({ status: xhr.status, text: xhr.responseText });
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('Network error during upload'));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new Error('Upload timed out'));
+    };
+
+    xhr.send(formData);
+  });
+}
+
+// Shared implementation behind uploadImageDB/uploadImageDBVerbose below -
+// returns the real failure reason (server message, HTTP status, or the
+// caught exception) instead of only console.error-ing it and discarding it.
+// uploadImageDB's plain string|null signature has 5 call sites across the
+// app and stays untouched; uploadImageDBVerbose exists so screens that
+// actually show the failure to an end user (not just a developer with
+// devtools open) can display *why* it failed instead of one generic
+// message no matter the cause (found 20 Aug 2026 - see CheckinVerificationModal.tsx,
+// where a real device's "Failed to upload the photo" gave no way to tell
+// an auth/session problem apart from a file-too-large or invalid-image one).
 async function uploadImageDBInternal(
   image: File | string,
-  folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'
+  folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc',
+  onProgress?: (percent: number) => void
 ): Promise<{ url: string | null; error?: string }> {
   try {
     const formData = new FormData();
     formData.append('image', image instanceof File ? image : dataUriToBlob(image));
     formData.append('folder', folder);
-    const res = await apiFetch(UPLOAD_BASE, {
-      method: 'POST',
-      body: formData,
-    });
+
+    const res = await uploadFormDataWithProgress(UPLOAD_BASE, formData, onProgress);
     let json: any;
     try {
-      json = await res.json();
+      json = JSON.parse(res.text);
     } catch {
       // Non-JSON response (raw PHP fatal/HTML error page, host-level 413,
       // etc.) - res.status is the only signal left.
@@ -645,29 +707,43 @@ async function uploadImageDBInternal(
   }
 }
 
-export async function uploadImageDB(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'): Promise<string | null> {
-  const result = await uploadImageDBInternal(image, folder);
+export async function uploadImageDB(
+  image: File | string,
+  folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc',
+  onProgress?: (percent: number) => void
+): Promise<string | null> {
+  const result = await uploadImageDBInternal(image, folder, onProgress);
   return result.url;
 }
 
-export async function uploadImageDBVerbose(image: File | string, folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc'): Promise<{ url: string | null; error?: string }> {
-  return uploadImageDBInternal(image, folder);
+export async function uploadImageDBVerbose(
+  image: File | string,
+  folder: 'menu' | 'catalog' | 'misc' | 'id_documents' | 'qr_code' = 'misc',
+  onProgress?: (percent: number) => void
+): Promise<{ url: string | null; error?: string }> {
+  return uploadImageDBInternal(image, folder, onProgress);
 }
 
 // Unlike uploadImageDB above, accepts PDFs as well as images and stores the
 // file as-is (php/uploads/upload_document.php does no resize/recompress) -
 // for legal/certificate documents (e.g. LicenseManagement) where the upload
 // has to stay byte-identical to what was scanned, not a compressed thumbnail.
-export async function uploadDocumentDB(file: File, folder: 'licenses' | 'c_form' = 'licenses'): Promise<{ url: string; mime: string; size: number } | null> {
+export async function uploadDocumentDB(
+  file: File,
+  folder: 'licenses' | 'c_form' = 'licenses',
+  onProgress?: (percent: number) => void
+): Promise<{ url: string; mime: string; size: number } | null> {
   try {
     const formData = new FormData();
     formData.append('document', file);
     formData.append('folder', folder);
-    const res = await apiFetch(DOCUMENT_UPLOAD_BASE, {
-      method: 'POST',
-      body: formData,
-    });
-    const json = await res.json();
+    const res = await uploadFormDataWithProgress(DOCUMENT_UPLOAD_BASE, formData, onProgress);
+    let json: any;
+    try {
+      json = JSON.parse(res.text);
+    } catch {
+      return null;
+    }
     if (json.status === 'success' && json.url) {
       // Same dev-proxy re-rooting as uploadImageDB - see its comment above.
       const uploadsPath = json.url.replace(/^.*(\/php\/uploads\/.*)$/, '$1');

@@ -925,7 +925,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>{t('select_amenities_button', 'Select Amenities')}</span>
             {amenities.length > 0 && (
-              <span className="ms-1 px-1.5 py-0.2 rounded-full text-2xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
+              <span className="ms-1 px-1.5 py-0.2 rounded text-2xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
                 {amenities.length}
               </span>
             )}

@@ -48,7 +48,7 @@ const StatusBadge: React.FC<{ status: string | null }> = ({ status }) => {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border border-red-200 dark:border-red-800">
+    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
       <XCircle className="w-3.5 h-3.5" /> Error
     </span>
   );

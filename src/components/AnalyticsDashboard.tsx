@@ -1314,7 +1314,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 <Users className="w-4 h-4 text-red-600" /> {t('labor_cost_ratio_heading', 'Labor Cost as % of Revenue (Trended)')}
               </h3>
               {latestLaborRatio && (
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${latestLaborRatio.pct > 30 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border-red-200 dark:border-red-800' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'}`}>
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${latestLaborRatio.pct > 30 ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
                   {t('latest_month_label', 'Latest month')}: {latestLaborRatio.pct.toFixed(1)}%
                 </span>
               )}
@@ -1786,7 +1786,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{s.name}</span>
-                          {i < 5 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0">{t('volatile_badge', 'Volatile')}</span>}
+                          {i < 5 && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300 shrink-0`}>{t('volatile_badge', 'Volatile')}</span>}
                         </div>
                         <p className="text-[9px] text-slate-400 mt-0.5">
                           ±{s.fluctuationPct.toFixed(0)}% {t('fluctuation_label', 'fluctuation')} · {t('every_label', 'every')} ~{s.avgFrequencyDays.toFixed(1)}d · {s.count}x

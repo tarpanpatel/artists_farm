@@ -571,7 +571,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             {rooms.length > 0 && (
               <div className="billing-checkout__room-card-header bg-slate-100/90 dark:bg-slate-800/90 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                 <h3 className="billing-checkout__room-card-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 truncate">
-                  <span className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shrink-0">
+                  <span className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 shrink-0">
                     <Building className="w-3.5 h-3.5" />
                   </span>
                   <span className="truncate">{group.roomName}</span>
@@ -1065,7 +1065,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('today_tab', 'Today')}</span>
                   {tabCounts.today > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                       {tabCounts.today}
                     </span>
                   )}
@@ -1078,7 +1078,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <span className="inline-flex items-center gap-1.5">
                   <span>{t('upcoming_tab', 'Upcoming')}</span>
                   {tabCounts.upcoming > 0 && (
-                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                       {tabCounts.upcoming}
                     </span>
                   )}

@@ -315,7 +315,7 @@ export const AmenitiesSelectModal: React.FC<AmenitiesSelectModalProps> = ({
 
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-          <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 me-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold">
             {selected.length}
           </span>
           {selected.length === 1 ? 'amenity selected' : 'amenities selected'}

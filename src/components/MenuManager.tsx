@@ -213,6 +213,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [passcodeInput, setPasscodeInput] = useState('');
   const [passcodeError, setPasscodeError] = useState('');
   const [pendingPasscodeAction, setPendingPasscodeAction] = useState<(() => void) | null>(null);
+  const [menuImageUploadProgress, setMenuImageUploadProgress] = useState<number | null>(null);
+  const [isUploadingMenuImage, setIsUploadingMenuImage] = useState(false);
 
   const foodCategories = ['All', ...Array.from(new Set(foodMenu.map((item) => item.category).filter(Boolean)))];
 
@@ -1211,14 +1213,27 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                 <FileInput
                   label={t('item_image_label', 'Item Image')}
                   accept="image/*"
-                  onChange={(e) => {
+                  isUploading={isUploadingMenuImage}
+                  progress={menuImageUploadProgress}
+                  uploadProgressLabel="Uploading image..."
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setFoodForm({ ...foodForm, imagePath: reader.result as string });
-                      };
-                      reader.readAsDataURL(file);
+                      setIsUploadingMenuImage(true);
+                      setMenuImageUploadProgress(0);
+                      const uploadedUrl = await uploadImageDB(file, 'menu', (pct) => setMenuImageUploadProgress(pct));
+                      setIsUploadingMenuImage(false);
+                      setMenuImageUploadProgress(null);
+                      if (uploadedUrl) {
+                        setFoodForm((prev) => ({ ...prev, imagePath: uploadedUrl }));
+                      } else {
+                        // Fallback to local FileReader if server upload fails
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFoodForm((prev) => ({ ...prev, imagePath: reader.result as string }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
                     }
                   }}
                 />

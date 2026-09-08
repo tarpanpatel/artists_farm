@@ -410,7 +410,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="px-3.5 py-2 text-2xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50/80 dark:bg-gray-800/80 flex items-center justify-between">
                 <span>Switch Property</span>
                 {properties.length > 0 && (
-                  <span className="text-3xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                  <span className="text-3xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 px-1.5 py-0.5 rounded">
                     {properties.length} Properties
                   </span>
                 )}
@@ -637,7 +637,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {t('notifications_label', 'Notifications')}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold px-2 py-0.5 rounded-md">
+                    <span className="header__dropdown-count text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 px-2 py-0.5 rounded-md">
                       {totalCount} updates
                     </span>
                     <button
@@ -779,7 +779,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 {t('upcoming_tomorrow_label', 'Upcoming tomorrow')}
                               </p>
                             </div>
-                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-md shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <span className="header__guest-badge header__guest-badge--tomorrow text-[9px] font-semibold px-2 py-0.5 rounded-md shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
                               {t('checking_in_tomorrow_badge', 'Checking in Tomorrow')}
                             </span>
                           </div>

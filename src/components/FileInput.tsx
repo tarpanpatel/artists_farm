@@ -3,6 +3,7 @@ import { AlertTriangle } from './icons/FlowbiteIcons';
 import { FileInput as FlowbiteFileInput, Label as FlowbiteLabel } from 'flowbite-react';
 import { compressImageFile } from '../utils/imageCompressor';
 import { FieldHelpPopover } from './FieldHelpPopover';
+import { ProgressBar } from './ProgressBar';
 
 /**
  * Site-wide file upload input (added 26 Aug 2026, explicit request: "Only use flowbite elements
@@ -25,6 +26,14 @@ export interface FileInputProps extends Omit<React.InputHTMLAttributes<HTMLInput
   sizing?: 'sm' | 'md' | 'lg';
   /** Automatically downscale large camera photos on the client before passing to onChange (default true) */
   autoCompressImage?: boolean;
+  /** When true or when progress is provided, displays Flowbite upload progress bar below the input */
+  isUploading?: boolean;
+  /** Upload progress percentage from 0 to 100 */
+  progress?: number | null;
+  /** Optional custom label above the progress bar (defaults to "Uploading...") */
+  uploadProgressLabel?: string;
+  /** Progress bar color variant (default 'blue') */
+  uploadProgressColor?: 'blue' | 'green' | 'red' | 'yellow' | 'purple';
 }
 
 // Same blue focus color Input.tsx/Textarea.tsx already use for their "gray" variant, in place of
@@ -37,7 +46,23 @@ const fileInputTheme = {
 };
 
 export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
-  ({ label, error, helperText, fullWidth = true, className = '', disabled, id, color, autoCompressImage = true, onChange, ...props }, ref) => {
+  ({
+    label,
+    error,
+    helperText,
+    fullWidth = true,
+    className = '',
+    disabled,
+    id,
+    color,
+    autoCompressImage = true,
+    isUploading = false,
+    progress = null,
+    uploadProgressLabel,
+    uploadProgressColor = 'blue',
+    onChange,
+    ...props
+  }, ref) => {
     const inputId = id || (label ? `file-input-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}` : undefined);
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
@@ -98,6 +123,16 @@ export const FileInput = forwardRef<HTMLInputElement, FileInputProps>(
             <FieldHelpPopover content={helperText} title={label} />
           </div>
         ) : null}
+        {(isUploading || (typeof progress === 'number' && progress >= 0)) && (
+          <div className="mt-2">
+            <ProgressBar
+              progress={typeof progress === 'number' ? progress : 100}
+              label={uploadProgressLabel || 'Uploading...'}
+              size="md"
+              color={uploadProgressColor}
+            />
+          </div>
+        )}
       </div>
     );
   }

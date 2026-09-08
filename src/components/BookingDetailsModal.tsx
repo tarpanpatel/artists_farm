@@ -292,6 +292,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // tracks the client-side scan of THAT file so the UI can say what
   // happened without a server round-trip just to read the barcode.
   const [cFormFile, setCFormFile] = useState<File | null>(null);
+  const [cFormUploadProgress, setCFormUploadProgress] = useState<number | null>(null);
   const [barcodeScanStatus, setBarcodeScanStatus] = useState<'idle' | 'scanning' | 'found' | 'not_found'>('idle');
 
   // Whether the number-input/upload fields are expanded - deliberately a
@@ -1629,6 +1630,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       // FileInput downscale the source file first would work
                       // directly against that.
                       autoCompressImage={false}
+                      isUploading={isSavingCForm && !!cFormFile}
+                      progress={cFormUploadProgress}
+                      uploadProgressLabel="Uploading C-Form document..."
+                      uploadProgressColor="green"
                       // A real file input is always clickable to pick a different file -
                       // no separate "Reupload" trigger needed once a document is attached.
                       helperText={
@@ -1697,7 +1702,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                         // file trailing in as a separate later event.
                         let documentUrl: string | undefined;
                         if (cFormFile) {
-                          const uploaded = await uploadDocumentDB(cFormFile, 'c_form');
+                          setCFormUploadProgress(0);
+                          const uploaded = await uploadDocumentDB(cFormFile, 'c_form', (pct) => setCFormUploadProgress(pct));
+                          setCFormUploadProgress(null);
                           if (!uploaded) {
                             setIsSavingCForm(false);
                             showToast('Failed to upload the C-Form file - try again', { type: 'error' });
@@ -1743,20 +1750,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         <div id="printableBookingDetailsActionsBar" className="booking-details-modal__footer shrink-0 p-4 sm:p-5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800">
             {!isEditing ? (
               <div className="space-y-3 w-full">
-                {/* Mark Checked In (Full-width action if check-in is due today or past) */}
-                {canActOnBooking && isCheckinDue && (
-                  <Button
-                    type="button"
-                    variant="success"
-                    size="md"
-                    block
-                    onClick={handleMarkCheckedIn}
-                    leftIcon={<CheckCircle2 className="w-4 h-4 shrink-0" />}
-                    className="font-semibold shadow-none"
-                  >
-                    <span>{t('mark_checked_in_button', 'Mark Checked In')}</span>
-                  </Button>
-                )}
 
                 {/* Checkout & Settle Bill (Full-width action if status is Checked In).
                     canCheckoutBooking (23 Aug 2026, ROLES.md): Staff and Staff Kitchen
