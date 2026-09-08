@@ -247,7 +247,9 @@ Found live 3 Sep 2026 on Patel Colony (a MULTI_KEY property, 7 rooms): "Go Live"
 
 **The general rule this is an instance of**: *a data import may fill in blanks, never overwrite identity.* Name and slug are how staff, guests, URLs, and every OTA mapping refer to a property - an importer that can rewrite them can silently break all of those at once. Before adding any new import path (Booking.com, a CSV, a bulk onboarding tool), check what it can write to `properties` and confirm identity columns are outside that set. And when a field's damage is visible to *guests* rather than only to staff, treat a checkbox as insufficient - it needs a server-side refusal.
 
-**Still outstanding as of 6 Sep 2026**: Patel Colony on staging is still named "Guest suite in Jaipur" - the guard stops it happening again but does not undo it, and the same import may also have overwritten the parent's address/description/check-in times/photos (all were pre-ticked). The pre-import values aren't recoverable from the post-import state, so this needs the owner to confirm what they should be.
+**RESOLVED as of 8 Sep 2026 - the cleanup item below is closed, the rule above still stands.** Queried staging directly (`properties` id 290476): `name = 'Patel Colony'`, `slug = 'patel-colony'`, `address = 'Jaipur, Rajasthan, India'`, `checkin_time = '14:00'`, `checkout_time = '11:00'`. No trace of "Guest suite in Jaipur" anywhere, and the identity columns are intact - so nothing is left to restore and the owner does not need to reconstruct anything. The parent's `description` is empty, which is correct rather than damage: on a MULTI_KEY parent the prose belongs to each room's own listing.
+
+**The lesson from this note, not just its content**: it sat here as "still outstanding" for two days after it had stopped being true, and was then repeated back to the user as an open item - who corrected it. A dated "still outstanding" line is a claim about the past, not the present. Before quoting one of these as current, spend the thirty seconds to check the actual state; the same applies to every other "still open"/"not yet built" note in this file.
 
 ## 🗄️ Database & API
 
