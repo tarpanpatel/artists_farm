@@ -227,7 +227,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // checking-out-today, even though both now share one "Today" tab.
   const getGuestDetailedStatus = (g: Guest) => {
     const statusStr = String(g.status || '');
-    if (statusStr === GUEST_STATUS_CHECKEDOUT_LEGACY || statusStr === GUEST_STATUS_CHECKED_OUT || statusStr === 'Cancelled') return 'past_bookings';
+    // A checked-out stay is always history regardless of its original dates
+    // (e.g. an early departure) - unlike Cancelled below, there's no
+    // still-future case to preserve for it.
+    if (statusStr === GUEST_STATUS_CHECKEDOUT_LEGACY || statusStr === GUEST_STATUS_CHECKED_OUT) return 'past_bookings';
+    // Cancelled deliberately does NOT get its own unconditional "always past"
+    // rule (removed 8 Sep 2026, reported live: an OTA cancellation for a
+    // still-future stay was invisible because nobody thought to check "Past"
+    // for something that hasn't happened yet). It now falls through to the
+    // same date logic below as any other booking, so it's filed by its
+    // ORIGINAL dates - Upcoming if the stay was still ahead, Today if it was
+    // for today, and only Past once those dates have actually elapsed. The
+    // red "Cancelled" badge (getGuestStayStatus below) still marks it clearly
+    // in whichever tab it lands in.
 
     const checkinRaw = g.checkinDate || '';
     const checkoutRaw = g.expectedCheckout || g.checkoutDate || g.checkinDate || '';
@@ -324,9 +336,10 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // Helper for badge labels on cards
   const getGuestStayStatus = (guest: Guest) => {
     // A cancelled booking is otherwise indistinguishable from a genuinely
-    // finished one - getGuestDetailedStatus() folds 'Cancelled' into
-    // 'past_bookings' regardless of dates, so a booking cancelled today with a
-    // future check-in would read as "Past Booking". Surface it explicitly.
+    // finished/upcoming one - getGuestDetailedStatus() now files it by its
+    // original dates like any other booking (8 Sep 2026), so this override
+    // stays regardless of which tab it lands in, always showing "Cancelled"
+    // rather than "Past Booking" / "Upcoming Booking" / etc.
     if (String(guest.status || '') === 'Cancelled') {
       return { key: 'cancelled', label: t('cancelled_badge', 'Cancelled'), variant: 'danger' as const };
     }
