@@ -31,6 +31,14 @@ export interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputE
   containerClassName?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  // Opt-out escape hatch for the rare number field that genuinely needs a
+  // negative value (none exist in this app as of 8 Sep 2026 - every
+  // type="number" field here is a count, a rate, or an amount, and none of
+  // those are ever meant to go negative - reported live: the Room Rent field
+  // in Add Guest Booking happily accepted "-25412"). Default false blocks
+  // typing/pasting a minus sign and defaults `min` to 0 so the native
+  // spinner/arrow keys can't decrement below zero either.
+  allowNegative?: boolean;
 }
 
 export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
@@ -51,11 +59,34 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       value,
       defaultValue,
       type = 'text',
+      allowNegative = false,
+      onKeyDown,
+      onPaste,
+      min,
       ...props
     },
     ref
   ) => {
     const inputId = id || `floating-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+
+    // See allowNegative's doc comment above. Three layers, since each closes a
+    // different way a negative value can reach a number field: typing "-"
+    // (keydown), pasting a clipboard value that contains one (paste), and the
+    // native spinner/arrow-key decrement (the `min` attribute itself).
+    const blockNegative = type === 'number' && !allowNegative;
+    const effectiveMin = blockNegative && min === undefined ? 0 : min;
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (blockNegative && (e.key === '-' || e.code === 'Minus' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+      }
+      onKeyDown?.(e);
+    };
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+      if (blockNegative && e.clipboardData.getData('text').includes('-')) {
+        e.preventDefault();
+      }
+      onPaste?.(e);
+    };
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
     const hasSuccess = !hasError && Boolean(success);
@@ -121,6 +152,9 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             placeholder=" "
             value={value}
             defaultValue={defaultValue}
+            min={effectiveMin}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className={twMerge(
               'block px-2.5 pb-1.5 pt-3 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200',
               borderAndFocusColor,

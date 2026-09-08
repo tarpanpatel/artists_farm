@@ -16,6 +16,10 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   variant?: 'standard' | 'floating';
   bgMode?: FloatingBgMode;
   color?: string;
+  // See FloatingInput's doc comment - same opt-out, forwarded through
+  // unchanged on the floating (default) path, applied directly below on the
+  // standard-fallback path since that one renders its own native <input>.
+  allowNegative?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -36,6 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       placeholder,
       variant = 'floating',
       bgMode = 'modal',
+      allowNegative = false,
       ...props
     },
     ref
@@ -57,6 +62,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           placeholder={placeholder || ' '}
           className={className}
           containerClassName={fullWidth ? 'w-full min-w-0' : 'inline-block'}
+          allowNegative={allowNegative}
           {...props}
         />
       );
@@ -78,6 +84,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const disabledClasses = disabled
       ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600'
       : '';
+
+    // Same negative-number guard as FloatingInput (see its doc comment) -
+    // this standard-fallback branch renders its own native <input> instead
+    // of delegating to FloatingInput, so it needs its own copy of the guard
+    // rather than inheriting one.
+    const blockNegative = props.type === 'number' && !allowNegative;
+    const effectiveMin = blockNegative && props.min === undefined ? 0 : props.min;
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (blockNegative && (e.key === '-' || e.code === 'Minus' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+      }
+      props.onKeyDown?.(e);
+    };
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+      if (blockNegative && e.clipboardData.getData('text').includes('-')) {
+        e.preventDefault();
+      }
+      props.onPaste?.(e);
+    };
 
     return (
       <div className={`app-input-wrapper ${fullWidth ? 'w-full min-w-0' : 'inline-block'} input`}>
@@ -114,6 +139,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               className
             )}
             {...props}
+            min={effectiveMin}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
           />
           {rightIcon && (
             <div className="input__icon input__icon--right absolute right-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500 z-10">

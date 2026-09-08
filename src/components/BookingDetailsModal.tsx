@@ -1344,30 +1344,41 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               )}
             </div>
 
-            {/* Row 6: Pending (+ Pending Received By, non-OTA only) */}
-            <div className={`grid gap-3 sm:gap-4 ${isOtaBooking ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              <div>
-                <Input
-                  label={t('today_pending_label', 'Pending (₹)')}
-                  type="text"
-                  value={`₹${pendingDisplay.toLocaleString('en-IN')}`}
-                  disabled={true}
-                />
-              </div>
-              {!isOtaBooking && (
+            {/* Row 6: Pending (+ Pending Received By, non-OTA only). Hidden
+                entirely once nothing is actually pending (8 Sep 2026,
+                explicit request) - a "Pending ₹0" field on an already
+                fully-paid booking is just clutter, and "Pending Received By"
+                has nothing left to record either. Stays visible while
+                isEditing regardless of the current computed value, so a
+                staff member actively adjusting Room Rent/Advance can still
+                see Pending update live and use Pending Received By to record
+                a collection - it only disappears in the read-only view once
+                settled. */}
+            {(isEditing || pendingDisplay >= 0.01) && (
+              <div className={`grid gap-3 sm:gap-4 ${isOtaBooking ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <div>
-                  <StyledSelect
-                    label={t('pending_received_by_label', 'Pending Received By')}
-                    value={editPendingReceivedBy}
-                    onChange={handleEditPendingReceivedByChange}
-                    placeholder="-- Select Staff/User --"
-                    disabled={!isEditing}
-                    options={availableHandlers}
-                    className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'ring-2 ring-red-400 rounded-lg' : ''}
+                  <Input
+                    label={t('today_pending_label', 'Pending (₹)')}
+                    type="text"
+                    value={`₹${pendingDisplay.toLocaleString('en-IN')}`}
+                    disabled={true}
                   />
                 </div>
-              )}
-            </div>
+                {!isOtaBooking && (
+                  <div>
+                    <StyledSelect
+                      label={t('pending_received_by_label', 'Pending Received By')}
+                      value={editPendingReceivedBy}
+                      onChange={handleEditPendingReceivedByChange}
+                      placeholder="-- Select Staff/User --"
+                      disabled={!isEditing}
+                      options={availableHandlers}
+                      className={highlightReceiverFields && !editPendingReceivedBy && ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out') ? 'ring-2 ring-red-400 rounded-lg' : ''}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Payment history (7 Sep 2026). Sits directly under the advance /
                 pending pair those rows now summarise, so it reads as the detail
