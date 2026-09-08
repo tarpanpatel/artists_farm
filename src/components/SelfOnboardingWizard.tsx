@@ -64,6 +64,12 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [discoveredListings, setDiscoveredListings] = useState<DiscoveredListing[]>([]);
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
   const [autoProvisioning, setAutoProvisioning] = useState(false);
+  // Same two consent gates ChannelConnectWizard.tsx's manual "Go Live" step
+  // already requires, now also enforced server-side on this 1-click path
+  // (channex_auto_provision_from_airbnb 422s without both, 8 Sep 2026) -
+  // added here so the button can actually succeed instead of always 422ing.
+  const [confirmedExistingBookings, setConfirmedExistingBookings] = useState(false);
+  const [confirmedRateFallback, setConfirmedRateFallback] = useState(false);
 
   // --- Step 3 (Manual Setup State) ---
   const [propertyName, setPropertyName] = useState('');
@@ -177,6 +183,14 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   // 1-Click Auto-Provision from Airbnb
   const handleAutoProvision = async () => {
     if (!createdPropertyId) return;
+    // Button stays clickable even when this isn't satisfied (28 Aug 2026
+    // rule: a greyed-out-but-still-blocked action needs a toast, not a
+    // silent native disabled) - the checkboxes below are the primary gate,
+    // this is the fallback for anyone who manages to click before checking.
+    if (!confirmedExistingBookings || !confirmedRateFallback) {
+      showToast('Please confirm both checkboxes above before going live.', { type: 'warning' });
+      return;
+    }
     setAutoProvisioning(true);
     setError(null);
     try {
@@ -187,6 +201,8 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
           property_id: createdPropertyId,
           selected_listing_ids: selectedListingIds,
           property_name: propertyName.trim() || undefined,
+          confirmed_existing_bookings: confirmedExistingBookings,
+          confirmed_rate_fallback: confirmedRateFallback,
         }),
       });
       const json = await res.json();
@@ -687,12 +703,45 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                       helperText="Name of your property or resort (can be edited later)."
                     />
 
+                    {/* Same two safety confirmations ChannelConnectWizard.tsx's
+                        manual "Go Live" step requires (added 8 Sep 2026) - a
+                        one-click launch is not a reason to skip informed
+                        consent on either risk: a booking/manual block that
+                        already exists on Airbnb but isn't in Ground Code yet,
+                        or a date with no explicit rate pushing at this
+                        property's flat default and overwriting different
+                        pricing already set on Airbnb. */}
+                    <label className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={confirmedExistingBookings}
+                        onChange={(e) => setConfirmedExistingBookings(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 text-indigo-600 rounded-sm focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+                        I confirm any bookings that already exist on Airbnb for these listings are already entered in Ground Code, and any dates manually blocked directly on Airbnb (maintenance, personal use, etc.) are set as a block in Ground Code too. Launching without this can double-book a room or reopen a date meant to stay closed.
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={confirmedRateFallback}
+                        onChange={(e) => setConfirmedRateFallback(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 text-indigo-600 rounded-sm focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+                        I understand any date with no specific price set in Ground Code will be pushed to Airbnb at this property's default rate - if different pricing is already set directly on Airbnb for those dates, this will overwrite it.
+                      </span>
+                    </label>
+
                     <Button
                       variant="primary"
                       size="md"
                       onClick={handleAutoProvision}
                       disabled={autoProvisioning || selectedListingIds.length === 0}
-                      className="w-full justify-center py-2.5"
+                      className={`w-full justify-center py-2.5 ${
+                        (!confirmedExistingBookings || !confirmedRateFallback) ? 'opacity-50' : ''
+                      }`}
                     >
                       {autoProvisioning ? (
                         <>
