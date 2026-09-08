@@ -2215,6 +2215,16 @@ export interface TelegramSendOutcome {
   attempted: number;
   delivered: number;
   reason?: string;
+  /**
+   * True when nothing was sent because this property has no Telegram set up -
+   * no groups paired, or the module switched off. Added 8 Sep 2026: a property
+   * that has simply not been onboarded to Telegram yet is a CONFIGURATION
+   * STATE, not a failure, and callers must not report it as an error. The
+   * backend agrees - it returns `{skipped: true}` with HTTP 200, deliberately.
+   * Only a send that genuinely tried and failed (bad token, bot removed from
+   * the group, network) is an error.
+   */
+  notConfigured?: boolean;
 }
 
 // sendPropertyTelegramMessage() (php/telegram/sender.php) returns different
@@ -2226,10 +2236,14 @@ export interface TelegramSendOutcome {
 // don't have to know the difference.
 function parseTelegramSendResult(result: any): TelegramSendOutcome {
   if (!result || (typeof result === 'object' && !Array.isArray(result) && Object.keys(result).length === 0)) {
-    return { success: false, attempted: 0, delivered: 0, reason: 'No Telegram groups are configured for this property yet.' };
+    return { success: false, attempted: 0, delivered: 0, notConfigured: true, reason: 'No Telegram groups are configured for this property yet.' };
   }
   if (typeof result === 'object' && !Array.isArray(result) && 'skipped' in result) {
-    return { success: false, attempted: 0, delivered: 0, reason: result.reason || 'Telegram send was skipped.' };
+    // Every `skipped` the backend produces is a not-set-up case: Telegram
+    // disabled for the property, no bot token, or no group resolved for this
+    // category after its whole routing cascade (see sendPropertyTelegramMessage).
+    // None of those are errors - they mean nobody has paired groups yet.
+    return { success: false, attempted: 0, delivered: 0, notConfigured: true, reason: result.reason || 'Telegram send was skipped.' };
   }
   const parseOne = (raw: any): boolean => {
     try {

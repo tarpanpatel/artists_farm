@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Button, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
@@ -118,6 +118,68 @@ export interface PaymentSplitRow {
   mode: 'Cash' | 'UPI';
   recipient: string;
 }
+
+// Channex's own 2-letter day codes - matches room_rate_rules.days_of_week and
+// the exact precedence OperationalDashboard.tsx/TodayOverview.tsx's own
+// getDayPrice()/resolvedRateRules already use, so a night priced here is the
+// same price the calendar shows and Airbnb/Booking.com actually receive.
+const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+
+/** Most specific rule wins: room-specific over property-wide, then newest. */
+const sortRateRules = (rules: any[]): any[] =>
+  [...rules].sort((a, b) => {
+    const roomA = a.room_id ? Number(a.room_id) : 0;
+    const roomB = b.room_id ? Number(b.room_id) : 0;
+    if (roomA !== roomB) return roomB - roomA;
+    const timeA = a.created_at ? Date.parse(String(a.created_at).replace(' ', 'T')) : 0;
+    const timeB = b.created_at ? Date.parse(String(b.created_at).replace(' ', 'T')) : 0;
+    if (timeA !== timeB) return timeB - timeA;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
+
+/**
+ * What ONE night actually costs, honouring room_rate_rules under variable
+ * pricing and falling back to the room's flat rate otherwise.
+ *
+ * Module-level and shared (8 Sep 2026) so the booking form's rent pre-fill and
+ * the "Share All Available Places & Prices" message cannot drift on what a night
+ * costs - they used to have separate copies of this, and the form's copy read
+ * default_tariff straight off the room, which is exactly the bug already
+ * reported against the share button on 7 Sep ("it is displaying base prices").
+ */
+const pickNightRate = (
+  sortedRules: any[],
+  pricingMode: string,
+  roomId: number | undefined,
+  dateStr: string,
+  fallback: number
+): number => {
+  if (pricingMode === 'variable') {
+    const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
+    const match = sortedRules.find((r) => {
+      const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
+      const dayMatch = !r.days_of_week || String(r.days_of_week).split(',').includes(dayCode);
+      return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr && r.rate_per_night != null;
+    });
+    if (match) return Number(match.rate_per_night);
+  }
+  return fallback;
+};
+
+/** Every night of a stay as YYYY-MM-DD: check-in up to, not including, check-out. */
+const nightsOfStay = (checkin: string, checkout: string): string[] => {
+  const cIn = new Date(checkin + 'T00:00:00');
+  const cOut = new Date(checkout + 'T00:00:00');
+  if (isNaN(cIn.getTime()) || isNaN(cOut.getTime()) || cOut <= cIn) return [];
+  const out: string[] = [];
+  const nights = Math.round((cOut.getTime() - cIn.getTime()) / 86400000);
+  for (let i = 0; i < nights; i++) {
+    const d = new Date(cIn);
+    d.setDate(d.getDate() + i);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  }
+  return out;
+};
 
 export const GuestManagement: React.FC<GuestManagementProps> = ({
   guests,
@@ -318,6 +380,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // from bookingRoomTariff itself (found + fixed 21 Aug 2026, verifying the
   // multi-key per-room tariff pre-fill).
   const [tariffManuallyEdited, setTariffManuallyEdited] = useState(false);
+  // Rate rules for the pre-fill below. Loaded once per mount - the booking form
+  // is short-lived, and the share button still fetches fresh rules of its own at
+  // click time, so a stale rule here can never reach a guest-facing message.
+  const [rateRules, setRateRules] = useState<any[]>([]);
+  const [ratePricingMode, setRatePricingMode] = useState<string>('flat');
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
   const [bookingPending, setBookingPending] = useState<number>(0);
   const [showBookingExtraCharges, setShowBookingExtraCharges] = useState<boolean>(false);
@@ -494,14 +561,91 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // actually typed a value" instead correctly re-fills on every room switch
   // right up until the staff deliberately overrides it, and then respects
   // that override for the rest of this booking.
+  // Rate rules for the pre-fill below. Failure is deliberately silent: with no
+  // rules the pre-fill falls back to each room's flat rate, which is the old
+  // behaviour, so there is nothing here worth interrupting a booking over.
+  useEffect(() => {
+    let cancelled = false;
+    fetchRateRulesDB()
+      .then(({ rules, pricing_mode }) => {
+        if (cancelled) return;
+        setRateRules(Array.isArray(rules) ? rules : []);
+        setRatePricingMode(pricing_mode || 'flat');
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const sortedRateRules = useMemo(() => sortRateRules(rateRules), [rateRules]);
+
+  /**
+   * Pre-fill the rent from the room AND the dates (8 Sep 2026, explicit
+   * request: "I just want the tariff to be pre-filled in the fields as property
+   * and dates are already chosen").
+   *
+   * Two things changed from the old pre-fill:
+   *
+   *  1. It is an effect on the VALUES, not a line inside the dropdown's change
+   *     handler. Two of the three paths that set a room never went through that
+   *     handler - opening the drawer FROM a specific room, and the post-save
+   *     reset - so the rent sat empty while a room was plainly selected, which
+   *     is exactly how it was reported.
+   *  2. It counts NIGHTS. `default_tariff` is one night's price; a 3-night stay
+   *     pre-filled with it under-quoted by two thirds, and since Pending is
+   *     literally rent minus advance, that shortfall flowed straight into what
+   *     the guest was told they still owe. It now sums each night at its real
+   *     rate, matching what the calendar shows and what the OTAs receive.
+   *
+   * `tariffManuallyEdited` still wins: once staff type their own number this
+   * stops touching the field for the rest of the booking.
+   */
+  useEffect(() => {
+    if (tariffManuallyEdited) return;
+    if (!checkinDate || !expectedCheckout) return;
+    const nights = nightsOfStay(checkinDate, expectedCheckout);
+    if (nights.length === 0) return;
+
+    // Multi-key only: a single-unit property has no rooms array in this form, so
+    // there is no per-room rate to read and the field stays for staff to fill.
+    const hasRoomList = isMultiKeyProperty && rooms && rooms.length > 0;
+    const selectedRoom = hasRoomList ? rooms.find((r) => r.name === roomNumber) : undefined;
+    if (hasRoomList && !selectedRoom) return;
+
+    const fallbackRate = Number(
+      (selectedRoom as any)?.baseRate ??
+      selectedRoom?.default_tariff ??
+      (selectedRoom as any)?.roomTariff ??
+      (selectedRoom as any)?.price ??
+      0
+    );
+    if (!fallbackRate && ratePricingMode !== 'variable') return;
+
+    const total = nights.reduce(
+      (sum, dateStr) => sum + pickNightRate(sortedRateRules, ratePricingMode, selectedRoom?.id, dateStr, fallbackRate),
+      0
+    );
+    if (!total || total <= 0) return;
+
+    setBookingRoomTariff((prev) => (prev === total ? prev : total));
+  }, [
+    roomNumber,
+    checkinDate,
+    expectedCheckout,
+    rooms,
+    isMultiKeyProperty,
+    sortedRateRules,
+    ratePricingMode,
+    tariffManuallyEdited,
+  ]);
+
+  // Just sets the room now - the rent pre-fill moved to an effect keyed on the
+  // room AND the dates (8 Sep 2026). Hanging it off this handler meant only a
+  // manual dropdown pick ever filled the rent: opening the drawer FROM a room
+  // (the mount effect at the top of this file) and the post-save reset both set
+  // roomNumber directly, so the rent stayed blank with a room clearly showing -
+  // which is exactly how it was reported.
   const handleRoomChange = (roomName: string) => {
     setRoomNumber(roomName);
-    if (!tariffManuallyEdited) {
-      const selectedRoom = rooms.find(r => r.name === roomName);
-      if (selectedRoom && selectedRoom.default_tariff != null) {
-        setBookingRoomTariff(selectedRoom.default_tariff);
-      }
-    }
   };
   const handleAdvanceChange = (val: number) => {
     setBookingAdvance(val);
@@ -613,13 +757,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     }
   };
 
-  // Channex's own 2-letter day codes - matches room_rate_rules.days_of_week
-  // and the exact precedence OperationalDashboard.tsx/TodayOverview.tsx's own
-  // getDayPrice()/resolvedRateRules already use, so a night quoted here is
-  // the same price the calendar shows and Airbnb/Booking.com actually
-  // receive - reused rather than re-derived so all three call sites can
-  // never quietly drift apart on what a given night costs.
-  const DAY_CODE_BY_JS_DAY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 
   const handleShareAllAvailableRooms = async () => {
     if (!checkinDate || !expectedCheckout) {
@@ -669,28 +806,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       // straight off the room quoted a price the guest would never actually
       // be charged.
       const { rules, pricing_mode } = await fetchRateRulesDB();
-      const resolvedRules = [...rules].sort((a, b) => {
-        const roomA = a.room_id ? Number(a.room_id) : 0;
-        const roomB = b.room_id ? Number(b.room_id) : 0;
-        if (roomA !== roomB) return roomB - roomA;
-        const timeA = a.created_at ? Date.parse(a.created_at.replace(' ', 'T')) : 0;
-        const timeB = b.created_at ? Date.parse(b.created_at.replace(' ', 'T')) : 0;
-        if (timeA !== timeB) return timeB - timeA;
-        return Number(b.id || 0) - Number(a.id || 0);
-      });
-
-      const getNightRate = (roomId: number | undefined, dateStr: string, fallback: number): number => {
-        if (pricing_mode === 'variable') {
-          const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
-          const match = resolvedRules.find((r) => {
-            const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
-            const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
-            return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr && r.rate_per_night != null;
-          });
-          if (match) return Number(match.rate_per_night);
-        }
-        return fallback;
-      };
+      const resolvedRules = sortRateRules(rules);
+      const getNightRate = (roomId: number | undefined, dateStr: string, fallback: number): number =>
+        pickNightRate(resolvedRules, pricing_mode, roomId, dateStr, fallback);
 
       const shareUrl = `${window.location.origin}${window.location.pathname}#book?checkin=${checkinDate}&checkout=${expectedCheckout}`;
       const greeting = guestName.trim() ? `Hi ${guestName.trim()}, ` : 'Hi, ';
@@ -1482,31 +1600,58 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </Button>
               </div>
 
-              {/* The other inquiry. Quieter than the Quote button but kept, not
-                  removed - it is NOT the same as the sidebar's "Share
-                  Availability", which only sends a link to the public booking
-                  page with no dates and no prices. This one computes what is
-                  actually free for the dates in this form and sends the rates. */}
+              {/* The other inquiry, presented as the ALTERNATIVE it is (8 Sep
+                  2026, explicit request). Stacked plainly under the Quote button
+                  it read as "and also do this"; the "or" says these are two
+                  answers to two different questions - quote the one place they
+                  asked about, or send everything that is free.
+
+                  Drawn as a real hairline rather than typed dashes: a literal
+                  "--- or ---" is a fixed-length text drawing of a rule, so it
+                  cannot centre or scale with the drawer, and looks wrong at one
+                  width or the other. Two flex-1 borders always meet in the
+                  middle at any size, in both themes.
+
+                  BOTH the divider and the button live inside this one condition
+                  on purpose - the button is multi-room only, so a divider left
+                  outside it would leave a single-unit property with a dangling
+                  "or" followed by nothing.
+
+                  Still NOT the same as the sidebar's "Share Availability", which
+                  only sends a link to the public booking page with no dates and
+                  no prices. This computes what is actually free for the dates in
+                  this form and sends the real rates. */}
               {isMultiKeyProperty && rooms && rooms.length > 1 && (
-                <Button
-                  type="button"
-                  color="light"
-                  disabled={sharingAllRooms}
-                  onClick={handleShareAllAvailableRooms}
-                  className="w-full font-semibold flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                >
-                  {sharingAllRooms ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      <span>Checking Rates...</span>
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      <span>Share All Available Keys &amp; Rates</span>
-                    </>
-                  )}
-                </Button>
+                <>
+                  <div className="flex items-center gap-3 pt-1" aria-hidden="true">
+                    <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                    <span className="text-2xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">or</span>
+                    <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <Button
+                    type="button"
+                    color="light"
+                    disabled={sharingAllRooms}
+                    onClick={handleShareAllAvailableRooms}
+                    className="w-full font-semibold flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  >
+                    {sharingAllRooms ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span>Checking Prices...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        {/* "Places", not "Keys" - the Assigned Place field right
+                            above already calls a unit a place, so this drops the
+                            hotel jargon in favour of the word this form itself
+                            uses. */}
+                        <span>Share All Available Places &amp; Prices</span>
+                      </>
+                    )}
+                  </Button>
+                </>
               )}
             </div>
           </form>

@@ -33,6 +33,7 @@ import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, 
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { getPropertyAndRoomSlugs } from './services/api';
+import type { TelegramSendOutcome } from './services/api';
 
 // Code-split: everything below is either a secondary/admin tab that most
 // sessions never open (Kitchen management, Inventory, Analytics, Admin
@@ -1815,8 +1816,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
     setTelegramLogs((prev) => [newLog, ...prev]);
 
     let hasError = false;
+    // Distinct from hasError: nothing was sent, but nothing went wrong either.
+    let isNotConfigured = false;
     let errorMessage = '';
-    let outcome: { success: boolean; attempted: number; delivered: number; reason?: string } = { success: false, attempted: 0, delivered: 0 };
+    let outcome: TelegramSendOutcome = { success: false, attempted: 0, delivered: 0 };
 
     try {
       outcome = await sendTelegramAlertDB({
@@ -1828,9 +1831,23 @@ function AppBody({ preloadedData }: AppBodyProps) {
         mediaUrls,
         deepLinkParams,
       });
+      // A property with no Telegram set up is NOT an error (8 Sep 2026,
+      // explicit request: "if host hasn't setup telegram for a property, no
+      // error should be generated"). The backend already says so - it returns
+      // `{skipped: true}` with HTTP 200 rather than failing - but this collapsed
+      // every unsuccessful outcome into one ERROR, so an un-onboarded property
+      // wrote an ERROR to Telescope on every single kitchen action. On a busy
+      // kitchen that is one per dish, which buries the failures that do need
+      // attention. Routing is untouched: nothing is merged into another group,
+      // the send is simply not attempted and not complained about.
       if (!outcome.success) {
-        hasError = true;
-        errorMessage = outcome.reason || 'No Telegram group actually received this message.';
+        if (outcome.notConfigured) {
+          isNotConfigured = true;
+          errorMessage = outcome.reason || 'Telegram is not set up for this property.';
+        } else {
+          hasError = true;
+          errorMessage = outcome.reason || 'No Telegram group actually received this message.';
+        }
       }
     } catch (err: any) {
       hasError = true;
@@ -1838,11 +1855,27 @@ function AppBody({ preloadedData }: AppBodyProps) {
       console.error(`Telegram network error:`, err);
     }
 
+    // Telegram is not set up for this property: record NOTHING, anywhere
+    // (8 Sep 2026, explicit request - "no need to log any telegram activity if
+    // it's not setup in a property"). Not a Telescope entry, not an audit row,
+    // not even the in-app dispatch list, whose optimistic row is removed here.
+    //
+    // The reasoning is that there is no activity to report. The feature is off
+    // for this property, so a "we tried and there was nowhere to send it" record
+    // is noise on every kitchen action - and noise is what made the original
+    // ERROR unusable. Routing is untouched: nothing falls back to another
+    // property's or category's group.
+    //
+    // A genuine failure - bad token, bot removed from the group, network - is
+    // NOT this branch and is still logged in full below.
+    if (isNotConfigured) {
+      setTelegramLogs((prev) => prev.filter((log) => log.id !== logId));
+      return outcome;
+    }
+
     if (hasError) {
       setTelegramLogs((prev) =>
-        prev.map((log) =>
-          log.id === logId ? { ...log, status: `Failed: ${errorMessage}` } : log
-        )
+        prev.map((log) => (log.id === logId ? { ...log, status: `Failed: ${errorMessage}` } : log))
       );
     }
 
@@ -1856,6 +1889,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
     });
 
     // Always record dispatch in Telescope Error Center (Telegram API Portal)
+    // Only reached for a property that actually has Telegram set up - the
+    // not-configured case returned above without logging anything.
     recordTelescopeLog({
       portal: 'telegram',
       severity: hasError ? 'ERROR' : 'SUCCESS',
