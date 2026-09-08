@@ -327,7 +327,23 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     if (!source) return;
     const g = source as any;
     const noGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
-    const rent = g.base_room_rent ?? g.roomRate ?? 0;
+    // "Room Rent" here means the TOTAL for the whole stay (matches the Add
+    // Guest form, which sums every night before submitting, and every save
+    // path below, which writes the same number into both base_room_rent AND
+    // total_charge) - never per-night. g.base_room_rent is never actually
+    // present on a freshly-fetched Guest (services/api.ts's mapping never
+    // sets that key), so this used to fall straight through to g.roomRate -
+    // which IS per-night for an OTA-synced booking (services/api.ts maps it
+    // from the real per_night_charges Channex writes). That silently showed
+    // a per-night figure as "Room Rent" for every Airbnb/Booking.com booking
+    // (reported live 8 Sep 2026: a 7-night ₹12,515.02 stay displayed
+    // "Room Rent: 1787.86"), and fed the same wrong number into the Pending
+    // calculation below. g.totalAmount (total_charge) is reliably the true
+    // stay total for both OTA and staff-created bookings - see
+    // webhook_receiver.php and handleAddGuest, which both write the same
+    // value into total_charge and base_room_rent - so it belongs ahead of
+    // roomRate in this fallback chain.
+    const rent = g.base_room_rent ?? g.totalAmount ?? g.roomRate ?? 0;
     const adv = g.advance_paid ?? g.advanceAmount ?? 0;
 
     setEditName(source.guestName || '');
@@ -360,7 +376,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     if (!guest) return false;
     const g = guest as any;
     const origNoGuests = String(g.no_of_guests ?? g.numberOfGuests ?? 1);
-    const origRent = String(g.base_room_rent ?? g.roomRate ?? 0);
+    // Same fallback order as syncEditFieldsFromGuest above - must match, or
+    // this dirty-check compares the edited total against a stale per-night
+    // baseline and flags an untouched OTA booking as dirty (or vice versa).
+    const origRent = String(g.base_room_rent ?? g.totalAmount ?? g.roomRate ?? 0);
     const origAdv = String(g.advance_paid ?? g.advanceAmount ?? 0);
     const origCheckin = guest.checkinDate?.split(' ')[0] || '';
     const origCheckout = guest.expectedCheckout?.split(' ')[0] || guest.checkoutDate?.split(' ')[0] || '';
@@ -582,7 +601,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
 
   const noOfGuests = g.no_of_guests ?? g.numberOfGuests ?? 1;
-  const roomRent = g.base_room_rent ?? g.roomRate ?? 0;
+  // Same fallback order as syncEditFieldsFromGuest above (see its comment) -
+  // this is the value the Pending calculation below is measured against, so
+  // getting it wrong for an OTA booking doesn't just mislabel the field, it
+  // also feeds a per-night figure into "roomRent - advancePaid" instead of
+  // the stay's real total.
+  const roomRent = g.base_room_rent ?? g.totalAmount ?? g.roomRate ?? 0;
   // Paid-so-far comes from the payment rows whenever any exist - they are the
   // record, and guests.advance_paid is the scalar they roll up into. Falling
   // back to the scalar keeps every pre-existing booking (and any row written
