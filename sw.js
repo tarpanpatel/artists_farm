@@ -47,7 +47,8 @@
 // v52 (4 Sep 2026): Add Sync All Rates & Availability button directly on Connect Channels page
 // v53 (4 Sep 2026): Add individual listing sync buttons on Connect Channels page & Pricing Modal
 // v54 (4 Sep 2026): Direct Booking Engine with multi-room calendar & offline payment support
-const CACHE_NAME = 'farm-pos-Ynbzbsh_';
+// v55 (8 Sep 2026): Kitchen push notifications replace the KDS audio chime
+const CACHE_NAME = 'farm-pos-DqHYHeHC';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively
@@ -163,5 +164,89 @@ self.addEventListener('fetch', event => {
                 return new Response(null, { status: 204, statusText: 'No Content' });
             })
         )
+    );
+});
+
+/**
+ * Web Push - kitchen alerts (8 Sep 2026).
+ *
+ * Replaces the KDS audio chime, which could only ever sound on the one device
+ * already staring at the order screen: mobile browsers refuse to play audio on
+ * a page nobody has tapped, and iOS mutes Web Audio outright when the physical
+ * silent switch is on. A notification reaches the phone in someone's pocket,
+ * uses the device's own alert sound and vibration, and works with the app shut.
+ *
+ * Payload is sent by php/api/push_notifications.php. Kept tolerant of a
+ * malformed or bodyless push: showing a generic "check the kitchen screen"
+ * notification is far better than showing nothing, and some push services will
+ * deliver an empty body of their own accord.
+ */
+self.addEventListener('push', (event) => {
+    let data = {
+        title: 'Kitchen alert',
+        body: 'Please check the kitchen order screen.',
+        url: '',
+    };
+    try {
+        if (event.data) {
+            data = { ...data, ...event.data.json() };
+        }
+    } catch (e) {
+        // Non-JSON payload - fall through with the defaults above.
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: '/app-icons/android-chrome-192x192.png',
+            badge: '/app-icons/favicon-32x32.png',
+            // A fixed tag plus renotify means a second alert REPLACES the first
+            // rather than stacking - a kitchen that steps away for ten minutes
+            // should come back to one live alert, not a wall of identical ones.
+            tag: data.tag || 'kitchen-alert',
+            renotify: true,
+            vibrate: [200, 100, 200],
+            // Kitchen staff have their hands full; the alert should stay on
+            // screen until it is actually acknowledged rather than auto-hiding.
+            requireInteraction: true,
+            data: { url: data.url || '' },
+        })
+    );
+});
+
+/**
+ * Focus an already-open tab for this property rather than opening a second
+ * one - kitchen staff work in a single window and a duplicate tab means a
+ * duplicate KDS polling the same orders.
+ */
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = (event.notification.data && event.notification.data.url) || '';
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            const client = clientList.find((c) => 'focus' in c);
+
+            if (client) {
+                // NEVER navigate on an empty target. An earlier version fell
+                // back to '/', which meant a cook tapping a notification while
+                // already working the KDS got thrown out to the app root and
+                // lost the board - a notification actively getting in the way
+                // of the work it was announcing.
+                if (targetUrl && 'navigate' in client) {
+                    return client
+                        .navigate(targetUrl)
+                        .then((c) => (c || client).focus())
+                        .catch(() => client.focus());
+                }
+                return client.focus();
+            }
+
+            // No window open at all (the usual case for a phone in a pocket).
+            if (self.clients.openWindow) {
+                return self.clients.openWindow(targetUrl || '/');
+            }
+            return undefined;
+        })
     );
 });

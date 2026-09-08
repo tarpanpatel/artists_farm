@@ -9,14 +9,13 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
   Calendar,
   CheckCircle2,
+  LogIn,
   LogOut,
   Search,
   AlertCircle,
   Building,
   Plus,
   ArrowRight,
-  Phone,
-  MessageCircle,
   Home,
   Loader2,
   Edit2,
@@ -25,13 +24,15 @@ import {
   X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
-import { getTelUri, getWhatsAppPhone } from '../utils/phoneUtils';
+import { getWhatsAppPhone } from '../utils/phoneUtils';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKEDOUT_LEGACY, GUEST_STATUS_CHECKED_OUT } from '../constants/guestStatus';
 import { Badge } from './Badge';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from './ConfirmDialogContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
+import { BookingContactActions } from './BookingContactActions';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -121,6 +122,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 }) => {
   const { showToast } = useToast();
   const { activeRole } = useAuth();
+  const { confirm } = useConfirm();
   // ROLES.md (24 Aug 2026): same role gate BookingDetailsModal.tsx already
   // enforces (23 Aug 2026) - Staff Kitchen is view-only on bookings (no
   // edit/checkout), Staff can edit but not checkout. This page has its own
@@ -190,6 +192,19 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // happen"). null for the ordinary Edit/View Booking path.
   const [detailsModalFocusSection, setDetailsModalFocusSection] = useState<'c_form' | 'checkin' | 'id_verification' | null>(null);
   const [savingCFormId, setSavingCFormId] = useState<string | null>(null);
+
+  const handleOpenWhatsApp = async (phoneNumber: string) => {
+    const confirmed = await confirm({
+      title: 'Open WhatsApp chat?',
+      message: `Open a WhatsApp chat with ${phoneNumber}?`,
+      confirmText: 'Open WhatsApp',
+      cancelText: 'Cancel',
+      variant: 'info',
+    });
+    if (confirmed) {
+      window.open(`https://wa.me/${getWhatsAppPhone(phoneNumber)}`, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -327,13 +342,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // showing, rather than inventing a second, drifting palette (8 Sep 2026,
   // reported: hard to tell two bookings in one room apart, and check-in/
   // checkout dates didn't stand out).
-  const stayStatusAccentClasses: Record<ReturnType<typeof getGuestStayStatus>['variant'], string> = {
-    success: 'border-green-500 dark:border-green-500',
-    warning: 'border-yellow-500 dark:border-yellow-500',
-    info: 'border-cyan-500 dark:border-cyan-500',
-    danger: 'border-red-500 dark:border-red-500',
-    neutral: 'border-gray-300 dark:border-gray-600',
-  };
   const stayStatusDateTextClasses: Record<ReturnType<typeof getGuestStayStatus>['variant'], string> = {
     success: 'text-green-700 dark:text-green-400',
     warning: 'text-yellow-700 dark:text-yellow-400',
@@ -537,76 +545,94 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // the main Today/Past view and each date-section under Upcoming, so the
   // room card itself (guest list, financials, actions) only exists once.
   const renderRoomGroupsGrid = (groups: GroupedRoomBooking[]) => (
-    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 items-start">
+    <div className="billing-checkout__grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-8 items-start">
       {groups.map((group) => {
+        const isTurnoverRoom = group.guests.length > 1;
+
         return (
           <Card
             key={`${group.roomId}-${group.roomSlug}`}
-            // flowbite-react's Card always wraps children in its own inner
-            // div (theme's root.children: gap-4 + p-6) - className above
-            // only reaches the outer bordered div, not that inner wrapper,
-            // so the !p-0 below never actually removed the real 24px
-            // padding/16px gap around the header. That stray padding+gap is
-            // what made the header read as a disconnected, borderless card
-            // floating inside this one (found 20 Aug 2026). Overriding
-            // root.children directly (the documented way to reach it) is
-            // what actually removes it.
             theme={{ root: { children: 'flex h-full flex-col gap-0 p-0' } }}
-            className="billing-checkout__room-card rounded-none sm:rounded-lg border-x-0 sm:border border-y sm:border-y shadow-none sm:shadow-md overflow-hidden flex flex-col justify-between !p-0"
+            className="billing-checkout__room-card rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm sm:shadow-md overflow-hidden flex flex-col justify-between !p-0 bg-white dark:bg-slate-800"
           >
-            {/* Room Header - only meaningful when there's more than one room/
-                unit to tell apart (multi-key properties). A single-property
-                account only ever has the one synthetic "Main Property / Villa"
-                group from buildRoomGroups' rooms.length===0 fallback above, so
-                this header just repeated the property's own name/context for
-                no reason (found 2 Sep 2026, user report). */}
+            {/* Room Header - distinct visual anchor with icon pill & booking count */}
             {rooms.length > 0 && (
-              <div className="billing-checkout__room-card-header bg-gray-50 dark:bg-gray-700 px-4 py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h3 className="billing-checkout__room-card-title text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 truncate">
-                  <Building className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-                  {group.roomName}
+              <div className="billing-checkout__room-card-header bg-slate-100/90 dark:bg-slate-800/90 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <h3 className="billing-checkout__room-card-title text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 truncate">
+                  <span className="p-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shrink-0">
+                    <Building className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="truncate">{group.roomName}</span>
                 </h3>
+                {isTurnoverRoom ? (
+                  <Badge variant="warning" size="sm" className="shrink-0">
+                    {t('turnover_badge', 'Turnover (2 Bookings)')}
+                  </Badge>
+                ) : (
+                  <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">
+                    {group.guests.length} {group.guests.length === 1 ? 'Booking' : 'Bookings'}
+                  </span>
+                )}
               </div>
             )}
 
             {/* Guest Card(s) stacked inside Room Column */}
-            <div className="billing-checkout__room-card-body px-4 py-3 sm:p-4 space-y-4">
+            <div className={`billing-checkout__room-card-body p-3.5 sm:p-4 space-y-4 ${isTurnoverRoom ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''}`}>
               {group.guests.map((guest) => {
                 const amountDue = calculateGuestTotal(guest);
                 const nights = calculateNights(guest.checkinDate, guest.expectedCheckout);
                 const nightsDisplay = nights > 0 ? `${nights} night${nights !== 1 ? 's' : ''}` : t('same_day_stay', 'Same day stay');
                 const stayStatus = getGuestStayStatus(guest);
                 const canCheckout = stayStatus.key === 'staying' || stayStatus.key === 'checkout';
+                const roomCharges = guest.totalAmount ?? guest.roomRate ?? 0;
+                const advancePaid = guest.advanceAmount ?? 0;
+                const foodBill = guest.foodBill ?? 0;
+                const hasTariffOrPayment = roomCharges > 0 || advancePaid > 0 || foodBill > 0;
 
                 return (
                   <div
                     key={guest.id}
-                    // No full bg/border/shadow/rounded box here for the common
-                    // single-guest case (see CLAUDE.md's "1 room = 1 active
-                    // booking maximum") - giving every guest its own full box
-                    // on top of the parent Card read as a nested "card inside
-                    // a card" with doubled padding (found 19 Aug 2026), and
-                    // that reasoning still holds when there's only one.
-                    // BUT a room legitimately shows two guests stacked here on
-                    // a same-day turnover (one checking out, the next
-                    // checking in - CLAUDE.md: "not an overlap and must keep
-                    // working"), and reported 8 Sep 2026 as genuinely hard to
-                    // tell apart in that case - the thin top border alone
-                    // reads as just another internal divider among several
-                    // already inside each guest's own stacked info. Only THEN
-                    // (never for the single-guest case) add a colored left
-                    // accent bar tied to this guest's own stay-status color
-                    // (green=staying, yellow=checkout, matching the Badge
-                    // right above) plus a faint tint, so each guest's block
-                    // reads as one distinct unit at a glance without
-                    // reintroducing the full boxed-card look.
-                    className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 first:pt-0 pt-4 border-t border-slate-200 dark:border-slate-700 first:border-t-0 ${
-                      group.guests.length > 1
-                        ? `border-l-4 ${stayStatusAccentClasses[stayStatus.variant]} pl-3 bg-slate-50/60 dark:bg-white/[0.03] rounded-r-md`
-                        : ''
+                    className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 p-3 sm:p-3.5 rounded-lg bg-white dark:bg-slate-800 transition-all ${
+                      isTurnoverRoom
+                        ? stayStatus.key === 'checkout'
+                          ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
+                          : stayStatus.key === 'staying'
+                          ? 'border-2 border-emerald-300 dark:border-emerald-700/80 shadow-sm'
+                          : 'border border-slate-200 dark:border-slate-700 shadow-sm'
+                        : 'border border-slate-200 dark:border-slate-700/70 shadow-2xs'
                     }`}
                   >
-                    {/* Top Header: Guest Name & Status Badge */}
+                    {/* Top Turnover Banner: clearly identifies Check-Out vs Check-In within the same room */}
+                    {isTurnoverRoom && (
+                      <div className={`flex items-center justify-between pb-2 border-b text-xs font-bold ${
+                        stayStatus.key === 'checkout'
+                          ? 'text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                          : stayStatus.key === 'staying'
+                          ? 'text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                          : 'text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                      }`}>
+                        <span className="flex items-center gap-1.5 uppercase tracking-wide text-2xs">
+                          {stayStatus.key === 'checkout' ? (
+                            <>
+                              <LogOut className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>{t('checking_out_today_banner', 'Checking Out Today')}</span>
+                            </>
+                          ) : stayStatus.key === 'staying' ? (
+                            <>
+                              <LogIn className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>{t('checking_in_today_banner', 'Checking In Today')}</span>
+                            </>
+                          ) : (
+                            <span>{stayStatus.label}</span>
+                          )}
+                        </span>
+                        <span className="text-2xs font-normal opacity-80">
+                          {stayStatus.key === 'checkout' ? t('checkout_first_note', 'Departs Today') : t('checkin_after_note', 'Arrives Today')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Guest Name, Contact & Status Badge */}
                     <div>
                       <div className="billing-checkout__guest-card-header flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0 flex-1">
@@ -621,28 +647,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                               ({guest.numberOfGuests || 1} {(guest.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})
                             </span>
                             {guest.phoneNumber ? (
-                              <div className="inline-flex items-center gap-2 shrink-0">
-                                <a
-                                  href={getTelUri(guest.phoneNumber)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline font-semibold"
-                                  title={`Call ${guest.phoneNumber}`}
-                                >
-                                  <Phone className="w-3 h-3 text-blue-500" />
-                                  <span>{guest.phoneNumber}</span>
-                                </a>
-                                <a
-                                  href={`https://wa.me/${getWhatsAppPhone(guest.phoneNumber)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline font-medium"
-                                  title={`WhatsApp ${guest.phoneNumber}`}
-                                >
-                                  <MessageCircle className="w-3 h-3 text-green-500" />
-                                  <span>WhatsApp</span>
-                                </a>
-                              </div>
+                              <BookingContactActions phoneNumber={guest.phoneNumber} onOpenWhatsApp={handleOpenWhatsApp} />
                             ) : (
                               <span className="text-xs text-slate-400 dark:text-slate-500 italic shrink-0">
                                 ({t('no_contact', 'No contact')})
@@ -657,15 +662,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                             )}
                           </div>
                         </div>
-                        {/* Right Side Stack: Stay Status Badge (Checked In Today, etc.) + Warnings directly below */}
+                        {/* Right Side Stack: Stay Status Badge + Warnings */}
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
                           <Badge variant={stayStatus.variant} size="sm" className="whitespace-nowrap">
                             {stayStatus.label}
                           </Badge>
 
                           {guest.isForeignGuest && (
-                            // isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug
-                            // 2026) - see that helper's own comment.
                             isCFormGenuinelyFiled(guest) ? (
                               <Badge variant="success" size="sm" className="whitespace-nowrap">
                                 <span className="inline-flex items-center gap-1 whitespace-nowrap">
@@ -704,15 +707,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
 
                       {/* Stay Dates */}
-                      {/* Check-in/checkout dates were rendered in one uniform
-                          color regardless of stay status, so a guest arriving
-                          or leaving TODAY read no differently from any other
-                          date on the card (reported 8 Sep 2026). The relevant
-                          side now bolds + colors to match this guest's own
-                          stay-status Badge above, with a small "Today" tag
-                          right next to it - the other date (not today) stays
-                          plain, so the ONE that matters is what stands out. */}
-                      <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                      <div className="billing-checkout__guest-card-dates mt-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border border-slate-200/60 dark:border-slate-700">
                         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           <span className="inline-flex items-center gap-1 tabular-nums flex-wrap">
@@ -741,34 +736,73 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                       </div>
                     </div>
 
-                    {/* Financial Breakdown */}
+                    {/* Financial Breakdown: Shows Total Paid, Room Charges (or Not set), and Due ONLY when due */}
                     <div className="billing-checkout__guest-card-financials space-y-1 text-xs border-t border-slate-200/80 dark:border-slate-700/80 pt-2">
-                      {(guest.totalAmount || guest.roomRate) ? (
+                      {roomCharges > 0 ? (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('room_charges_label', 'Room Charges:')}</span>
-                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{(guest.totalAmount ?? guest.roomRate ?? 0).toFixed(2)}</span>
+                          <span className="summary-line summary-line--room-rate font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                            ₹{roomCharges.toFixed(2)}
+                          </span>
                         </div>
-                      ) : null}
-                      {guest.foodBill > 0 && (
+                      ) : (
+                        <div className="flex justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                          <span>{t('room_charges_label', 'Room Charges:')}</span>
+                          <span className="tabular-nums text-slate-400 dark:text-slate-500 italic">
+                            {t('pending_tariff_label', 'Not set')}
+                          </span>
+                        </div>
+                      )}
+
+                      {foodBill > 0 && (
                         <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                           <span>{t('food_incidentals_label', 'Food & Incidentals:')}</span>
-                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">₹{guest.foodBill.toFixed(2)}</span>
+                          <span className="summary-line summary-line--food-bill font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                            ₹{foodBill.toFixed(2)}
+                          </span>
                         </div>
                       )}
-                      {guest.advanceAmount > 0 && (
-                        <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
-                          <span>{t('less_advance_paid_label', 'Less: Advance Paid')}</span>
-                          <span className="summary-line summary-line--advance-paid font-semibold tabular-nums text-slate-700 dark:text-slate-300">-₹{guest.advanceAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
-                        <span className="text-slate-700 dark:text-slate-300 font-medium">
-                          {amountDue < 0 ? t('refund_due_to_guest_label', 'Refund Due to Guest:') : t('amount_due_label', 'Amount Due:')}
-                        </span>
-                        <span className="summary-line summary-line--amount-due font-bold text-slate-900 dark:text-white text-sm tabular-nums">
-                          ₹{Math.abs(amountDue).toFixed(2)}
+
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400 text-[11px]">
+                        <span>{t('total_paid_label', 'Total Paid:')}</span>
+                        <span className={`summary-line summary-line--total-paid font-semibold tabular-nums ${advancePaid > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                          ₹{advancePaid.toFixed(2)}
                         </span>
                       </div>
+
+                      {/* Only show Due if amountDue > 0 */}
+                      {amountDue > 0 && (
+                        <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
+                          <span className="text-amber-700 dark:text-amber-300 font-medium">
+                            {t('amount_due_label', 'Amount Due:')}
+                          </span>
+                          <span className="summary-line summary-line--amount-due font-bold text-amber-700 dark:text-amber-300 text-sm tabular-nums">
+                            ₹{amountDue.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Refund if amountDue < 0 */}
+                      {amountDue < 0 && (
+                        <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-dashed border-slate-200 dark:border-slate-700">
+                          <span className="text-rose-600 dark:text-rose-400 font-medium">
+                            {t('refund_due_to_guest_label', 'Refund Due to Guest:')}
+                          </span>
+                          <span className="summary-line summary-line--amount-due font-bold text-rose-600 dark:text-rose-400 text-sm tabular-nums">
+                            ₹{Math.abs(amountDue).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Settled indicator if fully paid */}
+                      {amountDue === 0 && hasTariffOrPayment && (
+                        <div className="flex justify-end pt-0.5">
+                          <span className="inline-flex items-center gap-1 text-2xs font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>{t('paid_in_full_label', 'Paid in Full')}</span>
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Action Buttons - canActOnBooking/canCheckoutBookingRole
@@ -856,28 +890,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-0.5">
             <span>({row.numberOfGuests || 1} {(row.numberOfGuests || 1) === 1 ? 'guest' : 'guests'})</span>
             {row.phoneNumber ? (
-              <div className="inline-flex items-center gap-2">
-                <a
-                  href={getTelUri(row.phoneNumber)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  title={`Call ${row.phoneNumber}`}
-                >
-                  <Phone className="w-3 h-3 text-blue-500" />
-                  <span>{row.phoneNumber}</span>
-                </a>
-                <a
-                  href={`https://wa.me/${getWhatsAppPhone(row.phoneNumber)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 hover:underline"
-                  title={`WhatsApp ${row.phoneNumber}`}
-                >
-                  <MessageCircle className="w-3 h-3 text-green-500" />
-                  <span>WhatsApp</span>
-                </a>
-              </div>
+              <BookingContactActions phoneNumber={row.phoneNumber} compact onOpenWhatsApp={handleOpenWhatsApp} />
             ) : (
               <span>{t('no_contact', 'No contact')}</span>
             )}
@@ -929,11 +942,17 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             <span className="tabular-nums text-blue-600 dark:text-blue-400">₹{(row.totalAmount ?? row.roomRate ?? 0).toFixed(2)}</span>
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap gap-x-2">
-            <span>{t('adv_short_label', 'Adv:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
-            <span>•</span>
-            <span className={calculateGuestTotal(row) <= 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-amber-600 dark:text-amber-400 font-semibold'}>
-              {calculateGuestTotal(row) <= 0 ? t('paid_label', 'Paid') : t('due_label', 'Due')}
-            </span>
+            <span>{t('total_paid_label', 'Total Paid:')} ₹{(row.advanceAmount ?? 0).toFixed(2)}</span>
+            {calculateGuestTotal(row) > 0 && (
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                {t('due_label', 'Due')}: ₹{calculateGuestTotal(row).toFixed(2)}
+              </span>
+            )}
+            {calculateGuestTotal(row) < 0 && (
+              <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                {t('refund_due_to_guest_label', 'Refund Due to Guest:')} ₹{Math.abs(calculateGuestTotal(row)).toFixed(2)}
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -1153,7 +1172,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
               empty-state message had their own redundant outer Card removed
               since they fill this whole area rather than sitting alongside
               other items in it. */}
-          <div className="billing-checkout__list-content border-t border-gray-200 pt-3 dark:border-gray-700 -mx-4 sm:mx-0">
+          <div className="billing-checkout__list-content border-t border-gray-200 pt-4 dark:border-gray-700 px-1 sm:px-0">
           {/* Upcoming & Past Bookings: Mobile Card Stack on phone viewports (md:hidden), Desktop Flowbite Table on md+ */}
           {(activeTab === 'upcoming' || activeTab === 'past_bookings') ? (
             <>
@@ -1164,6 +1183,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                   hideSearchAndFilter
                   canEdit={canActOnBooking}
                   canCheckout={canCheckoutBookingRole}
+                  onOpenWhatsApp={(guest) => guest.phoneNumber && handleOpenWhatsApp(guest.phoneNumber)}
                   onSelectGuest={(guestId) => {
                     const guest = searchedGuests.find((g) => g.id === guestId);
                     if (guest) setSelectedGuestForDetails(guest);
@@ -1392,4 +1412,3 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
     </div>
   );
 };
-

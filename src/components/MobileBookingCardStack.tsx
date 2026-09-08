@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Phone, MessageSquare, Pencil, Eye, LogIn, LogOut, Users, Building, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
+import { Pencil, Eye, LogIn, LogOut, Users, IndianRupee, CheckCircle2, AlertCircle } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import { Badge } from './Badge';
-import { Button } from './Button';
+import { WhatsappIcon } from './icons/WhatsappIcon';
+import { BookingContactActions } from './BookingContactActions';
+import { useConfirm } from './ConfirmDialogContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { getWhatsAppPhone } from '../utils/phoneUtils';
 
 interface MobileBookingCardStackProps {
   guests: Guest[];
@@ -14,24 +17,7 @@ interface MobileBookingCardStackProps {
   onOpenWhatsApp?: (guest: Guest) => void;
   onAddBooking?: () => void;
   selectedGuestId?: string;
-  // BillingCheckout already renders its own Today/Upcoming/Past Bookings
-  // tabs + search box above this component and hands down an
-  // already-filtered guest list - showing this component's own search/
-  // filter bar on top of that produced two independent, conflicting
-  // filters stacked on the same list (e.g. picking "Checked-Out" here while
-  // the outer tab is "Upcoming" showed 0 results, since the outer tab had
-  // already excluded checked-out guests). Set true to suppress this
-  // component's own bar when the caller already provides equivalent
-  // filtering. GuestManagement's usage has no such outer UI, so it leaves
-  // this false (default) and keeps this bar as its only filter.
   hideSearchAndFilter?: boolean;
-  // ROLES.md (24 Aug 2026): Staff Kitchen is view-only on bookings, and Staff
-  // can edit but never checkout - both default true so BillingCheckout's
-  // other (desktop) callers and GuestManagement's usage stay unaffected
-  // unless they opt in to the gate. When canEdit is false the Edit button
-  // becomes a "View" button (still opens the same modal, which is itself
-  // read-only for that role) instead of disappearing outright, since the
-  // policy is "can view, can't edit" - not "can't see this booking at all".
   canEdit?: boolean;
   canCheckout?: boolean;
 }
@@ -42,14 +28,33 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
   onSelectGuest,
   onCheckoutGuest,
   onOpenWhatsApp,
-  onAddBooking,
+  onAddBooking: _onAddBooking,
   selectedGuestId,
   hideSearchAndFilter = false,
   canEdit = true,
   canCheckout = true,
 }) => {
+  const { confirm } = useConfirm();
   const [filterStatus, setFilterStatus] = useState<'all' | 'checked_in' | 'upcoming' | 'checked_out'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleOpenWhatsApp = async (phoneNumber: string) => {
+    const guest = guests.find((g) => g.phoneNumber === phoneNumber);
+    if (onOpenWhatsApp && guest) {
+      onOpenWhatsApp(guest);
+      return;
+    }
+    const confirmed = await confirm({
+      title: 'Open WhatsApp chat?',
+      message: `Open a WhatsApp chat with ${phoneNumber}?`,
+      confirmText: 'Open WhatsApp',
+      cancelText: 'Cancel',
+      variant: 'info',
+    });
+    if (confirmed) {
+      window.open(`https://wa.me/${getWhatsAppPhone(phoneNumber)}`, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const filteredGuests = useMemo(() => {
     return guests.filter((g) => {
@@ -103,9 +108,6 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
         </Badge>
       );
     }
-    // Distinct from the generic "past/other" fallback below - a cancelled
-    // booking must not look like any ordinary finished one (mirrors
-    // BillingCheckout's getGuestStayStatus).
     if (s === 'cancelled') {
       return (
         <Badge variant="danger" dot size="sm">
@@ -115,37 +117,32 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
     }
     return (
       <Badge variant="neutral" dot size="sm">
-        {status}
+        Checked Out
       </Badge>
     );
   };
 
   return (
-    <div className="mobile-booking-card-stack md:hidden space-y-4">
-      {/* Search & Filter Header Bar */}
+    <div className="space-y-4">
+      {/* Search and Status Filters */}
       {!hideSearchAndFilter && (
-        <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md space-y-3">
-          {/* Search Input with Native Keyboard Keypad */}
-          <div>
-            <input
-              type="search"
-              inputMode="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search guest, room, or phone..."
-              className="w-full h-11 px-4 text-sm bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by guest, room, or ID..."
+            className="w-full text-xs px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
 
-          {/* Horizontal Scrolling Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs">
             <button
               type="button"
               onClick={() => setFilterStatus('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 filterStatus === 'all'
-                  ? 'bg-blue-600 text-white shadow-xs border border-blue-600'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
               All ({counts.all})
@@ -153,21 +150,21 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('checked_in')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 filterStatus === 'checked_in'
-                  ? 'bg-emerald-600 text-white shadow-xs border border-emerald-600'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
-              Checked-In ({counts.checked_in})
+              Checked In ({counts.checked_in})
             </button>
             <button
               type="button"
               onClick={() => setFilterStatus('upcoming')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 filterStatus === 'upcoming'
-                  ? 'bg-blue-600 text-white shadow-xs border border-blue-600'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
               Upcoming ({counts.upcoming})
@@ -175,53 +172,44 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
             <button
               type="button"
               onClick={() => setFilterStatus('checked_out')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 filterStatus === 'checked_out'
-                  ? 'bg-slate-700 text-white shadow-xs border border-slate-700'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600'
+                  ? 'bg-slate-700 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
-              Checked-Out ({counts.checked_out})
+              Past ({counts.checked_out})
             </button>
           </div>
         </div>
       )}
 
-      {/* Booking Cards List */}
+      {/* Guest Card Stack */}
       {filteredGuests.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg border border-gray-200 dark:border-gray-700 text-center space-y-3 shadow-md">
-          <Building className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto" />
-          <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">No bookings match filter</p>
-          {onAddBooking && (
-            <Button variant="primary" size="sm" onClick={onAddBooking}>
-              + Create New Booking
-            </Button>
-          )}
+        <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">
+          No bookings found matching your criteria.
         </div>
       ) : (
         <div className="space-y-3">
           {filteredGuests.map((guest) => {
             const isSelected = selectedGuestId === guest.id;
-            // guest.roomRate is the PER-NIGHT rate; guest.totalAmount is the
-            // actual full-stay charge (nights x rate) - totalAmount must be
-            // checked first, see calculateGuestTotal in BillingCheckout.tsx
-            // for the multi-night bug this ordering avoids repeating.
-            const totalTariff = guest.totalAmount ?? guest.roomRate ?? 0;
-            const advancePaid = guest.advanceAmount ?? 0;
-            const pendingDue = totalTariff - advancePaid + (guest.foodBill ?? 0);
-            const isCheckedIn = ['checked in', 'active'].includes((guest.status || '').toLowerCase());
+            const isCheckedIn = (guest.status || '').toLowerCase() === 'checked in' || (guest.status || '').toLowerCase() === 'active';
+            const totalTariff = Number(guest.totalAmount ?? guest.roomRate ?? 0);
+            const advancePaid = Number(guest.advanceAmount ?? 0);
+            const foodBill = Number(guest.foodBill ?? 0);
+            const pendingDue = totalTariff - advancePaid + foodBill;
 
             return (
               <div
                 key={guest.id}
                 onClick={() => onSelectGuest?.(guest.id)}
-                className={`bg-white dark:bg-gray-800 rounded-lg border transition-all p-4 sm:p-6 space-y-3 cursor-pointer ${
+                className={`bg-white dark:bg-gray-800 rounded-lg border transition-all p-4 sm:p-5 space-y-3 cursor-pointer ${
                   isSelected
                     ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/20 shadow-md'
-                    : 'border-gray-200 dark:border-gray-700 shadow-md hover:border-gray-300 dark:hover:border-gray-600'
+                    : 'border-gray-200 dark:border-gray-700 shadow-sm hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
-                {/* Header Row: Guest Name, Room Pill, Guest Count, Status */}
+                {/* Header Row: Guest Name, Room Pill, Guest Count, Status & Contact */}
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -238,16 +226,13 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         <Users className="w-3 h-3 text-emerald-500" />
                         {guest.numberOfGuests || 1} Person(s)
                       </span>
+                      {guest.phoneNumber && (
+                        <BookingContactActions
+                          phoneNumber={guest.phoneNumber}
+                          onOpenWhatsApp={handleOpenWhatsApp}
+                        />
+                      )}
                     </div>
-                    {guest.phoneNumber && (
-                      <a
-                        href={`tel:${guest.phoneNumber}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 w-fit hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
-                      >
-                        <Phone className="w-3 h-3" /> {guest.phoneNumber}
-                      </a>
-                    )}
                   </div>
                   <div className="shrink-0 whitespace-nowrap">{getStatusBadge(guest.status)}</div>
                 </div>
@@ -278,9 +263,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                 {/* C-Form Filing Badge (if foreign guest or past booking) */}
                 {guest.isForeignGuest && (
                   <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold">C-Form Filing:</span>
-                    {/* isCFormGenuinelyFiled(), not a bare cFormFiledAt check (25 Aug 2026) -
-                        see that helper's own comment. */}
+                    <span className="text-2xs text-slate-400 uppercase font-semibold">C-Form Filing:</span>
                     {isCFormGenuinelyFiled(guest) ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
@@ -295,46 +278,74 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                   </div>
                 )}
 
-                {/* Financial Summary Bar */}
+                {/* Financial Summary Bar: Clean Total, Total Paid, and Due ONLY if due */}
                 <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-lg border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-semibold block">Total Tariff</span>
+                    <span className="text-slate-400 text-2xs uppercase font-semibold block">Total</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-0.5">
-                      <IndianRupee className="w-3 h-3 text-slate-400" />
-                      {totalTariff.toLocaleString('en-IN')}
+                      {totalTariff > 0 ? (
+                        <>
+                          <IndianRupee className="w-3 h-3 text-slate-400" />
+                          {totalTariff.toLocaleString('en-IN')}
+                        </>
+                      ) : (
+                        <span className="text-xs font-normal text-slate-400 italic">Not set</span>
+                      )}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-semibold block">Advance</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                    <span className="text-slate-400 text-2xs uppercase font-semibold block">Total Paid</span>
+                    <span className={`font-bold flex items-center gap-0.5 ${advancePaid > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       <IndianRupee className="w-3 h-3" />
                       {advancePaid.toLocaleString('en-IN')}
                     </span>
                   </div>
 
-                  <div>
-                    <span className="text-slate-400 text-[10px] uppercase font-semibold block">Pending Due</span>
-                    <span className={`font-bold flex items-center gap-0.5 ${pendingDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
-                      <IndianRupee className="w-3 h-3" />
-                      {pendingDue.toLocaleString('en-IN')}
-                    </span>
-                  </div>
+                  {pendingDue > 0 && (
+                    <div>
+                      <span className="text-slate-400 text-2xs uppercase font-semibold block">Amount Due</span>
+                      <span className="font-bold flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                        <IndianRupee className="w-3 h-3" />
+                        {pendingDue.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )}
+
+                  {pendingDue < 0 && (
+                    <div>
+                      <span className="text-slate-400 text-2xs uppercase font-semibold block">Refund Due</span>
+                      <span className="font-bold flex items-center gap-0.5 text-rose-600 dark:text-rose-400">
+                        <IndianRupee className="w-3 h-3" />
+                        {Math.abs(pendingDue).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )}
+
+                  {pendingDue === 0 && (totalTariff > 0 || advancePaid > 0) && (
+                    <div>
+                      <span className="text-slate-400 text-2xs uppercase font-semibold block">Status</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 text-xs">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Settled
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 44px Hit Target Bottom Action Buttons */}
                 <div className="flex items-center gap-2 pt-1">
-                  {onOpenWhatsApp && (
+                  {guest.phoneNumber && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onOpenWhatsApp(guest);
+                        handleOpenWhatsApp(guest.phoneNumber);
                       }}
-                      className="min-h-[44px] px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
+                      aria-label="Open WhatsApp"
+                      className="min-h-11 min-w-11 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center justify-center transition-colors shrink-0"
                     >
-                      <MessageSquare className="w-4 h-4 text-emerald-600" />
-                      <span>WhatsApp</span>
+                      <WhatsappIcon className="w-4 h-4 text-emerald-600" />
                     </button>
                   )}
 
@@ -344,7 +355,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                       e.stopPropagation();
                       onSelectGuest?.(guest.id);
                     }}
-                    className="min-h-[44px] flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                    className="min-h-11 flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
                   >
                     {canEdit ? <Pencil className="w-4 h-4 text-blue-600 shrink-0" /> : <Eye className="w-4 h-4 text-blue-600 shrink-0" />}
                     <span>{canEdit ? 'Edit' : 'View'}</span>
@@ -357,7 +368,7 @@ export const MobileBookingCardStack: React.FC<MobileBookingCardStackProps> = ({
                         e.stopPropagation();
                         onCheckoutGuest(guest.id);
                       }}
-                      className="min-h-[44px] px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
+                      className="min-h-11 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0 whitespace-nowrap"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Checkout</span>
