@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Drawer } from 'flowbite-react';
 import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -15,20 +16,28 @@ import { saveRateRuleDB } from '../services/api';
  * with the few things you can actually change: availability, nightly price,
  * minimum stay. That is what this is.
  *
- * Three deliberate differences from a normal modal in this app:
+ * This IS a flowbite `<Drawer position="right">` as of 8 Sep 2026, on explicit
+ * request ("convert that into flowbite drawer like everywhere else"), replacing
+ * the hand-rolled `<aside>` it shipped as. It now inherits the same chrome,
+ * slide-in transition, width scale and Escape-to-close as every other drawer in
+ * the app - see DESIGN.md's "Flowbite Modals & Drawers Specification".
  *
- *  1. NO BACKDROP. The whole point is that the calendar stays visible and
- *     usable underneath - you adjust the selection and watch the panel follow.
- *     A scrim would defeat that, so this is a plain fixed side column, not a
- *     flowbite Drawer. z-[58] is the modal tier from custom.css's z-index
- *     scale (it has to clear the z-[57] header), it just isn't inset-0.
+ * Two things about it are still deliberate and must not be "tidied" away:
+ *
+ *  1. `backdrop={false}`. This is the one drawer in the app with no scrim, and
+ *     that is the entire point: the calendar has to stay visible and clickable
+ *     underneath so the selection can be adjusted while the panel follows it.
+ *     A scrim would make the grid unreachable and turn a live editor into a
+ *     dead form. flowbite renders its backdrop only on `isOpen && backdrop`
+ *     (Drawer.js), so this is a supported prop, not a hack.
  *  2. It is an EDITOR FOR A SELECTION, not a form with its own room/date
  *     pickers. The grid is the picker. Dates stay editable here only because
  *     nudging one end by a day is faster typed than re-dragged.
- *  3. Booking and pricing live in ONE panel, because the owner already said
- *     two modes was confusing. Airbnb has no "add booking" (guests book), so
- *     that half has no upstream equivalent to copy - it is simply the other
- *     thing you might want to do with a rectangle of free nights.
+ *
+ * And one product decision: booking and pricing live in ONE panel, because the
+ * owner already said two modes was confusing. Airbnb has no "add booking"
+ * (guests book), so that half has no upstream equivalent to copy - it is simply
+ * the other thing you might want to do with a rectangle of free nights.
  */
 
 export interface CalendarSelection {
@@ -91,6 +100,18 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   const [minStay, setMinStay] = useState('');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Both call sites mount this only while a selection exists, so the Drawer
+  // would otherwise appear already-open and skip its slide-in - flowbite
+  // animates by swapping a translate class, which needs a frame in the closed
+  // state to transition FROM. Flipping on the next frame gives the same
+  // entrance as every other drawer in the app without changing either parent's
+  // conditional-mount contract.
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setIsOpen(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   // 'available' | 'blocked' | null. Null only happens when the selection spans
   // both states - Airbnb shows neither radio filled in that case, and so do we,
@@ -206,13 +227,16 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   };
 
   return (
-    <aside
-      className="fixed z-[58] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col
-                 inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t
-                 sm:left-auto sm:right-0 sm:bottom-0 sm:w-[380px] sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l
-                 sm:top-[calc(4rem+env(safe-area-inset-top,0px))]"
-      role="dialog"
+    <Drawer
+      open={isOpen}
+      onClose={onClose}
+      position="right"
+      // The one drawer in this app without a scrim - see the header comment.
+      // The grid underneath has to stay clickable so the selection can be
+      // adjusted while this panel follows it.
+      backdrop={false}
       aria-label="Edit selected dates"
+      className="z-58 w-full sm:w-96 p-0 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col"
     >
       {/* Header: what is selected, stated plainly. */}
       <div className="flex items-start justify-between gap-3 p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
@@ -527,6 +551,6 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
           </>
         )}
       </div>
-    </aside>
+    </Drawer>
   );
 };
