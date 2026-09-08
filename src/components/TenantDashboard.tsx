@@ -258,8 +258,8 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
       if (propsList.length > 0) {
         const fetchPromises = propsList.flatMap((p) => [
-          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`),
-          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`),
+          apiFetch(`/php/api/router.php?action=get_guests&property_id=${p.id}&is_multi_key=${p.property_type === 'MULTI_KEY' ? 1 : 0}`, undefined, p.slug),
+          apiFetch(`/php/api/router.php?action=get_service_requests&property_id=${p.id}`, undefined, p.slug),
         ]);
         const results = await Promise.all(fetchPromises);
         const allGuestsList: any[] = [];

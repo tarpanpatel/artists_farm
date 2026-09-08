@@ -66,6 +66,7 @@ Two rules that shape everything else:
 | `ChannexAdapter.php` | 264 | Payload formatting, minor-unit conversion, mapping lookup, webhook registration. |
 | `outbox.php` | 303 | `enqueueOutboxItem()`, `getChannexPushRoomIds()`, field diffing, drain trigger, rate-push alerts. |
 | `ari_drain_worker.php` | 669 | `processBatch()`, availability/restriction computation, range compression. The engine. |
+| `push_preflight.php` | 180 | Push Confirmation Gate (§5.4b): `buildChannexPushPreflight()` (read-only — what a push would send) and `requireChannexPushConfirmation()` (the server-side gate). |
 | `content_sync.php` | 346 | Idempotently provisions Channex property → room types → rate plans; persists UUIDs. |
 | `channel_connections.php` | 154 | Per-OTA connection state and room-code mappings (distinct from content sync). |
 | `webhook_receiver.php` | 769 | Inbound bookings: `handleWebhook()`, `drainFeed()`, row locks, idempotency. |
@@ -83,8 +84,9 @@ Those last two exist because **every Channex bug found so far has been silent.**
 
 ### Frontend — `src/components/`
 
-`ChannelConnectionsPage.tsx` (list/status) · `ChannelConnectWizard.tsx` (connect flow +
-consent gates) · `ChannelManager.tsx` (manual push, mapping) · `AirbnbConfigImportDrawer.tsx`
+`ChannelConnectionsPage.tsx` (list/status) · `ChannelConnectWizard.tsx` (connect flow, Go
+Live) · `PushConfirmationGate.tsx` (§5.4b — the gate both push paths open) ·
+`ChannelManager.tsx` (manual push, mapping) · `AirbnbConfigImportDrawer.tsx`
 (import proposals) · `OnboardingChannelStep.tsx` (connect during setup) ·
 `icons/AirbnbIcon.tsx`, `icons/BookingComIcon.tsx`.
 
@@ -105,7 +107,8 @@ consent gates) · `ChannelManager.tsx` (manual push, mapping) · `AirbnbConfigIm
 `channex_channels_available` → `channex_channel_start_airbnb` /
 `channex_channel_airbnb_connection_link` → `channex_channel_mapping_details` →
 `channex_channel_save_mapping` → `channex_channel_check_readiness` →
-`channex_channel_activate`. Plus `channex_push_ari`, `channex_outbox_drain`,
+`channex_channel_activate`. Plus `channex_push_preflight` (read-only, feeds the gate),
+`channex_push_ari`, `channex_outbox_drain`,
 `channex_retry_outbox`, `channex_webhook`, `channex_drain_feed`,
 `channex_import_airbnb_room_config`.
 
@@ -202,15 +205,80 @@ out only by noticing it themselves.
 
 ### 5.4 Consent gates are enforced on both sides
 
-`channex_channel_activate` returns 422 without `confirmed_existing_bookings` **and**
-`confirmed_rate_fallback`. Client-side alone is not enough — a checkbox once existed whose
-value was never sent. Any new code path that can push a wide rate or availability update
-needs the same spelled-out gate.
+Any code path that can push a wide rate or availability update needs a consent gate enforced
+**server-side**, not only in the UI — a checkbox once existed on `channex_channel_activate`
+whose value was never sent, so the gate looked real and enforced nothing.
+
+**The current mechanism is the typed confirmation in §5.4b.** From 3–9 Sep 2026 it was two
+booleans (`confirmed_existing_bookings`, `confirmed_rate_fallback`); those are gone, and
+sending them now does nothing. The both-sides rule is what carries forward, not the field
+names.
 
 **The rate-fallback risk it guards:** `computeCompressedRestrictions()` falls back to the
 property's flat `default_tariff` for any date with no `room_rate_rules` row. A property with
 no rates entered yet pushes that flat number over the entire range, overwriting pricing
 already set on the OTA.
+
+### 5.4a An import must never push, and must never activate
+
+Adding a property from an OTA reads. It does not write. **`autoProvisionPropertyFromAirbnb()`
+must never push ARI and must never call `activateChannel()`** — it imports content, maps rooms,
+pulls existing reservations, parks the connection at `ready_to_activate`, and stops.
+
+Activating *is* a write. Channex documents it as "the connection starts exchanging data with the
+channel: a full synchronisation pushes availability, rates and restrictions", so there is no
+"activate but push nothing":
+
+| | consequence |
+|---|---|
+| activate + push our view | reopens dates blocked directly on Airbnb (§5.2) and flattens per-date pricing we cannot read back (§6) |
+| activate + push nothing | Channex syncs its empty state — AVL=0 on every room, every date (the Patel Colony incident) |
+
+Both are outward-facing damage from an action the owner only asked to *import*. Going live is a
+separate, deliberate step through `channex_channel_activate`, which is where the readiness check,
+the two consent gates and the pre-activation push belong.
+
+The import path therefore takes **no consent gates** — there is nothing outward-facing to consent
+to, and asking anyway is theatre that trains owners to tick past real warnings. Between 8 and 9
+Sep 2026 it did activate, and required both gates for that reason.
+
+Ongoing operational pushes (a booking, a rate edit) still enqueue while the channel is inactive.
+That is fine and in fact desirable: Channex sends nothing to an inactive channel, so its inventory
+is simply warm and correct by the time the owner goes live.
+
+### 5.4b The Push Confirmation Gate
+
+Added 9 Sep 2026. Every wide push — Go Live (`channex_channel_activate`) and the manual
+"Push Availability, Rates & Restrictions" (`channex_push_ari`) — goes through
+`PushConfirmationGate.tsx`, backed by `php/channex/push_preflight.php`.
+
+**It replaced the two consent checkboxes from 3 Sep; it is not layered on top of them.** Those
+named the right risks but as claims to tick. Three confirmations in a row teach people to click
+through all three, including the one that matters.
+
+| Step | Kind | What it does |
+|---|---|---|
+| 1. Rates | **verified by us** | Lists the nights with no explicit `room_rate_rules` price and the exact `default_tariff` that would be sent for them. A flat-rate property correctly reports its whole range. |
+| 2. Openings | **attested, but concrete** | Lists every date about to be marked bookable. We cannot see the host's manual OTA blocks (§5.2), so only they can catch this — but scanning a date list works where agreeing to a paragraph does not. |
+| 3. Typed | **the gate** | The property's own NAME, not a fixed word. A fixed word becomes muscle memory, and pushing to the wrong property is as damaging as pushing the wrong values. Case/space/apostrophe tolerant on both sides. |
+
+Non-negotiables:
+
+- **The preflight reads through `computeRateCoverage()` / `computeCompressedAvailability()` —
+  the same methods the push itself uses.** A preview computed a second way will eventually
+  disagree with the push, which is worse than showing nothing. `buildRulesByDate()` was
+  extracted from `computeCompressedRestrictions()` for exactly this.
+- **Enforced server-side** via `requireChannexPushConfirmation()`, per §5.4. The preflight
+  itself is read-only and makes no network call.
+- **The confirm button is greyed but never natively `disabled` while merely unconfirmed** — a
+  disabled button swallows the click and explains nothing. `busy` is a real disable.
+- **A push cannot be confirmed before the preflight loads.** Typing a name to approve contents
+  you were never shown is the checkbox problem again.
+- **It does not cover a push run from a server-side script** (§5.3). Ask the user first, every
+  time.
+
+Incremental pushes from ordinary operations (a booking, a rate edit) are deliberately NOT
+gated — that is the integration doing its job.
 
 ### 5.5 "Remove" on a connection is real and irreversible
 
@@ -290,6 +358,30 @@ read-only from Channex.
   pricing we cannot see, and our first rate push **replaces it**. This is the pricing twin
   of the manually-blocked-dates problem in §5.2, and it is why applying an imported price
   never pushes on its own.
+
+### Sync category — verified live 9 Sep 2026
+
+Airbnb has exactly **two** sync settings for API-connected listings, and **neither lets the
+software manage availability while the host keeps nightly pricing**:
+
+| Setting | Software controls | Host keeps on Airbnb |
+|---|---|---|
+| `sync_all` ("Everything") | listing details, photos, pricing, calendar | nothing — those fields grey out |
+| Pricing & Availability ("Limited") | pricing and availability | content, booking settings, discounts, fees, taxes |
+
+So there is no platform-level escape from the rate-overwrite risk in §5.4 — it has to be
+handled by process, which is what §5.4b does.
+
+`synchronization_category` is readable per listing on `action/listings`. Measured on the
+connected account: **7 of 10 listings are `sync_all`**; three carry no category at all
+(unmapped on this channel), including **The Artists' Farm** and both Winter Garden listings.
+
+**Open question this raises:** under `sync_all`, Airbnb greys out photos and listing content
+and expects the software to supply them — but we deliberately never import or manage photos
+(§8.6). Whether that leaves a host unable to edit their own listing content on Airbnb without
+gaining that ability here is **not yet established**. Worth settling before more listings go
+live. Channex's docs do not document choosing the category, and `ChannexChannelClient` has no
+method for it.
 
 ### Deliberately out of scope
 

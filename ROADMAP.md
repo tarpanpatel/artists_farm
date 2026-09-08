@@ -54,6 +54,29 @@ This document tracks identified bugs, pending backend API integrations, and upco
     - If staff clicks "Mark Checked In" during an outage, store action in IndexedDB store `offline_action_outbox` (`id`, `action`, `guest_id`, `timestamp`).
     - When network connectivity restores (`window.addEventListener('online')`), automatically drain outbox queue to `php/api/router.php?action=checkin_guest` and toast *"Synced 2 offline check-ins to server"*.
 
+#### 2. 🔍 Client-Side OCR Scanner (Tesseract.js WebAssembly — 3 Focused Workflows)
+- **Goal**: Add client-side, 100% free, privacy-first OCR directly in the browser via `tesseract.js` WebAssembly worker scoped strictly to three high-friction operational workflows:
+- **Location**: `src/components/BookingDetailsModal.tsx` + `src/components/PettyCashManagement.tsx` + `src/utils/ocrScanner.ts`.
+- **Core Deliverables (Strictly 3 Scoped Use Cases)**:
+  1. **🌍 Foreign Guest C-Form in 3 Seconds (Passport MRZ Reader)**:
+     - **Where**: `BookingDetailsModal.tsx` (C-Form Filing Section) & `CheckinVerificationModal.tsx`.
+     - **How**: Passport bottom Machine Readable Zone (MRZ: standard 2-line `P<...` monospace text) is uniquely suited for client-side OCR-B text recognition.
+     - **Extracts**: Passport Number, Country/Nationality, Full Name, DOB, Expiry Date, and Gender.
+     - **Value**: One-tap auto-fill for mandatory Foreign National C-Form registration with zero typing.
+  2. **🧾 Market Grocery & Cash Expense Slips (Petty Cash Receipts)**:
+     - **Where**: `PettyCashManagement.tsx` (Add Expense Drawer).
+     - **How**: Cook or caretaker snaps photo of local shop slip, milk dairy receipt, or vegetable bill.
+     - **Extracts**: Total Amount (₹), Date, and Vendor / Shop Name.
+     - **Value**: Auto-fills the Petty Cash debit form directly from the receipt photo, eliminating missing cash and forgotten slips.
+  3. **💳 UPI Payment Screenshot Verification (Advance Deposit Matching)**:
+     - **Where**: `BookingDetailsModal.tsx` (Advance Payment / Payment Proof upload) & `BillingCheckout.tsx`.
+     - **How**: When guest shares GPay / PhonePe / Paytm / BHIM payment screenshot.
+     - **Extracts**: 12-digit UPI UTR / Transaction ID (e.g. `4251XXXXXXXX`), Amount Paid (₹), and Timestamp.
+     - **Value**: Validates advance payment proofs instantly, preventing fraudulent or duplicate payment claims.
+  - **Technical Architecture**:
+    - Lazy-loaded `tesseract.js` bundle (loaded on-demand only when staff taps "Scan with OCR").
+    - 100% browser-side execution in a Web Worker — zero recurring third-party API costs, zero data leakage.
+
 #### 3. 📱 Pre-Arrival Guest Self Check-In Link (WhatsApp Digital Registration Card)
 - **Goal**: Eliminate the 25-minute check-in bottleneck at the resort gate when large families or villa groups arrive with 10+ people by allowing guests to register and upload IDs prior to arrival.
 - **Location**: Public route `/register/:token` (or `public/guest_checkin.php`) + `php/guests/self_registration.php` + `BookingDetailsModal.tsx`.

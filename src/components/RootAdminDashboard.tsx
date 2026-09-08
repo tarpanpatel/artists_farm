@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server, Sparkles } from './icons/FlowbiteIcons';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server, Sparkles, Tag } from './icons/FlowbiteIcons';
 import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem, SidebarCollapse } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
@@ -13,6 +13,7 @@ import { DefaultExpensesManager } from './DefaultExpensesManager';
 import { SystemStockManager } from './SystemStockManager';
 import { CronJobsManager } from './CronJobsManager';
 import { DefaultBillsManager } from './DefaultBillsManager';
+import { DefaultMiscChargesManager } from './DefaultMiscChargesManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { TelegramHealthPanel } from './TelegramHealthPanel';
@@ -47,9 +48,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'onboarding' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
+type SectionType = 'dashboard' | 'tenants_properties' | 'onboarding' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'default_misc_charges' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'onboarding', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'onboarding', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'default_misc_charges', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -80,7 +81,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
     }
   }, [activeSection]);
 
-  const isEditDefaultsActive = ['default_expenses', 'default_bills', 'system_stock', 'service_request_types', 'edit_main_menu', 'appearance'].includes(activeSection);
+  const isEditDefaultsActive = ['default_expenses', 'default_bills', 'default_misc_charges', 'system_stock', 'service_request_types', 'edit_main_menu', 'appearance'].includes(activeSection);
   const [isEditDefaultsOpen, setIsEditDefaultsOpen] = useState(isEditDefaultsActive);
 
   useEffect(() => {
@@ -419,6 +420,16 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
 
                 <SidebarItem
                   as="button"
+                  icon={Tag}
+                  active={activeSection === 'default_misc_charges'}
+                  onClick={() => goToSection('default_misc_charges')}
+                  className="w-full cursor-pointer text-left pl-6"
+                >
+                  {t('root_default_misc_charges_menu_label', 'Default Misc Charges (Guest)')}
+                </SidebarItem>
+
+                <SidebarItem
+                  as="button"
                   icon={Package}
                   active={activeSection === 'system_stock'}
                   onClick={() => goToSection('system_stock')}
@@ -606,6 +617,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'edit_main_menu' && t('root_edit_main_menu_label', 'Edit Main Menu')}
                 {activeSection === 'default_expenses' && t('root_default_expenses_heading_label', 'Default Expenses (MultiKey)')}
                 {activeSection === 'default_bills' && 'Default Bills (MultiKey)'}
+                {activeSection === 'default_misc_charges' && t('root_default_misc_charges_heading_label', 'Default Misc Charges (Guest)')}
                 {activeSection === 'service_request_types' && t('root_service_request_types_heading', 'Service Request Types')}
                 {activeSection === 'appearance' && t('root_appearance_heading_label', 'Appearance Settings')}
                 {activeSection === 'telegram_templates' && t('root_telegram_templates_label', 'Telegram Templates')}
@@ -680,6 +692,18 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Default Bills */}
           {activeSection === 'default_bills' && (
             <DefaultBillsManager onLogout={handleLogout} />
+          )}
+
+          {/* Default Misc Charges (Guest) - the shared property_id=1 rows
+              every property's own Extra Charges & Fees page (#misc_charges,
+              MiscChargesManagement.tsx) unions in via get_misc_catalog's
+              merge. Root Admin edits the actual canonical row here; a
+              property editing/deleting one of these copy-on-writes its own
+              override instead (see petty_cash.php's add_misc_charge_template
+              comment) - this page is the only place that changes the shared
+              default itself. */}
+          {activeSection === 'default_misc_charges' && (
+            <DefaultMiscChargesManager onLogout={handleLogout} />
           )}
 
           {/* System Stock */}

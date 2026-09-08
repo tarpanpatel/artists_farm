@@ -14,6 +14,7 @@ import {
 } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
+import PushConfirmationGate from './PushConfirmationGate';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { PageHeader } from './PageHeader';
@@ -93,6 +94,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
   const [refreshing, setRefreshing] = useState(false);
   const [syncingContent, setSyncingContent] = useState(false);
   const [pushingAri, setPushingAri] = useState(false);
+  const [pushGateOpen, setPushGateOpen] = useState(false);
   const [drainingOutbox, setDrainingOutbox] = useState(false);
   const [retryingId, setRetryingId] = useState<number | null>(null);
 
@@ -191,23 +193,23 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
     }
   };
 
-  const handlePushAri = async () => {
+  // Opens the Push Confirmation Gate. The old inline confirm() dialog was replaced 9 Sep 2026:
+  // it described both risks accurately but only in prose, and a warning nobody can check is a
+  // warning people learn to click through. The gate shows the actual nights that would push at
+  // the default rate and the actual dates that would be opened, then asks for the property name
+  // typed out. Same push underneath - see runPushAri().
+  const handlePushAri = () => {
     if (!dateFrom || !dateTo) {
       showToast(t('channex_dates_required', 'Please select both start and end dates'), { type: 'error' });
       return;
     }
+    setPushGateOpen(true);
+  };
 
+  const runPushAri = async (typedConfirmation: string) => {
     const d1 = new Date(dateFrom);
     const d2 = new Date(dateTo);
     const dayDiff = Math.max(1, Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
-
-    const ok = await confirm({
-      title: t('channex_push_ari_title', 'Push Availability, Rates & Restrictions'),
-      message: `Push ${dayDiff} days of compressed availability and rate rules from ${dateFrom} to ${dateTo} to every connected channel?\n\nAny date in this range with no explicit rate entered in Pricing & Rates will push at this property's default rate - if different pricing is already set directly on an OTA for those dates, this will overwrite it. Any date with no conflicting Ground Code booking will push as open, which will also reopen a date you've manually blocked directly on an OTA.\n\nOnly proceed if you're sure neither applies to this date range.`,
-      confirmText: t('channex_push_now', 'Push to Channex'),
-      variant: 'warning',
-    });
-    if (!ok) return;
 
     setPushingAri(true);
     setLastPushResult(null);
@@ -215,11 +217,12 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_push_ari`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date_from: dateFrom, date_to: dateTo }),
+        body: JSON.stringify({ date_from: dateFrom, date_to: dateTo, typed_confirmation: typedConfirmation }),
       });
       const json = await res.json();
 
       if (json && json.status === 'success' && json.data) {
+        setPushGateOpen(false);
         showToast(t('channex_push_success', 'ARI batch compressed and pushed to Channex successfully!'), { type: 'success' });
         setLastPushResult({
           dateFrom: json.data.date_from,
@@ -539,6 +542,18 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
         propertyId={data?.mappings?.[0]?.property_id || 0}
         onImported={() => { void fetchStatus(true); }}
         onLogAudit={onLogAudit}
+      />
+
+      <PushConfirmationGate
+        isOpen={pushGateOpen}
+        onClose={() => setPushGateOpen(false)}
+        propertyId={data?.mappings?.[0]?.property_id || 0}
+        title={t('channex_push_ari_title', 'Push Availability, Rates & Restrictions')}
+        confirmLabel={t('channex_push_now', 'Push to Channex')}
+        onConfirm={runPushAri}
+        busy={pushingAri}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
       />
 
       {/* Scenario 1: Bulk ARI Push Control Card */}

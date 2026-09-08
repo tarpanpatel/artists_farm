@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
-  CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle,
+  CheckCircle2, ArrowRight, ArrowLeft, Loader2, X, AlertCircle, AlertTriangle, Info,
   LinkBreak, ExternalLink, RefreshCw, ChevronDown, Sparkles,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
@@ -13,6 +13,7 @@ import { t } from '../i18n/en';
 import { AirbnbIcon } from './icons/AirbnbIcon';
 import { getOtaIcon } from '../utils/otaIcons';
 import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
+import PushConfirmationGate from './PushConfirmationGate';
 
 interface AdapterField {
   position?: number;
@@ -171,15 +172,9 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
 
   const [readinessProblems, setReadinessProblems] = useState<any[] | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
-  const [confirmedExistingBookings, setConfirmedExistingBookings] = useState(false);
-  // Separate from the bookings checkbox above (different risk, different
-  // failure mode) - added 3 Sep 2026 after a real incident: any date with no
-  // explicit rate entered in Ground Code's Pricing & Rates falls back to the
-  // property's flat default rate when pushed, which can silently overwrite
-  // different pricing already set directly on the OTA. Ground Code has no
-  // way to detect that case on its own, so the owner has to consciously
-  // accept the risk before it happens, not find out after.
-  const [confirmedRateFallback, setConfirmedRateFallback] = useState(false);
+  // The two consent booleans that lived here (3 Sep 2026) are gone as of 9 Sep - the Push
+  // Confirmation Gate replaced them. See the note where the checkboxes used to render.
+  const [pushGateOpen, setPushGateOpen] = useState(false);
   const [activating, setActivating] = useState(false);
 
   const [airbnbAuthOpened, setAirbnbAuthOpened] = useState(false);
@@ -199,7 +194,7 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     setMappingError(false);
     setRoomMapping({});
     setReadinessProblems(null);
-    setConfirmedExistingBookings(false);
+    setPushGateOpen(false);
     setAirbnbAuthOpened(false);
     setAirbnbNote('');
     setAirbnbSubmitted(false);
@@ -536,22 +531,23 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, selectedCode]);
 
-  const canActivate = readinessProblems !== null && readinessProblems.length === 0 && confirmedExistingBookings && confirmedRateFallback;
+  const canActivate = readinessProblems !== null && readinessProblems.length === 0;
 
-  const handleActivate = async () => {
+  const handleActivate = async (typedConfirmation: string) => {
     if (!selectedCode || !canActivate) return;
     setActivating(true);
     try {
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_activate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode, confirmed_existing_bookings: confirmedExistingBookings, confirmed_rate_fallback: confirmedRateFallback }),
+        body: JSON.stringify({ property_id: propertyId, channel_code: selectedCode, typed_confirmation: typedConfirmation }),
       });
       const json = await res.json();
       if (json?.status !== 'success') {
         showToast(json?.message || 'Failed to activate channel', { type: 'error' });
         return;
       }
+      setPushGateOpen(false);
       showToast(`${selectedAdapter?.title || selectedCode} is now live and syncing bookings!`, { type: 'success' });
       onConnected(selectedCode);
     } catch (err: any) {
@@ -974,29 +970,22 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
               )}
             </div>
 
-            <label className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer">
-              <input
-                type="checkbox"
-                checked={confirmedExistingBookings}
-                onChange={(e) => setConfirmedExistingBookings(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span className="text-sm font-semibold text-amber-900 dark:text-amber-300">
-                I confirm any bookings that already exist on {selectedAdapter?.title} for this listing are already entered in Ground Code, and any dates manually blocked directly on {selectedAdapter?.title} (maintenance, personal use, etc. - not tied to a guest booking) are set as a block in Ground Code's Pricing &amp; Rates too. Activating without this can double-book a room or reopen a date you meant to keep closed.
+            {/* The two consent checkboxes that stood here from 3 Sep 2026 were replaced by the
+                Push Confirmation Gate on 9 Sep. They named the right two risks - a booking or
+                manual block that exists only on the OTA, and a date with no rate pushing at the
+                flat default - but as claims to tick rather than facts to check. "Go Live" now
+                opens the gate, which shows the actual unpriced nights with the rate that would
+                be sent and the actual dates about to be opened, then asks for the property name
+                typed out. Leaving the checkboxes here as well would be strictly worse: three
+                confirmations in a row teach people to click through all three. */}
+            <div className="flex items-start gap-2.5 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+              <Info className="w-4 h-4 mt-0.5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <span className="text-sm text-slate-700 dark:text-slate-300">
+                Going live replaces prices and availability on {selectedAdapter?.title} with what
+                Ground Code holds. The next screen shows exactly what would be sent before
+                anything leaves.
               </span>
-            </label>
-
-            <label className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer">
-              <input
-                type="checkbox"
-                checked={confirmedRateFallback}
-                onChange={(e) => setConfirmedRateFallback(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span className="text-sm font-semibold text-amber-900 dark:text-amber-300">
-                I understand any date with no specific price set in Ground Code's Pricing &amp; Rates will be pushed to {selectedAdapter?.title} at this property's default rate - if different pricing is already set directly on {selectedAdapter?.title} for those dates, this will overwrite it.
-              </span>
-            </label>
+            </div>
           </div>
         )}
       </div>
@@ -1039,12 +1028,30 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
           </Button>
         )}
         {step === 4 && (
-          <Button variant="primary" onClick={handleActivate} disabled={activating || !canActivate} className={!canActivate ? 'opacity-50' : ''}>
+          <Button
+            variant="primary"
+            onClick={() => setPushGateOpen(true)}
+            disabled={activating}
+            className={!canActivate ? 'opacity-50' : ''}
+          >
             {activating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
             {activating ? 'Activating...' : 'Go Live'}
           </Button>
         )}
       </div>
+
+      {/* Nested inside the wizard's own Drawer on purpose: the gate is a second, higher drawer
+          the owner steps INTO from Go Live, and stepping back out must return them to step 4
+          with the readiness check and mapping still on screen. */}
+      <PushConfirmationGate
+        isOpen={pushGateOpen}
+        onClose={() => setPushGateOpen(false)}
+        propertyId={propertyId}
+        title={`Go Live on ${selectedAdapter?.title || selectedCode || 'this channel'}`}
+        confirmLabel="Go Live"
+        onConfirm={handleActivate}
+        busy={activating}
+      />
     </Drawer>
   );
 };

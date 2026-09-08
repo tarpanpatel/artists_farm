@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { IdCard, Trash2, CheckCircle2, AlertCircle, Loader2 } from './icons/FlowbiteIcons';
+import { IdCard, Trash2, CheckCircle2, AlertCircle, Loader2, X, ScanLine, Check, Copy } from './icons/FlowbiteIcons';
 import { Modal, Alert } from 'flowbite-react';
-import { X } from './icons/FlowbiteIcons';
 import { Guest } from '../types';
 import {
   GuestIdDocument,
@@ -11,7 +10,9 @@ import {
   completeCheckinVerificationDB,
   uploadImageDBVerbose,
   resizeImageFile,
+  API_ROOT_BASE,
 } from '../services/api';
+import { scanPassportMrz, type PassportMrzResult } from '../utils/ocrScanner';
 import { t } from '../i18n/en';
 import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -45,6 +46,10 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const [scanningDocId, setScanningDocId] = useState<number | null>(null);
+  const [passportResults, setPassportResults] = useState<Record<number, PassportMrzResult>>({});
+  const [copiedDocId, setCopiedDocId] = useState<number | null>(null);
+
   const requiredCount = 1;
 
   useEffect(() => {
@@ -54,12 +59,34 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
     setIsUploading(false);
     setUploadProgress(null);
     setUploadProgressLabel('');
+    setScanningDocId(null);
+    setPassportResults({});
+    setCopiedDocId(null);
     setLoading(true);
     fetchIdDocumentsFromDB(guest.id).then((docs) => {
       setDocuments(docs);
       setLoading(false);
     });
   }, [isOpen, guest.id]);
+
+  const handleScanPassportDoc = async (docId: number, filePath: string) => {
+    setScanningDocId(docId);
+    setErrorMsg(null);
+    try {
+      const fullUrl = filePath.startsWith('http') ? filePath : `${API_ROOT_BASE}${filePath}`;
+      const res = await scanPassportMrz(fullUrl);
+      setPassportResults((prev) => ({ ...prev, [docId]: res }));
+      if (res.passportNumber) {
+        setSuccessMsg(`Passport detected: ${res.passportNumber} (${res.nationality || 'Foreign'})`);
+      } else {
+        setErrorMsg("Could not detect passport MRZ lines in this document. Make sure the bottom 2-line code is clear.");
+      }
+    } catch {
+      setErrorMsg("Failed to scan document with OCR.");
+    } finally {
+      setScanningDocId(null);
+    }
+  };
 
   const handleFilesSelected = async (files: File[]) => {
     if (!files || files.length === 0) return;
@@ -252,39 +279,112 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
                       {t('ready_for_verification', 'Ready for verification')}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 gap-2.5">
                     {documents.map((doc, idx) => (
                       <div
                         key={doc.id || idx}
-                        className="flex items-center gap-2.5 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 shadow-2xs"
+                        className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 shadow-2xs space-y-2"
                       >
-                        <img
-                          src={idDocThumbUrl(doc.filePath)}
-                          alt={`ID Document ${idx + 1}`}
-                          loading="lazy"
-                          className="w-12 h-12 rounded-md object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-                          onError={(e) => {
-                            const img = e.currentTarget;
-                            if (img.src !== doc.filePath) img.src = doc.filePath;
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {t('guest_id_label', 'Guest ID')} #{idx + 1}
-                          </p>
-                          <p className="text-2xs text-slate-500 dark:text-slate-400">
-                            {formatUploadedAt(doc.uploadedAt)}
-                          </p>
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={idDocThumbUrl(doc.filePath)}
+                            alt={`ID Document ${idx + 1}`}
+                            loading="lazy"
+                            className="w-12 h-12 rounded-md object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (img.src !== doc.filePath) img.src = doc.filePath;
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                              {t('guest_id_label', 'Guest ID')} #{idx + 1}
+                            </p>
+                            <p className="text-2xs text-slate-500 dark:text-slate-400">
+                              {formatUploadedAt(doc.uploadedAt)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleScanPassportDoc(doc.id, doc.filePath)}
+                              disabled={isUploading || scanningDocId === doc.id}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg cursor-pointer disabled:opacity-50 transition-colors"
+                              title={t('scan_passport_mrz_button', 'Scan Passport (OCR)')}
+                            >
+                              {scanningDocId === doc.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                              ) : (
+                                <ScanLine className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(doc.id)}
+                              disabled={isUploading}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer disabled:opacity-50 transition-colors"
+                              title={t('remove_id_document', 'Remove ID document')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(doc.id)}
-                          disabled={isUploading}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer shrink-0 disabled:opacity-50 transition-colors"
-                          title={t('remove_id_document', 'Remove ID document')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+                        {/* Scanned Passport Details */}
+                        {passportResults[doc.id] && (
+                          <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs space-y-1">
+                            <div className="flex items-center justify-between font-semibold text-slate-800 dark:text-slate-200">
+                              <span className="flex items-center gap-1.5">
+                                <span>📘</span>
+                                <span>{passportResults[doc.id].fullName || 'Foreign Passport'}</span>
+                              </span>
+                              {passportResults[doc.id].countryCode && (
+                                <span className="text-2xs font-medium px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300">
+                                  {passportResults[doc.id].nationality || passportResults[doc.id].countryCode}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-2xs text-slate-600 dark:text-slate-300 pt-1">
+                              <div>
+                                <span className="text-slate-400">Passport: </span>
+                                <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{passportResults[doc.id].passportNumber || 'N/A'}</span>
+                              </div>
+                              {passportResults[doc.id].dob && (
+                                <div>
+                                  <span className="text-slate-400">DOB: </span>
+                                  <span className="font-medium">{passportResults[doc.id].dob}</span>
+                                </div>
+                              )}
+                              {passportResults[doc.id].expiryDate && (
+                                <div>
+                                  <span className="text-slate-400">Exp: </span>
+                                  <span className="font-medium">{passportResults[doc.id].expiryDate}</span>
+                                </div>
+                              )}
+                              {passportResults[doc.id].gender && (
+                                <div>
+                                  <span className="text-slate-400">Sex: </span>
+                                  <span className="font-medium">{passportResults[doc.id].gender}</span>
+                                </div>
+                              )}
+                            </div>
+                            {passportResults[doc.id].passportNumber && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const text = `${passportResults[doc.id].fullName || ''} · ${passportResults[doc.id].passportNumber} · ${passportResults[doc.id].nationality || ''}`;
+                                  navigator.clipboard.writeText(text);
+                                  setCopiedDocId(doc.id);
+                                  setTimeout(() => setCopiedDocId(null), 2000);
+                                }}
+                                className="mt-1 inline-flex items-center gap-1 text-2xs text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer"
+                              >
+                                {copiedDocId === doc.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                <span>{copiedDocId === doc.id ? 'Copied to Clipboard' : 'Copy Passport Details'}</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

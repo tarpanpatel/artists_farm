@@ -61,7 +61,11 @@ export const OnboardingChannelStep: React.FC<OnboardingChannelStepProps> = ({
       const json = await res.json();
       if (json?.status === 'success') {
         setImported(true);
-        showToast('Property and rooms successfully imported & activated from Airbnb!', { type: 'success' });
+        showToast(
+          json?.message ||
+            'Imported from Airbnb. Nothing was sent to Airbnb - the channel is not live yet.',
+          { type: 'success' },
+        );
         onDone();
       } else {
         showToast(json?.message || 'Failed to auto-provision from Airbnb', { type: 'error' });
@@ -159,12 +163,12 @@ export const OnboardingChannelStep: React.FC<OnboardingChannelStepProps> = ({
                     {autoProvisioning ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        Auto-Provisioning Property & Rooms...
+                        Importing Property & Rooms...
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 mr-2 text-amber-300" />
-                        1-Click Auto-Provision & Launch
+                        1-Click Import from Airbnb
                       </>
                     )}
                   </Button>

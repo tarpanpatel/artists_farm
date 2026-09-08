@@ -344,7 +344,8 @@ export async function apiFetch(url: string, init?: RequestInit, propertySlugOver
   const method = (init?.method || 'GET').toUpperCase();
   const customHeaders = (init?.headers as Record<string, string>) || {};
   const urlObj = new URL(url, window.location.origin);
-  urlObj.searchParams.set('property_slug', propertySlugOverride || getPropertySlug());
+  const effectiveSlug = propertySlugOverride || getPropertySlug();
+  urlObj.searchParams.set('property_slug', effectiveSlug);
   const action = urlObj.searchParams.get('action') || '';
   const cacheKey = urlObj.toString();
   const isCacheable = method === 'GET' && CACHEABLE_ACTIONS.has(action);
@@ -369,11 +370,16 @@ export async function apiFetch(url: string, init?: RequestInit, propertySlugOver
 
   // CSRF token attachment happens transparently inside the patched
   // window.fetch above - nothing else to do here.
+  const headers = getTestingHeaders(customHeaders);
+  if (propertySlugOverride) {
+    headers['X-Property-Slug'] = propertySlugOverride;
+  }
   const response = await fetch(urlObj.toString(), {
     ...init,
     credentials: 'include',
-    headers: getTestingHeaders(customHeaders),
+    headers,
   });
+
 
   // Found 21 Aug 2026, directly downstream of finally fixing "Sign Out
   // Terminal" (see router.php's 'logout' case): a real session ending -

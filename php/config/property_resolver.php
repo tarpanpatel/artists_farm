@@ -29,6 +29,18 @@ function getCurrentPropertyId(PDO $pdo, ?bool &$wasExplicit = null): int {
         return 0;
     }
 
+    // Priority 1.5: Explicit property_id query parameter
+    if (isset($_GET['property_id']) && is_numeric($_GET['property_id']) && (int)$_GET['property_id'] > 0) {
+        $candidateId = (int)$_GET['property_id'];
+        $stmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? AND is_active = 1 LIMIT 1");
+        $stmt->execute([$candidateId]);
+        $row = $stmt->fetch();
+        if ($row) {
+            $wasExplicit = true;
+            return (int)$row['id'];
+        }
+    }
+
     // Priority 2: Single property slug query parameter
     if (isset($_GET['property_slug']) && !empty($_GET['property_slug'])) {
         $explicitlyRequested = true;
@@ -47,7 +59,7 @@ function getCurrentPropertyId(PDO $pdo, ?bool &$wasExplicit = null): int {
     $segments = array_values(array_filter(explode('/', $path), fn($s) => $s !== ''));
 
     // Reserved non-property path segments
-    $reserved = ['artists_farm', 'php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'login'];
+    $reserved = ['artists_farm', 'php', 'dist', 'assets', 'icons', 'api', 'backups', 'node_modules', 'login', 'tenant_dashboard', 'root_dashboard', 'platform_property_management'];
 
     // Priority 3.5: URL path as an explicit tenant_slug/property_slug PAIR, matching the
     // documented /{tenant_slug}/{property_slug}/ convention - tried before the generic

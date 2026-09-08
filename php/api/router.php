@@ -1161,7 +1161,7 @@ if (!in_array($action, $public_actions, true)) {
 $channex_ops_actions = [
     'channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox',
     'channex_push_ari', 'channex_outbox_drain', 'get_channex_status',
-    'channex_drain_feed',
+    'channex_drain_feed', 'channex_push_preflight',
 ];
 if (in_array($action, $channex_ops_actions, true)) {
     $userRole = strtolower($_SESSION['role'] ?? '');
@@ -4331,6 +4331,12 @@ switch ($action) {
     case 'upload_id_document':
     case 'delete_id_document':
     case 'complete_checkin_verification':
+        if (!empty($_GET['property_id'])) {
+            $targetPropId = intval($_GET['property_id']);
+            if ($targetPropId > 0 && isPropertyAccessAllowed($pdo, $targetPropId)) {
+                $propertyId = $targetPropId;
+            }
+        }
         handleGuestRequests($pdo, $request_method, $action, $propertyId);
         break;
 
@@ -4346,20 +4352,20 @@ switch ($action) {
     case 'get_system_service_request_catalog':
     case 'add_system_service_request_type':
     case 'delete_system_service_request_type':
-        // Platform admin (Root Admin Dashboard) can target any property explicitly;
-        // otherwise the URL-resolved property context applies (staff/tenant pages).
-        if ($is_platform_admin) {
-            $targetPropertyId = $_GET['property_id'] ?? null;
-            if (!$targetPropertyId && $request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true) ?: [];
-                $targetPropertyId = $input['property_id'] ?? null;
-            }
-            if ($targetPropertyId) {
-                $propertyId = intval($targetPropertyId);
+        $targetPropertyId = $_GET['property_id'] ?? null;
+        if (!$targetPropertyId && $request_method === 'POST') {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $targetPropertyId = $input['property_id'] ?? null;
+        }
+        if ($targetPropertyId) {
+            $targetPropId = intval($targetPropertyId);
+            if ($targetPropId > 0 && isPropertyAccessAllowed($pdo, $targetPropId)) {
+                $propertyId = $targetPropId;
             }
         }
         handleServiceRequestActions($pdo, $request_method, $action, $propertyId);
         break;
+
 
     // --- HOUSEKEEPING (room-ready status, "Mark Room Ready" Telegram button) ---
     case 'get_housekeeping_statuses':
@@ -4460,6 +4466,9 @@ switch ($action) {
     case 'get_misc_catalog':
     case 'add_misc_charge_template':
     case 'delete_misc_charge_template':
+    case 'get_system_misc_catalog':
+    case 'add_system_misc_charge_item':
+    case 'delete_system_misc_charge_item':
     case 'get_property_custom_expenses':
     case 'add_property_custom_expense':
     case 'delete_property_custom_expense':
@@ -5571,15 +5580,16 @@ switch ($action) {
             case 'channex_auto_provision_from_airbnb':
                 $selectedListings = is_array($input['selected_listing_ids'] ?? null) ? $input['selected_listing_ids'] : [];
                 $customPropName = isset($input['property_name']) ? trim((string)$input['property_name']) : null;
-                // Same two consent gates channex_channel_activate requires -
-                // see autoProvisionPropertyFromAirbnb()'s own docblock for why
-                // this one-click flow does not get to skip them (found 8 Sep
-                // 2026: it previously activated with neither ever checked).
-                $confirmedExistingBookings = !empty($input['confirmed_existing_bookings']);
-                $confirmedRateFallback = !empty($input['confirmed_rate_fallback']);
+                // No consent gates here on purpose: this action IMPORTS ONLY - it never
+                // pushes ARI and never activates the channel, so there is no outward-facing
+                // write for the owner to consent to (9 Sep 2026 - see the "Step 5" comment in
+                // autoProvisionPropertyFromAirbnb()). The connection is left at
+                // 'ready_to_activate'; `channex_channel_activate` is the action that actually
+                // pushes, and it is where confirmed_existing_bookings / confirmed_rate_fallback
+                // are enforced. Between 8 and 9 Sep 2026 this path did activate, and required
+                // both gates for that reason.
                 $res = autoProvisionPropertyFromAirbnb(
-                    $pdo, $targetPropertyId, $selectedListings, $customPropName,
-                    $confirmedExistingBookings, $confirmedRateFallback
+                    $pdo, $targetPropertyId, $selectedListings, $customPropName
                 );
                 if (($res['status'] ?? '') !== 'success') {
                     http_response_code((int)($res['http_code'] ?? 400));
@@ -5926,29 +5936,34 @@ switch ($action) {
 
             case 'channex_channel_activate':
                 $channelCode = trim((string)($input['channel_code'] ?? ''));
-                $confirmedExistingBookings = !empty($input['confirmed_existing_bookings']);
-                // Same class of guard as the bookings checkbox above, same
-                // reason it must be re-checked server-side rather than
-                // trusted from the client: a client-only gate on this exact
-                // action was found live 3 Sep 2026 to be silently unenforced
-                // (the checkbox existed in the UI but its value was never
-                // sent in the request body at all) - never repeat that for a
-                // new confirmation without also wiring the backend check.
-                $confirmedRateFallback = !empty($input['confirmed_rate_fallback']);
                 $conn = $targetPropertyId > 0 && $channelCode !== '' ? getChannexChannelConnection($pdo, $targetPropertyId, $channelCode) : null;
                 if (!$conn || empty($conn['channex_channel_id'])) {
                     http_response_code(400);
                     echo json_encode(['status' => 'error', 'message' => 'No Channex channel to activate yet - complete mapping first']);
                     break 2;
                 }
-                if (!$confirmedExistingBookings) {
-                    http_response_code(422);
-                    echo json_encode(['status' => 'error', 'message' => 'Confirm any existing bookings on this OTA are already entered in Ground Code before going live']);
-                    break 2;
-                }
-                if (!$confirmedRateFallback) {
-                    http_response_code(422);
-                    echo json_encode(['status' => 'error', 'message' => 'Confirm you understand dates with no explicit rate will push at this property\'s default rate before going live']);
+
+                // Push Confirmation Gate (9 Sep 2026) - REPLACES the two consent checkboxes
+                // this action required from 3 Sep. Not an addition to them: they covered
+                // exactly these two risks (a booking or manual block that exists only on the
+                // OTA, and a date with no rate pushing at the flat default), but as claims the
+                // owner ticked rather than facts they could check. The gate now SHOWS both -
+                // `channex_push_preflight` lists the unpriced nights with the rate that would
+                // be sent, and every date about to be marked bookable - then asks for the
+                // property's name typed out. Keeping the checkboxes alongside it would be
+                // strictly worse: three consecutive confirmations train people to click
+                // through all three, including the one that matters.
+                //
+                // Still enforced server-side for the same reason the checkboxes were: a
+                // client-only gate on THIS EXACT action was found live 3 Sep 2026 to be
+                // silently unenforced - the checkbox existed in the UI but its value was never
+                // sent in the request body at all.
+                require_once __DIR__ . '/../channex/push_preflight.php';
+                $gateError = requireChannexPushConfirmation($pdo, $targetPropertyId, $input['typed_confirmation'] ?? null);
+                if ($gateError !== null) {
+                    http_response_code((int)($gateError['http_code'] ?? 422));
+                    unset($gateError['http_code']);
+                    echo json_encode($gateError);
                     break 2;
                 }
 
@@ -6135,6 +6150,30 @@ switch ($action) {
         ]);
         break;
 
+    // READ-ONLY. Everything the owner is shown before a push: which nights carry no explicit
+    // price (and what would be sent for them), and every date about to be marked bookable on
+    // the OTA. Reads through the same compute* methods the push itself uses, so the preview
+    // cannot drift from what actually goes out. Makes no network call and writes nothing -
+    // safe to call as often as the UI likes, including on every keystroke of the confirmation
+    // field if it ever wants to.
+    case 'channex_push_preflight':
+        require_once __DIR__ . '/../channex/push_preflight.php';
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+        $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: 0);
+        if ($targetPropertyId <= 0) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'property_id is required']);
+            break;
+        }
+        echo json_encode(['status' => 'success', 'data' => buildChannexPushPreflight(
+            $pdo,
+            $targetPropertyId,
+            isset($input['date_from']) ? trim((string)$input['date_from']) : null,
+            isset($input['date_to']) ? trim((string)$input['date_to']) : null
+        )]);
+        break;
+
     case 'channex_push_ari':
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
             require_once __DIR__ . '/../channex/outbox.php';
@@ -6154,6 +6193,19 @@ switch ($action) {
         $dateFrom = trim((string)($input['date_from'] ?? date('Y-m-d')));
         $dateTo = trim((string)($input['date_to'] ?? date('Y-m-d', strtotime('+500 days'))));
         $explicitRoomId = !empty($input['room_id']) ? (int)$input['room_id'] : null;
+
+        // Push Confirmation Gate (9 Sep 2026). Enforced HERE, not only in the dialog, because
+        // CHANNEX.md 5.4 records a consent checkbox that shipped with its value never sent -
+        // the UI looked like a gate and enforced nothing. Checked before the first
+        // enqueueOutboxItem() so a rejected push leaves no half-queued rows behind.
+        require_once __DIR__ . '/../channex/push_preflight.php';
+        $gateError = requireChannexPushConfirmation($pdo, $targetPropertyId, $input['typed_confirmation'] ?? null);
+        if ($gateError !== null) {
+            http_response_code((int)($gateError['http_code'] ?? 422));
+            unset($gateError['http_code']);
+            echo json_encode($gateError);
+            break;
+        }
 
         // A caller that names a specific room (or a single-unit property)
         // pushes just that one, same as before. Otherwise - a "push for the

@@ -9,7 +9,8 @@ import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
-import { getOtaIcon } from '../utils/otaIcons';
+import { getOtaIcon, formatOtaLabel } from '../utils/otaIcons';
+import { Popover } from './Popover';
 
 interface ChannelConnectionsPageProps {
   propertyId: number;
@@ -218,7 +219,7 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title={t('connect_channels_heading', 'Connect Channels')}
         subtitle={t('connect_channels_subheading', 'Connect your Airbnb, Booking.com, and other OTA listings directly to this property.')}
@@ -267,120 +268,162 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
       />
 
       {connections.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 text-center space-y-3">
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-center space-y-3 shadow-sm">
           <Plug className="w-10 h-10 text-gray-300 dark:text-gray-600" />
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('no_channels_connected_title', 'No channels connected yet')}</p>
           <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
             {t('no_channels_connected_body', 'Connect Airbnb, Booking.com, or another OTA to automatically sync availability and rates and receive bookings directly in Ground Code.')}
           </p>
-          <Button variant="primary" size="sm" onClick={() => handleOpenWizard()} className="mt-2">
+          <Button variant="primary" size="sm" onClick={() => handleOpenWizard()} className="mt-2 h-10 text-xs font-medium">
             <Plus className="w-4 h-4 me-1.5" />
             {t('connect_new_channel_button', 'Connect a Channel')}
           </Button>
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Connected Channels List */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 shadow-xs">
-            {connections.map((c) => {
-              const badge = STATUS_BADGE[c.status] || STATUS_BADGE.draft;
-              const resumable = c.status !== 'active' && c.status !== 'staff_action_required';
-              const ChannelIcon = getOtaIcon(c.channel_code);
-              return (
-                <div key={c.id} className="flex items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {ChannelIcon && <ChannelIcon className="w-5 h-5 shrink-0 rounded-md" />}
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.channel_code}</span>
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
+          {/* Section: Connected Channels - White block for each channel */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                Connected Channels ({connections.length})
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {connections.map((c) => {
+                const badge = STATUS_BADGE[c.status] || STATUS_BADGE.draft;
+                const resumable = c.status !== 'active' && c.status !== 'staff_action_required';
+                const ChannelIcon = getOtaIcon(c.channel_code);
+                const channelName = formatOtaLabel(c.channel_code) || c.channel_code;
+
+                return (
+                  <div
+                    key={c.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0">
+                        {ChannelIcon ? (
+                          <ChannelIcon className="w-6 h-6 shrink-0 rounded-[2px]" />
+                        ) : (
+                          <Plug className="w-5 h-5 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {channelName}
+                          </span>
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                        </div>
+                        {c.status === 'error' && c.last_error && c.last_error !== 'null' && c.last_error.trim() !== '' && (
+                          <p className="text-2xs text-red-600 dark:text-red-400 mt-1 truncate">{c.last_error}</p>
+                        )}
+                        {c.status === 'staff_action_required' && (
+                          <p className="text-2xs text-gray-500 dark:text-gray-400 mt-1">
+                            {t('airbnb_staff_pending_note', "Our team will finish connecting your Airbnb account and let you know once it's live.")}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    {c.status === 'error' && c.last_error && c.last_error !== 'null' && c.last_error.trim() !== '' && (
-                      <p className="text-2xs text-red-600 dark:text-red-400 mt-1 truncate">{c.last_error}</p>
-                    )}
-                    {c.status === 'staff_action_required' && (
-                      <p className="text-2xs text-gray-500 dark:text-gray-400 mt-1">
-                        {t('airbnb_staff_pending_note', "Our team will finish connecting your Airbnb account and let you know once it's live.")}
-                      </p>
-                    )}
+
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                      {resumable && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleOpenWizard(c.channel_code)}
+                          className="h-8 text-xs font-medium"
+                        >
+                          {t('continue_setup_button', 'Continue Setup')}
+                        </Button>
+                      )}
+                      <Popover
+                        trigger="hover"
+                        content={
+                          <div className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300">
+                            {t('remove_connection_button', 'Remove connection')}
+                          </div>
+                        }
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveConnection(c)}
+                          disabled={removingCode === c.channel_code}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                        >
+                          {removingCode === c.channel_code ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          )}
+                        </Button>
+                      </Popover>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {resumable && (
-                      <Button variant="secondary" size="sm" onClick={() => handleOpenWizard(c.channel_code)} className="h-9 text-xs">
-                        {t('continue_setup_button', 'Continue Setup')}
-                      </Button>
-                    )}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleRemoveConnection(c)}
-                      disabled={removingCode === c.channel_code}
-                      className="h-9 text-xs text-red-600 hover:text-red-700 dark:text-red-400"
-                      title={t('remove_connection_button', 'Remove connection')}
-                    >
-                      {removingCode === c.channel_code ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
-          {/* Individual Room Listings with Dedicated Sync Buttons */}
+          {/* Section: Individual Room Listings - White block for each listing */}
           {localRooms.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Individual Listings ({localRooms.length})
-                  </h4>
-                  <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Sync live rates and availability to Airbnb & connected channels per individual listing.
-                  </p>
-                </div>
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                  Individual Listings ({localRooms.length})
+                </h3>
+                <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Sync live rates and availability to Airbnb & connected channels per individual listing.
+                </p>
               </div>
 
-              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              <div className="space-y-3">
                 {localRooms.map((room) => {
                   const isSyncingThis = syncingRoomId === room.local_room_id;
                   return (
-                    <div key={room.local_room_id || room.name} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 first:pt-0 last:pb-0">
+                    <div
+                      key={room.local_room_id || room.name}
+                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                    >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 text-xs font-bold shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/60 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-bold shrink-0">
                           {room.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
-                          <p className="text-2xs text-gray-500 dark:text-gray-400">
-                            {room.channex_rate_plan_id ? 'Mapped & Active' : 'Connected to Property'}
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{room.name}</p>
+                            <Badge variant={room.channex_rate_plan_id ? 'success' : 'neutral'}>
+                              {room.channex_rate_plan_id ? 'Mapped & Active' : 'Connected to Property'}
+                            </Badge>
+                          </div>
+                          <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {room.channex_rate_plan_id ? `Rate Plan ID: ${room.channex_rate_plan_id}` : 'Sync live rates and availability'}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 self-start sm:self-auto">
-                        {/* Per-listing import (7 Sep 2026, explicit request:
-                            "in front of individual listing give option to
-                            individual import from airbnb") - opens the same
-                            drawer as the page-level button above, scoped to
-                            just this one room instead of all of them. */}
+                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
                         <Button
                           variant="secondary"
-                          size="xs"
+                          size="sm"
                           disabled={!room.local_room_id}
                           onClick={() => {
                             setImportFocusRoomId(room.local_room_id);
                             setShowImporterModal(true);
                           }}
-                          className="h-8"
+                          className="h-8 text-xs font-medium"
                           leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-500" />}
                         >
                           Import
                         </Button>
                         <Button
                           variant="secondary"
-                          size="xs"
+                          size="sm"
                           disabled={isSyncingThis || !room.local_room_id}
                           onClick={() => handleSyncSingleRoom(room)}
-                          className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 h-8"
+                          className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 h-8 text-xs font-medium"
                           leftIcon={isSyncingThis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                         >
                           {isSyncingThis ? 'Pushing...' : 'Push Rates'}

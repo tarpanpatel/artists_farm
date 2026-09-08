@@ -11,6 +11,37 @@ require_once __DIR__ . '/../config/guest_status.php';
 require_once __DIR__ . '/outbox.php';
 require_once __DIR__ . '/ChannexAdapter.php';
 
+if (!function_exists('channexCompressDateList')) {
+    /**
+     * Turns a sorted list of YYYY-MM-DD strings into contiguous {from, to, nights} ranges.
+     *
+     * Purely for HUMAN display in the push-confirmation gate (9 Sep 2026). A gap of 68 nights
+     * shown as one line is something an owner reads; the same 68 dates listed individually is
+     * something they scroll past, which defeats the point of showing it at all. Deliberately
+     * separate from compressDailyValues(), which compresses by equal VALUE for the wire format
+     * and must keep matching what Channex expects.
+     */
+    function channexCompressDateList(array $dates): array {
+        if (empty($dates)) return [];
+        sort($dates);
+        $ranges = [];
+        $from = $prev = $dates[0];
+        $nights = 1;
+        for ($i = 1, $n = count($dates); $i < $n; $i++) {
+            if ($dates[$i] === date('Y-m-d', strtotime($prev . ' +1 day'))) {
+                $prev = $dates[$i];
+                $nights++;
+                continue;
+            }
+            $ranges[] = ['from' => $from, 'to' => $prev, 'nights' => $nights];
+            $from = $prev = $dates[$i];
+            $nights = 1;
+        }
+        $ranges[] = ['from' => $from, 'to' => $prev, 'nights' => $nights];
+        return $ranges;
+    }
+}
+
 class AriDrainWorker {
     private PDO $pdo;
     private ChannexAdapter $adapter;
@@ -371,6 +402,105 @@ class AriDrainWorker {
      * rule at all) still goes through the original adjacency compression
      * unchanged.
      */
+    /**
+     * Expands room_rate_rules into a date => winning-rule map for one scope.
+     *
+     * Extracted from computeCompressedRestrictions() 9 Sep 2026 so the push-confirmation
+     * preflight (computeRateCoverage() below) reads rate coverage through the exact same
+     * logic the push itself uses. A preview that can drift from the real push is worse than
+     * no preview - it tells the owner a date is priced when the push would send the flat
+     * default over it.
+     *
+     * "Flat Base Rate" mode returns an empty map on purpose: every day then falls through to
+     * default_tariff, same as if no rule existed.
+     */
+    private function buildRulesByDate(int $scopeId, string $startDate, string $endDate): array {
+        $rules = [];
+        if ($this->isDynamicPricingMode($scopeId)) {
+            $stmt = $this->pdo->prepare("
+                SELECT *
+                FROM room_rate_rules
+                WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
+                  AND start_date <= ? AND end_date >= ?
+                ORDER BY room_id DESC, created_at DESC
+            ");
+            $stmt->execute([$scopeId, $scopeId, $endDate, $startDate]);
+            $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        // Channex's own 2-letter day codes - shared vocabulary with
+        // room_rate_rules.days_of_week (see rate_rules.php's saveRateRule())
+        // and availability.php's own identical mapping for display.
+        $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
+
+        $rulesByDate = [];
+        foreach ($rules as $r) {
+            $ruleDays = !empty($r['days_of_week']) ? explode(',', $r['days_of_week']) : null;
+            $cur = strtotime($r['start_date']);
+            $end = strtotime($r['end_date']);
+            while ($cur <= $end) {
+                $dStr = date('Y-m-d', $cur);
+                if ($ruleDays === null || in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
+                    if (!isset($rulesByDate[$dStr])) {
+                        $rulesByDate[$dStr] = $r;
+                    }
+                }
+                $cur = strtotime('+1 day', $cur);
+            }
+        }
+        return $rulesByDate;
+    }
+
+    /**
+     * READ-ONLY. Which nights in a range would be pushed at the property's flat
+     * `default_tariff` because nothing prices them explicitly.
+     *
+     * This is the rate half of the push-confirmation gate (9 Sep 2026). CHANNEX.md 5.4
+     * describes the risk in the abstract - "a property with no rates entered yet pushes that
+     * flat number over the entire range, overwriting pricing already set on the OTA" - and
+     * this turns it into a specific, checkable claim the owner can act on before pushing:
+     * these dates, this rate. Airbnb's own per-date calendar prices cannot be read back
+     * (CHANNEX.md 6), so this is the only warning that is ever possible.
+     *
+     * Touches no network and writes nothing.
+     */
+    public function computeRateCoverage(int $propertyId, ?int $roomId, string $startDate, string $endDate): array {
+        $scopeId = $roomId ?: $propertyId;
+
+        $propStmt = $this->pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
+        $propStmt->execute([$scopeId]);
+        $baseTariff = (float) ($propStmt->fetchColumn() ?: 3500);
+
+        $isDynamic = $this->isDynamicPricingMode($scopeId);
+        $rulesByDate = $this->buildRulesByDate($scopeId, $startDate, $endDate);
+
+        // A day counts as covered only when a rule claims it AND that rule actually carries a
+        // price. A rule that sets only min_stay leaves rate_per_night null, and
+        // computeCompressedRestrictions() falls back to the base tariff for exactly that day -
+        // so treating "a rule exists" as "it is priced" would under-report the risk.
+        $uncovered = [];
+        $totalNights = 0;
+        $cur = strtotime($startDate);
+        $end = strtotime($endDate);
+        while ($cur <= $end) {
+            $dStr = date('Y-m-d', $cur);
+            $totalNights++;
+            $rule = $rulesByDate[$dStr] ?? null;
+            if (!$rule || $rule['rate_per_night'] === null) {
+                $uncovered[] = $dStr;
+            }
+            $cur = strtotime('+1 day', $cur);
+        }
+
+        return [
+            'pricing_mode'     => $isDynamic ? 'dynamic' : 'flat',
+            'default_tariff'   => $baseTariff,
+            'total_nights'     => $totalNights,
+            'uncovered_nights' => count($uncovered),
+            'uncovered_ranges' => channexCompressDateList($uncovered),
+        ];
+    }
+
     public function computeCompressedRestrictions(int $propertyId, ?int $roomId, string $startDate, string $endDate, ?array $touchedFields = null): array {
         $scopeId = $roomId ?: $propertyId;
         $allFields = ['rate_per_night', 'min_stay_arrival', 'min_stay_through', 'max_stay', 'stop_sell', 'closed_to_arrival', 'closed_to_departure'];
@@ -433,39 +563,7 @@ class AriDrainWorker {
         // Fetch rules - only while this scope is actually in Dynamic Rules
         // mode. "Flat Base Rate" means every day below falls through to the
         // base tariff with no restrictions, same as if no rule existed.
-        $rules = [];
-        if ($this->isDynamicPricingMode($scopeId)) {
-            $stmt = $this->pdo->prepare("
-                SELECT *
-                FROM room_rate_rules
-                WHERE (room_id = ? OR (room_id IS NULL AND property_id = ?))
-                  AND start_date <= ? AND end_date >= ?
-                ORDER BY room_id DESC, created_at DESC
-            ");
-            $stmt->execute([$scopeId, $scopeId, $endDate, $startDate]);
-            $rules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-        // Channex's own 2-letter day codes - shared vocabulary with
-        // room_rate_rules.days_of_week (see rate_rules.php's saveRateRule())
-        // and availability.php's own identical mapping for display.
-        $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
-
-        $rulesByDate = [];
-        foreach ($rules as $r) {
-            $ruleDays = !empty($r['days_of_week']) ? explode(',', $r['days_of_week']) : null;
-            $cur = strtotime($r['start_date']);
-            $end = strtotime($r['end_date']);
-            while ($cur <= $end) {
-                $dStr = date('Y-m-d', $cur);
-                if ($ruleDays === null || in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
-                    if (!isset($rulesByDate[$dStr])) {
-                        $rulesByDate[$dStr] = $r;
-                    }
-                }
-                $cur = strtotime('+1 day', $cur);
-            }
-        }
+        $rulesByDate = $this->buildRulesByDate($scopeId, $startDate, $endDate);
 
         // Build daily state - only the touched fields are set on each day,
         // so a rate-only push never carries stop_sell/closed_to_arrival/etc.

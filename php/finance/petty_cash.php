@@ -381,35 +381,95 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
             break;
 
         case 'get_system_misc_catalog':
-            // System-wide view for Root Admin (not property-scoped)
+            // System-wide view for Root Admin's "Default Misc Charges (Guest)"
+            // page (not property-scoped - always reads the one canonical
+            // property_id=1 bucket every tenant's get_misc_catalog merges in,
+            // see the schema comment above). Rewritten 9 Sep 2026: this action
+            // existed but was never wired into router.php's dispatch table and
+            // its old query capped every category at its first item
+            // (`LIMIT 1` inside the per-category loop) - dead, unreachable,
+            // and would have under-reported even if it had been reachable.
+            // Shape now matches get_system_expense_catalog's (grouped by
+            // category) so DefaultMiscChargesManager.tsx can reuse that same
+            // proven UI pattern.
             try {
                 $stmt = $pdo->query("
-                    SELECT DISTINCT category
+                    SELECT id, label, default_amount, category, description
                     FROM miscellaneous_catalog
-                    WHERE is_system_default = TRUE
-                    ORDER BY category ASC
+                    WHERE property_id = 1 AND is_system_default = TRUE
+                    ORDER BY category ASC, label ASC
                 ");
-                $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
+                $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $grouped = [];
-                foreach ($categories as $category) {
-                    $stmt = $pdo->prepare("
-                        SELECT id, label, default_amount, category, description, is_system_default
-                        FROM miscellaneous_catalog
-                        WHERE category = ? AND is_system_default = TRUE
-                        ORDER BY label ASC
-                        LIMIT 1
-                    ");
-                    $stmt->execute([$category]);
-                    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    if ($items) {
-                        $grouped[$category] = $items;
-                    }
+                foreach ($data as $item) {
+                    $cat = $item['category'];
+                    if (!isset($grouped[$cat])) $grouped[$cat] = [];
+                    $grouped[$cat][] = $item;
                 }
-
-                echo json_encode(['status' => 'success', 'data' => $grouped]);
+                echo json_encode(['status' => 'success', 'data' => $grouped, 'grouped' => true]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'add_system_misc_charge_item':
+            // Root Admin write path - creates/updates a row directly on the
+            // shared property_id=1 bucket, unlike add_misc_charge_template
+            // (property-scoped, copy-on-write) below. This is deliberately
+            // the ONE place in the app that's allowed to mutate a system
+            // default in place, since it's the actual canonical row every
+            // tenant's get_misc_catalog reads - editing here intentionally
+            // cascades to every property that hasn't already overridden this
+            // label with its own row (see get_misc_catalog's merge).
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $label = trim($input['label'] ?? '');
+                    $amount = $input['default_amount'] ?? $input['defaultAmount'] ?? 0.00;
+                    $category = trim($input['category'] ?? '') ?: 'Services';
+                    $description = $input['description'] ?? '';
+                    $id = $input['id'] ?? null;
+
+                    if (empty($label)) {
+                        echo json_encode(['status' => 'error', 'message' => 'Item name is required']);
+                        break;
+                    }
+
+                    if ($id) {
+                        $stmt = $pdo->prepare("
+                            UPDATE miscellaneous_catalog SET label = ?, default_amount = ?, category = ?, description = ?
+                            WHERE id = ? AND property_id = 1 AND is_system_default = TRUE
+                        ");
+                        $stmt->execute([$label, $amount, $category, $description, $id]);
+                    } else {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO miscellaneous_catalog (property_id, label, default_amount, category, description, is_system_default)
+                            VALUES (1, ?, ?, ?, ?, TRUE)
+                            ON DUPLICATE KEY UPDATE
+                            default_amount = VALUES(default_amount), category = VALUES(category), description = VALUES(description), is_system_default = TRUE
+                        ");
+                        $stmt->execute([$label, $amount, $category, $description]);
+                    }
+                    echo json_encode(['status' => 'success', 'message' => 'System default charge saved successfully']);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+            }
+            break;
+
+        case 'delete_system_misc_charge_item':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true);
+                try {
+                    $stmt = $pdo->prepare("
+                        DELETE FROM miscellaneous_catalog
+                        WHERE (id = ? OR label = ?) AND property_id = 1 AND is_system_default = TRUE
+                    ");
+                    $stmt->execute([$input['id'] ?? null, $input['label'] ?? null]);
+                    echo json_encode(['status' => 'success', 'message' => 'System default charge deleted successfully', 'rows_deleted' => $stmt->rowCount()]);
+                } catch (PDOException $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
             }
             break;
 

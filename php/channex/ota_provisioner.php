@@ -13,17 +13,14 @@ require_once __DIR__ . '/channel_connections.php';
 require_once __DIR__ . '/ChannexChannelClient.php';
 require_once __DIR__ . '/content_sync.php';
 require_once __DIR__ . '/../api/multikey_properties.php';
-// Needed for the same readiness-check + pre-activation ARI push
-// channex_channel_activate already requires (router.php) - this file used to
-// call activateChannel() directly with none of that, which is exactly how the
-// 3 Sep 2026 Patel Colony incident (AVL=0 for every room, every date) happened
-// (found 8 Sep 2026 during code review; see the activation step below).
-if (is_file(__DIR__ . '/outbox.php')) {
-    require_once __DIR__ . '/outbox.php';
-}
-if (is_file(__DIR__ . '/ari_drain_worker.php')) {
-    require_once __DIR__ . '/ari_drain_worker.php';
-}
+// DELIBERATELY NOT REQUIRED HERE: outbox.php and ari_drain_worker.php. This file imports from
+// an OTA and must never push to one (see the "Step 5" comment in
+// autoProvisionPropertyFromAirbnb()), so the push machinery is kept out of its reach entirely -
+// nothing on the import request path loads them (verified 9 Sep 2026: router.php requires
+// outbox.php only inside the channex_outbox_drain / channex_push_ari cases, and
+// multikey_properties.php only inside update_room_tariff), so adding a push here would have to be
+// a conscious act of requiring them, not a one-line call that just happens to resolve.
+// They were required here between 8 and 9 Sep 2026, when this path still activated the channel.
 
 if (!function_exists('airbnbNormalizeHour')) {
     function airbnbNormalizeHour($raw): ?string {
@@ -46,37 +43,23 @@ if (!function_exists('airbnbNormalizeHour')) {
  *   written by this function at all, regardless of this argument - see the CLAUDE.md rule
  *   "OTA Import Must Never Rewrite a Property's Identity" (6 Sep 2026). Passing a name through here
  *   for a multi-listing property is silently ignored for `name` specifically.
- * @param bool $confirmedExistingBookings Same consent gate `channex_channel_activate` requires
- *   before going live - the caller (the onboarding wizard) must have the host explicitly confirm
- *   any pre-existing bookings on this OTA before this function will activate the channel.
- * @param bool $confirmedRateFallback Same consent gate for the flat-default-rate-fallback risk.
+ *
+ * IMPORT ONLY - this function never writes to the OTA and never activates the channel. See the
+ * "Step 5" comment at the end of the function for the full reasoning. It therefore takes no
+ * consent gates: `confirmed_existing_bookings` / `confirmed_rate_fallback` belong to
+ * `channex_channel_activate`, which is the action that actually pushes.
+ *
  * @return array
  */
 function autoProvisionPropertyFromAirbnb(
     PDO $pdo,
     int $propertyId,
     array $selectedListingIds = [],
-    ?string $customPropertyName = null,
-    bool $confirmedExistingBookings = false,
-    bool $confirmedRateFallback = false
+    ?string $customPropertyName = null
 ): array {
     if ($propertyId <= 0) {
         return ['status' => 'error', 'message' => 'Invalid property ID'];
     }
-    // Same two consent gates channex_channel_activate enforces server-side
-    // (router.php) - checked here too, up front, so a caller cannot reach
-    // activation below without them regardless of which action invokes this
-    // function. loadFutureReservations() further down does pull in Airbnb's
-    // own existing reservations automatically, but that does not cover a
-    // manually-set block on Airbnb's own calendar with no reservation behind
-    // it - the host still needs to confirm that themselves.
-    if (!$confirmedExistingBookings) {
-        return ['status' => 'error', 'message' => 'Confirm any existing bookings on this OTA are already entered in Ground Code before going live', 'http_code' => 422];
-    }
-    if (!$confirmedRateFallback) {
-        return ['status' => 'error', 'message' => 'Confirm you understand dates with no explicit rate will push at this property\'s default rate before going live', 'http_code' => 422];
-    }
-
     $conn = getChannexChannelConnection($pdo, $propertyId, 'AirBNB');
     if (!$conn || empty($conn['channex_channel_id'])) {
         return ['status' => 'error', 'message' => 'No active Airbnb connection found for this property. Please authorize Airbnb first.'];
@@ -439,64 +422,48 @@ function autoProvisionPropertyFromAirbnb(
         applyAirbnbRoomConfig($pdo, $confirmedRooms, $propertyId, !empty($propertyFields) ? $propertyFields : null);
     }
 
-    // Step 5: Activate channel connection - same two safety gates
-    // channex_channel_activate enforces (router.php), previously skipped
-    // entirely here. This is verbatim the 3 Sep 2026 Patel Colony incident:
-    // activating with no readiness check and no ARI ever pushed left every
-    // room showing AVL=0 for every date, silently blocking all bookings from
-    // the day the property went live - found again in this new code path
-    // 8 Sep 2026.
-    $readiness = $channelClient->checkReadiness($conn['channex_channel_id']);
-    $readinessProblems = $readiness['data'] ?? [];
-    if (!empty($readinessProblems)) {
-        return [
-            'status' => 'error',
-            'message' => 'Not ready to activate - resolve these first',
-            'data' => ['problems' => $readinessProblems],
-            'property_id' => $propertyId,
-        ];
-    }
-
-    // Push fresh ARI before the channel can see the listing - activating
-    // with stale/incomplete availability is how a property gets
-    // double-booked on day one. Same enqueue+immediate-drain path
-    // channex_channel_activate and channex_push_ari already use.
-    if (function_exists('enqueueOutboxItem') && class_exists('AriDrainWorker')) {
-        $dFrom = date('Y-m-d');
-        $dTo = date('Y-m-d', strtotime('+500 days'));
-        $pushRoomIds = function_exists('getChannexPushRoomIds')
-            ? getChannexPushRoomIds($pdo, $propertyId)
-            : [null];
-        $preActivateIds = [];
-        foreach ($pushRoomIds as $pushRoomId) {
-            enqueueOutboxItem($pdo, $propertyId, $pushRoomId, 'availability', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
-            $preActivateIds[] = (int)$pdo->lastInsertId();
-            enqueueOutboxItem($pdo, $propertyId, $pushRoomId, 'rates', $dFrom, $dTo, ['action' => 'pre_activate_channel_push']);
-            $preActivateIds[] = (int)$pdo->lastInsertId();
-        }
-        (new AriDrainWorker($pdo))->processBatch(max(10, count($preActivateIds)), $preActivateIds);
-    }
-
-    $activateRes = $channelClient->activateChannel($conn['channex_channel_id']);
-    if (empty($activateRes['success'])) {
-        upsertChannexChannelConnection($pdo, $propertyId, 'AirBNB', [
-            'last_error' => is_string($activateRes['error'] ?? null) ? $activateRes['error'] : 'Activation failed',
-        ]);
-        return [
-            'status' => 'error',
-            'message' => 'Failed to activate the channel',
-            'error' => $activateRes['error'] ?? null,
-            'property_id' => $propertyId,
-        ];
-    }
+    // Step 5: STOP HERE. This is an IMPORT - the channel is left INACTIVE on purpose.
+    //
+    // HARD RULE (9 Sep 2026, explicit instruction: "no matter what ... no availability is
+    // pushed from app end but only imported"). Adding a property from an OTA must never write
+    // to that OTA's calendar, and ACTIVATING IS A WRITE - Channex documents activate as "the
+    // connection starts exchanging data with the channel: a full synchronisation pushes
+    // availability, rates and restrictions". So there is no version of "activate but push
+    // nothing":
+    //
+    //   - push Ground Code's own view  -> reopens dates the host blocked directly on Airbnb
+    //                                     (CHANNEX.md 5.2 - this already happened once) and
+    //                                     flattens per-date pricing we cannot even read back
+    //                                     (CHANNEX.md 6: "Airbnb's per-date calendar prices
+    //                                     CANNOT be read")
+    //   - push nothing                 -> Channex syncs its own empty state, leaving AVL=0 on
+    //                                     every room and every date (the 3 Sep 2026 Patel
+    //                                     Colony incident)
+    //
+    // Both are outward-facing damage caused by an action the owner only asked to *import*, so
+    // this path does neither. The connection is parked at 'ready_to_activate' and the owner
+    // goes live later, deliberately, via `channex_channel_activate` - which is where the
+    // readiness check, the two consent gates and the pre-activation ARI push correctly live
+    // (router.php), and which is reached from ChannelConnectWizard's own "Go Live" step.
+    //
+    // DO NOT re-add an activateChannel() or enqueueOutboxItem() call here. If a future change
+    // needs a push, it belongs behind the owner's own Go Live action, never inside an import.
     upsertChannexChannelConnection($pdo, $propertyId, 'AirBNB', [
-        'status' => 'active',
+        'status' => 'ready_to_activate',
         'last_error' => null,
     ]);
 
-    // Background pull of pre-existing reservations
+    // Pull reservations that predate the connection. This is a READ, not a push: Channex
+    // documents load_future_reservations as running in the background and NOT triggering guest
+    // notifications or availability changes, so it is safe on an inactive channel and is
+    // exactly the "only imported" half being asked for. Nothing else fetches these - the
+    // revisions feed only ever holds unacknowledged events, so a listing's existing bookings
+    // never show up on their own (CHANNEX.md 6). Non-fatal: a failed pull must not fail an
+    // import that has already written rooms and mappings.
+    $reservationsPullStarted = false;
     try {
-        $channelClient->loadFutureReservations($conn['channex_channel_id']);
+        $pullRes = $channelClient->loadFutureReservations($conn['channex_channel_id']);
+        $reservationsPullStarted = !empty($pullRes['success']);
     } catch (Throwable $e) {}
 
     // Fetch latest slug for redirect
@@ -506,11 +473,15 @@ function autoProvisionPropertyFromAirbnb(
 
     return [
         'status' => 'success',
-        'message' => 'Property and rooms successfully imported and activated from Airbnb!',
+        'message' => 'Property and rooms imported from Airbnb. Nothing has been sent to Airbnb - '
+            . 'the channel is not live yet. Review your rates and blocked dates, then use Go Live '
+            . 'when you are ready to start syncing.',
         'property_id' => $propertyId,
         'property_slug' => $finalSlug,
         'redirect_url' => "/{$finalSlug}",
         'rooms_count' => count($roomMappingsToSave),
+        'channel_active' => false,
+        'reservations_pull_started' => $reservationsPullStarted,
     ];
 }
 

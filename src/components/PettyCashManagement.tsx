@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useReducer } from 'react';
 import { Drawer, Card, TextInput as FlowbiteTextInput, Label, Checkbox, Dropdown, DropdownItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from 'flowbite-react';
-import { X, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, User, Users, Scale, Building2, Camera, Plus, Trash2, Settings, Filter, Package } from './icons/FlowbiteIcons';
+import { X, Pencil, Edit2, FileText, FileSpreadsheet, Landmark, User, Users, Scale, Building2, Camera, Plus, Trash2, Settings, Filter, Package, ScanLine, Loader2 } from './icons/FlowbiteIcons';
 import { TablePagination } from './TablePagination';
 import { PettyCashEntry } from '../types';
 import { Button } from './Button';
@@ -20,6 +20,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { Input } from './Input';
 import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { scanPettyCashReceipt, scanUpiScreenshot, type ReceiptScanResult, type UpiScanResult } from '../utils/ocrScanner';
 
 interface PettyCashManagementProps {
   activeRole?: string;
@@ -469,6 +470,70 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   // Inline Editing State / Modal Edit State for Admin & Super Admin
   const [editingEntry, setEditingEntry] = useState<PettyCashEntry | null>(null);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+
+  // OCR scanning state for invoice slips & payment proofs
+  const [isScanningSlip, setIsScanningSlip] = useState(false);
+  const [slipScanProgress, setSlipScanProgress] = useState(0);
+  const [scannedSlipResult, setScannedSlipResult] = useState<ReceiptScanResult | null>(null);
+
+  const [isScanningPaymentProof, setIsScanningPaymentProof] = useState(false);
+  const [paymentProofScanProgress, setPaymentProofScanProgress] = useState(0);
+  const [scannedPaymentProofResult, setScannedPaymentProofResult] = useState<UpiScanResult | null>(null);
+
+  const handleScanInvoiceSlip = async (file: File) => {
+    if (!file || isScanningSlip) return;
+    setIsScanningSlip(true);
+    setSlipScanProgress(5);
+    setScannedSlipResult(null);
+    try {
+      const result = await scanPettyCashReceipt(file, (pct) => {
+        setSlipScanProgress(pct);
+      });
+      setScannedSlipResult(result);
+      if (result.amount) {
+        if (!formState.amount) {
+          dispatch({ type: 'SET_FIELD', field: 'amount', value: result.amount });
+        }
+        if (result.date) {
+          dispatch({ type: 'SET_FIELD', field: 'expenseDate', value: result.date });
+        }
+        showToast(`Detected ₹${result.amount.toLocaleString('en-IN')} from bill slip!`, { type: 'success' });
+      } else {
+        showToast('Scanned bill, but could not detect total amount.', { type: 'warning' });
+      }
+    } catch (err: any) {
+      console.error('Slip OCR scan error:', err);
+      showToast('OCR scan failed for bill slip.', { type: 'error' });
+    } finally {
+      setIsScanningSlip(false);
+    }
+  };
+
+  const handleScanPaymentProof = async (file: File) => {
+    if (!file || isScanningPaymentProof) return;
+    setIsScanningPaymentProof(true);
+    setPaymentProofScanProgress(5);
+    setScannedPaymentProofResult(null);
+    try {
+      const result = await scanUpiScreenshot(file, (pct) => {
+        setPaymentProofScanProgress(pct);
+      });
+      setScannedPaymentProofResult(result);
+      if (result.amount) {
+        if (!formState.amount) {
+          dispatch({ type: 'SET_FIELD', field: 'amount', value: result.amount });
+        }
+        showToast(`Detected ₹${result.amount.toLocaleString('en-IN')} (UTR: ${result.utr || 'N/A'})`, { type: 'success' });
+      } else {
+        showToast('Scanned proof, but could not detect payment amount.', { type: 'warning' });
+      }
+    } catch (err: any) {
+      console.error('UPI OCR scan error:', err);
+      showToast('OCR scan failed for payment proof.', { type: 'error' });
+    } finally {
+      setIsScanningPaymentProof(false);
+    }
+  };
 
   // Search & Timeframe Filter State (Flowbite Application UI Transactions Pattern)
   const currentMonthKey = new Date().toISOString().slice(0, 7);
@@ -1409,11 +1474,52 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 multiple
                 onChange={e => {
                   const files = Array.from(e.target.files || []);
-                  files.forEach(f => handleCompressFile(f, 'invoice'));
+                  files.forEach(f => {
+                    handleCompressFile(f, 'invoice');
+                    if (f.type.startsWith('image/')) {
+                      handleScanInvoiceSlip(f);
+                    }
+                  });
                   e.target.value = '';
                 }}
                 helperText={formState.invoiceBillUrls.length > 0 ? `${formState.invoiceBillUrls.length} attached - choosing more files adds to this list.` : undefined}
               />
+              {isScanningSlip && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>Scanning bill slip with OCR ({slipScanProgress}%)...</span>
+                </div>
+              )}
+              {scannedSlipResult && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between font-semibold text-emerald-900 dark:text-emerald-200">
+                    <span className="flex items-center gap-1.5">
+                      <ScanLine className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{scannedSlipResult.vendor || 'Scanned Bill Slip'}</span>
+                    </span>
+                    {scannedSlipResult.amount != null && (
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                        ₹{scannedSlipResult.amount.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-2xs text-slate-600 dark:text-slate-400">
+                    <span>Date: {scannedSlipResult.date || 'Not detected'}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (scannedSlipResult.amount) dispatch({ type: 'SET_FIELD', field: 'amount', value: scannedSlipResult.amount });
+                        if (scannedSlipResult.date) dispatch({ type: 'SET_FIELD', field: 'expenseDate', value: scannedSlipResult.date });
+                        if (scannedSlipResult.vendor && !formState.description) dispatch({ type: 'SET_FIELD', field: 'description', value: scannedSlipResult.vendor });
+                        showToast('Applied bill details to form', { type: 'success' });
+                      }}
+                      className="text-emerald-700 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
+                    >
+                      Re-apply to form
+                    </button>
+                  </div>
+                </div>
+              )}
               {formState.invoiceBillUrls.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {formState.invoiceBillUrls.map((url, idx) => (
@@ -1446,11 +1552,52 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                 multiple
                 onChange={e => {
                   const files = Array.from(e.target.files || []);
-                  files.forEach(f => handleCompressFile(f, 'screenshot'));
+                  files.forEach(f => {
+                    handleCompressFile(f, 'screenshot');
+                    if (f.type.startsWith('image/')) {
+                      handleScanPaymentProof(f);
+                    }
+                  });
                   e.target.value = '';
                 }}
                 helperText={formState.paymentScreenshotUrls.length > 0 ? `${formState.paymentScreenshotUrls.length} attached - choosing more files adds to this list.` : undefined}
               />
+              {isScanningPaymentProof && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>Scanning payment proof with OCR ({paymentProofScanProgress}%)...</span>
+                </div>
+              )}
+              {scannedPaymentProofResult && (
+                <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between font-semibold text-blue-900 dark:text-blue-200">
+                    <span className="flex items-center gap-1.5">
+                      <ScanLine className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{scannedPaymentProofResult.appHint !== 'Other' ? `${scannedPaymentProofResult.appHint} Proof` : 'Payment Proof'}</span>
+                    </span>
+                    {scannedPaymentProofResult.amount != null && (
+                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                        ₹{scannedPaymentProofResult.amount.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-2xs text-slate-600 dark:text-slate-400">
+                    <span>UTR: {scannedPaymentProofResult.utr || 'Not detected'}</span>
+                    {scannedPaymentProofResult.amount != null && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (scannedPaymentProofResult.amount) dispatch({ type: 'SET_FIELD', field: 'amount', value: scannedPaymentProofResult.amount });
+                          showToast('Applied amount to form', { type: 'success' });
+                        }}
+                        className="text-blue-700 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        Re-apply amount
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               {formState.paymentScreenshotUrls.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {formState.paymentScreenshotUrls.map((url, idx) => (
