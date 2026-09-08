@@ -9,36 +9,8 @@ This document tracks identified bugs, pending backend API integrations, and upco
 ### 💳 SaaS Pricing Model & Rate Card Alignment (Monthly-Only Payments Policy)
 
 - **Context & Decision**: Product decision confirmed that Ground Code operates strictly on **monthly billing/payments** — annual prepayment plans and annual discount structures are not offered.
-- **Problem & Current Mismatch**:
-  - The Root Admin Onboarding & Rate Card interface (`src/components/OnboardingManager.tsx` -> Tab 3: *Pricing & Per-Key Billing*) currently displays an **"Annual Discount (%)"** configuration input (set to 20%) alongside a **"Live Client Billing Simulator"** featuring a *"25-Room Resort (Annual with 20% Off)"* calculation (`calc25RoomsAnnual`).
-  - `src/components/SubscriptionPanel.tsx` and `php/api/configuration.php` still compute `annual_discount_pct` and `annualTotal` estimates.
 - **Action Items to Cross-Check & Update**:
   - [ ] **Cross-Check Rate Card Figures**: Audit base monthly tariff (currently ₹1,499/mo) and per-key/per-room fee (currently ₹50/mo per extra room above base occupancy) against revised operational costs and current homestay/resort customer acquisition goals.
-  - [x] **Retire Annual Billing Settings from Root Admin UI** — shipped; verified 8 Sep 2026, zero `annual_discount_pct` / `annualTotal` / `annualEstimate` hits across `src/` and `php/`.
-    - Remove the "Annual Discount (%)" field from `OnboardingManager.tsx` (Tab 3).
-    - Update the Live Client Billing Simulator to showcase monthly breakdowns exclusively (e.g. 5-Room Homestay vs. 15-Room Boutique Resort vs. 25-Room Resort, all strictly monthly).
-  - [x] **Align Tenant Subscription Panel** — shipped in the same sweep (`1b14d488`).
-    - Strip annual equivalent estimates from `SubscriptionPanel.tsx` (`annualEstimate`, `annualTotal`, `billing_cycle === 'annual'`).
-    - Standardize renewal displays strictly around the monthly billing cycle.
-  - [x] **Backend Configuration Cleanup (`php/api/configuration.php`)** — shipped; no annual fields remain in the config envelope.
-    - Deprecate `annual_discount_pct` in default onboarding configuration envelopes and ensure rate cards strictly emit monthly per-key structures.
-
-### 🔄 Root Dashboard Onboarding vs. Frontend Client Flows Alignment
-
-- **Context & Goal**: Audit and reconcile all onboarding configuration, copy, trial cadences, and feature highlights managed in Root Dashboard (`src/components/OnboardingManager.tsx` -> `#onboarding`) with what actual tenant users experience in the frontend (`SelfOnboardingWizard.tsx`, `PropertySetupWizard.tsx`, `DemoOnboardingTour.tsx`, and `SubscriptionPanel.tsx`).
-- **Problem & Identified Gaps**:
-  - **Outdated Integration References**: Root Dashboard onboarding templates still instruct new hosts to *"connect Airbnb and Booking.com iCal feeds in Settings → Calendar Sync"*, whereas iCal has been decommissioned/archived in favor of Channex OTA Channel Manager.
-  - **Cadence & Feature List Discrepancies**: Email/WhatsApp/Telegram cadence messages in Root Dashboard reference setup steps and terminology that need to strictly match the actual frontend wizard sequence (e.g. multi-room setup, Telegram staff alerts, staff roles, menu/kitchen setup).
-  - **Brand Manifesto Compliance**: Ensure all onboarding messaging, tip sequences, and trial emails adhere to the Ground Code Brand Manifesto:
-    - Punchy lines (<= 10 words per line).
-    - Friendly homestay host tone (no corporate jargon).
-    - Telegram strictly for staff operations; WhatsApp strictly for guests.
-    - No fake placeholder URLs (`domain.com/path`).
-- **Action Items to Audit & Tally**:
-  - [x] **Tally Setup Checklist**: Map each onboarding email/cadence step (Day 1, Day 3, Day 7, Day 14, Day 21, Day 28, Day 30) against actual live screens and routes in the frontend app.
-  - [x] **Replace Legacy Mentions**: Sweep `OnboardingManager.tsx` templates to remove all mentions of iCal / Calendar Sync feeds, replacing them with Channex Channel Manager and direct booking links.
-  - [x] **Sync Default Modules & Rate Cards**: Verify that initial modules provisioned during onboarding (`property_modules`) and default expenses/bills match the rate cards and defaults shown in Root Admin.
-  - [x] **Verify Dynamic Template Tags**: Ensure all dynamic placeholders in Root Dashboard (`{tenant_name}`, `{property_name}`, `{login_url}`, `{expires_at}`, `{support_phone}`) correctly populate with real data across all communication channels.
 
 ### 💬 Custom WhatsApp-Powered SaaS Customer Support Desk (Planned - Sep 2026)
 
@@ -104,7 +76,6 @@ This document tracks identified bugs, pending backend API integrations, and upco
     - Sends Telegram notification to property staff bot:
       *"✅ Self Check-In Done: {{guest_name}} for {{room_name}} has uploaded ID and signed registration card."*
 
-
 ### Pre-Launch: Dedicated Test Sandbox Property + Telegram Groups
 
 **Deferred on purpose - user wants this done just before the site actually launches, not now.**
@@ -140,43 +111,16 @@ Clean division between **Part 1: Onboarding, Adding/Importing Properties & User 
 
 ### PART 1: 🏨 Onboarding, Adding/Importing Properties & User Flow
 
-#### 1.1 The Onboarding Process: Eliminating the Blank-Canvas Maze
-- **Current Code State**:
-  - `SelfOnboardingWizard.tsx` is structured around a traditional 5-step signup: (1) Profile Credentials, (2) Trial summary, (3) Manual Property Setup (Name, Single vs Multi-Key, Room count, Standard rate, Check-in/out hours, Kitchen toggle), (4) OTA Channel Connection (`OnboardingChannelStep.tsx`), and (5) Mobile PWA install advice.
-- **Friction & Flaws**:
-  - **Inverted Sequence**: In Step 3, the host is forced to type provisional room counts and flat room rates in the dark, before Ground Code even connects to their real Airbnb or Booking.com account.
-  - **Drop-Off at Step 4**: When reaching Step 4, clicking "Connect Airbnb" launches a nested `ChannelConnectWizard.tsx` modal, which then expects the user to manually match dummy rooms (`Room 1`, `Room 2`...) to real Airbnb listing names. Following that, a second nested drawer (`AirbnbConfigImportDrawer.tsx`) opens, asking the user to tick checkboxes across 20 fields per room.
-- **What Could Be Done Better (The Architectural Solution)**:
-  - [x] **1-Screen Frictionless Sign-Up (`SelfOnboardingWizard.tsx`)** — shipped `bd8de91d`; the "Import from Airbnb" hero path is live in the wizard (verified 8 Sep 2026).
-    - Step 1: Just Name, Phone, and 6-digit PIN.
-    - Step 2: **"How do you want to set up your property?"**:
-      - 🌟 **"Import from Airbnb / OTA" (Hero Path for 99.99% of hosts)**.
-      - 📝 *"I am a brand new property with no OTA listings yet"* (Manual fallback).
-    - If "Import from Airbnb" is tapped, immediate Channex OAuth opens in popup.
-    - Once authorized, Ground Code queries all discovered listings and displays a visual property card:
-      *"We found Artists Farm: 4 Units (Main Villa, Pool Cottage, Suite 1, Suite 2). Click below to launch."*
-    - Single tap on **"Import & Launch My Resort"** completes everything!
-
 #### 1.2 Adding / Importing Properties: Automated Direct Provisioning
 - **Current Code State**:
   - `PropertyCreationWizard.tsx` and `PropertySetupWizard.tsx` require 5 linear steps (Basics, Contact/Tax, Payments/UPI, Operations, Notes).
   - Adding a multi-key property requires manually creating the parent property, navigating to `MultiKeyPropertyOverview.tsx` to manually click "Add Room" for every single room, navigating to `ChannelConnectionsPage.tsx` to map each room, and finally opening `AirbnbConfigImportDrawer.tsx`.
   - `php/api/router.php:1280-1660` (`proposeAirbnbRoomConfig`) pulls capacity, check-in/out, prices, house rules, instructions, wifi, amenities, and bed layouts, but **does not import listing photos into the gallery**.
 - **Friction & Flaws**:
-  - **Chicken-and-Egg Blocker**: Backend `channex_import_airbnb_room_config` requires local `properties` rows and room rows to ALREADY exist and be mapped in `channex_channel_room_mappings` before any listing data can be read.
   - **No Listing Photos**: Airbnb listing photos are left behind, leaving the direct booking engine (`/{slug}/#book`) blank without manual photo uploads.
-  - **Amenity Manual Mapping**: Amenities are pulled as JSON strings but not automatically activated in the property's standard amenity catalog.
 - **What Could Be Done Better (The Architectural Solution)**:
-  - [x] **1-Click Discovered Listing Provisioner (`php/channex/ota_provisioner.php`)** — shipped `bd8de91d`, safety rails in `0deacf77`; the file exists and is wired into `router.php` (verified 8 Sep 2026).
-    - New backend endpoint that takes an array of discovered Airbnb listing IDs from `getChannelListings` and in a single atomic PDO transaction:
-      1. Creates the parent property row (`name`, `address`, `google_maps_link`, `checkin_time`, `checkout_time`, `property_type = 'MULTI_KEY'`).
-      2. Creates all child room rows (`properties` with `property_type = 'MULTI_KEY_ROOM'`) using exact Airbnb listing titles.
-      3. Sets `max_capacity`, `included_occupancy`, `extra_guest_charge`, `cleaning_fee`, `security_deposit`, and `default_tariff`.
-      4. Fills `instructions`, `house_manual`, `wifi_network`, `wifi_password`, `house_rules`, and `cancellation_policy`.
-      5. Auto-populates `channex_mappings` and `channex_channel_room_mappings` so the property is instantly connected.
   - [ ] **Listing Photos Auto-Import**:
     - Ingest listing image URLs from the Airbnb payload, save them to `php/uploads/images/{tenantSlug}/{propertySlug}/`, and populate the property image gallery.
-  - [x] **Amenity Catalog Translation** — shipped `24f95e13` (8 Sep 2026). `normalizeAmenityList()` in [amenityCatalog.ts](file:///c:/xampp/htdocs/artists_farm/src/utils/amenityCatalog.ts) maps Airbnb's own constants onto catalog labels via a slug pass plus a small alias table, so an import ticks the real checkboxes instead of piling into "Custom Added Amenities". 54/54 sampled Airbnb constants resolve, up from 10. Guarded by `test-amenity-mapping.mjs`. Constants with no catalog item (`DISHWASHER`, `HOT_TUB`, `GYM`, `BBQ_GRILL`) stay as readable custom chips by design.
 
 #### 1.3 User Flow & Time-to-Value (First 5 Minutes Experience)
 - **Current Code State**:
@@ -200,20 +144,12 @@ Clean division between **Part 1: Onboarding, Adding/Importing Properties & User 
   - Add a persistent top bar of top 10 homestay staples (Masala Chai, Coffee, Toast, Maggi, Poha, Aloo Paratha, Thali, Mineral Water) in `KitchenManagement.tsx` for 1-tap addition while staff are taking orders poolside/table-side.
 - [ ] **One-Tap Dietary & Preparation Tag Chips**:
   - Add instant chips (`[Jain]`, `[Less Spicy]`, `[Extra Spicy]`, `[No Sugar]`, `[Room Delivery]`) appended to item notes with a single tap, eliminating typing on mobile keyboards.
-- [x] **KOT Audio Chime on Kitchen Phone** — shipped `19d14e3a` (verified in `KitchenManagement.tsx`).
-  - Sound an audible chime on the kitchen staff device when a new food order is placed.
 
 #### 2.2 Inventory & Petty Cash Bridge (Homestay Operational Reality)
 - [ ] **Unified "Record Market Purchase" Modal (Stock In + Cash Out in 1 Flow)**:
   - Caretakers buying milk, eggs, bread, or vegetables from local markets currently have to record cash out in Petty Cash and stock count in Inventory separately.
   - Create a single unified drawer: Caretaker enters item ("Milk 10L"), total cost (₹600), and uploads receipt photo.
   - System simultaneously increments inventory stock count AND logs a debit entry in the Petty Cash ledger in one motion.
-
-#### 2.3 Billing & Folio Settlement
-- [x] **Split Payment Settlement & GSTIN Tax Folio Billing**:
-  - In `ReceiptEditModal.tsx` & `receipts.php`, support settling guest bills across multiple tenders simultaneously (e.g. ₹5,000 Cash + ₹3,200 UPI).
-  - Multi-tender splits persist method amounts (`cash_amount`, `upi_amount`, `card_amount`, `bank_transfer_amount`) and post granular entries to `financial_ledger` for exact front-desk cash drawer and bank account reconciliation.
-  - Complete GSTIN and company billing name support on folios, share messages, and print invoices with CGST/SGST tax breakdown.
 
 #### 2.4 Pre-Flight Launch Verification Checklist
 - [ ] **Interactive Pre-Flight Health Dashboard (`#preflight`)**:
@@ -232,28 +168,13 @@ Clean division between **Part 1: Onboarding, Adding/Importing Properties & User 
 Comprehensive architectural, security, database, and frontend audit conducted September 2026 across all 91 MySQL tables, PHP backend APIs, and React/Flowbite components.
 
 #### Phase 1: P0 Security & Data Protection
-- [x] **Block Web Access to Sensitive Files (`.htaccess`)** — shipped. Verified 8 Sep 2026: `.htaccess:9` denies `sql|env|key|pem|log|sh|lock|local`, and `.htaccess:19` denies `id_rsa|sftp-config.json|logs.json` by name. `.json` is deliberately NOT blocked wholesale (the app serves real JSON), so any new secret-bearing `.json` must be added to the line-19 list by name.
-- [ ] **Purge Plaintext Credentials from Document Root** — STILL OPEN, re-verified 8 Sep 2026 rather than assumed: `id_rsa` and `sftp-config.json` are **still present on disk in the document root**. They are gitignored (`.gitignore:53`, plus the blanket `*.json` on line 10) and blocked from the web by the `.htaccess` rules above, so this is no longer a remote-download risk — but a plaintext private key still sits inside the web root, and anything that bypasses `.htaccess` (a server misconfig, a second vhost, a backup archive) exposes it. Remaining work unchanged: move them out of the docroot and rotate.
-- [x] **Delete / Secure Unauthenticated Debug & Reset Scripts** — shipped. Verified 8 Sep 2026 that all four are gone from the tree: `php/admin/reset_staging_jaipur.php`, `php/api/debug_guests.php`, `php/api/diagnostic.php`, `php/api/test_nav_menu.php`.
+- [ ] **Purge Plaintext Credentials from Document Root** — STILL OPEN, re-verified 8 Sep 2026 rather than assumed: `id_rsa` and `sftp-config.json` are **still present on disk in the document root**. They are gitignored (`.gitignore:53`, plus the blanket `*.json` on line 10) and blocked from the web by `.htaccess` (line 9 denies `sql|env|key|pem|log|sh|lock|local`, line 19 denies `id_rsa|sftp-config.json|logs.json` by name), so this is no longer a remote-download risk — but a plaintext private key still sits inside the web root, and anything that bypasses `.htaccess` (a server misconfig, a second vhost, a backup archive) exposes it. Remaining work unchanged: move them out of the docroot and rotate.
 
 #### Phase 2: P1 Reliability, RBAC & API Error Handling
-- [x] **Enforce Staff Management RBAC (`php/staff/staff.php`)** — shipped. `handleStaffRequests` resolves `$callerRole` from the session and gates writes on `$isSuperOrRootCaller` / `$isAdminCaller` (staff.php:178-181), with role escalation called out explicitly at the write site.
-- [x] **Fix Kitchen Order Transactions & Silent Failure Swallowing (`php/kitchen/orders.php`)** — shipped; `create_order` opens a real transaction at orders.php:203.
-- [x] **Fix Cross-Tenant IDOR on Kitchen Items (`php/kitchen/orders.php`)** — shipped; `update_order_item_status` now joins `orders o` and scopes on `(oi.property_id = ? OR o.property_id = ?)` (orders.php:426-430).
 - [ ] **Asynchronous Webhook & Alert Dispatch**:
   - Decouple synchronous Meta WhatsApp call in `php/guests/guests.php:877-881` and Telegram call in `php/kitchen/orders.php:250` so slow external APIs do not block user HTTP requests.
-- [x] **Validate Telegram Webhook Secret Token (`php/telegram/telegram_webhook.php`)** — shipped; the header is read and validated at telegram_webhook.php:20-22, with the secret defined in `php/telegram/config.php`.
 
 #### Phase 3: Database & Indexing Optimization
-- [x] **Execute Performance Indexing Migration** — shipped and confirmed LIVE. Queried staging 8 Sep 2026: `idx_guests_room_lookup`, `idx_module_slug_enabled`, `idx_svc_req_prop_status_created`, `idx_receipts_prop_created` and `idx_ledger_prop_occurred` all PRESENT. Checked on the server, not inferred from a migration file — no repo code creates these, so a fresh environment will NOT have them until they are run there too.
-  - `ALTER TABLE guests ADD INDEX idx_guests_room_lookup (property_id, room_id, status, checkin_date, expected_checkout);`
-  - `ALTER TABLE property_modules ADD INDEX idx_module_slug_enabled (module_slug, is_enabled);`
-  - `ALTER TABLE service_requests ADD INDEX idx_svc_req_prop_status_created (property_id, status, created_at);`
-  - `ALTER TABLE service_requests ADD INDEX idx_svc_req_room (property_id, room_id);`
-  - `ALTER TABLE billing_receipts ADD INDEX idx_receipts_prop_created (property_id, created_at);`
-  - `ALTER TABLE financial_ledger ADD INDEX idx_ledger_prop_occurred (property_id, occurred_at);`
-  - `ALTER TABLE financial_ledger ADD INDEX idx_ledger_source (property_id, source_type, source_id);`
-- [x] **Fix SARGability Anti-Pattern in Financial Ledger (`php/finance/petty_cash.php`)** — shipped; the query uses date-range boundaries so `idx_ledger_prop_occurred` is usable (petty_cash.php:961).
 - [ ] **Atomic Claim Locks in Telegram Outbox (`php/telegram/sender.php`)**:
   - Introduce `FOR UPDATE` or atomic status update to `sending` in `drainTelegramOutbox` to prevent duplicate message dispatch across concurrent workers.
 
@@ -265,6 +186,4 @@ Comprehensive architectural, security, database, and frontend audit conducted Se
 ---
 
 *Last Updated: 2026-09-08*
-
-
 
