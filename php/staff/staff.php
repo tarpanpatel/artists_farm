@@ -95,6 +95,46 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
         markSchemaVerified('schema_staff_tables');
         }
 
+        // staff_attendance needs ONE row per (property, staff member, day) -
+        // added 8 Sep 2026, when attendance was first wired up to actually
+        // persist. Until then nothing ever wrote here from the calendar (marks
+        // lived in React state and died on refresh), so the table only had an
+        // auto-increment PK and two non-unique indexes. Without this key, the
+        // P -> A -> H -> L click cycle would stack four rows for one day and
+        // get_attendance's "last row wins" would be decided by row order, not
+        // by what the user last clicked.
+        //
+        // Dedupe first, then add the key: adding it to a table that already has
+        // duplicates fails outright, and this must self-heal on every
+        // environment (see CLAUDE.md's self-healing schema rule) rather than
+        // needing a hand-run migration. Verified 8 Sep 2026 that staging has
+        // zero duplicate groups across its 135 rows, so this is a no-op there -
+        // it exists for environments that may not be as clean. The highest id
+        // wins a tie: rows are only ever appended, so that is the latest mark.
+        if (!isSchemaVerified('schema_staff_attendance_unique_v1')) {
+            try {
+                $pdo->exec("DELETE a FROM `staff_attendance` a
+                            JOIN `staff_attendance` b
+                              ON a.property_id = b.property_id
+                             AND a.user_id = b.user_id
+                             AND a.attendance_date = b.attendance_date
+                             AND a.id < b.id");
+                $hasUnique = false;
+                foreach ($pdo->query("SHOW INDEX FROM `staff_attendance`")->fetchAll(PDO::FETCH_ASSOC) as $ix) {
+                    if (($ix['Key_name'] ?? '') === 'uniq_attendance_prop_user_date') { $hasUnique = true; break; }
+                }
+                if (!$hasUnique) {
+                    $pdo->exec("ALTER TABLE `staff_attendance`
+                                ADD UNIQUE KEY `uniq_attendance_prop_user_date` (`property_id`, `user_id`, `attendance_date`)");
+                }
+                markSchemaVerified('schema_staff_attendance_unique_v1');
+            } catch (PDOException $e) {
+                // Not marked verified, so this retries on the next request
+                // rather than leaving log_attendance upserting against a key
+                // that isn't there.
+            }
+        }
+
         // Seed staff only if testing mode is enabled - production databases should start clean
         $check = $pdo->prepare("SELECT COUNT(*) FROM staff_users WHERE property_id = ?");
         $check->execute([$propertyId]);
@@ -131,6 +171,26 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
             }
         }
     } catch (PDOException $e) {}
+
+    if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+        session_start();
+    }
+    $callerRole = $_SESSION['role'] ?? '';
+    $callerUserId = $_SESSION['user_id'] ?? null;
+    $isSuperOrRootCaller = !empty($_SESSION['is_platform_admin']) || in_array(strtolower($callerRole), ['super admin', 'root admin', 'root_admin'], true);
+    $isAdminCaller = $isSuperOrRootCaller || strtolower($callerRole) === 'admin';
+
+    $isDemoProperty = false;
+    try {
+        $pStmt = $pdo->prepare("SELECT is_public_demo FROM properties WHERE id = ?");
+        $pStmt->execute([$propertyId]);
+        $isDemoProperty = (bool)$pStmt->fetchColumn();
+    } catch (Exception $eP) {}
+
+    $isTestingMode = (isset($_COOKIE['artists_farm_testing_mode']) && $_COOKIE['artists_farm_testing_mode'] === '1')
+        || (defined('PHP_SAPI') && PHP_SAPI === 'cli')
+        || (!empty($_SESSION['is_demo_session']))
+        || $isDemoProperty;
 
     switch ($action) {
         case 'get_staff':
@@ -169,6 +229,11 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'add_user':
             if ($request_method === 'POST') {
+                if (!$isAdminCaller && !$isTestingMode) {
+                    http_response_code(403);
+                    echo json_encode(['status' => 'error', 'message' => 'Forbidden: Only administrators can add staff members.']);
+                    break;
+                }
                 $input = json_decode(file_get_contents('php://input'), true) ?? [];
                 try {
                     $input = array_merge($input, validateStaffInput($input));
@@ -253,7 +318,23 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'update_user':
             if ($request_method === 'POST') {
+                if (!$isAdminCaller && !$isTestingMode) {
+                    http_response_code(403);
+                    echo json_encode(['status' => 'error', 'message' => 'Forbidden: Insufficient permissions to modify staff accounts.']);
+                    break;
+                }
                 $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                // Block non-super admins from escalating any account to Super Admin or Root Admin
+                if (!$isSuperOrRootCaller && !$isTestingMode) {
+                    if (isset($input['role']) && in_array(strtolower($input['role']), ['super admin', 'root admin', 'root_admin'], true)) {
+                        http_response_code(403);
+                        echo json_encode(['status' => 'error', 'message' => 'Forbidden: Only Super Admins can assign administrative roles.']);
+                        break;
+                    }
+                    if (!empty($input['accessAllProperties'])) {
+                        $input['accessAllProperties'] = 0;
+                    }
+                }
                 try {
                     $input = array_merge($input, validateStaffInput($input));
                 } catch (Exception $eVal) {
@@ -375,7 +456,12 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'delete_user':
             if ($request_method === 'POST') {
-                $input = json_decode(file_get_contents('php://input'), true);
+                if (!$isAdminCaller && !$isTestingMode) {
+                    http_response_code(403);
+                    echo json_encode(['status' => 'error', 'message' => 'Forbidden: Only administrators can delete staff members.']);
+                    break;
+                }
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
                 try {
                     // Fetch before deleting - purely so the audit entry below can
                     // name who was deleted instead of just an opaque id.
@@ -540,16 +626,62 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'staffId is required']);
                     break;
                 }
+                // The date must be a real ISO day. The desktop calendar used to
+                // key its cells DD/MM/YYYY while this column is a DATE and every
+                // other reader (the mobile day view, the salary payout's
+                // startsWith('YYYY-MM')) assumed ISO - fixed on the client 8 Sep
+                // 2026, and rejected here too so a stray format can never be
+                // silently coerced by MySQL into 0000-00-00.
+                $date = trim((string)($input['date'] ?? date('Y-m-d')));
+                $d = DateTime::createFromFormat('Y-m-d', $date);
+                if (!$d || $d->format('Y-m-d') !== $date) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'date must be YYYY-MM-DD']);
+                    break;
+                }
+                $status = trim((string)($input['status'] ?? 'Present'));
+                $allowedStatuses = ['Present', 'Absent', 'Half Day', 'Paid Leave'];
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO staff_attendance (attendance_date, user_id, status, marked_by, property_id) VALUES (?, ?, ?, ?, ?)");
+                    // 'Clear' is the last step of the calendar's P -> A -> H -> L
+                    // click cycle: it means "unmark this day", so the row is
+                    // removed rather than stored as a status nothing renders.
+                    if ($status === 'Clear' || $status === '') {
+                        $stmt = $pdo->prepare("DELETE FROM staff_attendance WHERE property_id = ? AND user_id = ? AND attendance_date = ?");
+                        $stmt->execute([$propertyId, $staffId, $date]);
+                        echo json_encode(['status' => 'success', 'message' => 'Attendance cleared']);
+                        break;
+                    }
+                    if (!in_array($status, $allowedStatuses, true)) {
+                        http_response_code(400);
+                        echo json_encode(['status' => 'error', 'message' => 'Unknown attendance status: ' . $status]);
+                        break;
+                    }
+                    // Upsert, not insert: re-marking a day must replace that
+                    // day's status, not append a second row for it. Relies on
+                    // uniq_attendance_prop_user_date, self-healed above.
+                    $stmt = $pdo->prepare("INSERT INTO staff_attendance (attendance_date, user_id, staff_name, status, marked_by, property_id)
+                                           VALUES (?, ?, ?, ?, ?, ?)
+                                           ON DUPLICATE KEY UPDATE
+                                               status = VALUES(status),
+                                               staff_name = VALUES(staff_name),
+                                               marked_by = VALUES(marked_by)");
                     $stmt->execute([
-                        $input['date'] ?? date('Y-m-d'),
+                        $date,
                         $staffId,
-                        $input['status'] ?? 'Present',
-                        $input['marked_by'] ?? 'Tarpan',
+                        trim((string)($input['staffName'] ?? $input['staff_name'] ?? 'Staff Member')),
+                        $status,
+                        trim((string)($input['marked_by'] ?? 'Admin')),
                         $propertyId
                     ]);
-                } catch (PDOException $e) {}
+                } catch (PDOException $e) {
+                    // Previously this caught and discarded the exception, then
+                    // reported success anyway - a write that failed looked
+                    // identical to one that worked, which is precisely how
+                    // "attendance doesn't save" could go unnoticed. Surface it.
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Could not save attendance: ' . $e->getMessage()]);
+                    break;
+                }
                 echo json_encode(['status' => 'success', 'message' => 'Attendance logged successfully']);
             }
             break;

@@ -448,7 +448,7 @@ export const HELP_MANUAL_ITEMS: HelpManualItem[] = [
     steps: [
       'Zero Booking Commission: You keep 100% of your guest room revenue.',
       '30-Day Free Trial: Includes all Pro features with no credit card required and no lock-in.',
-      'Pro Plan: Billed at ₹1,499/month (includes 1st room key) + ₹350/extra key/month, or save 2 months free with annual billing.'
+      'Pro Plan: Simple monthly billing at ₹1,499/month (includes 1st room key) + ₹350/extra key/month with no lock-in.'
     ]
   },
   {

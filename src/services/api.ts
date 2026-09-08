@@ -2799,6 +2799,45 @@ export async function addServedLogToDB(log: {
   }
 }
 
+/**
+ * Persist ONE attendance mark (8 Sep 2026). Until this existed, marking a day
+ * on the Attendance Calendar only touched React state - `recordAttendance` in
+ * StaffContext never called the API - so every mark was lost on refresh and
+ * counted toward nobody's salary. Confirmed live: Patel Colony had visible
+ * marks on screen and zero rows in staff_attendance.
+ *
+ * `status: 'Clear'` means "unmark this day"; the backend deletes the row.
+ * The backend upserts on (property_id, user_id, attendance_date), so calling
+ * this repeatedly for the same day is safe and idempotent - which is what the
+ * calendar's P -> A -> H -> L -> unmarked click cycle does.
+ */
+export async function logAttendanceDB(record: {
+  date: string;
+  staffId: string;
+  staffName?: string;
+  status: string;
+  markedBy?: string;
+}): Promise<boolean> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=log_attendance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: record.date,
+        staffId: record.staffId,
+        staffName: record.staffName || 'Staff Member',
+        status: record.status,
+        marked_by: record.markedBy || 'Admin',
+      }),
+    });
+    const json = await res.json();
+    return json.status === 'success';
+  } catch (err) {
+    console.error('Failed to log attendance:', err);
+    return false;
+  }
+}
+
 export async function saveAttendanceToDB(records: any[]): Promise<boolean> {
   try {
     for (const rec of records) {

@@ -6,6 +6,7 @@ test-results/
 tests/e2e/.auth/
 *.zip
 *.sql
+!sql/*.sql
 *.json
 !package.json
 !package-lock.json
@@ -139,3 +140,6 @@ assets/css/custom_css_override.css
 # would sweep the lock off disk and the next concurrent run would see no lock at all -
 # the deploy would silently unlock itself in exactly the window the lock exists to guard.
 .deploy-staging.lock
+
+# Local secrets
+.agents/secrets.local

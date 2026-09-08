@@ -398,9 +398,17 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     const dateObj = new Date(selectedYear, selectedMonth, dayNum);
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayName = dayNames[dateObj.getDay()];
-    const formatted = formatDateDDMMYYYY(`${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`);
+    // ISO, not DD/MM/YYYY (8 Sep 2026). `dateStr` is only ever a KEY here - the
+    // column headers render dayNum/dayName, never this - and every other holder
+    // of the same key disagreed with the display format: the mobile day-card
+    // view below builds `YYYY-MM-DD`, staff_attendance stores `YYYY-MM-DD`, and
+    // CashDrawerManager's salary payout selects a month with
+    // `a.date.startsWith('YYYY-MM')`. So a day marked on this desktop grid
+    // matched nothing on reload and counted toward nobody's salary. Formatting
+    // belongs at display time; the key stays canonical.
+    const iso = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     const isToday = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() && dayNum === now.getDate();
-    return { dayNum, dayName, dateStr: formatted, isToday };
+    return { dayNum, dayName, dateStr: iso, isToday };
   });
 
   // Map attendance records
@@ -708,7 +716,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const applyBulkStatus = (status: AttendanceRecord['status'] | 'Clear') => {
     selectedCells.forEach((key) => {
-      const [staffId, dateStr] = key.split('_');
+      // Split on the LAST underscore, not the first (8 Sep 2026, reported live:
+      // "cant mark attendance on tarpan patel only"). A cell key is
+      // `${staffId}_${date}` and a staff id may itself contain underscores - a
+      // tenant's own Super Admin row is created as `superadmin_<propertyId>` by
+      // multikey_properties.php, so `key.split('_')` handed back "superadmin",
+      // `staff.find` matched nothing, and the `if (member)` guard below skipped
+      // that row in complete silence. Every other row on the property worked,
+      // which is exactly why it read as "this one person can't be marked".
+      // The date half never contains an underscore, so the last one is always
+      // the real boundary regardless of how the id is shaped.
+      const sep = key.lastIndexOf('_');
+      const staffId = sep === -1 ? '' : key.slice(0, sep);
+      const dateStr = sep === -1 ? key : key.slice(sep + 1);
       const member = staff.find((s) => s.id === staffId);
       if (member) {
         recordAttendance({

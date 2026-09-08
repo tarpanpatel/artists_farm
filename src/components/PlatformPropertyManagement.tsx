@@ -7,6 +7,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { FieldHelpPopover } from './FieldHelpPopover';
 import { LoadingScreen } from './LoadingScreen';
+import { Popover } from './Popover';
 import { TelegramPairingPanel } from './TelegramPairingPanel';
 import { API_ROOT_BASE } from '../services/api';
 import { t } from '../i18n/en';
@@ -1539,17 +1540,22 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               <p className="text-2xs font-medium text-slate-500 dark:text-slate-400">Username (Phone)</p>
                               <div className="flex items-center justify-between mt-1">
                                 <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">{creds.username}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    navigator.clipboard?.writeText(creds.username);
-                                    showToast(t('copied_to_clipboard', 'Copied to clipboard'), { type: 'success' });
-                                  }}
-                                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
-                                  title="Copy username"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                </button>
+                                <Popover
+                                    trigger="hover"
+                                    content={<div className="px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">{t('copy_username', 'Copy username')}</div>}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard?.writeText(creds.username);
+                                        showToast(t('copied_to_clipboard', 'Copied to clipboard'), { type: 'success' });
+                                      }}
+                                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                      aria-label={t('copy_username', 'Copy username')}
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                </Popover>
                               </div>
                             </div>
 
@@ -1560,25 +1566,35 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                   {isRevealed ? creds.passcode : '••••••'}
                                 </span>
                                 <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => setRevealedPasscodeId(isRevealed ? null : editingTenant.id)}
-                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
-                                    title={isRevealed ? 'Hide passcode' : 'Show passcode'}
+                                  <Popover
+                                    trigger="hover"
+                                    content={<div className="px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">{isRevealed ? t('hide_passcode', 'Hide passcode') : t('show_passcode', 'Show passcode')}</div>}
                                   >
-                                    {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      navigator.clipboard?.writeText(creds.passcode);
-                                      showToast(t('copied_to_clipboard', 'Copied to clipboard'), { type: 'success' });
-                                    }}
-                                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
-                                    title="Copy passcode"
+                                    <button
+                                      type="button"
+                                      onClick={() => setRevealedPasscodeId(isRevealed ? null : editingTenant.id)}
+                                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                      aria-label={isRevealed ? t('hide_passcode', 'Hide passcode') : t('show_passcode', 'Show passcode')}
+                                    >
+                                      {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
+                                    </button>
+                                  </Popover>
+                                  <Popover
+                                    trigger="hover"
+                                    content={<div className="px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">{t('copy_passcode', 'Copy passcode')}</div>}
                                   >
-                                    <Copy className="w-3.5 h-3.5" />
-                                  </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard?.writeText(creds.passcode);
+                                        showToast(t('copied_to_clipboard', 'Copied to clipboard'), { type: 'success' });
+                                      }}
+                                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                      aria-label={t('copy_passcode', 'Copy passcode')}
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </Popover>
                                 </div>
                               </div>
                             </div>

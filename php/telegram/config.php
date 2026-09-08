@@ -20,3 +20,8 @@ if (!defined('TELEGRAM_ADMIN_CHAT_ID')) {
 if (!defined('TELEGRAM_FINANCE_CHAT_ID')) {
     define('TELEGRAM_FINANCE_CHAT_ID', getenv('TELEGRAM_FINANCE_CHAT_ID') ?: null);
 }
+
+// Inbound webhook verification secret (Telegram X-Telegram-Bot-Api-Secret-Token)
+if (!defined('TELEGRAM_WEBHOOK_SECRET')) {
+    define('TELEGRAM_WEBHOOK_SECRET', getenv('TELEGRAM_WEBHOOK_SECRET') ?: 'gc_tg_sec_' . substr(hash('sha256', 'groundcode_telegram_secret_salt'), 0, 32));
+}

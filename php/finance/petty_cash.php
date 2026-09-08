@@ -958,10 +958,11 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 ensureFinancialLedger($pdo);
                 $month = $_GET['month'] ?? '';
                 if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
-                    // financial_ledger is multi-tenant (every property's cash drawer, salary and
-                    // expense entries share the table), so ALWAYS scope by the resolved property.
-                    $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE property_id = ? AND DATE_FORMAT(occurred_at, '%Y-%m') = ? ORDER BY occurred_at DESC, id DESC");
-                    $stmt->execute([$propertyId, $month]);
+                    // SARGable date range boundary allows MySQL to utilize idx_ledger_prop_occurred index
+                    $monthStart = $month . '-01 00:00:00';
+                    $monthEnd = date('Y-m-t 23:59:59', strtotime($monthStart));
+                    $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE property_id = ? AND occurred_at BETWEEN ? AND ? ORDER BY occurred_at DESC, id DESC");
+                    $stmt->execute([$propertyId, $monthStart, $monthEnd]);
                 } else {
                     $stmt = $pdo->prepare("SELECT * FROM financial_ledger WHERE property_id = ? ORDER BY occurred_at DESC, id DESC LIMIT 1000");
                     $stmt->execute([$propertyId]);

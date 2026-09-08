@@ -12,9 +12,21 @@
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
+require_once __DIR__ . "/config.php";
 require_once __DIR__ . "/../config/database.php";
 require_once __DIR__ . "/webhook_handler.php";
 require_once __DIR__ . "/pairing.php";
+
+// Validate X-Telegram-Bot-Api-Secret-Token on inbound webhook calls
+$expectedSecret = defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '';
+$receivedSecret = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
+
+if (!empty($expectedSecret)) {
+    if (empty($receivedSecret) || !hash_equals($expectedSecret, $receivedSecret)) {
+        http_response_code(403);
+        exit('Forbidden: Invalid webhook secret token');
+    }
+}
 
 $rawContent = file_get_contents("php://input");
 $update = json_decode($rawContent, true);

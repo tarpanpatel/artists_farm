@@ -200,6 +200,7 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 $walkInTabId = empty($guest_id) ? (int)($input['walk_in_tab_id'] ?? 0) ?: null : null;
                 $specialInstructions = trim((string)($input['special_instructions'] ?? '')) ?: null;
                 try {
+                    $pdo->beginTransaction();
                     $stmt = $pdo->prepare("INSERT INTO orders (property_id, guest_id, walk_in_tab_id, order_time, status, special_instructions) VALUES (?, ?, ?, NOW(), 'Pending', ?)");
                     $stmt->execute([$propertyId, $guest_id, $walkInTabId, $specialInstructions]);
                     $order_id = $pdo->lastInsertId();
@@ -225,6 +226,8 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                             $itemsPayload[] = ['name' => $nameStmt->fetchColumn() ?: 'Dish', 'qty' => $qty];
                         }
                     }
+                    $pdo->commit();
+
                     echo json_encode(['status' => 'success', 'id' => 'KOT-' . $order_id, 'order_id' => (int)$order_id, 'message' => 'Kitchen ticket created successfully']);
 
                     // Notify the kitchen group about the new ticket (best-effort;
@@ -257,8 +260,11 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                         error_log("kitchen_new_order telegram dispatch failed: " . $e->getMessage());
                     }
                 } catch (PDOException $e) {
-                    $order_id = 'KOT-' . time();
-                    echo json_encode(['status' => 'success', 'id' => $order_id, 'message' => 'Kitchen ticket created']);
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => 'Database error saving kitchen ticket: ' . $e->getMessage()]);
                 }
             }
             break;
@@ -417,11 +423,11 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     ensureOrderItemReminderColumns($pdo);
                     if ($status === 'Ready') {
-                        $stmt = $pdo->prepare("UPDATE order_items SET item_status = ?, ready_at = COALESCE(ready_at, NOW()) WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE order_items oi JOIN orders o ON oi.order_id = o.id SET oi.item_status = ?, oi.ready_at = COALESCE(oi.ready_at, NOW()) WHERE oi.id = ? AND (oi.property_id = ? OR o.property_id = ?)");
                     } else {
-                        $stmt = $pdo->prepare("UPDATE order_items SET item_status = ? WHERE id = ?");
+                        $stmt = $pdo->prepare("UPDATE order_items oi JOIN orders o ON oi.order_id = o.id SET oi.item_status = ? WHERE oi.id = ? AND (oi.property_id = ? OR o.property_id = ?)");
                     }
-                    $stmt->execute([$status, $itemId]);
+                    $stmt->execute([$status, $itemId, $propertyId, $propertyId]);
 
                     // When every item on an order has been resolved (Served or
                     // individually Cancelled via the KDS "remove dish" control), the

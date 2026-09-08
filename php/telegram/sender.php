@@ -235,8 +235,12 @@ if (!function_exists('ensureTelegramWebhookSet')) {
         }
 
         try {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($webhookUrl));
+            $secretToken = defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '';
+            $setWebhookUrl = "https://api.telegram.org/bot{$token}/setWebhook?url=" . urlencode($webhookUrl);
+            if (!empty($secretToken)) {
+                $setWebhookUrl .= "&secret_token=" . urlencode($secretToken);
+            }
+            curl_setopt($ch, CURLOPT_URL, $setWebhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, 6);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
