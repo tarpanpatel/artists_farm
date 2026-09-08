@@ -856,10 +856,57 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // month, same as it always has.
     const isClearRoundTrip = !checkinDate && !checkoutDate;
 
+    // datesDisabled needs the exact same relaxation minDate just got above,
+    // and for the exact same reason: setDate() SILENTLY DROPS a date that is
+    // in datesDisabled (vanillajs-datepicker's setDate -> the
+    // `!config.datesDisabled.includes(date)` filter; a fully-filtered result
+    // just `return`s, with no error), and the library's own "no one-sided
+    // range" normalization then copies the side that DID set onto the side
+    // that didn't - so the booking silently displays with both ends on the
+    // same day.
+    //
+    // Found live 8 Sep 2026: an Airbnb booking of 7 Sep -> 8 Sep displayed as
+    // 7 Sep -> 7 Sep, because another guest checks IN on the 8th, so the 8th
+    // was in this room's blocked list. syncDisabledAndCeiling already handles
+    // exactly this case for a date being CLICKED - it drops the boundary date
+    // from the disabled set once a start exists, "since checking out ON that
+    // date is fine" - but it is keyed on the blockedDates prop changing, so
+    // when the blocked list lands on an earlier render than the dates (the
+    // normal order here: the room id that the list is computed from is set
+    // before the guest's dates arrive), the full list is still in force at
+    // the moment this load runs, and the checkout is thrown away.
+    //
+    // A booking's OWN saved dates must always be settable in its own form,
+    // whatever else is blocked - so they are excluded outright rather than
+    // relying on the boundary rule to happen to cover them. The normal
+    // dynamic set is restored immediately after, now that a real start is
+    // known, so nothing about what the user can PICK changes.
+    const loadedIsoDates = [checkinDate, checkoutDate]
+      .filter(Boolean)
+      .map((d) => d.slice(0, 10));
+    if (loadedIsoDates.length > 0) {
+      const relaxedBlocked = (blockedDatesRef.current ?? []).filter(
+        (d) => !loadedIsoDates.includes(d.slice(0, 10)),
+      );
+      const relaxedOptions = {
+        datesDisabled: toDisabledDates(relaxedBlocked),
+        maxDate: NO_END_CEILING,
+      };
+      rangepicker.datepickers[0].setOptions(relaxedOptions);
+      rangepicker.datepickers[1].setOptions(relaxedOptions);
+    }
+
     rangepicker.setDates(
       fromIsoDate(checkinDate) ?? { clear: true },
       fromIsoDate(checkoutDate) ?? { clear: true }
     );
+
+    // Back to the normal dynamic disabled set. Deliberately AFTER setDates:
+    // it is keyed on the start that has only just been loaded, and running it
+    // first would re-apply the very list that eats the checkout.
+    if (loadedIsoDates.length > 0) {
+      syncEndCeilingRef.current(checkinDate ? checkinDate.slice(0, 10) : '');
+    }
 
     // Restores from the ORIGINAL pre-clear snapshot (see preClearViewDateRef
     // above), not from "whatever the view is right now" - by this point an
