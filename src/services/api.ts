@@ -2852,6 +2852,96 @@ export async function logAttendanceDB(record: {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Web Push - kitchen alerts (8 Sep 2026, replaced the KDS audio chime)
+ * ------------------------------------------------------------------ */
+
+export interface KitchenPushResult {
+  ok: boolean;
+  sent: number;
+  failed: number;
+  recipients: string[];
+  /** Present only when nothing was sent - says WHICH reason applies. */
+  eligibleStaff?: number;
+  message?: string;
+}
+
+/**
+ * The server's VAPID public key. Public by design - it travels in the
+ * Authorization header of every push the server sends - so there is nothing
+ * to protect here; the private half never leaves the server.
+ */
+export async function fetchVapidPublicKeyDB(): Promise<string> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=get_vapid_public_key`);
+    const json = await res.json();
+    return json?.status === 'success' ? String(json.data?.publicKey || '') : '';
+  } catch (err) {
+    console.error('Failed to fetch VAPID public key:', err);
+    return '';
+  }
+}
+
+/**
+ * Register this browser/device against the logged-in user. The server takes
+ * the identity (user, role, property) from the SESSION and ignores anything
+ * the body might claim about it - see push_notifications.php.
+ */
+export async function savePushSubscriptionDB(sub: PushSubscription): Promise<boolean> {
+  try {
+    const raw = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+    const res = await apiFetch(`${API_BASE}?action=save_push_subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: raw.endpoint,
+        p256dh: raw.keys?.p256dh,
+        auth: raw.keys?.auth,
+      }),
+    });
+    const json = await res.json();
+    return json?.status === 'success';
+  } catch (err) {
+    console.error('Failed to save push subscription:', err);
+    return false;
+  }
+}
+
+/**
+ * Alert the kitchen. Only devices belonging to a kitchen-role user at this
+ * property receive it - the role filter lives server-side, so this cannot be
+ * widened by a caller.
+ */
+export async function sendKitchenPushDB(payload?: {
+  title?: string;
+  body?: string;
+  url?: string;
+}): Promise<KitchenPushResult> {
+  const failure: KitchenPushResult = { ok: false, sent: 0, failed: 0, recipients: [] };
+  try {
+    const res = await apiFetch(`${API_BASE}?action=send_kitchen_push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    });
+    const json = await res.json();
+    if (json?.status !== 'success') {
+      return { ...failure, message: json?.message || 'Could not send the alert.' };
+    }
+    return {
+      ok: true,
+      sent: Number(json.data?.sent || 0),
+      failed: Number(json.data?.failed || 0),
+      recipients: Array.isArray(json.data?.recipients) ? json.data.recipients : [],
+      eligibleStaff: json.data?.eligible_staff,
+      message: json.data?.message,
+    };
+  } catch (err) {
+    console.error('Failed to send kitchen push:', err);
+    return { ...failure, message: 'Network error - the alert was not sent.' };
+  }
+}
+
 export async function saveAttendanceToDB(records: any[]): Promise<boolean> {
   try {
     for (const rec of records) {

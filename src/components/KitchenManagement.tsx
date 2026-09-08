@@ -34,7 +34,8 @@ import {
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
 import { recordTelescopeLog } from '../utils/telescopeLogger';
-import { resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB, type StaffMealOption } from '../services/api';
+import { enablePushNotifications, ensurePushSubscription, getPushPermission, isPushSupported } from '../utils/pushNotifications';
+import { sendKitchenPushDB, resolveTelegramTemplate, fetchServedLogsFromDB, addServedLogToDB, fetchRecipesFromDB, saveRecipeToDB, deleteRecipeFromDB, depleteStockForDish, getPropertySlug, updateOrderItemStatus, updateOrderStatusDB, fetchStaffMealOptionsFromDB, addStaffMealOptionToDB, fetchStaffMealLogsFromDB, addStaffMealLogToDB, addOrderToDB, fetchWalkInTabsFromDB, openWalkInTabDB, type StaffMealOption } from '../services/api';
 import { StyledSelect } from './StyledSelect';
 import { Popover } from './Popover';
 import { useToast } from './ToastContext';
@@ -135,141 +136,6 @@ interface KitchenManagementProps {
 // serialized as strings), so it can never collide with a DB-assigned tab.
 const NEW_WALKIN_CUSTOMER_VALUE = '__new_customer__';
 
-/**
- * Kitchen order chime - a synthesized dual-tone (D5 -> A5) rather than an audio
- * file, so it still sounds with no network: a kitchen tablet on hotel wifi
- * can't be relied on to fetch an mp3 at the exact moment an order lands.
- *
- * Rewritten 8 Sep 2026, reported as "it does play the chime but only on pc".
- * Three separate defects, every one of which only ever bites on mobile:
- *
- *  1. `ctx.resume()` was called but never awaited. It is asynchronous, and the
- *     old code read `ctx.currentTime` and scheduled both tones in the same
- *     tick, while the context was still suspended. A phone ALWAYS starts the
- *     context suspended (autoplay policy), and on resume the clock jumps
- *     forward to the audio hardware's own time - so both tones had already
- *     been scheduled entirely in the past and nothing was ever audible. A
- *     desktop context is usually `running` before anyone clicks, so that
- *     branch never even ran there: exactly why it worked on PC and only PC.
- *  2. A brand-new AudioContext was built on every call and never closed. iOS
- *     Safari hard-caps a document at 4 live contexts and throws on the next
- *     one; Chrome caps around 6. Paired with the empty `catch`, that made the
- *     chime die silently part-way through a shift on the exact class of device
- *     a kitchen actually runs on. One context is now created lazily and reused
- *     for the life of the page.
- *  3. Nothing ever unlocked audio. The auto-chime fires from an effect on
- *     `orders.length` - no user gesture anywhere near it - which mobile blocks
- *     outright, so the feature that actually matters (tell staff an order
- *     arrived) could never fire on a phone even once. The unlock listener
- *     below resumes the context on the first real tap, so the context is
- *     already running by the time an order lands.
- *
- * Still outside our control: iOS silences Web Audio when the physical
- * ring/silent switch is on - unlike an <audio> element, which ignores it. If
- * the button reports success and the phone stays quiet, that switch is the
- * first thing to check.
- */
-export type ChimeResult = 'played' | 'blocked' | 'unsupported';
-
-let chimeCtx: AudioContext | null = null;
-
-const getChimeContext = (): AudioContext | null => {
-  if (typeof window === 'undefined') return null;
-  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-  if (!AudioCtx) return null;
-  // A context can end up 'closed' (some browsers close it after a PWA has been
-  // backgrounded long enough), and a closed one can never be reopened - so
-  // replace it rather than hand back a dead object that silently plays nothing.
-  if (!chimeCtx || chimeCtx.state === 'closed') {
-    try {
-      chimeCtx = new AudioCtx();
-    } catch {
-      return null;
-    }
-  }
-  return chimeCtx;
-};
-
-export const playKitchenChime = async (): Promise<ChimeResult> => {
-  const ctx = getChimeContext();
-  if (!ctx) return 'unsupported';
-
-  if (ctx.state === 'suspended') {
-    // Awaiting this is the whole of fix 1 - `currentTime` below is meaningless
-    // until the context is genuinely running.
-    try {
-      await ctx.resume();
-    } catch {
-      // Rejected because we're outside a user gesture. Not an error worth
-      // shouting about: the unlock listener will catch the next real tap.
-    }
-  }
-  if (ctx.state !== 'running') return 'blocked';
-
-  try {
-    const now = ctx.currentTime;
-    // Tone 1: 587.33 Hz (D5)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(587.33, now);
-    gain1.gain.setValueAtTime(0.12, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.35);
-
-    // Tone 2: 880 Hz (A5)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, now + 0.15);
-    gain2.gain.setValueAtTime(0.15, now + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now + 0.15);
-    osc2.stop(now + 0.65);
-    return 'played';
-  } catch {
-    return 'unsupported';
-  }
-};
-
-/**
- * Resume the chime's context on the first real user gesture, so an order that
- * arrives later can sound without one (fix 3 above).
- *
- * Installed at module scope rather than from a component effect on purpose:
- * this file is lazy-loaded, so the listeners attach the moment staff navigate
- * into Kitchen, and any tap after that unlocks audio - including taps that
- * have nothing to do with the chime, which is the point. They are passive and
- * remove themselves as soon as the context is running.
- */
-if (typeof window !== 'undefined') {
-  const events: Array<keyof WindowEventMap> = ['pointerdown', 'touchend', 'keydown'];
-  const stopListening = () => events.forEach((e) => window.removeEventListener(e, unlockChimeAudio));
-  function unlockChimeAudio() {
-    const ctx = getChimeContext();
-    if (!ctx) {
-      stopListening();
-      return;
-    }
-    if (ctx.state === 'running') {
-      stopListening();
-      return;
-    }
-    ctx.resume().then(() => {
-      if (ctx.state === 'running') stopListening();
-    }).catch(() => {});
-  }
-  events.forEach((e) => window.addEventListener(e, unlockChimeAudio, { passive: true }));
-  // Desktop usually allows this with no gesture at all - try immediately so the
-  // very first chime isn't wasted waiting for a tap that isn't needed there.
-  unlockChimeAudio();
-}
-
 export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   guests,
   menu,
@@ -318,6 +184,86 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // 'kds' view, rather than building a second, parallel KDS UI from scratch.
   const normalizedActiveRole = (activeRole || '').toLowerCase().trim();
   const isRestrictedStaffKitchenView = normalizedActiveRole === 'staff';
+
+  /**
+   * Kitchen push alerts (8 Sep 2026) - replaced the KDS audio chime, which
+   * only ever made a sound on the device already looking at this screen, and
+   * not even reliably there (mobile blocks audio on an untapped page; iOS
+   * mutes Web Audio on the silent switch). The bell now notifies the kitchen's
+   * own phones instead.
+   *
+   * This mirrors pushKitchenRoleClause() in php/api/push_notifications.php on
+   * purpose - the SERVER is what actually decides who receives a push, and
+   * this copy only decides whether to offer THIS user the enable prompt. Keep
+   * the two in step: the substring matching is not sloppiness, it is because
+   * the live staff_users table spells the chef role 'Chef/Cook', so an exact
+   * 'chef' comparison silently excludes every chef (found by smoke test,
+   * 8 Sep 2026 - it was the first draft of both halves of this rule).
+   */
+  const isKitchenRole =
+    normalizedActiveRole.includes('kitchen') ||
+    normalizedActiveRole.includes('chef') ||
+    normalizedActiveRole.includes('cook');
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>(() => getPushPermission());
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
+  const [isSendingKitchenPush, setIsSendingKitchenPush] = useState(false);
+
+  // Silent top-up for a device that already granted permission - never
+  // prompts, so it is safe from an effect. Without it the browser can hold a
+  // valid subscription the SERVER has no row for (a different property, a role
+  // changed since sign-up, a restored database), which presents as a phone
+  // that stays quiet while everything looks correctly subscribed.
+  useEffect(() => {
+    if (!isKitchenRole) return;
+    void ensurePushSubscription();
+  }, [isKitchenRole]);
+
+  const handleEnableKitchenAlerts = async () => {
+    setIsEnablingPush(true);
+    const result = await enablePushNotifications();
+    setPushPermission(getPushPermission());
+    setIsEnablingPush(false);
+    if (result === 'enabled') {
+      showToast('Alerts are on. This device will now be notified about kitchen orders.', { type: 'success' });
+    } else if (result === 'denied') {
+      // Only the user can undo this, and only in browser settings - the page
+      // is not allowed to ask again once refused, so say so plainly instead of
+      // leaving them clicking a button that can no longer do anything.
+      showToast('Notifications are blocked for this site. Turn them back on in your browser settings, then try again.', { type: 'error' });
+    } else if (result === 'unsupported') {
+      showToast('This browser cannot show notifications. On iPhone, add the app to your Home Screen first.', { type: 'error' });
+    } else if (result === 'failed') {
+      showToast('Could not turn on alerts. Please try again.', { type: 'error' });
+    }
+  };
+
+  const handleAlertKitchen = async () => {
+    setIsSendingKitchenPush(true);
+    const result = await sendKitchenPushDB({
+      title: 'Kitchen alert',
+      body: `${propertyName ? propertyName + ': ' : ''}Please check the kitchen order screen.`,
+      url: typeof window !== 'undefined' ? `${window.location.pathname}#kitchen_orders` : '',
+    });
+    setIsSendingKitchenPush(false);
+
+    if (!result.ok) {
+      showToast(result.message || 'Could not send the alert.', { type: 'error' });
+      return;
+    }
+    if (result.sent === 0) {
+      // Deliberately not a success toast. Silence is exactly how a broken
+      // notification system looks, so "sent to nobody" has to read as a
+      // problem - and the message says which of the two causes it is.
+      showToast(result.message || 'Nobody is set up to receive kitchen alerts yet.', { type: 'warning' });
+      return;
+    }
+    const who = result.recipients.length > 0 ? ` (${result.recipients.join(', ')})` : '';
+    showToast(
+      `Alert sent to ${result.sent} kitchen ${result.sent === 1 ? 'device' : 'devices'}${who}.` +
+        (result.failed > 0 ? ` ${result.failed} could not be reached.` : ''),
+      { type: 'success' }
+    );
+  };
   const getInitialTab = (): 'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder' => {
     if (isRestrictedStaffKitchenView) return 'kds';
     const key = activeMenuItemKey || (typeof window !== 'undefined' ? window.location.hash.replace('#', '').trim() : '');
@@ -343,26 +289,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     else if (activeMenuItemKey === 'kitchen_requisitions') setActiveTab('requisitions');
   }, [activeMenuItemKey, isRestrictedStaffKitchenView]);
 
+  const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null);
+
   // Telegram "Open in App" deep-link (5 Sep 2026) - find the specific order,
   // switch to the KDS board, then scroll it into view and briefly highlight
   // it. Only active/served-pending orders render on this board at all (see
   // activeOrders below), so a ticket already long past its life on the board
   // by the time staff tap the link simply finds nothing to highlight - same
   // defensive no-op as ServiceRequestsManagement.tsx's equivalent effect.
-  // Audio Chime on New Incoming Kitchen Orders (Finding 5.1)
-  const prevOrdersCountRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (prevOrdersCountRef.current !== null && orders.length > prevOrdersCountRef.current) {
-      // Fire-and-forget: this is now async (it awaits the audio context's
-      // resume), but there is nothing useful to do with the result here. If it
-      // comes back 'blocked' the device simply hasn't been tapped yet, and the
-      // ticket is on screen regardless - the chime is the nudge, not the alert.
-      void playKitchenChime();
-    }
-    prevOrdersCountRef.current = orders.length;
-  }, [orders.length]);
-
-  const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null);
   useEffect(() => {
     if (!focusOrderId || orders.length === 0) return;
     const cleanId = String(focusOrderId).trim().replace(/^#/, '');
@@ -1691,33 +1625,51 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 >
                   <span>{t('sync_button')}</span>
                 </Button>
+                {/* The bell notifies the kitchen's own phones (8 Sep 2026).
+                    It used to play a Web Audio chime, which could only ever be
+                    heard on the device already showing this screen - useless
+                    for a cook who has walked away from the tablet, which is
+                    the entire situation it was meant to cover. Server-side the
+                    push goes to kitchen-role staff only; see
+                    php/api/push_notifications.php. */}
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={async () => {
-                    // This button exists to ANSWER "will I hear an order?", so
-                    // it has to say something when the answer is no. It used to
-                    // swallow every failure, which is how a phone that could
-                    // never chime still looked identical to one that could.
-                    const result = await playKitchenChime();
-                    if (result === 'blocked') {
-                      showToast('Sound is blocked by the browser. Tap anywhere on the page once, then try again.', { type: 'error' });
-                    } else if (result === 'unsupported') {
-                      showToast('This browser cannot play the chime. Watch the ticket board instead.', { type: 'error' });
-                    } else {
-                      // It genuinely played. If the room is still silent the
-                      // cause is now on the device - and on an iPhone the
-                      // ring/silent switch mutes Web Audio specifically, which
-                      // is not something the page can detect or override.
-                      showToast('Chime played. Heard nothing? Check the volume, and the silent switch on iPhone.', { type: 'success' });
-                    }
-                  }}
-                  leftIcon={<Bell className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+                  onClick={handleAlertKitchen}
+                  disabled={isSendingKitchenPush}
+                  leftIcon={
+                    isSendingKitchenPush
+                      ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-amber-600 dark:text-amber-400" />
+                      : <Bell className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  }
                   className="h-8 text-xs font-semibold shadow-none text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-400"
-                  aria-label="Test kitchen order chime sound"
+                  aria-label="Send a notification to kitchen staff and chef"
                 >
-                  <span>Chime</span>
+                  <span>{isSendingKitchenPush ? 'Sending...' : 'Alert Kitchen'}</span>
                 </Button>
+
+                {/* Only a kitchen-role user can RECEIVE these, so only they are
+                    asked to turn them on - front desk seeing this prompt would
+                    be offering them something that does nothing. Hidden once
+                    granted, and on a browser with no Push API at all (notably
+                    iOS Safari until the app is added to the Home Screen). */}
+                {isKitchenRole && isPushSupported() && pushPermission !== 'granted' && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleEnableKitchenAlerts}
+                    disabled={isEnablingPush}
+                    leftIcon={
+                      isEnablingPush
+                        ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" />
+                        : <Bell className="w-3.5 h-3.5 shrink-0" />
+                    }
+                    className="h-8 text-xs font-semibold shadow-none"
+                    aria-label="Turn on kitchen order notifications on this device"
+                  >
+                    <span>{isEnablingPush ? 'Enabling...' : 'Enable Alerts'}</span>
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -123,6 +123,15 @@ if (!function_exists('ensureOrderSpecialInstructionsColumn')) {
 }
 
 function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
+    // Kitchen push alerts (8 Sep 2026). router.php already loads this module,
+    // so in practice the guard never fires - it is here so orders.php stays
+    // self-sufficient if it is ever included from somewhere else (a cron, a
+    // webhook), matching the same lazy-require idiom the Telegram dispatch in
+    // create_order below already uses.
+    if (!function_exists('notifyKitchenOfOrderEvent')) {
+        require_once __DIR__ . '/../api/push_notifications.php';
+    }
+
     switch ($action) {
         case 'get_orders':
             try {
@@ -249,6 +258,30 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                             $tStmt->execute([$walkInTabId]);
                             $guestName = $tStmt->fetchColumn() ?: 'Walk-in';
                         }
+                        // Push the same news to the kitchen's own phones (8 Sep
+                        // 2026: "new order or any order updates shouldn't land
+                        // silently"). Deliberately alongside Telegram rather
+                        // than instead of it - Telegram reaches a group chat
+                        // the property may or may not have set up, while this
+                        // reaches the specific people rostered to cook, on the
+                        // device in their pocket, with the app closed.
+                        try {
+                            $dishSummary = implode(', ', array_map(
+                                fn($i) => ($i['qty'] ?? 1) . 'x ' . ($i['name'] ?? 'Dish'),
+                                array_slice($itemsPayload, 0, 4)
+                            ));
+                            if (count($itemsPayload) > 4) {
+                                $dishSummary .= ' +' . (count($itemsPayload) - 4) . ' more';
+                            }
+                            notifyKitchenOfOrderEvent($pdo, (int) $propertyId, [
+                                'order_id' => $order_id,
+                                'title'    => 'New order #' . $order_id,
+                                'body'     => trim($guestName . ($dishSummary !== '' ? ' - ' . $dishSummary : '')),
+                            ]);
+                        } catch (Throwable $ePush) {
+                            error_log('kitchen_new_order push dispatch failed: ' . $ePush->getMessage());
+                        }
+
                         $msg = TelegramTemplates::newKitchenTicket($order_id, $guestName, $itemsPayload, $specialInstructions);
                         // Explicit order_id (5 Sep 2026) - the rendered text only ever shows
                         // "#{order_id}" (e.g. "NEW ORDER #108"), never the literal word "ID", so
@@ -299,6 +332,26 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                     } catch (PDOException $e2) {}
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Order status updated to ' . $input['status']]);
+
+                // No order change lands silently (8 Sep 2026). A cancellation
+                // matters most of all - it is the one update where NOT knowing
+                // costs real money and food, because the kitchen carries on
+                // cooking a ticket nobody is waiting for.
+                try {
+                    $newStatus = (string) $input['status'];
+                    $who = pushDescribeOrder($pdo, $id);
+                    notifyKitchenOfOrderEvent($pdo, (int) $propertyId, [
+                        'order_id' => $id,
+                        'title'    => $newStatus === 'Cancelled'
+                            ? 'Order #' . $id . ' cancelled'
+                            : 'Order #' . $id . ' - ' . $newStatus,
+                        'body'     => $newStatus === 'Cancelled'
+                            ? trim('Stop preparing this order.' . ($who !== '' ? ' (' . $who . ')' : ''))
+                            : trim($who !== '' ? $who : 'Order status changed.'),
+                    ]);
+                } catch (Throwable $ePush) {
+                    error_log('order status push dispatch failed: ' . $ePush->getMessage());
+                }
             }
             break;
 
@@ -460,6 +513,43 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                     }
 
                     echo json_encode(['status' => 'success']);
+
+                    // Per-dish updates notify too (8 Sep 2026). The dish name
+                    // and ticket are looked up AFTER the response is echoed, so
+                    // the two extra reads cost the KDS nothing.
+                    //
+                    // Whoever tapped the button is excluded inside
+                    // notifyKitchenOfOrderEvent - which matters more here than
+                    // anywhere else, since marking dishes Ready is the single
+                    // most frequent action in a service, and echoing each one
+                    // back to the cook who pressed it would bury every alert
+                    // that actually needed reading.
+                    try {
+                        $ctx = $pdo->prepare("SELECT oi.order_id, oi.quantity, mi.name AS dish_name
+                                              FROM order_items oi
+                                              LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+                                              WHERE oi.id = ?");
+                        $ctx->execute([$itemId]);
+                        $row = $ctx->fetch(PDO::FETCH_ASSOC) ?: [];
+                        $orderRef = $row['order_id'] ?? null;
+                        $dish = trim((string) ($row['dish_name'] ?? 'Dish'));
+                        $qty = (int) ($row['quantity'] ?? 1);
+                        $who = $orderRef ? pushDescribeOrder($pdo, $orderRef) : '';
+
+                        $titleByStatus = [
+                            'Ready'     => 'Dish ready',
+                            'Served'    => 'Dish served',
+                            'Cancelled' => 'Dish removed',
+                        ];
+                        notifyKitchenOfOrderEvent($pdo, (int) $propertyId, [
+                            'order_id' => $orderRef,
+                            'title'    => ($titleByStatus[$status] ?? 'Dish updated')
+                                . ($orderRef ? ' - #' . $orderRef : ''),
+                            'body'     => trim($qty . 'x ' . $dish . ($who !== '' ? ' - ' . $who : '')),
+                        ]);
+                    } catch (Throwable $ePush) {
+                        error_log('order item push dispatch failed: ' . $ePush->getMessage());
+                    }
                 } catch (PDOException $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }

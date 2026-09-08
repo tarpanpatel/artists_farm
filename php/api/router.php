@@ -103,6 +103,7 @@ require_once __DIR__ . '/../finance/ledger.php';
 require_once __DIR__ . '/../finance/petty_cash.php';
 require_once __DIR__ . '/../finance/booking_payments.php';
 require_once __DIR__ . '/../staff/staff.php';
+require_once __DIR__ . '/push_notifications.php';
 require_once __DIR__ . '/../audit/audit.php';
 require_once __DIR__ . '/../uploads/image_cleanup.php';
 require_once __DIR__ . '/../cron/cron_jobs.php';
@@ -4491,6 +4492,14 @@ switch ($action) {
     case 'get_attendance':
     case 'log_attendance':
         handleStaffRequests($pdo, $request_method, $action, $propertyId);
+        break;
+
+    // --- WEB PUSH (kitchen alerts, 8 Sep 2026 - replaced the KDS audio chime) ---
+    case 'get_vapid_public_key':
+    case 'save_push_subscription':
+    case 'delete_push_subscription':
+    case 'send_kitchen_push':
+        handlePushNotificationRequests($pdo, $request_method, $action, (int) $propertyId);
         break;
 
     // --- AUDIT LOGS ---

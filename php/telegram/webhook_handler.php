@@ -136,6 +136,38 @@ if (!function_exists('handleTelegramCallbackQuery')) {
                         ->execute([$staff_name, $itemRow['order_id']]);
                 }
 
+                // A dish served from the Telegram button is still an order
+                // update, so it notifies the kitchen's phones like any other
+                // (8 Sep 2026: "any order updates shouldn't land silently").
+                //
+                // No actor is excluded here, unlike the in-app paths: this tap
+                // came from Telegram, so there is no app session to identify
+                // the person by, and pushing to everyone is the right failure
+                // direction - a duplicate beats a cook never hearing that a
+                // dish left the pass.
+                try {
+                    if ($propertyId && !function_exists('notifyKitchenOfOrderEvent')) {
+                        require_once __DIR__ . '/../api/push_notifications.php';
+                    }
+                    if ($propertyId) {
+                        notifyKitchenOfOrderEvent($pdo, (int) $propertyId, [
+                            // This is mid-flow: the handler still has to edit
+                            // the original Telegram message below, so the
+                            // response must NOT be flushed here.
+                            'flush'    => false,
+                            'order_id' => $itemRow['order_id'],
+                            'title'    => 'Dish served - #' . $itemRow['order_id'],
+                            'body'     => trim(
+                                $itemRow['quantity'] . 'x ' . $itemRow['dish_name']
+                                . ' - ' . ($itemRow['guest_name'] ?: 'Walk-in')
+                                . ($remaining_count > 0 ? ' (' . $remaining_count . ' still pending)' : ' (order complete)')
+                            ),
+                        ]);
+                    }
+                } catch (Throwable $ePush) {
+                    error_log('webhook dish-served push dispatch failed: ' . $ePush->getMessage());
+                }
+
                 $remaining_text = $remaining_count > 0 ? "$remaining_count item(s) pending" : "0 (All items served!)";
 
                 // Edit current message in Telegram to clear button
