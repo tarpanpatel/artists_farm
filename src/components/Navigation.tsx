@@ -33,8 +33,7 @@ export type TabType =
   | 'licenses'
   | 'channel_manager'
   | 'connect_channels'
-  | 'subscription'
-  | 'calendar_compact';
+  | 'subscription';
 
 interface NavigationProps {
   activeTab: TabType;

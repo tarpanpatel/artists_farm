@@ -971,14 +971,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           title={t('dashboard_heading', 'Dashboard')}
           forceRow
         >
-          <PageHeaderButton
-            variant="secondary"
-            onClick={() => {
-              window.location.hash = '#calendar-compact';
-            }}
-          >
-            🧪 Test Compact View
-          </PageHeaderButton>
           <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
             {t('add_booking_button', 'Add Booking')}
           </PageHeaderButton>

@@ -60,7 +60,6 @@ const ServiceRequestsManagement = lazyWithRetry(() => import('./components/Servi
 const LicenseManagement = lazyWithRetry(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })), 'LicenseManagement');
 const OtaChannelsHub = lazyWithRetry(() => import('./components/OtaChannelsHub').then(m => ({ default: m.OtaChannelsHub })), 'OtaChannelsHub');
 const FinancesHub = lazyWithRetry(() => import('./components/FinancesHub').then(m => ({ default: m.FinancesHub })), 'FinancesHub');
-const CompactCalendarTestPage = lazyWithRetry(() => import('./components/CompactCalendarTestPage').then(m => ({ default: m.CompactCalendarTestPage })), 'CompactCalendarTestPage');
 const SubscriptionPanel = lazyWithRetry(() => import('./components/SubscriptionPanel').then(m => ({ default: m.SubscriptionPanel })), 'SubscriptionPanel');
 const TelegramNotificationModal = lazyWithRetry(() => import('./components/TelegramNotificationModal').then(m => ({ default: m.TelegramNotificationModal })), 'TelegramNotificationModal');
 const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPage').then(m => ({ default: m.EditPropertyPage })), 'EditPropertyPage');
@@ -369,8 +368,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
         connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
         subscription: { tab: 'subscription', key: 'subscription' },
-        calendar_compact: { tab: 'calendar_compact', key: 'calendar_compact' },
-        'calendar-compact': { tab: 'calendar_compact', key: 'calendar_compact' },
       };
 
       const baseHash = hash.split('?')[0].split('/')[0].trim();
@@ -691,7 +688,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
       channel_manager: 'channel_manager',
       connect_channels: 'connect_channels',
       subscription: 'subscription',
-      calendar_compact: 'calendar_compact',
     };
     const targetKey = menuItemKey || defaults[tab] || tab;
     setActiveMenuItemKey(targetKey);
@@ -1416,7 +1412,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       if (normalizedRole === 'root admin' || normalizedRole === 'super admin') return true;
       return kitchenGroupItem.roles.some((r) => r.toLowerCase().trim() === normalizedRole);
     }
-    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview' || key === 'calendar_compact' || key === 'calendar-compact') return true;
+    if (key === 'admin_control_group' || key === 'edit_items_group' || key === 'edit_main_menu' || key === 'team_overview' || key === 'admin_control_overview') return true;
     // Preserve old bookmarked Attendance & Salaries links while the navigation uses
     // the canonical attendance calendar route.
     const routeKey = key === 'attendance_salaries' ? 'attendance_calendar' : key;
@@ -1576,8 +1572,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         // room's own feeds), so visiting either from within a room should
         // stay in that room too, not kick out to the parent property.
         'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
-        'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'subscription',
-        'calendar_compact', 'calendar-compact'
+        'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'subscription'
       ]);
 
       // 'edit_property' is deliberately NOT in `reserved` above - clicking it
@@ -1685,8 +1680,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
         connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
         subscription: { tab: 'subscription', key: 'subscription' },
-        calendar_compact: { tab: 'calendar_compact', key: 'calendar_compact' },
-        'calendar-compact': { tab: 'calendar_compact', key: 'calendar_compact' },
       };
 
       const baseHash = hash.split('?')[0].split('/')[0].trim();
@@ -2751,55 +2744,6 @@ ${itemsStr}
                   </div>
                 )
               ) : null}
-
-              {/* Compact Calendar Prototype View (Test Page for 1366x768 screens) */}
-              {!selectedRoomSlugOverride && activeTab === 'calendar_compact' && (
-                <div className="space-y-6">
-                  <ErrorBoundary section="Compact Calendar Test View">
-                    <CompactCalendarTestPage
-                      guests={guests}
-                      rooms={preloadedData.currentProperty?.rooms}
-                      isMultiKeyProperty={preloadedData.isMultiKeyProperty}
-                      kitchenModuleEnabled={(() => {
-                        const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');
-                        return kitchenModule?.is_enabled ?? true;
-                      })()}
-                      onNavigateToRoom={handleNavigateToRoom}
-                      onNavigate={(tab) => handleNavigateTab(tab)}
-                      onAddBooking={(prefill) => { setAddBookingPrefill(prefill || null); setIsAddBookingModalOpen(true); }}
-                      onAddGuest={handleAddGuest}
-                      onUpdateGuest={handleUpdateGuest}
-                      onDeleteGuest={handleDeleteGuest}
-                      onCheckInGuest={handleGuestCheckedIn}
-                      onGuestVerificationUpdated={handleGuestVerificationUpdated}
-                      onCFormFiledUpdated={handleCFormFiledUpdated}
-                      propertyName={preloadedData.currentProperty?.name || ''}
-                      propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-                      propertyPhone={preloadedData.currentProperty?.phone || ''}
-                      propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
-                        || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
-                      propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
-                      propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
-                      propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
-                      propertyAddress={preloadedData.currentProperty?.address || ''}
-                      propertyInstructions={preloadedData.currentProperty?.instructions || ''}
-                      propertyGuestInfo={{
-                        wifiNetwork: (preloadedData.currentProperty as any)?.wifi_network || '',
-                        wifiPassword: (preloadedData.currentProperty as any)?.wifi_password || '',
-                        houseManual: (preloadedData.currentProperty as any)?.house_manual || '',
-                      }}
-                      propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
-                      propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
-                      serviceRequests={serviceRequests}
-                      serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
-                      onCheckout={(guestId) => {
-                        setFocusGuestId(guestId);
-                        handleNavigateTab('guests', 'all_bookings');
-                      }}
-                    />
-                  </ErrorBoundary>
-                </div>
-              )}
 
               {!selectedRoomSlugOverride && activeTab === 'guests' && (
                 <ErrorBoundary section="Guest Management">

@@ -557,28 +557,6 @@ export const Header: React.FC<HeaderProps> = ({
             </Popover>
           )}
 
-          {/* Switch Property icon - opens StaffPropertyPicker mid-session overlay */}
-          {canSwitchProperties && onSwitchProperty && (
-            <Popover
-              trigger="hover"
-              placement="bottom"
-              content={
-                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                  {t('switch_property_tooltip', 'Switch property')}
-                </div>
-              }
-            >
-              <button
-                type="button"
-                onClick={() => onSwitchProperty()}
-                aria-label={t('switch_property_aria', 'Switch property')}
-                className="header__switch-property relative p-2 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
-              >
-                <ArrowRightLeft className="w-5 h-5" />
-              </button>
-            </Popover>
-          )}
-
           {/* Help/FAQ trigger (2 Sep 2026, replaces the AI Assistant chat trigger -
               see HeaderProps.onOpenFaq). Opens LegalDrawer.tsx straight to its FAQ
               tab, same "click icon, panel opens" pattern as the notification bell
