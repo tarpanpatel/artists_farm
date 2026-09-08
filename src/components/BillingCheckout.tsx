@@ -355,7 +355,20 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   // below already matches guest name, phone, OR room number, making a
   // second room-only filter pure redundant UI.
   const targetGuests = useMemo(() => {
-    return uniqueGuests.filter((g) => getGuestTabCategory(g) === activeTab);
+    const filtered = uniqueGuests.filter((g) => getGuestTabCategory(g) === activeTab);
+    // Upcoming needs the SOONEST arrival first (8 Sep 2026, explicit
+    // request) - the raw guests array comes back checkin_date DESC from
+    // get_guests (right for Today/Past: most recent first), which is
+    // backwards here since staff need to see what's arriving soonest, not
+    // furthest out. Today/Past keep the existing order untouched.
+    if (activeTab === 'upcoming') {
+      return [...filtered].sort((a, b) => {
+        const aCheckin = (a.checkinDate || '').split(' ')[0].split('T')[0];
+        const bCheckin = (b.checkinDate || '').split(' ')[0].split('T')[0];
+        return aCheckin < bCheckin ? -1 : aCheckin > bCheckin ? 1 : 0;
+      });
+    }
+    return filtered;
   }, [guests, activeTab, todayStr]);
 
   // Search applied once, up front, so every view built from it (room-grid,
