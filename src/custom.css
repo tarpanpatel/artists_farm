@@ -1437,6 +1437,70 @@ div:has(> [role="tablist"]) {
   z-index: 59;
 }
 
+/* flowbite-react <Modal> not vertically (or horizontally) centered on mobile
+   (reported 8 Sep 2026 with a screenshot: KitchenManagement's "Remove Dish"
+   confirm dialog pinned near the top of the screen with a large empty gap
+   below it, on a real phone) - two compounding causes, both in
+   node_modules/flowbite-react/dist/components/Modal/{Modal,theme}.js
+   (never edited, per this repo's rule):
+
+   1. The overlay ([data-testid="modal-overlay"]) is `fixed inset-x-0 top-0
+      h-screen` on mobile - the `md:inset-0 md:h-full` responsive override
+      only applies at the md breakpoint - so it's anchored by `top:0` with
+      an EXPLICIT `height: 100vh`, never stretched via `bottom:0`. Real
+      mobile browsers/PWAs commonly render less visible height than 100vh
+      reports (dynamic toolbars, safe areas) - confirmed on this exact
+      screenshot's device, where the overlay's true box extends well below
+      the visible fold. 100dvh tracks the browser's real visible viewport
+      instead - the same fix class this app already uses for safe-area-
+      aware heights elsewhere (`h-[calc(4rem+env(safe-area-inset-
+      bottom,0px))]`).
+   2. Independently, and more fundamentally: the overlay's own flex
+      centering (`items-center justify-center`) never actually reaches the
+      visible modal box at all below md. theme.js's `content.base` (the
+      overlay's single flex child) is `relative h-full w-full p-4
+      md:h-auto` - a flex item with an explicit `height:100%`/`width:100%`
+      is sized to exactly match its flex container's cross/main size
+      regardless of `items-center`/`justify-content:center` (there is no
+      leftover space left to center it WITHIN), so this div always fills
+      the entire overlay on mobile. It has no centering of its own for ITS
+      child (`content.inner`, the actual white box) - a plain block div, no
+      flex - so that child just renders top-left within the padded area,
+      one level removed from where the (ineffective) flex-center classes
+      live. This is the SAME mechanism the `padding-top: env(...)` fix
+      right below already half-diagnosed on 27 Aug 2026 (for a status-bar-
+      overlap symptom) without actually restoring centering - this finishes
+      that fix by giving that div its own flex centering, independent of
+      whatever height it ends up filling. Selected on its literal class
+      combo (`.relative.h-full.w-full.p-4.md\:h-auto`, all four together -
+      `md:h-auto` alone also appears on flowbite-react's own Card image
+      variant, a completely different element, so it can't be used on its
+      own) rather than DOM depth, since floating-ui wraps this div in its
+      own focus-management component with no data-testid of its own.
+
+   Fixes every flowbite-react <Modal> in the app (15 files use it) at once,
+   same reasoning as the z-index scale above - not worth a one-off
+   className on each.
+
+   flex-direction: column, not row - `content.inner` (the actual white box)
+   currently gets its full width for free as an ordinary block child (block
+   elements are 100% of their parent's content width by default); making
+   the parent `display: flex` on the default row axis would shrink-wrap
+   that child to its own content width instead, narrowing/misplacing the
+   modal horizontally. In a column flex container the main axis is
+   vertical - `justify-content: center` centers the single child on THAT
+   axis - while the cross axis (horizontal) is left at its default
+   `align-items: stretch`, which reproduces the original full-width
+   behavior exactly. */
+[data-testid="modal-overlay"] {
+  height: 100dvh;
+}
+[data-testid="modal-overlay"] .relative.h-full.w-full.p-4.md\:h-auto {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* Attendance Matrix Enhancements */
 .attendance-matrix-table {
   border-collapse: separate;
