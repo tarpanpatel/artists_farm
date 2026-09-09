@@ -741,65 +741,72 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 />
               </div>
 
-              {/* Pricing Rule Type: Exact Price vs Minimum Floor */}
-              {ratePerNight.trim() !== '' && (
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+              {/* Pricing Rule Type: Exact Price vs Minimum Floor (Always visible) */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                <div className="flex items-center justify-between">
                   <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 block">
-                    Pricing Action
+                    Pricing Rule Type
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <label
-                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                        ruleType === 'fixed'
-                          ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
-                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="rule_type_option"
-                        value="fixed"
-                        checked={ruleType === 'fixed'}
-                        onChange={() => setRuleType('fixed')}
-                        className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
-                      />
-                      <div className="text-xs">
-                        <span className="font-semibold block text-gray-900 dark:text-white">
-                          Set Exact Price (₹{ratePerNight})
-                        </span>
-                        <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
-                          Overrides all selected dates to exactly ₹{ratePerNight}.
-                        </span>
-                      </div>
-                    </label>
-
-                    <label
-                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                        ruleType === 'floor'
-                          ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
-                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="rule_type_option"
-                        value="floor"
-                        checked={ruleType === 'floor'}
-                        onChange={() => setRuleType('floor')}
-                        className="mt-0.5 w-4 h-4 text-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
-                      />
-                      <div className="text-xs">
-                        <span className="font-semibold block text-gray-900 dark:text-white">
-                          Minimum Floor (Never below ₹{ratePerNight})
-                        </span>
-                        <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
-                          Only raises dates below ₹{ratePerNight}. Dates already higher (like weekend surges) stay untouched.
-                        </span>
-                      </div>
-                    </label>
-                  </div>
+                  <span className="text-2xs font-medium text-gray-500 dark:text-gray-400">
+                    {ruleType === 'floor' ? 'Floor Price Mode' : 'Fixed Price Mode'}
+                  </span>
                 </div>
-              )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      ruleType === 'fixed'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200 shadow-xs'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="rule_type_option"
+                      value="fixed"
+                      checked={ruleType === 'fixed'}
+                      onChange={() => setRuleType('fixed')}
+                      className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <span className="font-semibold block text-gray-900 dark:text-white">
+                        {ratePerNight.trim() !== '' ? `Set Exact Price (₹${ratePerNight})` : 'Set Exact Price'}
+                      </span>
+                      <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                        {ratePerNight.trim() !== ''
+                          ? `Overrides all selected dates to exactly ₹${ratePerNight}.`
+                          : 'Overrides all selected dates to the exact price entered above.'}
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      ruleType === 'floor'
+                        ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 shadow-xs'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="rule_type_option"
+                      value="floor"
+                      checked={ruleType === 'floor'}
+                      onChange={() => setRuleType('floor')}
+                      className="mt-0.5 w-4 h-4 text-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <span className="font-semibold block text-gray-900 dark:text-white">
+                        {ratePerNight.trim() !== '' ? `Minimum Floor (Never below ₹${ratePerNight})` : 'Minimum Floor (Never below ₹X)'}
+                      </span>
+                      <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                        {ratePerNight.trim() !== ''
+                          ? `Only raises dates below ₹${ratePerNight}. Dates already higher stay untouched.`
+                          : 'Guarantees price never drops below this rate. Dates already higher (like weekend surges) stay untouched.'}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
 
               {/* Minimum & Maximum Stay Restrictions */}
               <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">

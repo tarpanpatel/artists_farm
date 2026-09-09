@@ -74,9 +74,19 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   //
   // Deliberately framed as a prompt, not a block. `city` is a WEAK proxy for "same location":
   // two separate buildings in the same city are still two locations for staffing purposes -
-  // this account's own Patel Colony and Winter are both in Jaipur - and nothing Airbnb returns
-  // can tell those apart. So the guidance banner above the list is the primary safeguard and
-  // this is only the net under the worst case. Never auto-split or refuse on it.
+  // this account's own Patel Colony and Winter are both in Jaipur, 2.4km apart - and the cheap
+  // listings call returns nothing that can tell those apart (only listing_details carries
+  // street/lat/lng; see CHANNEX.md 6, "Where a listing actually is").
+  //
+  // So this prompt fires on ANY multi-listing selection, not only when the cities differ
+  // (9 Sep 2026): silence on the same-city case is exactly what let a two-location selection
+  // through unremarked. Where the cities genuinely differ it says so; otherwise it asks, and
+  // says plainly that we cannot check it. Never auto-split or refuse on it.
+  //
+  // NOTE: `AirbnbListingPicker.tsx` (the creation/setup wizards' shared picker) does this
+  // properly - it fetches the real addresses in the background and clusters by coordinates.
+  // This screen still has its own older copy of the listing UI; folding it onto that picker is
+  // the real fix and is tracked in ROADMAP.md.
   const selectedCities = useMemo(() => {
     const seen = new Set<string>();
     discoveredListings.forEach((l) => {
@@ -725,17 +735,22 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                       })}
                     </div>
 
-                    {selectedCities.length > 1 && (
+                    {selectedListingIds.length > 1 && (
                       <div className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
                         <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                         <div className="text-xs text-amber-900 dark:text-amber-300">
                           <p className="font-bold">
-                            These listings are in {selectedCities.length} different cities: {selectedCities.join(', ')}.
+                            {selectedCities.length > 1
+                              ? `These listings are in ${selectedCities.length} different cities: ${selectedCities.join(', ')}.`
+                              : `Are all ${selectedListingIds.length} of these at the same address?`}
                           </p>
                           <p className="mt-1 font-normal">
                             They would all become rooms of one property sharing one staff list. If
-                            they are separate places, import one city now and create another
-                            property for the rest.
+                            they are separate places, import one now and create another property
+                            for the rest.
+                            {selectedCities.length > 1
+                              ? ''
+                              : ' Airbnb only tells us the city here, so we cannot check this for you.'}
                           </p>
                         </div>
                       </div>

@@ -4,6 +4,21 @@ This document tracks identified bugs, pending backend API integrations, and upco
 
 ---
 
+
+### Fold `SelfOnboardingWizard`'s listing step onto `AirbnbListingPicker`
+
+Added 9 Sep 2026. `SelfOnboardingWizard.tsx` step 3 carries its own older copy of the Airbnb
+listing UI (its own fetch, its own checkbox list, its own same-location prompt) rather than the
+shared `AirbnbListingPicker.tsx` used by `PropertyCreationWizard` and `PropertySetupWizard`. The
+picker has since gained real address grouping - it fetches street/zipcode/lat/lng in the background
+and clusters listings within 250m, so it can separate two buildings in the same city; the
+onboarding copy still only sees `city` and can only *ask* whether the selection is co-located.
+
+This is the flow a brand-new owner meets first, so it is the one that can least afford the weaker
+check. Not urgent - the prompt does fire on any multi-listing selection now, so nothing is silent -
+but the duplication is what caused the gap and will cause the next one.
+
+
 ## 🟢 Open Items
 
 ### 💳 SaaS Pricing Model & Rate Card Alignment (Monthly-Only Payments Policy)

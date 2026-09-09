@@ -110,7 +110,8 @@ Live) · `PushConfirmationGate.tsx` (§5.4b — the gate both push paths open) �
 `channex_channel_activate`. Plus `channex_push_preflight` (read-only, feeds the gate),
 `channex_push_ari`, `channex_outbox_drain`,
 `channex_retry_outbox`, `channex_webhook`, `channex_drain_feed`,
-`channex_import_airbnb_room_config`.
+`channex_import_airbnb_room_config`, `channex_airbnb_listing_locations` (read-only, the picker's
+background address lookup).
 
 ---
 
@@ -255,7 +256,16 @@ their own, and the wrong shape is expensive to unwind once bookings and ledger r
 accumulated against it.
 
 - **`SelfOnboardingWizard.tsx` step 3** shows the guidance above the listing checkboxes (before the
-  decision, not after), plus a live prompt when the selection spans more than one `city`.
+  decision, not after), plus a live prompt on ANY multi-listing selection — it names the cities when
+  they genuinely differ, and otherwise asks outright, because this screen still uses the cheap
+  listings call and `city` cannot separate two buildings in one city. **It has its own older copy of
+  the listing UI** rather than the shared `AirbnbListingPicker.tsx`, which is why it does not get
+  that picker's coordinate-based grouping; folding it onto the picker is tracked in ROADMAP.md.
+- **`AirbnbListingPicker.tsx`** (creation + setup wizards) groups by the listings' REAL addresses,
+  fetched in the background via `channex_airbnb_listing_locations` and clustered within 250m — see
+  §6, "Where a listing actually is". Its default selection pre-ticks the largest single place, so
+  the owner opts INTO mixing locations rather than out of it. Verified live 9 Sep 2026 on this
+  account: 10 listings resolve to 3 places (7 / 2 / 1), where city alone had said "Jaipur" for 9.
 - **`city` is a weak proxy — never block or auto-split on it.** Two buildings in the same city are
   still two locations for staffing purposes; this account's own Patel Colony and Winter are both in
   Jaipur. The banner is the real safeguard; the city check only catches the worst case.
@@ -353,8 +363,8 @@ Verified live against the connected account on **6 September 2026**.
 
 | Source | Data |
 |---|---|
-| `GET /channels/:id/action/listings` | One call, whole account: id, title, city, country, type, `occupancies` (valid guest counts — max = capacity), quality status. |
-| `GET /channels/:id/action/listing_details?listing_id=X` | Per listing: location, `person_capacity`, `rooms[]` with real bed configuration, `bedrooms`/`beds`/`bathrooms`, ~30 `amenities`, `images[]` (34 on one listing, 4 URL sizes each), `descriptions` (10 fields), `booking_settings`, `pricing_settings`, `availability_rules`, wifi credentials, `house_manual`, `directions`, cancellation policy, guest controls, superhost/rating data. |
+| `GET /channels/:id/action/listings` | One call, whole account. **Exactly eight fields, verified live 9 Sep 2026** — `id`, `type`, `title`, `city`, `quality_status`, `country_code`, `occupancies` (valid guest counts, max = capacity), `synchronization_category`. **No street address and no coordinates**: `city` is the ONLY location it carries, so it cannot tell two buildings in one city apart (see the location note below). |
+| `GET /channels/:id/action/listing_details?listing_id=X` | Per listing. Real location — `street`, `apt`, `city`, `state`, `zipcode`, `lat`, `lng`, `country_code` (verified live 9 Sep 2026) — plus `person_capacity`, `rooms[]` with real bed configuration, `bedrooms`/`beds`/`bathrooms`, ~30 `amenities`, `images[]` (34 on one listing, 4 URL sizes each), `descriptions` (10 fields), `booking_settings`, `pricing_settings`, `availability_rules`, wifi credentials, `house_manual`, `directions`, cancellation policy, guest controls, superhost/rating data. |
 | `GET /channels/:id` | **Already carries `rate_plans[].settings` for every listing** — `availability_rule`, `pricing_setting`, `promotions[]`, `published`. No per-listing call needed for those. |
 | `GET /channels/:id/mappings/:id/pricing_settings` | Currency, `default_daily_price`, `weekend_price`, `guests_included`, `price_per_extra_person`, `standard_fees[]`, `pass_through_taxes`, `default_pricing_rules`, `min_stay_type`. |
 | `GET /channels/:id/mappings/:id/availability_settings` | `booking_lead_time`, `default_min_nights`/`default_max_nights`, `day_of_week_min_nights[7]`, `day_of_week_check_in[7]`, `day_of_week_check_out[7]`, `turnover_days`, `max_days_notice`, `seasonal_min_nights`. |
@@ -362,6 +372,33 @@ Verified live against the connected account on **6 September 2026**.
 
 The `:id` for the settings endpoints is the **rate plan id** from
 `channel.attributes.rate_plans[].id`. `GET /channels/:id/mappings` itself returns 404.
+
+**Where a listing actually is — verified live 9 Sep 2026, all 10 listings on this account.**
+Only `listing_details` knows. Measured against real data:
+
+| Place | Listings | Coordinates | Zip | `city` |
+|---|---|---|---|---|
+| Patel Colony | 7 | 26.9152, 75.7997 | 302001 | Jaipur |
+| Winter Garden | 2 | 26.8931, 75.7777 | 302019 | Jaipur |
+| The Artists' Farm | 1 | 26.8366, 75.6329 | 302026 | Bhankrota |
+
+Three genuinely separate properties, 2.4km and 20km apart — and `city` says "Jaipur" for two of
+them. That is why the import picker's old city-based grouping never warned when Winter Garden was
+selected alongside Patel Colony's listings.
+
+- **Cluster by coordinates, never by street text.** Those 7 co-located listings report FOUR
+  different street strings (`3, Patel Colony` / `22, Patel Colony` / `Patel Colony Road` /
+  `Sardar Patel Marg`) while sitting within ~30m of each other. Street is fine as a *label*, useless
+  as a *key*. `AirbnbListingPicker.tsx` clusters within 250m, falling back to zipcode then city for
+  any listing whose details did not resolve — never merging an unmeasured listing into a cluster.
+- **It costs one call per listing**, so it is a separate read-only action
+  (`channex_airbnb_listing_locations`) that the picker fetches in the BACKGROUND and re-groups when
+  it lands — not extra fields on `channex_channel_mapping_details`, which the picker blocks on.
+- **`getMultipleListingDetails()` can silently drop listings under load.** `getConcurrent()` sets
+  `CURLOPT_TIMEOUT = 12`; a cold run took 12,018ms and returned 8 of 10, the immediate retry took
+  2,549ms and returned all 10. A dropped listing is omitted, never guessed at — but
+  `proposeAirbnbRoomConfig()` shares this call, so a slow Airbnb means a room can import without its
+  pricing/capacity data. Check counts, do not assume the batch was complete.
 
 ### What is writable
 
