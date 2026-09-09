@@ -3,7 +3,7 @@ import { FieldHelpModeProvider } from './FieldHelpPopover';
 import {
   Home, Hotel, Layers, Phone, Wallet,
   Clock, FileText, CheckCircle2, Loader2, ArrowRight, ArrowLeft, X,
-  ChefHat, AlertCircle, Sparkles,
+  ChefHat, AlertCircle, Sparkles, Building,
 } from './icons/FlowbiteIcons';
 import { Drawer } from 'flowbite-react';
 import { Input } from './Input';
@@ -11,7 +11,6 @@ import { Textarea } from './Textarea';
 import { Button } from './Button';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { AirbnbListingPicker, type DiscoveredListing } from './AirbnbListingPicker';
-import { AirbnbIcon } from './icons/AirbnbIcon';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 
 /**
@@ -69,14 +68,14 @@ const autoSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-'
 type StepKey = 'basics' | 'listings' | 'contact' | 'payments' | 'operations' | 'notes';
 
 const STEP_DEFS: { key: StepKey; label: string; icon: React.ElementType }[] = [
-  { key: 'basics', label: 'Basics', icon: Home },
+  { key: 'basics', label: 'Basics', icon: Building },
   // Import sits immediately after Basics on purpose (9 Sep 2026, explicit request). Basics is
   // where the draft property row is created, which is the only thing the import ever needed -
   // a Channex channel has to attach to a property that exists. Everything after this step is
   // then pre-filled from the listing instead of retyped, which is the whole point. Before this,
   // the wizard only showed a note telling the owner to finish here and go find Channel
   // Connections afterwards.
-  { key: 'listings', label: 'Listings', icon: AirbnbIcon },
+  { key: 'listings', label: 'Listings', icon: Home },
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
   { key: 'operations', label: 'Operations', icon: Clock },

@@ -4,13 +4,12 @@ import { Drawer, Modal } from 'flowbite-react';
 import {
   Home, Phone, Wallet, Clock, Building, Smartphone, Apple, Monitor, Download,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle, ExternalLink,
-  Share, PlusSquare, MoreVertical,
+  Share, PlusSquare, MoreVertical, Bed,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { Input } from './Input';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { AirbnbListingPicker } from './AirbnbListingPicker';
-import { AirbnbIcon } from './icons/AirbnbIcon';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
@@ -55,21 +54,21 @@ type StepKey = 'basics' | 'listings' | 'contact' | 'payments' | 'operations' | '
 const buildStepDefs = (
   isMultiKey: boolean,
 ): { key: StepKey; label: string; icon: React.ElementType; optional?: boolean }[] => [
-  { key: 'basics', label: 'Basics', icon: Home },
+  { key: 'basics', label: 'Basics', icon: Building },
   // Mirrors PropertyCreationWizard's own Listings step (9 Sep 2026). Without it the two flows
   // diverged: a property created through the wizard could import its listings, but the same
   // property reached through this "finish setting up" nudge had no path to Airbnb at all - which
   // is exactly the state Winter was in, fully set up bar a channel connection it could not reach.
   // optional: it is never counted in "N of M steps done", never auto-ticked, and never shown
-  // as a skipped-and-incomplete warning. It therefore keeps its own Airbnb mark at every
+  // as a skipped-and-incomplete warning. It therefore keeps its own neutral House mark at every
   // status instead of swapping to a checkmark the moment it loses focus (9 Sep 2026, reported
   // as "listing step logo changes when i click on it") - and, being uncounted, it still cannot
   // be what keeps this nudge on screen for an owner who will never connect an OTA.
-  { key: 'listings', label: 'Listings', icon: AirbnbIcon, optional: true },
+  { key: 'listings', label: 'Listings', icon: Home, optional: true },
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
   isMultiKey
-    ? { key: 'rooms', label: 'Rooms', icon: Building }
+    ? { key: 'rooms', label: 'Rooms', icon: Bed }
     : { key: 'operations', label: 'Operations', icon: Clock },
   { key: 'app', label: 'App', icon: Smartphone },
 ];

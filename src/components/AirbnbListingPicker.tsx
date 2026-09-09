@@ -487,10 +487,6 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
                                   {claim.room_name ? ` as ${claim.room_name}` : ''}
                                 </span>
                               </div>
-                            ) : listing.max_occupancy ? (
-                              <div className="mt-0.5 text-2xs text-slate-500 dark:text-slate-400">
-                                Sleeps {listing.max_occupancy} guests
-                              </div>
                             ) : null}
                           </div>
                           <input
@@ -518,11 +514,24 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="text-xs text-amber-900 dark:text-amber-300">
-                <p className="font-bold">
-                  {selectedPlaces.length > 1
-                    ? `You have picked listings at ${selectedPlaces.length} different addresses: ${selectedPlaces.join(' / ')}.`
-                    : `Are all ${selectedIds.length} of these at the same address?`}
-                </p>
+                {selectedPlaces.length > 1 ? (
+                  <div>
+                    <p className="font-bold">
+                      You have picked listings at {selectedPlaces.length} different addresses:
+                    </p>
+                    <ul className="mt-1 mb-1 list-disc list-inside space-y-0.5 font-semibold text-amber-950 dark:text-amber-200">
+                      {selectedPlaces.map((place, idx) => (
+                        <li key={idx} className="leading-snug">
+                          {place}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="font-bold">
+                    Are all {selectedIds.length} of these at the same address?
+                  </p>
+                )}
                 <p className="mt-1 font-normal">
                   They would all become rooms of this one property, sharing one staff list. If they
                   are separate places, import one now and create another property for the rest.

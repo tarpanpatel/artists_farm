@@ -719,10 +719,11 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                               <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                                 {listing.title}
                               </div>
-                              <div className="text-2xs text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
-                                {listing.max_occupancy ? <span>Sleeps {listing.max_occupancy} guests</span> : null}
-                                {listing.city ? <span>• {listing.city}</span> : null}
-                              </div>
+                              {listing.city ? (
+                                <div className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                  {listing.city}
+                                </div>
+                              ) : null}
                             </div>
                             <input
                               type="checkbox"
