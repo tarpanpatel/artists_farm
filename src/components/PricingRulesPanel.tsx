@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Dropdown } from 'flowbite-react';
+import { Dropdown, Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
-import { Trash2, Plus, DollarSign, Loader2, Pencil, ChevronDown, ChevronUp, Check, Home, Info } from './icons/FlowbiteIcons';
+import { Trash2, Plus, DollarSign, Loader2, Pencil, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { DateRangePicker } from './DateRangePicker';
+import { formatDateOrdinal } from '../utils/dateUtils';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -46,6 +47,14 @@ function formatDaysOfWeek(daysOfWeek?: string | null): string {
   if (sorted.length === 5 && WEEKDAY_CODES.every((d) => sorted.includes(d))) return 'Weekdays';
   if (sorted.length === 2 && WEEKEND_CODES.every((d) => sorted.includes(d))) return 'Weekends';
   return sorted.map((d) => DAY_LABELS[d] || d).join(', ');
+}
+
+function countNights(startStr: string, endStr: string): number {
+  if (!startStr || !endStr) return 0;
+  const s = new Date(startStr + 'T00:00:00');
+  const e = new Date(endStr + 'T00:00:00');
+  const diff = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  return diff > 0 ? diff : 1;
 }
 
 export interface PricingRulesPanelProps {
@@ -118,10 +127,12 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   const [rulesPage, setRulesPage] = useState(1);
 
   // Restriction state fields
+  const [hasStayRestrictions, setHasStayRestrictions] = useState<boolean>(false);
   const [minStay, setMinStay] = useState<string>('');
   const [minStayType, setMinStayType] = useState<'arrival' | 'through'>('arrival');
   const [maxStay, setMaxStay] = useState<string>('');
   const [stopSell, setStopSell] = useState<boolean>(false);
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   // No check-ins / No check-outs (closed-to-arrival / closed-to-departure) were
   // removed from this form 6 Sep 2026 at the owner's request - genuinely niche
   // channel-manager restrictions most hosts never need, and two more checkboxes
@@ -269,11 +280,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
     }
   };
 
-  const handleSaveRule = async (e: React.FormEvent) => {
+  const handleSaveRule = (e: React.FormEvent) => {
     e.preventDefault();
     const rateNum = ratePerNight.trim() !== '' ? parseFloat(ratePerNight) : null;
-    const minStayNum = minStay.trim() !== '' ? parseInt(minStay, 10) : null;
-    const maxStayNum = maxStay.trim() !== '' ? parseInt(maxStay, 10) : null;
+    const minStayNum = hasStayRestrictions && minStay.trim() !== '' ? parseInt(minStay, 10) : null;
+    const maxStayNum = hasStayRestrictions && maxStay.trim() !== '' ? parseInt(maxStay, 10) : null;
 
     if (!startDate || !endDate) {
       showToast('Please enter valid start and end dates.', { type: 'error' });
@@ -309,28 +320,22 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
       return;
     }
 
-    // An empty selection used to save a property-wide rule (room_id NULL). On a
-    // multi-key property that rule CANNOT SYNC: channex_mappings is per-room once
-    // real units exist, so nothing matches (propertyId, NULL) and the outbox rows
-    // are unsendable. This is not hypothetical - Patel Colony's rule 29 ("Design",
-    // 9-11 Sep, Rs 4500) produced 23 outbox rows that failed 32 times each with
-    // "room_id NULL on MULTI_KEY, no mapping exists", so that price never reached
-    // Airbnb or Booking.com and nothing said so outside the outbox table.
-    //
-    // Worse, the badge rendered "All Units (7)" for BOTH zero-selected and
-    // all-selected, so the two were indistinguishable while saving completely
-    // differently - one row that syncs nowhere, versus one row per room that syncs.
-    //
-    // A single-unit property is the opposite case and still needs [null]: it has
-    // no room rows at all, and its channex_mappings row is keyed room_id IS NULL.
-    // So the rule is "empty means empty" only where there are units to pick from.
     if (rooms.length > 0 && selectedRoomIds.length === 0) {
       showToast('Select at least one unit for this rule to apply to.', { type: 'error' });
       return;
     }
 
+    // Input validations passed -> open preview confirmation modal
+    setShowConfirmModal(true);
+  };
+
+  const executeSaveRule = async () => {
     setIsSaving(true);
     try {
+      const rateNum = ratePerNight.trim() !== '' ? parseFloat(ratePerNight) : null;
+      const minStayNum = hasStayRestrictions && minStay.trim() !== '' ? parseInt(minStay, 10) : null;
+      const maxStayNum = hasStayRestrictions && maxStay.trim() !== '' ? parseInt(maxStay, 10) : null;
+
       const payload = {
         start_date: startDate,
         end_date: endDate,
@@ -362,9 +367,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         setRuleName('');
         setMinStay('');
         setMaxStay('');
+        setHasStayRestrictions(false);
         setStopSell(false);
         setSelectedDays([...ALL_DAY_CODES]);
         setSelectedRoomIds([]);
+        setShowConfirmModal(false);
         onRulesUpdated();
       } else {
         showToast(res.message || 'Failed to save rate rule', { type: 'error' });
@@ -778,60 +785,94 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   quick presets for the two most common patterns, plus the
                   individual day toggles for anything else.
                   Hidden for a single-night rule - see isSingleNight. */}
-              {!isSingleNight && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300">
-                    Only on these days <span className="font-normal text-gray-400">(all selected = every day)</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDays([...WEEKDAY_CODES])}
-                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
-                    >
-                      Weekdays
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDays([...WEEKEND_CODES])}
-                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
-                    >
-                      Weekends
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDays([...ALL_DAY_CODES])}
-                      className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
-                    >
-                      Every Day
-                    </button>
+              {!isSingleNight && (() => {
+                const isAllDays = selectedDays.length === 7;
+                const isWeekdaysOnly = selectedDays.length === 5 && WEEKDAY_CODES.every((d) => selectedDays.includes(d));
+                const isWeekendsOnly = selectedDays.length === 2 && WEEKEND_CODES.every((d) => selectedDays.includes(d));
+                const dayPreset = isAllDays ? 'all' : isWeekdaysOnly ? 'weekdays' : isWeekendsOnly ? 'weekends' : 'custom';
+
+                return (
+                  <div className="space-y-2">
+                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300">
+                      Only on these days
+                    </label>
+
+                    {/* Radio Options: Every Day, Weekdays, Weekends, Custom */}
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-1">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                        <input
+                          type="radio"
+                          name="day_preset_option"
+                          value="all"
+                          checked={dayPreset === 'all'}
+                          onChange={() => setSelectedDays([...ALL_DAY_CODES])}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                        />
+                        <span>Every Day</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                        <input
+                          type="radio"
+                          name="day_preset_option"
+                          value="weekdays"
+                          checked={dayPreset === 'weekdays'}
+                          onChange={() => setSelectedDays([...WEEKDAY_CODES])}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                        />
+                        <span>Weekdays</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                        <input
+                          type="radio"
+                          name="day_preset_option"
+                          value="weekends"
+                          checked={dayPreset === 'weekends'}
+                          onChange={() => setSelectedDays([...WEEKEND_CODES])}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                        />
+                        <span>Weekends</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                        <input
+                          type="radio"
+                          name="day_preset_option"
+                          value="custom"
+                          checked={dayPreset === 'custom'}
+                          onChange={() => {}}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                        />
+                        <span>Custom Days</span>
+                      </label>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {ALL_DAY_CODES.map((code) => {
+                        const isChecked = selectedDays.includes(code);
+                        return (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => toggleDay(code)}
+                            className={`w-11 h-8 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
+                              isChecked
+                                ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {DAY_LABELS[code]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedDays.length === 0 && (
+                      <p className="text-2xs text-red-600 dark:text-red-400 mt-1">Select at least one day, or this rule will never apply.</p>
+                    )}
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ALL_DAY_CODES.map((code) => {
-                    const isChecked = selectedDays.includes(code);
-                    return (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={() => toggleDay(code)}
-                        className={`w-11 h-8 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
-                          isChecked
-                            ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
-                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        {DAY_LABELS[code]}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedDays.length === 0 && (
-                  <p className="text-2xs text-red-600 dark:text-red-400 mt-1">Select at least one day, or this rule will never apply.</p>
-                )}
-              </div>
-              )}
+                );
+              })()}
 
               {/* Nightly Rate & Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -924,42 +965,64 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
               {/* Minimum & Maximum Stay Restrictions */}
               <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
-                <span className="text-2xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 block">
-                  How long guests can stay
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <FloatingInput
-                    type="number"
-                    min="1"
-                    label="Fewest nights"
-                    placeholder=" "
-                    value={minStay}
-                    onChange={(e) => setMinStay(e.target.value)}
-                    bgMode="card"
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={hasStayRestrictions}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setHasStayRestrictions(checked);
+                      if (!checked) {
+                        setMinStay('');
+                        setMaxStay('');
+                      }
+                    }}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                   />
+                  <div>
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white block">
+                      How long guests can stay
+                    </span>
+                    <span className="text-2xs text-gray-500 dark:text-gray-400 block">
+                      Require a minimum stay or limit the maximum nights a guest can book.
+                    </span>
+                  </div>
+                </label>
 
-                  <FloatingSelect
-                    label="Who does that apply to?"
-                    value={minStayType}
-                    onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
-                    bgMode="card"
-                    options={[
-                      { value: 'arrival', label: 'Guests arriving on these dates' },
-                      { value: 'through', label: 'Anyone staying over these dates' },
-                    ]}
-                  />
+                {hasStayRestrictions && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <FloatingInput
+                      type="number"
+                      min="1"
+                      label="Fewest nights"
+                      placeholder=" "
+                      value={minStay}
+                      onChange={(e) => setMinStay(e.target.value)}
+                      bgMode="card"
+                    />
 
-                  <FloatingInput
-                    type="number"
-                    min="1"
-                    label="Most nights"
-                    placeholder=" "
-                    value={maxStay}
-                    onChange={(e) => setMaxStay(e.target.value)}
-                    bgMode="card"
-                  />
-                </div>
+                    <FloatingSelect
+                      label="Who does that apply to?"
+                      value={minStayType}
+                      onChange={(e) => setMinStayType(e.target.value as 'arrival' | 'through')}
+                      bgMode="card"
+                      options={[
+                        { value: 'arrival', label: 'Guests arriving on these dates' },
+                        { value: 'through', label: 'Anyone staying over these dates' },
+                      ]}
+                    />
+
+                    <FloatingInput
+                      type="number"
+                      min="1"
+                      label="Most nights"
+                      placeholder=" "
+                      value={maxStay}
+                      onChange={(e) => setMaxStay(e.target.value)}
+                      bgMode="card"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Availability & Check-in/out Block Controls (Stop Sell / CTA / CTD) */}
@@ -997,6 +1060,173 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 </Button>
               </div>
             </form>
+
+            {/* Confirmation & Preview Modal before saving */}
+            <Modal
+              show={showConfirmModal}
+              onClose={() => !isSaving && setShowConfirmModal(false)}
+              size="md"
+              popup
+              className="z-70"
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                      Confirm Changes Before Saving
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => !isSaving && setShowConfirmModal(false)}
+                    className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                    aria-label="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-4">
+                  {/* Irreversible Warning Callout */}
+                  <div className="p-3.5 rounded-lg border border-red-200 dark:border-red-800/80 bg-red-50 dark:bg-red-950/40 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-red-800 dark:text-red-200 uppercase tracking-wide">
+                        This change is not reversible
+                      </p>
+                      <p className="text-2xs text-red-700 dark:text-red-300 mt-0.5 leading-relaxed">
+                        Once confirmed, this will immediately overwrite existing nightly prices and rules for the selected dates across Airbnb, Booking.com, and direct bookings.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Structured Preview of Changes */}
+                  <div className="bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 space-y-3 text-xs">
+                    {/* Target Properties / Units */}
+                    <div>
+                      <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1">
+                        Properties / Units Affected ({rooms.length > 0 ? `${selectedRoomIds.length} of ${rooms.length}` : 'Entire Property'})
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {rooms.length > 0 ? (
+                          selectedRoomIds.length === rooms.length ? (
+                            <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
+                              All {rooms.length} Units ({rooms.map((r) => r.name).join(', ')})
+                            </span>
+                          ) : (
+                            rooms
+                              .filter((r) => selectedRoomIds.includes(r.id))
+                              .map((room) => (
+                                <span
+                                  key={room.id}
+                                  className="px-2 py-0.5 rounded text-2xs font-semibold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200"
+                                >
+                                  {room.name}
+                                </span>
+                              ))
+                          )
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-2xs font-semibold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200">
+                            Entire Property
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-gray-200 dark:border-gray-700">
+                      <div>
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                          Date Range
+                        </span>
+                        <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">
+                          {formatDateOrdinal(startDate)} → {formatDateOrdinal(endDate)}
+                        </p>
+                        <span className="text-2xs text-gray-500">
+                          {countNights(startDate, endDate)} nights total
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                          Applicable Days
+                        </span>
+                        <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">
+                          {isSingleNight
+                            ? 'Single Night'
+                            : formatDaysOfWeek(selectedDays.length === 7 ? null : selectedDays.join(','))}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-gray-200 dark:border-gray-700">
+                      <div>
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                          Price / Rule Action
+                        </span>
+                        <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">
+                          {stopSell ? (
+                            <span className="text-red-600 dark:text-red-400 font-bold">🚫 Dates Blocked</span>
+                          ) : ratePerNight.trim() !== '' ? (
+                            ruleType === 'floor' ? (
+                              <span className="text-amber-600 dark:text-amber-400 font-bold">
+                                Floor ≥ ₹{ratePerNight}/night
+                              </span>
+                            ) : (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                Exact ₹{ratePerNight}/night
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-gray-500">Keep current prices</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                          Stay Limits
+                        </span>
+                        <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">
+                          {hasStayRestrictions && (minStay || maxStay) ? (
+                            <span>
+                              {minStay ? `Min ${minStay}n` : ''}
+                              {minStay && maxStay ? ', ' : ''}
+                              {maxStay ? `Max ${maxStay}n` : ''}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">No stay limits</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/50">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={() => setShowConfirmModal(false)}
+                  >
+                    Cancel & Go Back
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={executeSaveRule}
+                    leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  >
+                    {isSaving ? 'Applying Changes...' : 'Confirm & Apply Rule'}
+                  </Button>
+                </div>
+              </div>
+            </Modal>
 
             {/* Existing Rate Rules Table - collapsed by default, rows paginated
                 (see the showRulesList / rulesPage comment above). */}
