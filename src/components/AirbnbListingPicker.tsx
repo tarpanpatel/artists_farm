@@ -23,9 +23,14 @@ import { apiFetch, API_ROOT_BASE } from '../services/api';
  * so the default always obeys "one property = one location" and the owner opts INTO mixing
  * rather than opting out.
  *
- * `city` is a WEAK proxy and this never blocks or auto-splits on it — two buildings in one city
- * are still two locations for staffing purposes (this account's own Patel Colony and Winter are
- * both in Jaipur). The banner is the real safeguard; the city logic only catches the worst case.
+ * LOCATION IS MEASURED, NOT ASSUMED (9 Sep 2026). Grouping used to key off `city`, which is
+ * all the cheap listings call returns - and on this account every listing says "Jaipur",
+ * including three genuinely separate properties 2-20km apart, so the safeguard never fired for
+ * the case it existed to catch. Real street/zipcode/lat/lng come from Airbnb's per-listing
+ * details call, fetched in the background (see the picker's own comment) and clustered by
+ * distance. Street TEXT is not a usable key either: the six listings inside one building here
+ * report four different street strings. Anything with no coordinates falls back to zipcode,
+ * then city - never merged into a cluster it was not actually measured against.
  */
 
 /** A listing already taken by another property of the same tenant. */
