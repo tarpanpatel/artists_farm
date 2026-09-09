@@ -18,6 +18,29 @@ body,
   overflow-x: hidden;
 }
 
+/* Bottom nav bar (MobileBottomNav.tsx, TenantDashboard.tsx's own mobile nav)
+   freezes mid-page after a reload in the installed iOS PWA (9 Sep 2026,
+   reported live on two completely unrelated pages/components with the same
+   symptom - a fixed bottom:0 element pinned partway down the page instead
+   of the true viewport bottom, with real content peeking out both above
+   and below it; only fixed by force-quitting and relaunching, never by an
+   in-app reload alone).
+   Reproducing on two independent components rules out a component-specific
+   CSS bug - this is WebKit's own documented behavior: on iOS, the native
+   rubber-band/overscroll bounce (pull past the top or bottom of the page)
+   can leave `position: fixed` elements anchored to a stale scroll offset
+   instead of the true viewport, and a plain reload re-runs inside the SAME
+   WKWebView process that's already in the stuck state - only force-quitting
+   the app (a genuinely fresh process) resets it, matching exactly what was
+   reported. This app never used the bounce gesture for anything (no
+   pull-to-refresh feature is built in - Header.tsx/UpdateAvailableBanner
+   already own that), so disabling it outright removes the trigger for this
+   whole class of glitch rather than working around the glitch itself. */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 html,
 body {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
