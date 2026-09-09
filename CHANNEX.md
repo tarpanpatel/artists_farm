@@ -452,12 +452,17 @@ handled by process, which is what §5.4b does.
 connected account: **7 of 10 listings are `sync_all`**; three carry no category at all
 (unmapped on this channel), including **The Artists' Farm** and both Winter Garden listings.
 
-**Open question this raises:** under `sync_all`, Airbnb greys out photos and listing content
-and expects the software to supply them — but we deliberately never import or manage photos
-(§8.6). Whether that leaves a host unable to edit their own listing content on Airbnb without
-gaining that ability here is **not yet established**. Worth settling before more listings go
-live. Channex's docs do not document choosing the category, and `ChannexChannelClient` has no
-method for it.
+**This raised a question about photos — CLOSED 9 Sep 2026, owner's decision: photos are a
+MANUAL upload in Ground Code.** Under `sync_all` Airbnb greys out photos and listing content and
+expects the software to supply them, and we deliberately never import or manage photos (§8.6).
+The owner's call is that this is fine: photos get uploaded by hand on our side, so there is
+nothing to chase here and nothing to build. Do not reopen this as a blocker before going live
+with more listings, and do not add photo import/sync to work around it — that would contradict
+§8.6, which is itself a closed decision.
+
+Still true and still undocumented: Channex's docs do not cover choosing the sync category, and
+`ChannexChannelClient` has no method for it — so the category remains whatever the host set on
+Airbnb, not something Ground Code selects.
 
 ### Deliberately out of scope
 

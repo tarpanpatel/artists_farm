@@ -47,7 +47,18 @@ export const parseDateToYMD = (dateStr?: string | null): [number, number, number
   return [y, m, d];
 };
 
-export const formatDateDDMMYY = formatDateDDMMYYYY;
+export const formatDateDDMMYY = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  const ymd = parseDateToYMD(dateStr);
+  if (!ymd) {
+    const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1].slice(-2)}`;
+    return String(dateStr);
+  }
+  const [y, m, d] = ymd;
+  const yy = String(y).slice(-2);
+  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${yy}`;
+};
 
 /**
  * Formats a date into ordinal day and short month (e.g. "3rd Sep", "8th Sep", "21st Oct").

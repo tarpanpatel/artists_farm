@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Dropdown, Modal } from 'flowbite-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
-import { Trash2, Plus, DollarSign, Loader2, Pencil, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X } from './icons/FlowbiteIcons';
+import { Trash2, Plus, DollarSign, Loader2, Pencil, Edit2, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X, Search, Calendar } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { formatDateOrdinal } from '../utils/dateUtils';
+import { formatDateOrdinal, formatDateDDMMYY } from '../utils/dateUtils';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -125,6 +125,14 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   const RULES_PAGE_SIZE = 10;
   const [showRulesList, setShowRulesList] = useState(false);
   const [rulesPage, setRulesPage] = useState(1);
+  const [rulesSearchQuery, setRulesSearchQuery] = useState<string>('');
+
+  // Editing state for existing date-range rules
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Mobile-friendly inline unit picker
+  const [isUnitsPickerOpen, setIsUnitsPickerOpen] = useState<boolean>(false);
 
   // Restriction state fields
   const [hasStayRestrictions, setHasStayRestrictions] = useState<boolean>(false);
@@ -147,6 +155,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   // behavior), matching what saveRateRule() on the backend normalizes an
   // "every day" selection to (NULL, not a literal 7-item list).
   const [selectedDays, setSelectedDays] = useState<string[]>([...ALL_DAY_CODES]);
+  const [dayPresetSelection, setDayPresetSelection] = useState<'all' | 'weekdays' | 'weekends' | 'custom'>('all');
 
   // A rule covering a single night spans exactly one weekday, so the
   // day-of-week picker below can only ever do nothing (all days selected) or
@@ -337,6 +346,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
       const maxStayNum = hasStayRestrictions && maxStay.trim() !== '' ? parseInt(maxStay, 10) : null;
 
       const payload = {
+        id: editingRuleId || undefined,
         start_date: startDate,
         end_date: endDate,
         rate_per_night: rateNum,
@@ -361,7 +371,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
       const res = await saveRateRuleDB(payload);
       if (res.success) {
-        showToast('Saved. These dates are updated everywhere.', { type: 'success' });
+        showToast(editingRuleId ? 'Rate rule updated successfully.' : 'Saved. These dates are updated everywhere.', { type: 'success' });
+        setEditingRuleId(null);
         setRatePerNight('');
         setRuleType('fixed');
         setRuleName('');
@@ -370,6 +381,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         setHasStayRestrictions(false);
         setStopSell(false);
         setSelectedDays([...ALL_DAY_CODES]);
+        setDayPresetSelection('all');
         setSelectedRoomIds([]);
         setShowConfirmModal(false);
         onRulesUpdated();
@@ -383,12 +395,68 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
     }
   };
 
+  const handleEditRule = (rule: RateRule) => {
+    if (!rule.id) return;
+    setEditingRuleId(rule.id);
+    setStartDate(rule.start_date);
+    setEndDate(rule.end_date);
+    if (rule.room_id) {
+      setSelectedRoomIds([rule.room_id]);
+    } else {
+      setSelectedRoomIds(rooms.map((r) => r.id));
+    }
+    setRatePerNight(rule.rate_per_night != null ? String(Math.round(rule.rate_per_night)) : '');
+    setRuleType(rule.rule_type || 'fixed');
+    setRuleName(rule.rule_name || '');
+    if (rule.min_stay_arrival != null) {
+      setMinStay(String(rule.min_stay_arrival));
+      setMinStayType('arrival');
+    } else if (rule.min_stay_through != null) {
+      setMinStay(String(rule.min_stay_through));
+      setMinStayType('through');
+    } else {
+      setMinStay('');
+    }
+    setMaxStay(rule.max_stay != null ? String(rule.max_stay) : '');
+    setHasStayRestrictions(rule.min_stay_arrival != null || rule.min_stay_through != null || rule.max_stay != null);
+    setStopSell(!!rule.stop_sell);
+    if (rule.days_of_week) {
+      const days = rule.days_of_week.split(',').filter(Boolean);
+      setSelectedDays(days);
+      const isWeekdaysOnly = days.length === 5 && WEEKDAY_CODES.every((d) => days.includes(d));
+      const isWeekendsOnly = days.length === 2 && WEEKEND_CODES.every((d) => days.includes(d));
+      setDayPresetSelection(isWeekdaysOnly ? 'weekdays' : isWeekendsOnly ? 'weekends' : 'custom');
+    } else {
+      setSelectedDays([...ALL_DAY_CODES]);
+      setDayPresetSelection('all');
+    }
+    formRef.current?.scrollIntoView({ behavior: 'smooth' });
+    showToast(`Loaded rule #${rule.id} into the editor.`, { type: 'info' });
+  };
+
+  const cancelEdit = () => {
+    setEditingRuleId(null);
+    setRatePerNight('');
+    setRuleType('fixed');
+    setRuleName('');
+    setMinStay('');
+    setMaxStay('');
+    setHasStayRestrictions(false);
+    setStopSell(false);
+    setSelectedDays([...ALL_DAY_CODES]);
+    setDayPresetSelection('all');
+    setSelectedRoomIds([]);
+  };
+
   const handleDeleteRule = async (id?: number) => {
     if (!id) return;
     try {
       const res = await deleteRateRuleDB(id);
       if (res.success) {
         showToast('Rate rule removed.', { type: 'info' });
+        if (editingRuleId === id) {
+          cancelEdit();
+        }
         onRulesUpdated();
       } else {
         showToast(res.message || 'Failed to delete rate rule', { type: 'error' });
@@ -399,6 +467,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   };
 
   const toggleDay = (code: string) => {
+    setDayPresetSelection('custom');
     setSelectedDays((prev) => (prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]));
   };
 
@@ -415,6 +484,43 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
       setSelectedRoomIds(rooms.map((r) => r.id));
     }
   };
+
+  const filteredRules = useMemo(() => {
+    if (!rulesSearchQuery.trim()) return rateRules;
+    const q = rulesSearchQuery.toLowerCase().trim();
+    return rateRules.filter((rule) => {
+      const roomName = (rule.room_name || 'all rooms / property').toLowerCase();
+      const ruleName = (rule.rule_name || '').toLowerCase();
+      const startFormatted = formatDateDDMMYY(rule.start_date).toLowerCase();
+      const endFormatted = formatDateDDMMYY(rule.end_date).toLowerCase();
+      const price = rule.rate_per_night != null ? String(Math.round(rule.rate_per_night)) : '';
+      const days = rule.days_of_week ? formatDaysOfWeek(rule.days_of_week).toLowerCase() : 'every day';
+      const restrictions = [
+        rule.stop_sell ? 'stop sell' : '',
+        rule.min_stay_arrival != null ? `min ${rule.min_stay_arrival}` : '',
+        rule.min_stay_through != null ? `min ${rule.min_stay_through}` : '',
+        rule.max_stay != null ? `max ${rule.max_stay}` : '',
+        rule.closed_to_arrival ? 'cta' : '',
+        rule.closed_to_departure ? 'ctd' : '',
+      ].join(' ').toLowerCase();
+
+      return (
+        roomName.includes(q) ||
+        ruleName.includes(q) ||
+        rule.start_date.includes(q) ||
+        rule.end_date.includes(q) ||
+        startFormatted.includes(q) ||
+        endFormatted.includes(q) ||
+        price.includes(q) ||
+        days.includes(q) ||
+        restrictions.includes(q)
+      );
+    });
+  }, [rateRules, rulesSearchQuery]);
+
+  useEffect(() => {
+    setRulesPage(1);
+  }, [rulesSearchQuery]);
 
   return (
     <div className="space-y-6">
@@ -658,101 +764,132 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
             </div>
 
             {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
-            <form onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
+            <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5 text-blue-600" />
-                  Set prices & rules for a date range
+                  {editingRuleId ? <Edit2 className="w-3.5 h-3.5 text-blue-600" /> : <Plus className="w-3.5 h-3.5 text-blue-600" />}
+                  {editingRuleId ? `Edit date range rule #${editingRuleId}` : 'Set prices & rules for a date range'}
                 </h4>
                 <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
               </div>
 
-              {/* Chosen Unit / Target Room Selector (Flowbite Dropdown with Checkboxes) */}
+              {/* Editing Rule Active Banner */}
+              {editingRuleId && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Edit2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-blue-900 dark:text-blue-100 block truncate">
+                        Editing Rule #{editingRuleId}
+                      </span>
+                      <p className="text-2xs text-blue-700 dark:text-blue-300">
+                        Make your changes below and click Update to apply them.
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="secondary" size="xs" onClick={cancelEdit}>
+                    Cancel Edit
+                  </Button>
+                </div>
+              )}
+
+              {/* Chosen Unit / Target Room Selector (Mobile-Friendly Collapsible Card) */}
               {rooms.length > 1 ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                      Target Unit
-                    </span>
-                    <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
-                      selectedRoomIds.length > 0 && selectedRoomIds.length === rooms.length
-                        ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
-                        : selectedRoomIds.length === 0
-                        ? 'bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
-                        : selectedRoomIds.length === 1
-                        ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
-                        : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
-                    }`}>
-                      {/* Name the units, always (6 Sep 2026, explicit request:
-                          "always show selected properties"). "3 Units Selected"
-                          said how many rooms a price was about to change but not
-                          WHICH - the one detail that matters before saving a rate
-                          that reaches Airbnb. */}
-                      {selectedRoomIds.length === 0
-                        ? 'No units selected'
-                        : selectedRoomIds.length === rooms.length
-                        ? `All ${rooms.length} units`
-                        : rooms
-                            .filter((r) => selectedRoomIds.includes(r.id))
-                            .map((r) => r.name)
-                            .join(', ')}
-                    </span>
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 shrink-0">
+                        Target Unit
+                      </span>
+                      <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
+                        selectedRoomIds.length > 0 && selectedRoomIds.length === rooms.length
+                          ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+                          : selectedRoomIds.length === 0
+                          ? 'bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
+                          : selectedRoomIds.length === 1
+                          ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
+                          : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
+                      }`}>
+                        {selectedRoomIds.length === 0
+                          ? 'No units selected'
+                          : selectedRoomIds.length === rooms.length
+                          ? `All ${rooms.length} units`
+                          : rooms
+                              .filter((r) => selectedRoomIds.includes(r.id))
+                              .map((r) => r.name)
+                              .join(', ')}
+                      </span>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => setIsUnitsPickerOpen((v) => !v)}
+                      className="w-full sm:w-auto shrink-0"
+                      leftIcon={<Home className="w-3.5 h-3.5" />}
+                      rightIcon={isUnitsPickerOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    >
+                      {isUnitsPickerOpen ? 'Done Selecting' : 'Select Units'}
+                    </Button>
                   </div>
 
-                  <Dropdown
-                    label=""
-                    dismissOnClick={false}
-                    placement="bottom-end"
-                    renderTrigger={() => (
-                      <button
-                        type="button"
-                        id="dropdownUnitsButton"
-                        className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-xs px-3.5 py-2 text-center inline-flex items-center gap-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 cursor-pointer shadow-xs"
-                      >
-                        <span>Select Units</span>
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    className="z-50 w-72 bg-white rounded-lg shadow-lg dark:bg-gray-700 border border-gray-200 dark:border-gray-600 p-2 text-xs"
-                  >
-                    <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-gray-200 dark:border-gray-600">
-                      <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                        {selectedRoomIds.length} of {rooms.length} selected
-                      </span>
-                      <button
-                        type="button"
-                        onClick={toggleAllRooms}
-                        className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
-                      >
-                        {selectedRoomIds.length === rooms.length ? 'Deselect All' : 'Select All'}
-                      </button>
-                    </div>
-                    <ul className="p-1 space-y-1 max-h-60 overflow-y-auto" aria-labelledby="dropdownUnitsButton">
-                      {rooms.map((room) => {
-                        const isChecked = selectedRoomIds.includes(room.id);
-                        return (
-                          <li key={room.id}>
-                            <label className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors">
+                  {isUnitsPickerOpen && (
+                    <div className="pt-2.5 border-t border-gray-200 dark:border-gray-700 space-y-2.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                          {selectedRoomIds.length} of {rooms.length} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={toggleAllRooms}
+                          className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          {selectedRoomIds.length === rooms.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-0.5">
+                        {rooms.map((room) => {
+                          const isChecked = selectedRoomIds.includes(room.id);
+                          return (
+                            <label
+                              key={room.id}
+                              className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                                isChecked
+                                  ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
+                                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100/60 dark:hover:bg-gray-750'
+                              }`}
+                            >
                               <input
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => toggleRoomSelection(room.id)}
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:bg-gray-600 dark:border-gray-500 cursor-pointer"
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
                               />
-                              <span className="ms-2.5 text-xs font-medium text-gray-900 dark:text-gray-200 flex-1 flex items-center justify-between">
-                                <span className="truncate">{room.name}</span>
-                                {room.default_tariff != null && (
-                                  <span className="text-2xs text-gray-400 dark:text-gray-400 shrink-0 ms-2">
-                                    (₹{Math.round(room.default_tariff)})
-                                  </span>
-                                )}
-                              </span>
+                              <span className="text-xs font-medium truncate flex-1">{room.name}</span>
+                              {room.default_tariff != null && (
+                                <span className="text-2xs text-gray-400 dark:text-gray-400 shrink-0 ms-1">
+                                  (₹{Math.round(room.default_tariff)})
+                                </span>
+                              )}
                             </label>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </Dropdown>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="xs"
+                          onClick={() => setIsUnitsPickerOpen(false)}
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : rooms.length === 1 ? (
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-2">
@@ -780,99 +917,101 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               />
 
               {/* Day-of-Week Scoping - radio options for Every Day, Weekdays, Weekends, Custom */}
-              {(() => {
-                const isAllDays = selectedDays.length === 7;
-                const isWeekdaysOnly = selectedDays.length === 5 && WEEKDAY_CODES.every((d) => selectedDays.includes(d));
-                const isWeekendsOnly = selectedDays.length === 2 && WEEKEND_CODES.every((d) => selectedDays.includes(d));
-                const dayPreset = isAllDays ? 'all' : isWeekdaysOnly ? 'weekdays' : isWeekendsOnly ? 'weekends' : 'custom';
+              <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 dark:text-white">
+                    Applicable Days
+                  </label>
+                  <p className="text-2xs text-gray-500 dark:text-gray-400">
+                    Choose whether this price/rule applies Every Day, on Weekdays, on Weekends, or Custom Days.
+                  </p>
+                </div>
 
-                return (
-                  <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-900 dark:text-white">
-                        Applicable Days
-                      </label>
-                      <p className="text-2xs text-gray-500 dark:text-gray-400">
-                        Choose whether this price/rule applies Every Day, on Weekdays, on Weekends, or Custom Days.
-                      </p>
-                    </div>
+                {/* Radio Options: Every Day, Weekdays, Weekends, Custom */}
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <input
+                      type="radio"
+                      name="day_preset_option"
+                      value="all"
+                      checked={dayPresetSelection === 'all'}
+                      onChange={() => {
+                        setDayPresetSelection('all');
+                        setSelectedDays([...ALL_DAY_CODES]);
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <span>Every Day</span>
+                  </label>
 
-                    {/* Radio Options: Every Day, Weekdays, Weekends, Custom */}
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-1">
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
-                        <input
-                          type="radio"
-                          name="day_preset_option"
-                          value="all"
-                          checked={dayPreset === 'all'}
-                          onChange={() => setSelectedDays([...ALL_DAY_CODES])}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        />
-                        <span>Every Day</span>
-                      </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <input
+                      type="radio"
+                      name="day_preset_option"
+                      value="weekdays"
+                      checked={dayPresetSelection === 'weekdays'}
+                      onChange={() => {
+                        setDayPresetSelection('weekdays');
+                        setSelectedDays([...WEEKDAY_CODES]);
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <span>Weekdays</span>
+                  </label>
 
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
-                        <input
-                          type="radio"
-                          name="day_preset_option"
-                          value="weekdays"
-                          checked={dayPreset === 'weekdays'}
-                          onChange={() => setSelectedDays([...WEEKDAY_CODES])}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        />
-                        <span>Weekdays</span>
-                      </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <input
+                      type="radio"
+                      name="day_preset_option"
+                      value="weekends"
+                      checked={dayPresetSelection === 'weekends'}
+                      onChange={() => {
+                        setDayPresetSelection('weekends');
+                        setSelectedDays([...WEEKEND_CODES]);
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <span>Weekends</span>
+                  </label>
 
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
-                        <input
-                          type="radio"
-                          name="day_preset_option"
-                          value="weekends"
-                          checked={dayPreset === 'weekends'}
-                          onChange={() => setSelectedDays([...WEEKEND_CODES])}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        />
-                        <span>Weekends</span>
-                      </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                    <input
+                      type="radio"
+                      name="day_preset_option"
+                      value="custom"
+                      checked={dayPresetSelection === 'custom'}
+                      onChange={() => {
+                        setDayPresetSelection('custom');
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                    />
+                    <span>Custom Days</span>
+                  </label>
+                </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
-                        <input
-                          type="radio"
-                          name="day_preset_option"
-                          value="custom"
-                          checked={dayPreset === 'custom'}
-                          onChange={() => {}}
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        />
-                        <span>Custom Days</span>
-                      </label>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {ALL_DAY_CODES.map((code) => {
-                        const isChecked = selectedDays.includes(code);
-                        return (
-                          <button
-                            key={code}
-                            type="button"
-                            onClick={() => toggleDay(code)}
-                            className={`w-11 h-8 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
-                              isChecked
-                                ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
-                                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'
-                            }`}
-                          >
-                            {DAY_LABELS[code]}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {selectedDays.length === 0 && (
-                      <p className="text-2xs text-red-600 dark:text-red-400 mt-1">Select at least one day, or this rule will never apply.</p>
-                    )}
-                  </div>
-                );
-              })()}
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {ALL_DAY_CODES.map((code) => {
+                    const isChecked = selectedDays.includes(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => toggleDay(code)}
+                        className={`w-11 h-8 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
+                          isChecked
+                            ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                            : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {DAY_LABELS[code]}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedDays.length === 0 && (
+                  <p className="text-2xs text-red-600 dark:text-red-400 mt-1">Select at least one day, or this rule will never apply.</p>
+                )}
+              </div>
 
               {/* Nightly Rate & Label */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -981,10 +1120,10 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   />
                   <div>
                     <span className="text-xs font-semibold text-gray-900 dark:text-white block">
-                      How long guests can stay
+                      How long guests can stay (Optional)
                     </span>
                     <span className="text-2xs text-gray-500 dark:text-gray-400 block">
-                      Require a minimum stay or limit the maximum nights a guest can book.
+                      Require a minimum stay or limit the maximum nights a guest can book. Pushed to Airbnb, Booking.com & direct booking.
                     </span>
                   </div>
                 </label>
@@ -1046,15 +1185,27 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
+                {editingRuleId && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={cancelEdit}
+                  >
+                    Cancel Edit
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   variant="primary"
                   size="sm"
                   disabled={isSaving}
-                  leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : editingRuleId ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                 >
-                  {ruleType === 'floor' && ratePerNight.trim() !== ''
+                  {editingRuleId
+                    ? 'Update Rate & Restrictions'
+                    : ruleType === 'floor' && ratePerNight.trim() !== ''
                     ? `Save Minimum Floor (≥ ₹${ratePerNight})`
                     : 'Save Rate & Restrictions Rule'}
                 </Button>
@@ -1075,7 +1226,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-                      Confirm Changes Before Saving
+                      {editingRuleId ? `Confirm Updates to Rule #${editingRuleId}` : 'Confirm Changes Before Saving'}
                     </h3>
                   </div>
                   <button
@@ -1222,15 +1373,14 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     onClick={executeSaveRule}
                     leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   >
-                    {isSaving ? 'Applying Changes...' : 'Confirm & Apply Rule'}
+                    {isSaving ? (editingRuleId ? 'Updating Rule...' : 'Applying Changes...') : (editingRuleId ? 'Confirm & Update Rule' : 'Confirm & Apply Rule')}
                   </Button>
                 </div>
               </div>
             </Modal>
 
-            {/* Existing Rate Rules Table - collapsed by default, rows paginated
-                (see the showRulesList / rulesPage comment above). */}
-            <div className="space-y-2">
+            {/* Existing Rate Rules Section - collapsed by default, rows paginated, with search and mobile cards */}
+            <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                   Active Date-Range Rules ({rateRules.length})
@@ -1260,118 +1410,289 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   >
                     Show the full list
                   </button>{' '}
-                  to review or delete individual rules.
+                  to review, edit, or delete individual rules.
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold uppercase text-2xs border-b border-gray-200 dark:border-gray-700">
-                      <tr>
-                        <th className="px-3 py-2.5">Date Range</th>
-                        <th className="px-3 py-2.5">Scope / Room</th>
-                        <th className="px-3 py-2.5">Label</th>
-                        <th className="px-3 py-2.5">Price / night</th>
-                        <th className="px-3 py-2.5">Restrictions</th>
-                        <th className="px-3 py-2.5 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                      {rateRules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map((rule) => (
-                        <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
-                          <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
-                            <div>
-                              {rule.start_date} <span className="font-normal text-gray-400">→</span> {rule.end_date}
-                            </div>
-                            {rule.days_of_week && (
-                              <div className="text-2xs font-normal text-blue-600 dark:text-blue-400">
-                                {formatDaysOfWeek(rule.days_of_week)}
+                <div className="space-y-3">
+                  {/* Search Bar Toolbar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-gray-400">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        value={rulesSearchQuery}
+                        onChange={(e) => setRulesSearchQuery(e.target.value)}
+                        placeholder="Search rules by room, label, date (dd/mm/yy), or price..."
+                        className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-9 pe-8 h-10"
+                      />
+                      {rulesSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setRulesSearchQuery('')}
+                          className="absolute inset-y-0 end-0 flex items-center pe-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                          aria-label="Clear search"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-2 text-2xs text-gray-500 dark:text-gray-400 shrink-0 px-1">
+                      <span>
+                        Showing <strong className="text-gray-900 dark:text-white">{filteredRules.length}</strong> of {rateRules.length} rules
+                      </span>
+                    </div>
+                  </div>
+
+                  {filteredRules.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                      No rate rules match "{rulesSearchQuery}".
+                    </div>
+                  ) : (
+                    <>
+                      {/* Mobile Cards View (md:hidden) */}
+                      <div className="md:hidden space-y-3">
+                        {filteredRules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map((rule) => (
+                          <div
+                            key={rule.id}
+                            className="p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-2.5"
+                          >
+                            {/* Top Row: Scope, Label & Actions */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                <span className="px-2 py-0.5 text-2xs font-semibold rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 shrink-0">
+                                  {rule.room_name || 'All Units'}
+                                </span>
+                                {rule.rule_name && (
+                                  <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                                    {rule.rule_name}
+                                  </span>
+                                )}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
-                            {rule.room_name || 'All Rooms / Property'}
-                          </td>
-                          <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
-                            {rule.rule_name || '-'}
-                          </td>
-                          <td className="px-3 py-2">
-                            {rule.rate_per_night != null ? (
-                              rule.rule_type === 'floor' ? (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                                    Floor
-                                  </span>
-                                  <span className="font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
-                                    ≥ ₹{Math.round(rule.rate_per_night)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                                  ₹{Math.round(rule.rate_per_night)}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Button
+                                  variant="edit"
+                                  size="xs"
+                                  onClick={() => handleEditRule(rule)}
+                                  leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="xs"
+                                  onClick={() => handleDeleteRule(rule.id)}
+                                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Date Range Row (dd/mm/yy format) */}
+                            <div className="flex items-center gap-2 flex-wrap text-xs text-gray-900 dark:text-white">
+                              <div className="flex items-center gap-1.5 font-semibold">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                                <span>
+                                  {formatDateDDMMYY(rule.start_date)} <span className="font-normal text-gray-400">→</span> {formatDateDDMMYY(rule.end_date)}
                                 </span>
-                              )
-                            ) : (
-                              <span className="text-gray-400 font-normal">Base Rate</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="flex flex-wrap gap-1">
-                              {!!rule.stop_sell && (
-                                <span className="px-1.5 py-0.5 text-2xs font-bold rounded-md bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800">
-                                  Stop Sell
+                              </div>
+                              {rule.days_of_week && (
+                                <span className="text-2xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded">
+                                  {formatDaysOfWeek(rule.days_of_week)}
                                 </span>
-                              )}
-                              {rule.min_stay_arrival != null && (
-                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                                  Min {rule.min_stay_arrival}N (Arr)
-                                </span>
-                              )}
-                              {rule.min_stay_through != null && (
-                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                                  Min {rule.min_stay_through}N (Thr)
-                                </span>
-                              )}
-                              {rule.max_stay != null && (
-                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700">
-                                  Max {rule.max_stay}N
-                                </span>
-                              )}
-                              {!!rule.closed_to_arrival && (
-                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                                  CTA
-                                </span>
-                              )}
-                              {!!rule.closed_to_departure && (
-                                <span className="px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800">
-                                  CTD
-                                </span>
-                              )}
-                              {!rule.stop_sell && rule.min_stay_arrival == null && rule.min_stay_through == null && rule.max_stay == null && !rule.closed_to_arrival && !rule.closed_to_departure && (
-                                <span className="text-gray-400 text-2xs italic">None</span>
                               )}
                             </div>
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <Button
-                              variant="danger"
-                              size="xs"
-                              onClick={() => handleDeleteRule(rule.id)}
-                              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                            >
-                              Delete
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <TablePagination
-                    page={rulesPage}
-                    totalItems={rateRules.length}
-                    pageSize={RULES_PAGE_SIZE}
-                    onPageChange={setRulesPage}
-                    itemLabel="rules"
-                  />
+
+                            {/* Bottom Row: Price & Restrictions */}
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex-wrap">
+                              <div>
+                                {rule.rate_per_night != null ? (
+                                  rule.rule_type === 'floor' ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                                        Floor
+                                      </span>
+                                      <span className="font-bold text-amber-700 dark:text-amber-400 text-xs">
+                                        ≥ ₹{Math.round(rule.rate_per_night)}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">
+                                      ₹{Math.round(rule.rate_per_night)}
+                                      <span className="text-2xs text-gray-500 font-normal"> /night</span>
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-gray-400 text-xs font-normal">Base Rate</span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1">
+                                {!!rule.stop_sell && (
+                                  <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300">
+                                    Stop Sell
+                                  </span>
+                                )}
+                                {rule.min_stay_arrival != null && (
+                                  <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                                    Min {rule.min_stay_arrival}N
+                                  </span>
+                                )}
+                                {rule.min_stay_through != null && (
+                                  <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                                    Min {rule.min_stay_through}N (Thr)
+                                  </span>
+                                )}
+                                {rule.max_stay != null && (
+                                  <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                    Max {rule.max_stay}N
+                                  </span>
+                                )}
+                                {!!rule.closed_to_arrival && (
+                                  <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">
+                                    CTA
+                                  </span>
+                                )}
+                                {!!rule.closed_to_departure && (
+                                  <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">
+                                    CTD
+                                  </span>
+                                )}
+                                {!rule.stop_sell && rule.min_stay_arrival == null && rule.min_stay_through == null && rule.max_stay == null && !rule.closed_to_arrival && !rule.closed_to_departure && (
+                                  <span className="text-gray-400 text-2xs italic">No stay limits</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table View (hidden md:block) */}
+                      <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold uppercase text-2xs border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                              <th className="px-3 py-2.5">Date Range (dd/mm/yy)</th>
+                              <th className="px-3 py-2.5">Scope / Room</th>
+                              <th className="px-3 py-2.5">Label</th>
+                              <th className="px-3 py-2.5">Price / night</th>
+                              <th className="px-3 py-2.5">Restrictions</th>
+                              <th className="px-3 py-2.5 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                            {filteredRules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map((rule) => (
+                              <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
+                                <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                                  <div>
+                                    {formatDateDDMMYY(rule.start_date)} <span className="font-normal text-gray-400">→</span> {formatDateDDMMYY(rule.end_date)}
+                                  </div>
+                                  {rule.days_of_week && (
+                                    <div className="text-2xs font-normal text-blue-600 dark:text-blue-400">
+                                      {formatDaysOfWeek(rule.days_of_week)}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
+                                  {rule.room_name || 'All Rooms / Property'}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
+                                  {rule.rule_name || '-'}
+                                </td>
+                                <td className="px-3 py-2">
+                                  {rule.rate_per_night != null ? (
+                                    rule.rule_type === 'floor' ? (
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                                          Floor
+                                        </span>
+                                        <span className="font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                                          ≥ ₹{Math.round(rule.rate_per_night)}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                        ₹{Math.round(rule.rate_per_night)}
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="text-gray-400 font-normal">Base Rate</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {!!rule.stop_sell && (
+                                      <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300">
+                                        Stop Sell
+                                      </span>
+                                    )}
+                                    {rule.min_stay_arrival != null && (
+                                      <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                                        Min {rule.min_stay_arrival}N (Arr)
+                                      </span>
+                                    )}
+                                    {rule.min_stay_through != null && (
+                                      <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                                        Min {rule.min_stay_through}N (Thr)
+                                      </span>
+                                    )}
+                                    {rule.max_stay != null && (
+                                      <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                        Max {rule.max_stay}N
+                                      </span>
+                                    )}
+                                    {!!rule.closed_to_arrival && (
+                                      <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">
+                                        CTA
+                                      </span>
+                                    )}
+                                    {!!rule.closed_to_departure && (
+                                      <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300">
+                                        CTD
+                                      </span>
+                                    )}
+                                    {!rule.stop_sell && rule.min_stay_arrival == null && rule.min_stay_through == null && rule.max_stay == null && !rule.closed_to_arrival && !rule.closed_to_departure && (
+                                      <span className="text-gray-400 text-2xs italic">None</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2 text-right whitespace-nowrap">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <Button
+                                      variant="edit"
+                                      size="xs"
+                                      onClick={() => handleEditRule(rule)}
+                                      leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="danger"
+                                      size="xs"
+                                      onClick={() => handleDeleteRule(rule.id)}
+                                      leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <TablePagination
+                        page={rulesPage}
+                        totalItems={filteredRules.length}
+                        pageSize={RULES_PAGE_SIZE}
+                        onPageChange={setRulesPage}
+                        itemLabel="rules"
+                      />
+                    </>
+                  )}
                 </div>
               )}
             </div>
