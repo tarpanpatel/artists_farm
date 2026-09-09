@@ -154,16 +154,35 @@ const pickNightRate = (
   dateStr: string,
   fallback: number
 ): number => {
+  let rate = fallback;
   if (pricingMode === 'variable') {
     const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
-    const match = sortedRules.find((r) => {
+    const fixedMatch = sortedRules.find((r) => {
       const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
       const dayMatch = !r.days_of_week || String(r.days_of_week).split(',').includes(dayCode);
-      return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr && r.rate_per_night != null;
+      return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
+        && r.rate_per_night != null && r.rule_type !== 'floor';
     });
-    if (match) return Number(match.rate_per_night);
+    if (fixedMatch && fixedMatch.rate_per_night != null) {
+      rate = Number(fixedMatch.rate_per_night);
+    }
+
+    // Check floor rules: guarantees price never drops below highest applicable floor
+    const applicableFloors = sortedRules.filter((r) => {
+      const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
+      const dayMatch = !r.days_of_week || String(r.days_of_week).split(',').includes(dayCode);
+      return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
+        && r.rate_per_night != null && r.rule_type === 'floor';
+    });
+
+    if (applicableFloors.length > 0) {
+      const highestFloor = Math.max(...applicableFloors.map((r) => Number(r.rate_per_night || 0)));
+      if (highestFloor > rate) {
+        rate = highestFloor;
+      }
+    }
   }
-  return fallback;
+  return rate;
 };
 
 /** Every night of a stay as YYYY-MM-DD: check-in up to, not including, check-out. */

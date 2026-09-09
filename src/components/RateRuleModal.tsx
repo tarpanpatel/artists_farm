@@ -123,6 +123,8 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   // that case rather than shown as a control that cannot help.
   const isSingleNight = !!startDate && !!endDate && startDate === endDate;
 
+  const [ruleType, setRuleType] = useState<'fixed' | 'floor'>('fixed');
+
   // Flat Base Rate inline room tariff editing
   const [localRooms, setLocalRooms] = useState<Array<{ id: number; name: string; default_tariff?: number }>>(rooms);
   const [roomTariffs, setRoomTariffs] = useState<Record<number, string>>({});
@@ -151,6 +153,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       setSelectedRoomIds(rooms.map((r) => r.id));
     }
     if (initialRatePerNight != null && initialRatePerNight !== '') setRatePerNight(initialRatePerNight);
+    setRuleType('fixed');
     // Every open starts with the (potentially huge) rules list collapsed.
     setShowRulesList(false);
     setRulesPage(1);
@@ -271,12 +274,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         // there rather than whatever the (hidden) picker happens to hold - it
         // could still be a narrowed selection left over from a wider range.
         days_of_week: isSingleNight ? [...ALL_DAY_CODES] : selectedDays,
+        rule_type: rateNum !== null ? ruleType : 'fixed',
       };
 
       const res = await saveRateRuleDB(payload);
       if (res.success) {
         showToast('Saved. These dates are updated everywhere.', { type: 'success' });
         setRatePerNight('');
+        setRuleType('fixed');
         setRuleName('');
         setMinStay('');
         setMaxStay('');
@@ -736,6 +741,66 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 />
               </div>
 
+              {/* Pricing Rule Type: Exact Price vs Minimum Floor */}
+              {ratePerNight.trim() !== '' && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                  <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 block">
+                    Pricing Action
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <label
+                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                        ruleType === 'fixed'
+                          ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="rule_type_option"
+                        value="fixed"
+                        checked={ruleType === 'fixed'}
+                        onChange={() => setRuleType('fixed')}
+                        className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                      <div className="text-xs">
+                        <span className="font-semibold block text-gray-900 dark:text-white">
+                          Set Exact Price (₹{ratePerNight})
+                        </span>
+                        <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                          Overrides all selected dates to exactly ₹{ratePerNight}.
+                        </span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                        ruleType === 'floor'
+                          ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="rule_type_option"
+                        value="floor"
+                        checked={ruleType === 'floor'}
+                        onChange={() => setRuleType('floor')}
+                        className="mt-0.5 w-4 h-4 text-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                      <div className="text-xs">
+                        <span className="font-semibold block text-gray-900 dark:text-white">
+                          Minimum Floor (Never below ₹{ratePerNight})
+                        </span>
+                        <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                          Only raises dates below ₹{ratePerNight}. Dates already higher (like weekend surges) stay untouched.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* Minimum & Maximum Stay Restrictions */}
               <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
                 <span className="text-2xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 block">
@@ -805,7 +870,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                   disabled={isSaving}
                   leftIcon={isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                 >
-                  Save Rate & Restrictions Rule
+                  {ruleType === 'floor' && ratePerNight.trim() !== ''
+                    ? `Save Minimum Floor (≥ ₹${ratePerNight})`
+                    : 'Save Rate & Restrictions Rule'}
                 </Button>
               </div>
             </form>
@@ -876,8 +943,25 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                           <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
                             {rule.rule_name || '-'}
                           </td>
-                          <td className="px-3 py-2 font-bold text-emerald-700 dark:text-emerald-400">
-                            {rule.rate_per_night != null ? `₹${Math.round(rule.rate_per_night)}` : <span className="text-gray-400 font-normal">Base Rate</span>}
+                          <td className="px-3 py-2">
+                            {rule.rate_per_night != null ? (
+                              rule.rule_type === 'floor' ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                                    Floor
+                                  </span>
+                                  <span className="font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                                    ≥ ₹{Math.round(rule.rate_per_night)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                  ₹{Math.round(rule.rate_per_night)}
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-gray-400 font-normal">Base Rate</span>
+                            )}
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex flex-wrap gap-1">

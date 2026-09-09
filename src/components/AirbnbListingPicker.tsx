@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Building, ExternalLink, Loader2, Lock, MapPin, RefreshCw } from './icons/FlowbiteIcons';
 import { AirbnbIcon } from './icons/AirbnbIcon';
 import { Button } from './Button';
@@ -17,8 +17,8 @@ import { apiFetch, API_ROOT_BASE } from '../services/api';
  * location" while the UI had already selected all of them, so the default action was to flatten
  * an entire multi-location portfolio into one property. Now:
  *
- *   - all listings in one city  -> all selected (the common case, no friction added)
- *   - listings across cities    -> only the largest city group is selected
+ *   - all listings at one place -> all selected (the common case, no friction added)
+ *   - listings across places    -> only the largest place is selected
  *
  * so the default always obeys "one property = one location" and the owner opts INTO mixing
  * rather than opting out.
@@ -69,12 +69,95 @@ const UNKNOWN_CITY = 'Location not set';
 const cityOf = (l: DiscoveredListing): string =>
   l.city && l.city.trim() ? l.city.trim() : UNKNOWN_CITY;
 
-/** All listings in one city -> everything; otherwise the biggest city group only. */
-export const defaultListingSelection = (listings: DiscoveredListing[]): string[] => {
+/** The real address of one listing, from Airbnb's per-listing details call. */
+export interface ListingLocation {
+  street?: string;
+  apt?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+/**
+ * Two listings count as the same place within ~250m. Verified against this account's real
+ * data: the six Patel Colony listings sit inside ~30m of each other while reporting four
+ * DIFFERENT street strings ("3, Patel Colony", "22, Patel Colony", "Patel Colony Road",
+ * "Sardar Patel Marg"), and the nearest genuinely separate property is 2.4km away - so
+ * coordinates cluster correctly where the street text would have split one building into four.
+ */
+const SAME_PLACE_METRES = 250;
+
+const metresBetween = (aLat: number, aLng: number, bLat: number, bLng: number): number => {
+  // Equirectangular approximation - accurate well past the scale we care about here, and
+  // far cheaper than haversine for an O(n^2) pass over a handful of listings.
+  const toRad = Math.PI / 180;
+  const x = (bLng - aLng) * toRad * Math.cos(((aLat + bLat) / 2) * toRad);
+  const y = (bLat - aLat) * toRad;
+  return Math.sqrt(x * x + y * y) * 6371000;
+};
+
+const hasCoords = (loc?: ListingLocation): loc is ListingLocation & { lat: number; lng: number } =>
+  !!loc && typeof loc.lat === 'number' && typeof loc.lng === 'number';
+
+/**
+ * Groups listings into real places. Coordinates decide it when Airbnb gave us them; anything
+ * without falls back to zipcode, then city - never guessed at, and never silently merged into
+ * a coordinate cluster it was not actually measured against.
+ */
+export const buildLocationKeys = (
+  listings: DiscoveredListing[],
+  locations: Record<string, ListingLocation>,
+): Record<string, string> => {
+  const keys: Record<string, string> = {};
+  const anchors: { lat: number; lng: number; key: string }[] = [];
+
+  listings.forEach((l) => {
+    const loc = locations[l.id];
+    if (hasCoords(loc)) {
+      const near = anchors.find((a) => metresBetween(a.lat, a.lng, loc.lat, loc.lng) <= SAME_PLACE_METRES);
+      if (near) {
+        keys[l.id] = near.key;
+      } else {
+        const key = `geo:${loc.lat.toFixed(5)},${loc.lng.toFixed(5)}`;
+        anchors.push({ lat: loc.lat, lng: loc.lng, key });
+        keys[l.id] = key;
+      }
+      return;
+    }
+    const zip = (loc?.zipcode || '').trim();
+    keys[l.id] = zip ? `zip:${zip}` : `city:${cityOf(l)}`;
+  });
+
+  return keys;
+};
+
+/** A human label for one place - the street and postcode when known, else just the city. */
+export const locationLabel = (
+  items: DiscoveredListing[],
+  locations: Record<string, ListingLocation>,
+): string => {
+  const loc = items.map((l) => locations[l.id]).find((x) => x && (x.street || x.zipcode));
+  const city = cityOf(items[0]);
+  if (!loc) return city;
+  const street = (loc.street || '').trim();
+  const zip = (loc.zipcode || '').trim();
+  if (street && zip) return `${street}, ${city} ${zip}`;
+  if (street) return `${street}, ${city}`;
+  return zip ? `${city} ${zip}` : city;
+};
+
+/** All listings at one place -> everything; otherwise the biggest single place only. */
+export const defaultListingSelection = (
+  listings: DiscoveredListing[],
+  locations: Record<string, ListingLocation> = {},
+): string[] => {
   if (listings.length === 0) return [];
+  const keys = buildLocationKeys(listings, locations);
   const groups = new Map<string, DiscoveredListing[]>();
   listings.forEach((l) => {
-    const c = cityOf(l);
+    const c = keys[l.id] || cityOf(l);
     groups.set(c, [...(groups.get(c) || []), l]);
   });
   if (groups.size <= 1) return listings.map((l) => l.id);
@@ -103,6 +186,10 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
   const [claimed, setClaimed] = useState<Record<string, ListingClaim>>({});
+  const [locations, setLocations] = useState<Record<string, ListingLocation>>({});
+  // Set the moment the owner changes the selection themselves, so the background location
+  // fetch below can re-seed a smarter default WITHOUT ever overwriting their own ticks.
+  const userTouchedRef = useRef(false);
 
   const checkConnection = useCallback(async () => {
     if (!propertyId) return;
@@ -142,6 +229,33 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
           onSelectionChange(defaultListingSelection(found.filter((l) => !claims[l.id])));
           setSeeded(true);
         }
+
+        // Real addresses, fetched WITHOUT blocking the list above (it costs one Airbnb call
+        // per listing - ~2.5s for ten, sometimes more). Until it lands, grouping falls back to
+        // city, which is all the cheap listings call gives us. Failure is silent on purpose:
+        // this only sharpens the grouping, it is never the difference between a usable picker
+        // and a broken one.
+        void (async () => {
+          try {
+            const locRes = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_airbnb_listing_locations`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ property_id: propertyId }),
+            }, propertySlug);
+            const locJson = await locRes.json();
+            const map: Record<string, ListingLocation> = locJson?.data?.locations || {};
+            if (locJson?.status !== 'success' || Object.keys(map).length === 0) return;
+            setLocations(map);
+            // Now that the real places are known, the default may well be wrong - it was
+            // seeded from city alone, which cannot tell two buildings in one city apart.
+            // Only re-seed if the owner has not started picking for themselves.
+            if (!userTouchedRef.current) {
+              onSelectionChange(defaultListingSelection(found.filter((l) => !claims[l.id]), map));
+            }
+          } catch {
+            /* grouping stays city-based - see above */
+          }
+        })();
       }
     } catch (err: any) {
       setError(err?.message || 'Could not check your Airbnb connection.');
@@ -197,25 +311,38 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
     }
   };
 
+  const locationKeys = useMemo(() => buildLocationKeys(listings, locations), [listings, locations]);
+
   const groups = useMemo(() => {
     const map = new Map<string, DiscoveredListing[]>();
     listings.forEach((l) => {
-      const c = cityOf(l);
+      const c = locationKeys[l.id] || cityOf(l);
       map.set(c, [...(map.get(c) || []), l]);
     });
-    return Array.from(map.entries());
-  }, [listings]);
+    // [groupKey, label, listings] - the key is a coordinate cluster, so it is not showable.
+    return Array.from(map.entries()).map(
+      ([key, items]) => [key, locationLabel(items, locations), items] as const,
+    );
+  }, [listings, locationKeys, locations]);
 
-  const selectedCities = useMemo(() => {
+  /** The distinct PLACES currently picked, by their human label. */
+  const selectedPlaces = useMemo(() => {
     const seen = new Set<string>();
-    listings.forEach((l) => {
-      if (selectedIds.includes(l.id)) seen.add(cityOf(l));
+    groups.forEach(([key, label, items]) => {
+      if (items.some((l) => selectedIds.includes(l.id))) seen.add(label || key);
     });
     return Array.from(seen);
-  }, [listings, selectedIds]);
+  }, [groups, selectedIds]);
+
+  /** True once the real addresses are in, for at least one selected listing. */
+  const haveRealLocations = useMemo(
+    () => selectedIds.some((id) => !!locations[id]),
+    [selectedIds, locations],
+  );
 
   const toggle = (id: string) => {
     if (claimed[id]) return; // owned by another property - not selectable
+    userTouchedRef.current = true;
     onSelectionChange(selectedIds.includes(id) ? selectedIds.filter((i) => i !== id) : [...selectedIds, id]);
   };
 
@@ -303,19 +430,22 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
           </div>
 
           <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
-            {groups.map(([city, items]) => {
+            {groups.map(([groupKey, label, items]) => {
               const ids = items.filter((l) => !claimed[l.id]).map((l) => l.id);
               const allPicked = ids.length > 0 && ids.every((id) => selectedIds.includes(id));
               return (
-                <div key={city}>
+                <div key={groupKey}>
                   <div className="mb-1 flex items-center justify-between">
                     <span className="flex items-center gap-1 text-2xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      <MapPin className="h-3 w-3" /> {city} ({items.length})
+                      <MapPin className="h-3 w-3" /> {label} ({items.length})
                     </span>
                     {groups.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => onSelectionChange(allPicked ? [] : ids)}
+                        onClick={() => {
+                          userTouchedRef.current = true;
+                          onSelectionChange(allPicked ? [] : ids);
+                        }}
                         className="text-2xs font-semibold text-blue-600 hover:underline dark:text-blue-400"
                       >
                         {allPicked ? 'Clear' : 'Select only these'}
@@ -374,16 +504,26 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
             })}
           </div>
 
-          {selectedCities.length > 1 && (
+          {/* Fires whenever more than one listing is picked and we cannot PROVE they are
+              co-located (9 Sep 2026, reported live: picking Winter Garden alongside Patel
+              Colony's listings raised nothing, because Airbnb's cheap listings call reports
+              both as "Jaipur"). Once the real addresses land it names them; until then it asks,
+              because staying silent is what let a two-location import through unremarked. */}
+          {selectedIds.length > 1 && (selectedPlaces.length > 1 || !haveRealLocations) && (
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <div className="text-xs text-amber-900 dark:text-amber-300">
                 <p className="font-bold">
-                  You have picked listings in {selectedCities.length} different places: {selectedCities.join(', ')}.
+                  {selectedPlaces.length > 1
+                    ? `You have picked listings at ${selectedPlaces.length} different addresses: ${selectedPlaces.join(' / ')}.`
+                    : `Are all ${selectedIds.length} of these at the same address?`}
                 </p>
                 <p className="mt-1 font-normal">
                   They would all become rooms of this one property, sharing one staff list. If they
                   are separate places, import one now and create another property for the rest.
+                  {selectedPlaces.length > 1
+                    ? ''
+                    : ' We are still reading their addresses from Airbnb - until that lands we can only see the city.'}
                 </p>
               </div>
             </div>

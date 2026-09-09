@@ -5218,6 +5218,7 @@ switch ($action) {
     case 'channex_channel_airbnb_connection_link':
     case 'channex_channel_mapping_details':
     case 'channex_airbnb_listing_details':
+    case 'channex_airbnb_listing_locations':
     case 'channex_import_airbnb_room_config':
     case 'channex_channel_save_mapping':
     case 'channex_channel_check_readiness':
@@ -5629,6 +5630,61 @@ switch ($action) {
                     break 2;
                 }
                 echo json_encode(['status' => 'success', 'data' => $res['data']]);
+                break 2;
+
+            // Read-only: the real street address / coordinates of every Airbnb listing on
+            // this property's channel, so the import picker can group listings by where they
+            // ACTUALLY are (9 Sep 2026). GET /channels/:id/action/listings - the cheap call the
+            // picker already makes - carries only `city`, and a host whose buildings are all in
+            // one city gets "Jaipur" for every one of them, which is why picking Winter Garden
+            // alongside Patel Colony's listings raised no warning at all. listing_details DOES
+            // carry street/zipcode/lat/lng (verified live against all 10 listings on this
+            // account: three genuinely distinct coordinate clusters ~2-20km apart, identical
+            // city on every one). It is a separate action rather than extra fields on
+            // mapping_details because it costs one request PER LISTING - ~2.5s for 10, and
+            // occasionally longer - so the picker fetches it in the background and sharpens its
+            // grouping when it lands, instead of making the whole list wait. Pushes nothing.
+            case 'channex_airbnb_listing_locations':
+                $conn = $targetPropertyId > 0 ? getChannexChannelConnection($pdo, $targetPropertyId, 'AirBNB') : null;
+                if (!$conn || empty($conn['channex_channel_id'])) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'No connected Airbnb channel for this property']);
+                    break 2;
+                }
+                $listRes = $channelClient->getChannelListings($conn['channex_channel_id']);
+                if (!$listRes['success']) {
+                    http_response_code($listRes['http_code'] ?: 502);
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to load your Airbnb listings', 'error' => $listRes['error'] ?? null]);
+                    break 2;
+                }
+                $locIds = [];
+                foreach (($listRes['data']['listing_id_dictionary']['values'] ?? []) as $l) {
+                    $lid = (string)($l['id'] ?? '');
+                    if ($lid !== '') $locIds[] = $lid;
+                }
+                $locations = [];
+                if (!empty($locIds)) {
+                    $detailsMap = $channelClient->getMultipleListingDetails($conn['channex_channel_id'], $locIds);
+                    foreach ($locIds as $lid) {
+                        // A listing whose details call failed is simply omitted, never guessed at.
+                        // The picker falls back to city for anything missing here - a slow or
+                        // failed lookup must not silently reshuffle which listings look co-located.
+                        if (empty($detailsMap[$lid]['success'])) continue;
+                        $L = $detailsMap[$lid]['data']['listing'] ?? [];
+                        $lat = isset($L['lat']) ? (float)$L['lat'] : null;
+                        $lng = isset($L['lng']) ? (float)$L['lng'] : null;
+                        $locations[$lid] = [
+                            'street'  => trim((string)($L['street'] ?? '')),
+                            'apt'     => trim((string)($L['apt'] ?? '')),
+                            'city'    => trim((string)($L['city'] ?? '')),
+                            'state'   => trim((string)($L['state'] ?? '')),
+                            'zipcode' => trim((string)($L['zipcode'] ?? '')),
+                            'lat'     => ($lat !== null && $lat != 0.0) ? $lat : null,
+                            'lng'     => ($lng !== null && $lng != 0.0) ? $lng : null,
+                        ];
+                    }
+                }
+                echo json_encode(['status' => 'success', 'data' => ['locations' => (object) $locations]]);
                 break 2;
 
             case 'channex_channel_mapping_details':

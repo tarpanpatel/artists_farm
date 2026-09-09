@@ -494,17 +494,35 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, [rateRules]);
 
   const getDayPrice = (dateStr: string, room: { id: number; default_tariff?: number }): number => {
+    let rate = room.default_tariff || defaultTariff || 0;
     if (pricingMode === 'variable') {
       const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
-      const match = resolvedRateRules.find((r) => {
+      const fixedMatch = resolvedRateRules.find((r) => {
         const roomMatch = !r.room_id || Number(r.room_id) === Number(room.id);
         const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
         return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
-          && r.rate_per_night != null;
+          && r.rate_per_night != null && r.rule_type !== 'floor';
       });
-      if (match && match.rate_per_night != null) return Number(match.rate_per_night);
+      if (fixedMatch && fixedMatch.rate_per_night != null) {
+        rate = Number(fixedMatch.rate_per_night);
+      }
+
+      // Check floor rules: guarantees price never drops below highest applicable floor
+      const applicableFloors = resolvedRateRules.filter((r) => {
+        const roomMatch = !r.room_id || Number(r.room_id) === Number(room.id);
+        const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
+        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
+          && r.rate_per_night != null && r.rule_type === 'floor';
+      });
+
+      if (applicableFloors.length > 0) {
+        const highestFloor = Math.max(...applicableFloors.map((r) => Number(r.rate_per_night || 0)));
+        if (highestFloor > rate) {
+          rate = highestFloor;
+        }
+      }
     }
-    return room.default_tariff || defaultTariff || 0;
+    return rate;
   };
 
   // iCal sync retired app-wide (3 Sep 2026, superseded by the Channex channel

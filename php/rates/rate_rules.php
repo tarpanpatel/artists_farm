@@ -78,7 +78,12 @@ function describeRateRuleRooms(PDO $pdo, array $roomIds): string {
  */
 function describeRateRuleTerms(?float $rate, array $r): string {
     $parts = [];
-    $parts[] = $rate !== null ? ('Rs' . number_format($rate, 2) . '/night') : 'no rate';
+    $isFloor = ($r['rule_type'] ?? 'fixed') === 'floor';
+    if ($rate !== null) {
+        $parts[] = ($isFloor ? 'floor min Rs' : 'Rs') . number_format($rate, 2) . '/night';
+    } else {
+        $parts[] = 'no rate';
+    }
     if (!empty($r['min_stay_arrival']))    $parts[] = 'min stay ' . (int)$r['min_stay_arrival'];
     if (!empty($r['min_stay_through']))    $parts[] = 'min stay through ' . (int)$r['min_stay_through'];
     if (!empty($r['max_stay']))            $parts[] = 'max stay ' . (int)$r['max_stay'];
@@ -176,6 +181,15 @@ function handleRateRuleRequests($pdo, $requestMethod, $action, $propertyId) {
         markSchemaVerified('schema_room_rate_rule_days_of_week');
     }
 
+    // Floor rate rules (9 Sep 2026). A rule can be 'fixed' (overrides rate to ₹X)
+    // or 'floor' (guarantees rate is never below ₹X, preserving higher surges).
+    if (!isSchemaVerified('schema_room_rate_rule_type')) {
+        try {
+            $pdo->exec("ALTER TABLE `room_rate_rules` ADD COLUMN IF NOT EXISTS `rule_type` VARCHAR(20) NOT NULL DEFAULT 'fixed'");
+        } catch (PDOException $e) {}
+        markSchemaVerified('schema_room_rate_rule_type');
+    }
+
     switch ($action) {
         case 'get_rate_rules':
             getRateRules($pdo, $propertyId);
@@ -261,6 +275,7 @@ function saveRateRule($pdo, $propertyId) {
         $endDate = $input['end_date'] ?? '';
         $ratePerNight = isset($input['rate_per_night']) ? (float)$input['rate_per_night'] : null;
         $ruleName = trim($input['rule_name'] ?? '');
+        $ruleType = in_array($input['rule_type'] ?? '', ['fixed', 'floor'], true) ? $input['rule_type'] : 'fixed';
         $targetRoomIds = $input['room_ids'] ?? (isset($input['room_id']) ? [$input['room_id']] : [null]);
         $ruleId = !empty($input['id']) ? (int)$input['id'] : null;
 
@@ -361,25 +376,25 @@ function saveRateRule($pdo, $propertyId) {
                 UPDATE room_rate_rules
                 SET room_id = ?, start_date = ?, end_date = ?, rate_per_night = ?, rule_name = ?,
                     min_stay_arrival = ?, min_stay_through = ?, max_stay = ?,
-                    stop_sell = ?, closed_to_arrival = ?, closed_to_departure = ?, days_of_week = ?
+                    stop_sell = ?, closed_to_arrival = ?, closed_to_departure = ?, days_of_week = ?, rule_type = ?
                 WHERE id = ? AND property_id = ?
             ");
             $stmt->execute([$roomId, $startDate, $endDate, $ratePerNight, $ruleName,
                 $minStayArrival, $minStayThrough, $maxStay,
-                $stopSell, $closedToArrival, $closedToDeparture, $daysOfWeek,
+                $stopSell, $closedToArrival, $closedToDeparture, $daysOfWeek, $ruleType,
                 $ruleId, $propertyId]);
         } else {
             // Bulk insert for selected rooms
             $stmt = $pdo->prepare("
                 INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, rule_name,
-                    min_stay_arrival, min_stay_through, max_stay, stop_sell, closed_to_arrival, closed_to_departure, days_of_week)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    min_stay_arrival, min_stay_through, max_stay, stop_sell, closed_to_arrival, closed_to_departure, days_of_week, rule_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($targetRoomIds as $rId) {
                 $roomId = !empty($rId) ? (int)$rId : null;
                 $stmt->execute([$propertyId, $roomId, $startDate, $endDate, $ratePerNight, $ruleName,
                     $minStayArrival, $minStayThrough, $maxStay,
-                    $stopSell, $closedToArrival, $closedToDeparture, $daysOfWeek]);
+                    $stopSell, $closedToArrival, $closedToDeparture, $daysOfWeek, $ruleType]);
             }
         }
 
@@ -437,6 +452,7 @@ function saveRateRule($pdo, $propertyId) {
                 'closed_to_arrival' => $closedToArrival,
                 'closed_to_departure' => $closedToDeparture,
                 'days_of_week' => $daysOfWeek,
+                'rule_type' => $ruleType,
             ])
         ));
 
@@ -523,7 +539,7 @@ function deleteRateRule($pdo, $propertyId) {
         $lookup = $pdo->prepare("
             SELECT room_id, start_date, end_date, rate_per_night, min_stay_arrival, min_stay_through,
                    max_stay, stop_sell, closed_to_arrival, closed_to_departure,
-                   rule_name, days_of_week
+                   rule_name, days_of_week, rule_type
             FROM room_rate_rules WHERE id = ? AND property_id = ?
         ");
         $lookup->execute([$ruleId, $propertyId]);

@@ -434,13 +434,20 @@ class AriDrainWorker {
         $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
 
         $rulesByDate = [];
+        $floorsByDate = [];
         foreach ($rules as $r) {
             $ruleDays = !empty($r['days_of_week']) ? explode(',', $r['days_of_week']) : null;
             $cur = strtotime($r['start_date']);
             $end = strtotime($r['end_date']);
+            $isFloor = ($r['rule_type'] ?? 'fixed') === 'floor';
             while ($cur <= $end) {
                 $dStr = date('Y-m-d', $cur);
                 if ($ruleDays === null || in_array($dayCodeByIso[(int)date('N', $cur)], $ruleDays, true)) {
+                    if ($isFloor) {
+                        if ($r['rate_per_night'] !== null) {
+                            $floorsByDate[$dStr] = max($floorsByDate[$dStr] ?? 0.0, (float)$r['rate_per_night']);
+                        }
+                    }
                     if (!isset($rulesByDate[$dStr])) {
                         $rulesByDate[$dStr] = $r;
                     }
@@ -448,7 +455,7 @@ class AriDrainWorker {
                 $cur = strtotime('+1 day', $cur);
             }
         }
-        return $rulesByDate;
+        return ['rules' => $rulesByDate, 'floors' => $floorsByDate];
     }
 
     /**
@@ -472,12 +479,14 @@ class AriDrainWorker {
         $baseTariff = (float) ($propStmt->fetchColumn() ?: 3500);
 
         $isDynamic = $this->isDynamicPricingMode($scopeId);
-        $rulesByDate = $this->buildRulesByDate($scopeId, $startDate, $endDate);
+        $ruleMaps = $this->buildRulesByDate($scopeId, $startDate, $endDate);
+        $rulesByDate = $ruleMaps['rules'];
+        $floorsByDate = $ruleMaps['floors'];
 
         // A day counts as covered only when a rule claims it AND that rule actually carries a
-        // price. A rule that sets only min_stay leaves rate_per_night null, and
-        // computeCompressedRestrictions() falls back to the base tariff for exactly that day -
-        // so treating "a rule exists" as "it is priced" would under-report the risk.
+        // price (either a fixed price or a floor price). A rule that sets only min_stay leaves
+        // rate_per_night null, and computeCompressedRestrictions() falls back to the base tariff
+        // for exactly that day - so treating "a rule exists" as "it is priced" would under-report the risk.
         $uncovered = [];
         $totalNights = 0;
         $cur = strtotime($startDate);
@@ -486,7 +495,9 @@ class AriDrainWorker {
             $dStr = date('Y-m-d', $cur);
             $totalNights++;
             $rule = $rulesByDate[$dStr] ?? null;
-            if (!$rule || $rule['rate_per_night'] === null) {
+            $floor = $floorsByDate[$dStr] ?? 0.0;
+            $hasFixedPrice = $rule && ($rule['rule_type'] ?? 'fixed') !== 'floor' && $rule['rate_per_night'] !== null;
+            if (!$hasFixedPrice && $floor <= 0.0) {
                 $uncovered[] = $dStr;
             }
             $cur = strtotime('+1 day', $cur);
@@ -563,7 +574,9 @@ class AriDrainWorker {
         // Fetch rules - only while this scope is actually in Dynamic Rules
         // mode. "Flat Base Rate" means every day below falls through to the
         // base tariff with no restrictions, same as if no rule existed.
-        $rulesByDate = $this->buildRulesByDate($scopeId, $startDate, $endDate);
+        $ruleMaps = $this->buildRulesByDate($scopeId, $startDate, $endDate);
+        $rulesByDate = $ruleMaps['rules'];
+        $floorsByDate = $ruleMaps['floors'];
 
         // Build daily state - only the touched fields are set on each day,
         // so a rate-only push never carries stop_sell/closed_to_arrival/etc.
@@ -579,7 +592,11 @@ class AriDrainWorker {
             $rule = $rulesByDate[$dStr] ?? null;
             $state = [];
             if ($includeRate) {
-                $dayRate = $rule && $rule['rate_per_night'] !== null ? (float)$rule['rate_per_night'] : $baseTariff;
+                $baseRate = ($rule && ($rule['rule_type'] ?? 'fixed') !== 'floor' && $rule['rate_per_night'] !== null)
+                    ? (float)$rule['rate_per_night']
+                    : $baseTariff;
+                $floor = $floorsByDate[$dStr] ?? 0.0;
+                $dayRate = $floor > 0.0 ? max($baseRate, $floor) : $baseRate;
                 if ($occPricing) {
                     // One entry per bookable occupancy, 1..capacity. Same formula
                     // the direct booking engine bills with (see computeStayCharges)

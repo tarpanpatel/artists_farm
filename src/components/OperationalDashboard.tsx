@@ -327,19 +327,41 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   }, [rateRules]);
 
   const getDayPrice = (dateStr: string): { rate: number; isRule: boolean; label?: string } => {
+    let rate = propertyDefaultTariff || 0;
+    let isRule = false;
+    let label: string | undefined = undefined;
+
     if (pricingMode === 'variable') {
       const dayCode = DAY_CODE_BY_JS_DAY[new Date(dateStr + 'T00:00:00').getDay()];
-      const match = resolvedRateRules.find((r) => {
+      const fixedMatch = resolvedRateRules.find((r) => {
         const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
         const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
         return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
-          && r.rate_per_night != null;
+          && r.rate_per_night != null && r.rule_type !== 'floor';
       });
-      if (match) {
-        return { rate: Number(match.rate_per_night), isRule: true, label: match.rule_name };
+      if (fixedMatch && fixedMatch.rate_per_night != null) {
+        rate = Number(fixedMatch.rate_per_night);
+        isRule = true;
+        label = fixedMatch.rule_name;
+      }
+
+      // Check floor rules: guarantees price never drops below highest applicable floor
+      const applicableFloors = resolvedRateRules.filter((r) => {
+        const roomMatch = !r.room_id || (roomId && Number(r.room_id) === Number(roomId));
+        const dayMatch = !r.days_of_week || r.days_of_week.split(',').includes(dayCode);
+        return roomMatch && dayMatch && r.start_date <= dateStr && r.end_date >= dateStr
+          && r.rate_per_night != null && r.rule_type === 'floor';
+      });
+
+      if (applicableFloors.length > 0) {
+        const highestFloor = Math.max(...applicableFloors.map((r) => Number(r.rate_per_night || 0)));
+        if (highestFloor > rate) {
+          const winningFloor = applicableFloors.find((r) => Number(r.rate_per_night) === highestFloor);
+          return { rate: highestFloor, isRule: true, label: winningFloor?.rule_name || label };
+        }
       }
     }
-    return { rate: propertyDefaultTariff || 0, isRule: false };
+    return { rate, isRule, label };
   };
 
   /**

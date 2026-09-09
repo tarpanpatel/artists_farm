@@ -158,10 +158,11 @@ function getActiveBookingHoldConflict(PDO $pdo, int $roomId, string $checkinDate
  *  for this unrelated feature. */
 function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $checkinDate, string $checkoutDate, float $roomDefaultTariff, float $baseDefaultTariff, string $roomPricingMode, int $numGuests = 1): array {
     $rateRulesPerRoom = [];
+    $floorRulesPerRoom = [];
     $dayCodeByIso = [1 => 'mo', 2 => 'tu', 3 => 'we', 4 => 'th', 5 => 'fr', 6 => 'sa', 7 => 'su'];
     try {
         $rrStmt = $pdo->prepare("
-            SELECT room_id, start_date, end_date, rate_per_night, days_of_week
+            SELECT room_id, start_date, end_date, rate_per_night, days_of_week, rule_type
             FROM room_rate_rules
             WHERE (property_id = ? OR room_id = ? OR room_id = 0 OR room_id IS NULL)
               AND start_date <= ? AND end_date >= ?
@@ -171,6 +172,7 @@ function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $check
         foreach ($rrStmt->fetchAll(PDO::FETCH_ASSOC) as $rr) {
             $rId = $rr['room_id'] !== null ? (int)$rr['room_id'] : 0;
             $ruleDays = !empty($rr['days_of_week']) ? explode(',', $rr['days_of_week']) : null;
+            $isFloor = ($rr['rule_type'] ?? 'fixed') === 'floor';
             $cur = strtotime($rr['start_date']);
             $end = strtotime($rr['end_date']);
             while ($cur <= $end) {
@@ -179,8 +181,15 @@ function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $check
                     $cur = strtotime('+1 day', $cur);
                     continue;
                 }
-                if ($rr['rate_per_night'] !== null && !isset($rateRulesPerRoom[$rId][$dStr])) {
-                    $rateRulesPerRoom[$rId][$dStr] = (float)$rr['rate_per_night'];
+                if ($rr['rate_per_night'] !== null) {
+                    $rate = (float)$rr['rate_per_night'];
+                    if ($isFloor) {
+                        $floorRulesPerRoom[$rId][$dStr] = max($floorRulesPerRoom[$rId][$dStr] ?? 0.0, $rate);
+                    } else {
+                        if (!isset($rateRulesPerRoom[$rId][$dStr])) {
+                            $rateRulesPerRoom[$rId][$dStr] = $rate;
+                        }
+                    }
                 }
                 $cur = strtotime('+1 day', $cur);
             }
@@ -198,6 +207,15 @@ function computeHoldTariff(PDO $pdo, int $propertyId, int $roomId, string $check
             if (isset($rateRulesPerRoom[$roomId][$dStr])) $dailyRate = $rateRulesPerRoom[$roomId][$dStr];
             elseif (isset($rateRulesPerRoom[0][$dStr])) $dailyRate = $rateRulesPerRoom[0][$dStr];
             elseif (isset($rateRulesPerRoom[$propertyId][$dStr])) $dailyRate = $rateRulesPerRoom[$propertyId][$dStr];
+
+            // Floor rule guarantees price is never below floor
+            $floor = 0.0;
+            if (isset($floorRulesPerRoom[$roomId][$dStr])) $floor = max($floor, $floorRulesPerRoom[$roomId][$dStr]);
+            if (isset($floorRulesPerRoom[0][$dStr])) $floor = max($floor, $floorRulesPerRoom[0][$dStr]);
+            if (isset($floorRulesPerRoom[$propertyId][$dStr])) $floor = max($floor, $floorRulesPerRoom[$propertyId][$dStr]);
+            if ($floor > 0.0) {
+                $dailyRate = max($dailyRate, $floor);
+            }
         }
         $totalTariff += $dailyRate;
         $nightCount++;
