@@ -9,6 +9,9 @@ import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { Button } from './Button';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
+import { AirbnbListingPicker, type DiscoveredListing } from './AirbnbListingPicker';
+import { AirbnbIcon } from './icons/AirbnbIcon';
+import { apiFetch, API_ROOT_BASE } from '../services/api';
 
 /**
  * Owner-facing Property Setup Wizard (added 26 Aug 2026, explicit request) - replaces the old
@@ -62,10 +65,17 @@ interface PropertyCreationWizardProps {
 
 const autoSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'notes';
+type StepKey = 'basics' | 'listings' | 'contact' | 'payments' | 'operations' | 'notes';
 
 const STEP_DEFS: { key: StepKey; label: string; icon: React.ElementType }[] = [
   { key: 'basics', label: 'Basics', icon: Home },
+  // Import sits immediately after Basics on purpose (9 Sep 2026, explicit request). Basics is
+  // where the draft property row is created, which is the only thing the import ever needed -
+  // a Channex channel has to attach to a property that exists. Everything after this step is
+  // then pre-filled from the listing instead of retyped, which is the whole point. Before this,
+  // the wizard only showed a note telling the owner to finish here and go find Channel
+  // Connections afterwards.
+  { key: 'listings', label: 'Listings', icon: AirbnbIcon },
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
   { key: 'operations', label: 'Operations', icon: Clock },
@@ -83,6 +93,12 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   const isResuming = !!existingProperty;
 
   const [stepIndex, setStepIndex] = useState(0);
+
+  // --- Step 1: Listings (Airbnb import) ---
+  const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
+  const [airbnbConnected, setAirbnbConnected] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
   const [propertyId, setPropertyId] = useState<number | null>(existingProperty?.id ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +174,72 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   const step0Valid = !!name.trim() && !!address.trim() && hasKitchen !== null && kitchenAnswerLoaded;
 
   /**
+   * Runs the Airbnb import against the draft property, then pulls the property back so the
+   * remaining wizard steps show what the listing actually said instead of empty fields.
+   *
+   * Imports only. `autoProvisionPropertyFromAirbnb()` never pushes ARI and never activates the
+   * channel (CHANNEX.md 5.4a), so nothing reaches Airbnb from here - going live is a separate,
+   * deliberate action behind the Push Confirmation Gate.
+   */
+  const handleImportListings = async () => {
+    if (!propertyId) return;
+    if (selectedListingIds.length === 0) {
+      setError('Select at least one listing to import, or use Next to skip this step.');
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_auto_provision_from_airbnb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_id: propertyId,
+          selected_listing_ids: selectedListingIds,
+          // Name is deliberately NOT sent. The server refuses it for a MULTI_KEY parent anyway,
+          // and for a SINGLE property the owner has already got it from the picker's blank-fill.
+        }),
+      });
+      const json = await res.json();
+      if (json?.status !== 'success') {
+        setError(json?.message || 'Import failed');
+        return;
+      }
+      setImportResult(
+        `Imported ${json.rooms_count ?? selectedListingIds.length} listing${(json.rooms_count ?? selectedListingIds.length) === 1 ? '' : 's'}. Nothing was sent to Airbnb - the channel is not live yet.`,
+      );
+
+      // Re-read the property so the later steps reflect the imported values. Best-effort: a
+      // failed refresh must not undo a successful import, it just means the owner types those
+      // fields as they would have before.
+      try {
+        // There is no single-property GET action - `get_tenant_properties` is the one that
+        // returns full property rows (verified 9 Sep 2026; `get_property_modules` returns only
+        // module flags). Filter to ours rather than inventing an endpoint.
+        const propRes = await fetch(
+          `/php/api/router.php?action=get_tenant_properties&tenant_id=${encodeURIComponent(String(tenantId))}`,
+          { credentials: 'include' },
+        );
+        const propJson = await propRes.json();
+        const p = Array.isArray(propJson?.data)
+          ? propJson.data.find((row: any) => Number(row.id) === Number(propertyId))
+          : null;
+        if (p) {
+          if (p.checkin_time) setCheckinTime(String(p.checkin_time).slice(0, 5));
+          if (p.checkout_time) setCheckoutTime(String(p.checkout_time).slice(0, 5));
+          if (p.default_tariff != null && String(p.default_tariff) !== '') setDefaultTariff(p.default_tariff);
+          if (p.instructions && !instructions.trim()) setInstructions(String(p.instructions));
+          if (p.address && !address.trim()) setAddress(String(p.address));
+        }
+      } catch { /* keep the import */ }
+    } catch (err: any) {
+      setError(err?.message || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  /**
    * Persists whatever the CURRENT step holds. Step 0 either creates the draft (first ever save)
    * or updates it (resuming/editing an already-created one); every later step is always an update
    * against the propertyId step 0 established. Returns true on success.
@@ -228,8 +310,14 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
         return true;
       }
 
-      // Steps 1-4 always operate on an already-created property_id (step 0 guarantees this by the
-      // time any later step is reachable, since Next is disabled on step 0 until it saves).
+      // Listings has nothing of its own to persist - the import (if the owner ran one) already
+      // wrote straight to the property row via channex_auto_provision_from_airbnb, and skipping
+      // the step entirely is a valid choice.
+      if (activeStep.key === 'listings') return true;
+
+      // The remaining steps always operate on an already-created property_id (step 0 guarantees
+      // this by the time any later step is reachable, since Next is disabled on step 0 until it
+      // saves).
       if (!propertyId) return false;
 
       const payload: Record<string, any> = { property_id: propertyId };
@@ -341,7 +429,10 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
             const step2Done = !!(upiId.trim() || gstin.trim());
             const step3Done = propertyType === 'MULTI_KEY' || !!checkinTime || (defaultTariff != null && String(defaultTariff).trim() !== '');
             const step4Done = !!instructions.trim();
-            const stepDoneFlags = [step0Done, step1Done, step2Done, step3Done, step4Done];
+            // Listings is optional (a property with no OTA listing is perfectly valid), so it
+            // counts as done once anything was actually imported.
+            const listingsDone = !!importResult;
+            const stepDoneFlags = [step0Done, listingsDone, step1Done, step2Done, step3Done, step4Done];
 
             const isStepComplete = stepDoneFlags[idx] ?? false;
             const isCurrent = idx === stepIndex && !finished;
@@ -420,12 +511,11 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                 matter (guests included, extra-guest charge, fees, bed layout)
                 because those are not on the page at all.
 
-                A real import needs a connected Airbnb channel, and a property
-                being created does not have one yet. So the order is: create it
-                here, connect the channel, then import - which is what the
-                onboarding wizard's Channels step and Edit Property's "Import from
-                Airbnb" both do. Offering a shortcut here would only reintroduce
-                the scraper. */}
+                A REAL import now lives in the next step (9 Sep 2026). The blocker was only ever
+                that a Channex channel has to attach to a property that exists - and this step
+                creates the draft row, so by the Listings step there is one. The scraper is still
+                not coming back: the import there goes through the Channex channel API, same as
+                Edit Property's "Import from Airbnb". */}
             {!isResuming && (
               <div className="flex items-start gap-2.5 p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/80 rounded-xl">
                 <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-xs border border-indigo-100 dark:border-indigo-800 shrink-0 text-amber-500">
@@ -436,9 +526,9 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                     Already listed on Airbnb?
                   </div>
                   <div className="text-2xs text-indigo-700/80 dark:text-indigo-300/80">
-                    Create the property here, then connect Airbnb from Channel Connections - we can
-                    pull your real check-in times, fees and extra-guest charge straight from the
-                    listing instead of you retyping them.
+                    Just name it here &mdash; the next step connects Airbnb and imports your
+                    listings, so your check-in times, fees, capacity and base price arrive filled
+                    in instead of retyped.
                   </div>
                 </div>
               </div>
@@ -553,6 +643,63 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeStep.key === 'listings' && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Import your listings
+              </h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Optional. Connecting Airbnb pulls your real check-in times, fees, capacity, bed
+                layout, amenities and base price straight from the listing, so the rest of this
+                wizard arrives filled in instead of typed. You can skip this and do it later.
+              </p>
+            </div>
+
+            <AirbnbListingPicker
+              propertyId={propertyId}
+              selectedIds={selectedListingIds}
+              onSelectionChange={setSelectedListingIds}
+              onConnectionChange={setAirbnbConnected}
+              onListingsLoaded={(found: DiscoveredListing[]) => {
+                // Only ever FILLS A BLANK. Never overwrite a name the owner has already typed,
+                // and never touch it at all for a MULTI_KEY parent - a parent is the building,
+                // not one listing, and an import renaming one reached the public booking engine
+                // once already (CLAUDE.md, "OTA Import Must Never Rewrite a Property's Identity").
+                if (!name.trim() && propertyType === 'SINGLE' && found.length > 0) {
+                  setName(found[0].title);
+                }
+              }}
+            />
+
+            {importResult ? (
+              <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">
+                  {importResult}
+                </span>
+              </div>
+            ) : (
+              airbnbConnected && (
+                <Button
+                  variant="primary"
+                  className="w-full justify-center"
+                  onClick={handleImportListings}
+                  disabled={importing}
+                  // Greyed but still clickable when nothing is selected, so the click can say why
+                  // instead of silently doing nothing (28 Aug 2026 rule).
+                >
+                  {importing ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing…</>
+                  ) : (
+                    <><Sparkles className="mr-2 h-4 w-4" /> Import {selectedListingIds.length || ''} selected listing{selectedListingIds.length === 1 ? '' : 's'}</>
+                  )}
+                </Button>
+              )
+            )}
           </div>
         )}
 

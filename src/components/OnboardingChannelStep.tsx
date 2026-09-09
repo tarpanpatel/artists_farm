@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { Button } from './Button';
 import { AirbnbIcon } from './icons/AirbnbIcon';
-import { CheckCircle2, AlertCircle, Download, LinkIcon, Sparkles, Loader2 } from './icons/FlowbiteIcons';
+import { CheckCircle2, AlertCircle, Download, LinkIcon, Sparkles, Loader2, Building } from './icons/FlowbiteIcons';
 import { ChannelConnectWizard } from './ChannelConnectWizard';
 import type { ChannexChannelConnection, ChannexLocalRoom } from './ChannelConnectionsPage';
 import { AirbnbConfigImportDrawer } from './AirbnbConfigImportDrawer';
@@ -154,6 +154,25 @@ export const OnboardingChannelStep: React.FC<OnboardingChannelStepProps> = ({
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
+                  {/* Location guidance (9 Sep 2026, explicit request), plus an honest statement of
+                      this button's scope. Unlike SelfOnboardingWizard's step 3, this path has NO
+                      listing picker - it posts no selected_listing_ids, so the provisioner imports
+                      EVERY listing on the connected account into this one property. On an account
+                      with listings at more than one address that is the exact mistake the guidance
+                      warns against, so the button must at least say so before it is pressed. */}
+                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                    <Building className="w-4 h-4 mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <div className="text-xs text-blue-900 dark:text-blue-200">
+                      <p className="font-bold">This imports every listing on your Airbnb account.</p>
+                      <p className="mt-1 font-normal">
+                        They all become rooms of this one property, sharing one staff list, one
+                        kitchen and one set of expenses. Only use this if every listing is at the
+                        same address &mdash; otherwise use &ldquo;Review and import&rdquo; below and
+                        create a separate property for each location.
+                      </p>
+                    </div>
+                  </div>
+
                   <Button
                     variant="primary"
                     className="w-full justify-center"

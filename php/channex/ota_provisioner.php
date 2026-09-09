@@ -85,6 +85,40 @@ function autoProvisionPropertyFromAirbnb(
         }
     }
 
+    // A listing already imported into ANOTHER property of this tenant is refused outright
+    // (9 Sep 2026). One Airbnb listing mapped into two Ground Code properties means both
+    // believe they own that calendar and both push availability and rates to it - the two
+    // would fight, and the losing push would silently reopen or reprice nights the other
+    // just set. That is a double-booking generator, not an untidiness.
+    //
+    // Enforced HERE, not only by greying out the checkbox: CHANNEX.md 5.4 records a consent
+    // control that shipped with its value never sent, so a client-side-only gate on this
+    // integration has already failed once. The picker's greying is the courtesy; this is the
+    // guarantee.
+    $tenantStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ? AND is_deleted = 0");
+    $tenantStmt->execute([$propertyId]);
+    $ownerTenantId = (int) ($tenantStmt->fetchColumn() ?: 0);
+    if ($ownerTenantId > 0 && function_exists('getClaimedChannexListings')) {
+        $claimed = getClaimedChannexListings($pdo, $ownerTenantId, $propertyId, 'AirBNB');
+        $blocked = [];
+        foreach ($rawListings as $l) {
+            $lid = (string) ($l['id'] ?? '');
+            if ($lid !== '' && isset($claimed[$lid])) {
+                $blocked[] = ($l['title'] ?? $lid) . ' (already in "' . $claimed[$lid]['property_name'] . '")';
+            }
+        }
+        if (!empty($blocked)) {
+            return [
+                'status' => 'error',
+                'http_code' => 409,
+                'message' => 'These listings are already imported into another property, so they cannot be added here: '
+                    . implode('; ', $blocked)
+                    . '. Remove them from that property first if you meant to move them.',
+                'blocked_listings' => $blocked,
+            ];
+        }
+    }
+
     // Concurrent fetch of detailed listing configuration
     $listingIds = array_map(fn($l) => (string)$l['id'], $rawListings);
     $detailsByListingId = $channelClient->getMultipleListingDetails($conn['channex_channel_id'], $listingIds);

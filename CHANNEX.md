@@ -246,6 +246,45 @@ Ongoing operational pushes (a booking, a rate edit) still enqueue while the chan
 That is fine and in fact desirable: Channex sends nothing to an inactive channel, so its inventory
 is simply warm and correct by the time the owner goes live.
 
+### 5.4a-ii One property = one location, and the import must say so
+
+Added 9 Sep 2026. Listings selected in a single import become rooms of a **single** property, and
+staff, expenses, kitchen and menu all attach to the **parent** — so one property per *location* is
+what lets an owner run a separate team and separate books per site. Owners do not work this out on
+their own, and the wrong shape is expensive to unwind once bookings and ledger rows have
+accumulated against it.
+
+- **`SelfOnboardingWizard.tsx` step 3** shows the guidance above the listing checkboxes (before the
+  decision, not after), plus a live prompt when the selection spans more than one `city`.
+- **`city` is a weak proxy — never block or auto-split on it.** Two buildings in the same city are
+  still two locations for staffing purposes; this account's own Patel Colony and Winter are both in
+  Jaipur. The banner is the real safeguard; the city check only catches the worst case.
+- **`OnboardingChannelStep.tsx`'s "1-Click Import" has no listing picker at all** — it posts no
+  `selected_listing_ids`, so `autoProvisionPropertyFromAirbnb()` imports **every** listing on the
+  account into that one property. It now says so before it is pressed. Adding a real picker there
+  is still outstanding.
+
+### 5.4a-iii One listing belongs to exactly one property
+
+Added 9 Sep 2026. A listing already imported into one property cannot be imported into another.
+Two Ground Code properties mapped to the same Airbnb listing both believe they own that calendar
+and both push availability and rates to it — the losing push silently reopens or reprices nights
+the other just set. That is a double-booking generator.
+
+- `getClaimedChannexListings($pdo, $tenantId, $excludePropertyId, $channelCode)`
+  (`channel_connections.php`) resolves who owns what. `channex_channel_mapping_details` returns it
+  as `claimed_listings` so the picker greys those rows out and **names the owning property** —
+  "already imported" with no owner leaves the operator hunting.
+- **`autoProvisionPropertyFromAirbnb()` refuses them server-side with a 409.** The greying is the
+  courtesy; this is the guarantee (§5.4 — a client-only gate on this integration failed once).
+- **MUST be filtered by `channel_code`.** `external_room_code` is namespaced per channel: an
+  Airbnb listing id on an Airbnb connection, a Booking.com room code on a Booking.com one,
+  unrelated integer spaces. An unfiltered query returned **8 claims for 7 rooms** on this account,
+  counting Patel Colony's Booking.com codes as Airbnb listing ids. Verified after the fix: 7
+  claims, and Winter Garden / Winter Garden Studio / The Artists' Farm correctly stay selectable.
+- **`$excludePropertyId` is required** so a property re-running its own import is not blocked by
+  itself. Verified: importing into Patel Colony blocks 0 of its own listings.
+
 ### 5.4b The Push Confirmation Gate
 
 Added 9 Sep 2026. Every wide push — Go Live (`channex_channel_activate`) and the manual

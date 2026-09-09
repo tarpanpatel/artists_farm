@@ -140,10 +140,15 @@ Clean division between **Part 1: Onboarding, Adding/Importing Properties & User 
   - Adding a multi-key property requires manually creating the parent property, navigating to `MultiKeyPropertyOverview.tsx` to manually click "Add Room" for every single room, navigating to `ChannelConnectionsPage.tsx` to map each room, and finally opening `AirbnbConfigImportDrawer.tsx`.
   - `php/api/router.php:1280-1660` (`proposeAirbnbRoomConfig`) pulls capacity, check-in/out, prices, house rules, instructions, wifi, amenities, and bed layouts, but **does not import listing photos into the gallery**.
 - **Friction & Flaws**:
-  - **No Listing Photos**: Airbnb listing photos are left behind, leaving the direct booking engine (`/{slug}/#book`) blank without manual photo uploads.
+  - ~~**No Listing Photos**~~ — **CLOSED, do not reopen.** Photo import was ruled out by the owner on 6 Sep 2026 and reconfirmed 9 Sep 2026 ("skip importing images"). Airbnb's API Terms §2.2(A)/(V) read against retaining static copies of Content and against repackaging it onto our own branded pages, so neither downloading nor hotlinking was clearly safe. **The supported route is the owner uploading their own photos** — same images, no API obligation, since they are the host's own copyrighted work and it is the ROUTE the terms govern. Full reasoning in CHANNEX.md §8.6.
 - **What Could Be Done Better (The Architectural Solution)**:
-  - [ ] **Listing Photos Auto-Import**:
-    - Ingest listing image URLs from the Airbnb payload, save them to `php/uploads/images/{tenantSlug}/{propertySlug}/`, and populate the property image gallery.
+  - [x] ~~**Listing Photos Auto-Import**~~ — cancelled, see above. This item stood here contradicting CHANNEX.md §8.6 until 9 Sep 2026; left visible rather than deleted so it is not re-proposed a third time.
+  - [ ] **DECISION NEEDED — grey out manual "Add Room" and route owners to Ground Code instead?** (raised 9 Sep 2026)
+    - **Surfaces**: `RoomsManagement.tsx:168` (`add_multikey_room`) and the "Add Room" button in `PropertyEditForm.tsx:861`.
+    - **The case FOR greying it out**: a hand-created room has no `channex_mappings` row and no OTA listing behind it, so it silently cannot sync — the owner ends up with a room that looks real on the calendar but never receives a channel booking, and nothing tells them why. The OTA import path creates the room *and* its mapping together, which is the only shape that actually works end to end. It would also match the **white-glove stance already established for Telegram** ("Method A" — the owner does zero technical setup and contacts Ground Code; see CLAUDE.md), so it is a consistent product position rather than a new one.
+    - **The case AGAINST**: a **direct-only room is legitimate** — a unit not listed on any OTA still has to exist for the booking engine, walk-ins and offline bookings, and greying this out makes that impossible without a support ticket. This is a SaaS product for many tenants (see [[multi_tenant_scale]]): a human bottleneck on every new room does not scale, and it blocks a task the owner can genuinely self-serve.
+    - **Middle option worth considering**: keep it enabled, but make the consequence visible — after creating a room by hand, state plainly that it will not sync to any channel until it is mapped, with one tap to map it or to contact Ground Code. Informed self-service rather than a locked door, which is the same shape as the Push Confirmation Gate (show the consequence, do not just block).
+    - **Not a code task yet** — needs the owner's product call on which of the three. Do not implement any of them without it.
 
 #### 1.3 User Flow & Time-to-Value (First 5 Minutes Experience)
 - **Current Code State**:
@@ -208,5 +213,5 @@ Comprehensive architectural, security, database, and frontend audit conducted Se
 
 ---
 
-*Last Updated: 2026-09-08*
+*Last Updated: 2026-09-09*
 

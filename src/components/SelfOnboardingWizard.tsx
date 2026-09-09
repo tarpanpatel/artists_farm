@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Drawer } from 'flowbite-react';
 import {
   User, Home, Layers, ChefHat,
   CheckCircle2, ArrowRight, ArrowLeft, Loader2, Sparkles, ShieldCheck, X, AlertCircle,
   Smartphone, Share, PlusSquare, MoreVertical, ExternalLink, RefreshCw, Apple, Monitor, Download,
+  MapPin, Building,
 } from './icons/FlowbiteIcons';
 import { AirbnbIcon } from './icons/AirbnbIcon';
 import { Button } from './Button';
@@ -66,6 +67,23 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
   const [discoveredListings, setDiscoveredListings] = useState<DiscoveredListing[]>([]);
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
   const [autoProvisioning, setAutoProvisioning] = useState(false);
+
+  // Locations represented by the CURRENT selection. Airbnb returns `city` per listing, so the
+  // obvious cross-city mistake (importing Jaipur and Goa listings into one property) can be
+  // caught outright instead of only warned about in prose.
+  //
+  // Deliberately framed as a prompt, not a block. `city` is a WEAK proxy for "same location":
+  // two separate buildings in the same city are still two locations for staffing purposes -
+  // this account's own Patel Colony and Winter are both in Jaipur - and nothing Airbnb returns
+  // can tell those apart. So the guidance banner above the list is the primary safeguard and
+  // this is only the net under the worst case. Never auto-split or refuse on it.
+  const selectedCities = useMemo(() => {
+    const seen = new Set<string>();
+    discoveredListings.forEach((l) => {
+      if (selectedListingIds.includes(l.id) && l.city && l.city.trim()) seen.add(l.city.trim());
+    });
+    return Array.from(seen);
+  }, [discoveredListings, selectedListingIds]);
 
   // --- Step 3 (Manual Setup State) ---
   const [propertyName, setPropertyName] = useState('');
@@ -644,6 +662,27 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                   </div>
                 ) : discoveredListings.length > 0 ? (
                   <div className="space-y-3">
+                    {/* Location guidance, shown BEFORE anything is selected (9 Sep 2026, explicit
+                        request). One property = one location, with its units as rooms under it -
+                        because staff, expenses, kitchen and menu all attach to the parent, so this
+                        is what lets an owner run a separate team and separate books per location.
+                        Owners do not arrive at this on their own, and picking the wrong shape here
+                        is expensive to unwind once bookings and ledger entries have accumulated
+                        against it. Placed above the list on purpose: after the checkboxes it would
+                        be advice about a decision already made. */}
+                    <div className="flex items-start gap-2.5 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <Building className="w-4 h-4 mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                      <div className="text-xs text-blue-900 dark:text-blue-200">
+                        <p className="font-bold">Select only the listings at one location.</p>
+                        <p className="mt-1 font-normal">
+                          They become rooms under a single property. Anything at a different
+                          address should be a separate property, created the same way afterwards
+                          &mdash; that is what lets you give each location its own staff, expenses
+                          and kitchen.
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Found {discoveredListings.length} Listing{discoveredListings.length === 1 ? '' : 's'}:
@@ -685,6 +724,22 @@ export const SelfOnboardingWizard: React.FC<SelfOnboardingWizardProps> = ({
                         );
                       })}
                     </div>
+
+                    {selectedCities.length > 1 && (
+                      <div className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <div className="text-xs text-amber-900 dark:text-amber-300">
+                          <p className="font-bold">
+                            These listings are in {selectedCities.length} different cities: {selectedCities.join(', ')}.
+                          </p>
+                          <p className="mt-1 font-normal">
+                            They would all become rooms of one property sharing one staff list. If
+                            they are separate places, import one city now and create another
+                            property for the rest.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     <Input
                       label="Property / Resort Name"

@@ -5680,7 +5680,28 @@ switch ($action) {
                             'city' => (string)($l['city'] ?? ''),
                         ];
                     }, $rawListings);
-                    echo json_encode(['status' => 'success', 'data' => ['rooms' => $listings, 'is_airbnb_listing_mode' => true]]);
+                    // Which of these listings another property in this tenant has ALREADY taken
+                    // (9 Sep 2026). Returned alongside the listings so the picker can grey them
+                    // out in place - one listing mapped into two properties means both push
+                    // conflicting availability and rates to the same Airbnb calendar. Excludes
+                    // this property so re-running its own import never blocks itself.
+                    $claimedListings = [];
+                    try {
+                        $tenantStmt = $pdo->prepare("SELECT tenant_id FROM properties WHERE id = ?");
+                        $tenantStmt->execute([$targetPropertyId]);
+                        $ownerTenantId = (int) ($tenantStmt->fetchColumn() ?: 0);
+                        if ($ownerTenantId > 0) {
+                            $claimedListings = getClaimedChannexListings($pdo, $ownerTenantId, $targetPropertyId, 'AirBNB');
+                        }
+                    } catch (Throwable $eClaim) {
+                        // Non-fatal: the server-side refusal in autoProvisionPropertyFromAirbnb()
+                        // is the actual guarantee, this only drives the greying-out.
+                    }
+                    echo json_encode(['status' => 'success', 'data' => [
+                        'rooms' => $listings,
+                        'is_airbnb_listing_mode' => true,
+                        'claimed_listings' => (object) $claimedListings,
+                    ]]);
                     break 2;
                 }
                 if (empty($conn['settings'])) {

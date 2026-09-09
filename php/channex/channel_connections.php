@@ -146,6 +146,69 @@ function saveChannexChannelRoomMappings(PDO $pdo, int $connectionId, array $rows
     }
 }
 
+/**
+ * Which OTA listings are ALREADY claimed by a property, across the whole tenant.
+ *
+ * Added 9 Sep 2026. One listing must never be mapped into two Ground Code properties: both would
+ * then believe they own that calendar and push conflicting availability and rates to the same
+ * Airbnb listing, which is a double-booking generator rather than a tidiness problem. The
+ * importer greys those listings out instead of letting a second property take them.
+ *
+ * `external_room_code` is the Airbnb listing id (see ota_provisioner.php, which writes the
+ * listing id into that column). Scoped to ONE tenant deliberately - a listing id is only
+ * meaningful within the Airbnb account it came from, and a cross-tenant lookup would leak the
+ * existence of another tenant's properties.
+ *
+ * Excludes $excludePropertyId so a property re-running its own import still sees its own
+ * listings as available rather than blocked by itself.
+ *
+ * MUST be filtered by $channelCode. `external_room_code` is namespaced PER CHANNEL - it holds an
+ * Airbnb listing id on an Airbnb connection and a Booking.com room code on a Booking.com one, and
+ * the two are unrelated integer spaces. Querying across every channel at once compares codes that
+ * merely look alike: on this account's own data an unfiltered query returned 8 "claims" for 7
+ * rooms, because Patel Colony's Booking.com room codes were being counted as Airbnb listing ids
+ * alongside the real ones. A collision there would block a genuinely free listing with a
+ * confusing message about a property that never had it (found and fixed 9 Sep 2026).
+ *
+ * @return array listing id => ['property_id' => int, 'property_name' => string, 'room_name' => ?string]
+ */
+function getClaimedChannexListings(PDO $pdo, int $tenantId, ?int $excludePropertyId = null, string $channelCode = 'AirBNB'): array {
+    ensureChannexChannelConnectionsSchema($pdo);
+    $sql = "
+        SELECT m.external_room_code,
+               c.property_id,
+               p.name  AS property_name,
+               r.name  AS room_name
+        FROM channex_channel_room_mappings m
+        JOIN channex_channel_connections c ON c.id = m.connection_id
+        JOIN properties p ON p.id = c.property_id AND p.is_deleted = 0
+        LEFT JOIN properties r ON r.id = m.local_room_id
+        WHERE p.tenant_id = ? AND c.channel_code = ?
+    ";
+    $params = [$tenantId, $channelCode];
+    if ($excludePropertyId !== null) {
+        $sql .= " AND c.property_id <> ?";
+        $params[] = $excludePropertyId;
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $claimed = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $code = (string) $row['external_room_code'];
+        if ($code === '') continue;
+        // First claim wins - if the same listing somehow appears twice, naming one owner is
+        // more useful to the person reading it than an arbitrary last-write.
+        if (isset($claimed[$code])) continue;
+        $claimed[$code] = [
+            'property_id'   => (int) $row['property_id'],
+            'property_name' => (string) $row['property_name'],
+            'room_name'     => $row['room_name'] !== null ? (string) $row['room_name'] : null,
+        ];
+    }
+    return $claimed;
+}
+
 function getChannexChannelRoomMappings(PDO $pdo, int $connectionId): array {
     ensureChannexChannelConnectionsSchema($pdo);
     $stmt = $pdo->prepare("SELECT * FROM channex_channel_room_mappings WHERE connection_id = ?");
