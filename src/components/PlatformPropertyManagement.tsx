@@ -5,6 +5,7 @@ import { ToggleSwitch } from './ToggleSwitch';
 import { StyledSelect } from './StyledSelect';
 import { Button } from './Button';
 import { Input } from './Input';
+import { DatePicker } from './DatePicker';
 import { FieldHelpPopover } from './FieldHelpPopover';
 import { LoadingScreen } from './LoadingScreen';
 import { Popover } from './Popover';
@@ -1422,16 +1423,13 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
               </div>
 
               <div>
-                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-                  Subscription Expiry / Renewal Date
-                </label>
-                <Input
-                  type="date"
+                <DatePicker
+                  label="Subscription Expiry / Renewal Date"
                   value={editingTenant.subscription_expires_at || ''}
-                  onChange={(e) =>
+                  onChange={(date) =>
                     setEditingTenant({
                       ...editingTenant,
-                      subscription_expires_at: e.target.value,
+                      subscription_expires_at: date,
                     })
                   }
                 />

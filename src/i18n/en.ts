@@ -107,7 +107,7 @@ export const strings: Record<string, string> = {
   open_kitchen_orders_button: "View Kitchen Orders",
   booking_calendar_heading: "Booking Calendar",
   legend_active_resident: "Active Resident",
-  legend_checked_out: "Checked Out",
+  legend_checked_out: "Checked Out / Past",
   legend_airbnb_booking: "Airbnb Booking",
   legend_ota_blocked: "OTA-Blocked (not yet a booking)",
   legend_ota_converted: "Converted OTA Bookings",

@@ -7,6 +7,7 @@ import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
+import { DateRangePicker } from './DateRangePicker';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -15,6 +16,26 @@ const ALL_DAY_CODES = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const;
 const DAY_LABELS: Record<string, string> = { mo: 'Mon', tu: 'Tue', we: 'Wed', th: 'Thu', fr: 'Fri', sa: 'Sat', su: 'Sun' };
 const WEEKDAY_CODES = ['mo', 'tu', 'we', 'th', 'fr'];
 const WEEKEND_CODES = ['sa', 'su'];
+
+// DateRangePicker speaks in checkin/checkout (checkout = the day after,
+// exclusive) - this modal's own startDate/endDate are both INCLUSIVE
+// calendar dates, and a single-day rule (startDate === endDate, see
+// isSingleNight below) is a fully valid, already-supported state. Framing
+// endDate as "the night after" here (exactly like CalendarEditorPanel's own
+// night/checkout conversion) keeps that case working: checkout always ends
+// up at least a day after checkin, which is what the picker's own
+// checkin !== checkout completion logic requires, even when the rule itself
+// is for exactly one date.
+function addOneDay(dateIso: string): string {
+  const d = new Date(dateIso + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function subtractOneDay(dateIso: string): string {
+  const d = new Date(dateIso + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // Short human label for a rule's days_of_week ('' or all 7 = every day).
 function formatDaysOfWeek(daysOfWeek?: string | null): string {
@@ -618,23 +639,19 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
                 </div>
               ) : null}
 
-              {/* Date range row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FloatingInput
-                  type="date"
-                  required
-                  label="First date *"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-                <FloatingInput
-                  type="date"
-                  required
-                  label="Last date *"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
+              {/* Date range row - the app's standard calendar
+                  (flowbite-datepicker via DateRangePicker), not a plain
+                  native <input type="date"> popping the OS's own picker
+                  (9 Sep 2026, explicit request: "All calendar and UI
+                  elements should be visually same"). */}
+              <DateRangePicker
+                checkinDate={startDate}
+                checkoutDate={endDate ? addOneDay(endDate) : ''}
+                onCheckinChange={(date) => date && setStartDate(date)}
+                onCheckoutChange={(date) => date && setEndDate(subtractOneDay(date))}
+                fromLabel="First date *"
+                toLabel="Last date *"
+              />
 
               {/* Day-of-Week Scoping (4 Sep 2026, "Monday to Friday 3000,
                   Saturday and Sunday 4000") - all 7 selected (the default)

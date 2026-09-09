@@ -15,6 +15,7 @@ import { Input } from './Input';
 import { FileInput } from './FileInput';
 import { Textarea } from './Textarea';
 import { DateRangePicker } from './DateRangePicker';
+import { DatePicker } from './DatePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
@@ -1538,11 +1539,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       value={payAmount}
                       onChange={(e) => setPayAmount(e.target.value)}
                     />
-                    <Input
+                    <DatePicker
                       label={t('payment_date_label', 'Received on')}
-                      type="date"
                       value={payDate}
-                      onChange={(e) => setPayDate(e.target.value)}
+                      onChange={setPayDate}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">

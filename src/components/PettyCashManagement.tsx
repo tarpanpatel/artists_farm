@@ -18,6 +18,7 @@ import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { useConfirm } from './ConfirmDialogContext';
 import { Input } from './Input';
+import { DatePicker } from './DatePicker';
 import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { scanPettyCashReceipt, scanUpiScreenshot, type ReceiptScanResult, type UpiScanResult } from '../utils/ocrScanner';
@@ -928,6 +929,16 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const handleSaveModalEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEntry) return;
+    // The date field used to be a native <input type="date"> with a plain
+    // `required` attribute doing this check for free - swapped for the
+    // app's own branded calendar (DatePicker.tsx, 9 Sep 2026) which has no
+    // such native validation (it's a readOnly text input under the hood),
+    // and its Clear button can blank an otherwise-already-set date. This
+    // replaces the guard the browser used to provide.
+    if (!editingEntry.date) {
+      showToast('Expense date is required', { type: 'error' });
+      return;
+    }
     updatePettyCash(editingEntry);
     if (editingEntry.description && editingEntry.amount) {
       setItemPrices(prev => ({ ...prev, [editingEntry.description.trim()]: Number(editingEntry.amount) }));
@@ -2035,12 +2046,10 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
             <form onSubmit={handleSaveModalEdit} className="app-form app-form--edit-expense flex-1 flex flex-col justify-between overflow-y-auto">
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <Input
+                  <DatePicker
                     label={t('expense_date_label', 'Expense Date')}
-                    type="date"
-                    required
                     value={editingEntry.date}
-                    onChange={e => setEditingEntry({ ...editingEntry, date: e.target.value })}
+                    onChange={date => setEditingEntry({ ...editingEntry, date })}
                   />
                   <Input
                     label={t('expense_time_label', 'Expense Time')}

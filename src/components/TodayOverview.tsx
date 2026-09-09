@@ -1048,8 +1048,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             {daysArray.map((day, idx) => {
               const dayName = day.toLocaleString('default', { weekday: 'short' });
               const isToday = isSameDate(day, today);
+              // A past date can't be priced, blocked, or booked - closes the
+              // same loophole the isPast guard below already closes for
+              // individual day cells (9 Sep 2026, explicit request: "user
+              // should not be able to edit bookings or dates past today").
+              // Column selection previously had no such guard at all - a drag
+              // starting on this header selected every room for that date
+              // regardless of whether it was already in the past.
+              const isPastDay = day < today;
               // Whole-column selection - see handleHeaderPointerDown.
-              const isColumnPickable = gridRooms.length > 0;
+              const isColumnPickable = gridRooms.length > 0 && !isPastDay;
               const isColumnPending =
                 !!selRect && selRect.dateFrom <= idx && idx <= selRect.dateTo && selRect.spansAllRooms;
 
@@ -1062,6 +1070,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   }}
                   data-cal-room-idx={-1}
                   data-cal-date-idx={idx}
+                  data-cal-past={isPastDay ? '1' : undefined}
                   onPointerDown={isColumnPickable ? (e) => handleHeaderPointerDown(e, idx) : undefined}
                   onPointerEnter={isColumnPickable ? () => handleHeaderPointerMove(idx) : undefined}
                   onPointerMove={isColumnPickable ? handleGridPointerMove : undefined}
@@ -1076,7 +1085,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       setIsPanelOpen(true);
                     }
                   } : undefined}
-                  title={isColumnPickable ? 'Select this date across every unit - drag for a range' : undefined}
+                  title={isColumnPickable ? 'Select this date across every unit - drag for a range' : isPastDay ? 'This date is in the past and can no longer be priced, blocked, or booked' : undefined}
                   className={`w-16 min-w-16 shrink-0 px-1 text-center border-r transition-all py-1.5 ${
                     isColumnPickable ? 'cursor-pointer' : ''
                   } ${
@@ -1087,12 +1096,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 ring-2 ring-inset ring-amber-500 border-amber-500 z-10'
                       : isToday
                       ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm ring-2 ring-inset ring-blue-500 border-blue-500 z-10'
+                      : isPastDay
+                      ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-700'
                       : `bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600 ${
                           isColumnPickable ? 'hover:bg-amber-50 dark:hover:bg-amber-950/40' : ''
                         }`
                   }`}
                 >
-                  <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-500 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
+                  <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-500 dark:text-blue-400' : isPastDay ? 'text-slate-400 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
                   <div className="text-sm font-extrabold leading-none mt-0.5">{day.getDate()}</div>
                 </div>
               );
@@ -1284,12 +1295,18 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           onPointerDown={isPast ? undefined : (e) => handleGridPointerDown(e, roomIdx, dateIdx)}
                           onPointerMove={isPast ? undefined : handleGridPointerMove}
                           onPointerUp={isPast ? undefined : handleGridPointerUp}
-                          title={isPast ? undefined : 'Drag to select these nights'}
+                          title={isPast ? 'This date is in the past and can no longer be priced, blocked, or booked' : 'Drag to select these nights'}
                           className={`w-16 min-w-16 shrink-0 border-r transition flex items-center justify-center select-none ${
                             isPast ? '' : 'cursor-pointer'
                           } ${
                             inSel
                               ? 'bg-slate-900/[0.07] dark:bg-white/10'
+                              // Past greying (9 Sep 2026, explicit request) outranks the
+                              // blocked-night stripe below - both already share the same
+                              // slate-100 tone, so a past+blocked night reads as simply
+                              // "past" without needing a third combined style.
+                              : isPast
+                              ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
                               : isBlockedNight
                               ? 'bg-slate-100 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700'
                               : isToday
@@ -1349,6 +1366,15 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           top: `${topOffset}px`,
                           height: `${capsuleHeight}px`,
                         };
+                        // A stay/block that has fully elapsed reads as historical
+                        // record on the calendar, not an active booking - greyed
+                        // out regardless of OTA/checked-out status (9 Sep 2026,
+                        // explicit request). `end` is the exclusive checkout/block
+                        // boundary, so a checkout of today is not yet "past" -
+                        // matches the isPast definition used on the day cells above
+                        // (day < today) and BookingDetailsModal's own
+                        // isPastBooking lock (checkout < todayStr).
+                        const isItemPast = info.item.end < today;
 
                         if (info.item.kind === 'ota') {
                           const otaItem = info.item;
@@ -1404,7 +1430,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               <button
                                 type="button"
                                 data-cal-capsule="1"
-                                className="px-2.5 rounded-md font-semibold cursor-pointer absolute bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border border-red-700/40 pointer-events-auto shadow-md flex items-center gap-1.5 z-20 overflow-hidden transition-colors"
+                                className={`px-2.5 rounded-md font-semibold cursor-pointer absolute pointer-events-auto shadow-md flex items-center gap-1.5 z-20 overflow-hidden transition-colors border ${
+                                  isItemPast
+                                    ? 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 border-slate-400/40'
+                                    : 'bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border-red-700/40'
+                                }`}
                                 style={commonStyle}
                               >
                                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
@@ -1505,7 +1535,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             <div
                               data-tour="checkin-open-booking-bar"
                               className={`px-2.5 rounded-md font-semibold cursor-pointer hover:shadow-md transition-all absolute ${
-                                isOtaBooking && !isCheckedOut
+                                // A stay that has fully elapsed is greyed out on the
+                                // calendar regardless of source/status (9 Sep 2026,
+                                // explicit request) - outranks the OTA/checked-out
+                                // colors below, since "already over" is the more
+                                // important fact once it's true. getGuestColor()
+                                // already renders this same grey for CheckedOut
+                                // status; isItemPast covers the gap it doesn't -
+                                // an OTA/staff booking whose dates have simply
+                                // slipped into the past without status ever being
+                                // flipped to CheckedOut.
+                                isItemPast
+                                  ? 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600'
+                                  : isOtaBooking && !isCheckedOut
                                   ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
                                   : getGuestColor(guest.id, guest.status)
                               } pointer-events-auto shadow-md flex items-center justify-between gap-1.5 z-20 overflow-hidden`}
@@ -1573,7 +1615,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
-            <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
+            <span>{t('legend_checked_out', 'Checked Out / Past')}</span>
           </div>
         </div>
       </div>
@@ -1664,6 +1706,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             setRateRuleStartDate(selectionInfo.selection.startDate);
             setRateRuleEndDate(selectionInfo.selection.endDate);
             setShowRateRuleModal(true);
+            // This panel is a Drawer that deliberately stays open with no
+            // backdrop so the grid underneath stays clickable (see its own
+            // header comment) - every OTHER Drawer/Modal pair in the app is
+            // mutually exclusive, so custom.css's global scale never had to
+            // account for a Drawer and a Modal being open together, and
+            // simply always renders Drawers (z-59) above Modals (z-58).
+            // RateRuleModal opened without closing this one first, so it
+            // silently rendered fully behind it - clicking "See all pricing
+            // rules" looked like nothing happened (9 Sep 2026, reported live).
+            // Closing the selection here is the actual fix, not a one-off
+            // z-index bump: once RateRuleModal is open there is nothing left
+            // for this panel to do anyway.
+            clearSelection();
           }}
         />
       )}

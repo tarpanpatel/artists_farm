@@ -3,6 +3,7 @@ import { Drawer } from 'flowbite-react';
 import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { ToggleSwitch } from './ToggleSwitch';
+import { DateRangePicker } from './DateRangePicker';
 import { useToast } from './ToastContext';
 import { saveRateRuleDB } from '../services/api';
 
@@ -151,6 +152,17 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [selection]);
 
+  // Inverse of checkoutDateStr above - DateRangePicker speaks in
+  // checkin/checkout (checkout = the day the guest leaves, exclusive), while
+  // this panel's own CalendarSelection speaks in first/last NIGHT (both
+  // inclusive). One day back turns a picked checkout date into the last
+  // night this panel actually stores.
+  const toLastNight = (checkoutIso: string): string => {
+    const d = new Date(checkoutIso + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   if (!selection) return null;
 
   const unitLabel =
@@ -291,31 +303,23 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {/* Dates, still editable - a one-day nudge is faster typed than redrawn. */}
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              First night
-            </span>
-            <input
-              type="date"
-              value={selection.startDate}
-              onChange={(e) => e.target.value && onChangeDates(e.target.value, selection.endDate)}
-              className="w-full text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-            />
-          </label>
-          <label className="block">
-            <span className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-              Last night
-            </span>
-            <input
-              type="date"
-              value={selection.endDate}
-              onChange={(e) => e.target.value && onChangeDates(selection.startDate, e.target.value)}
-              className="w-full text-sm rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-            />
-          </label>
-        </div>
+        {/* Dates, still editable - a one-day nudge is faster typed than
+            redrawn. This is the app's standard calendar (flowbite-datepicker
+            via DateRangePicker), not a one-off - it used to be a plain
+            native <input type="date">, which on a phone pops the OS's own
+            date picker instead of the branded calendar every other date
+            field in the app opens (9 Sep 2026, explicit report: "this is not
+            our default calendar"). */}
+        <DateRangePicker
+          checkinDate={selection.startDate}
+          checkoutDate={checkoutDateStr}
+          onCheckinChange={(date) => date && onChangeDates(date, selection.endDate)}
+          onCheckoutChange={(date) => date && onChangeDates(selection.startDate, toLastNight(date))}
+          fromLabel="First night"
+          toLabel="Last night"
+          disablePastDates
+          bgMode="bg-white dark:bg-slate-900"
+        />
 
         {activeTab === 'rates' && (
           <>
