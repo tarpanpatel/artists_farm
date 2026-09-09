@@ -38,6 +38,7 @@ import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Button } from './Button';
+import { SyncBookingsButton } from './SyncBookingsButton';
 import { KpiCard } from './KpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
@@ -48,6 +49,8 @@ import { getOtaIcon } from '../utils/otaIcons';
 import { OtaBadge } from './OtaBadge';
 
 interface OperationalDashboardProps {
+  /** Drains the OTA feed and refetches bookings. Omitted -> no Refresh button is rendered. */
+  onSyncBookings?: () => Promise<{ pulled: number }>;
   guests: Guest[];
   receipts?: any[];
   menu?: any[];
@@ -108,6 +111,7 @@ interface OperationalDashboardProps {
 }
 
 export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
+  onSyncBookings,
   guests,
   receipts = [],
   menu = [],
@@ -1406,6 +1410,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <Plus className="w-3.5 h-3.5" />
                 <span>{t('new_booking_btn', 'New Booking')}</span>
               </button>
+              {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} />}
               <button
                 type="button"
                 onClick={() => {

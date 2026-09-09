@@ -451,7 +451,11 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               const isStepComplete = stepDoneFlags[idx] ?? false;
               const isCurrent = idx === stepIndex && !finished;
               const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
-              const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
+              // Listings is optional, so moving past it without importing is a perfectly good
+              // outcome - never an amber "you skipped something" warning (9 Sep 2026, matching
+              // PropertySetupWizard's own `optional` step flag).
+              const isOptionalStep = step.key === 'listings';
+              const isPassedIncomplete = isPassedOrVisited && !isStepComplete && !isOptionalStep;
               const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
               const isLast = idx === steps.length - 1;
 
@@ -496,7 +500,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                       className={`flex-1 h-1 rounded-full mx-1.5 ${
                         stepDoneFlags[idx] && idx < stepIndex
                           ? 'bg-emerald-500'
-                          : idx < stepIndex
+                          : idx < stepIndex && !isOptionalStep
                           ? 'bg-amber-400 dark:bg-amber-600'
                           : 'bg-slate-200 dark:bg-slate-700'
                       }`}

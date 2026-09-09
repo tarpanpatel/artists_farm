@@ -9,6 +9,7 @@ import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
 import { KpiCard } from './KpiCard';
 import { fetchRateRulesDB, RateRule } from '../services/api';
 import { Button } from './Button';
+import { SyncBookingsButton } from './SyncBookingsButton';
 import { useToast } from './ToastContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
@@ -20,6 +21,8 @@ import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 
 interface TodayOverviewProps {
   guests: Guest[];
+  /** Drains the OTA feed and refetches bookings. Omitted -> no Refresh button is rendered. */
+  onSyncBookings?: () => Promise<{ pulled: number }>;
   // default_tariff (4 Sep 2026, unbooked-date price display) - already
   // present on the real objects this prop is fed (App.tsx passes
   // preloadedData.currentProperty.rooms straight through, and RateRuleModal
@@ -65,6 +68,7 @@ interface TodayOverviewProps {
 
 export const TodayOverview: React.FC<TodayOverviewProps> = ({
   guests,
+  onSyncBookings,
   rooms = [],
   isMultiKeyProperty = false,
   // kitchenModuleEnabled: still in the props interface (App.tsx passes it) but
@@ -1044,6 +1048,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <span className="text-2xs text-slate-500 dark:text-slate-400 hidden md:inline">
               Drag across the grid to price or block dates &middot; tap a date at the top for every unit
             </span>
+            {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
             <Button
               variant="secondary"
               size="xs"

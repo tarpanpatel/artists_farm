@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FieldHelpModeProvider } from './FieldHelpPopover';
 import { Drawer, Modal } from 'flowbite-react';
 import {
@@ -52,13 +52,20 @@ type StepKey = 'basics' | 'listings' | 'contact' | 'payments' | 'operations' | '
  * A MULTI_KEY parent gets a Rooms step where a single-unit property gets
  * Operations. Step 5 is the Mobile App install guide.
  */
-const buildStepDefs = (isMultiKey: boolean): { key: StepKey; label: string; icon: React.ElementType }[] => [
+const buildStepDefs = (
+  isMultiKey: boolean,
+): { key: StepKey; label: string; icon: React.ElementType; optional?: boolean }[] => [
   { key: 'basics', label: 'Basics', icon: Home },
   // Mirrors PropertyCreationWizard's own Listings step (9 Sep 2026). Without it the two flows
   // diverged: a property created through the wizard could import its listings, but the same
   // property reached through this "finish setting up" nudge had no path to Airbnb at all - which
   // is exactly the state Winter was in, fully set up bar a channel connection it could not reach.
-  { key: 'listings', label: 'Listings', icon: AirbnbIcon },
+  // optional: it is never counted in "N of M steps done", never auto-ticked, and never shown
+  // as a skipped-and-incomplete warning. It therefore keeps its own Airbnb mark at every
+  // status instead of swapping to a checkmark the moment it loses focus (9 Sep 2026, reported
+  // as "listing step logo changes when i click on it") - and, being uncounted, it still cannot
+  // be what keeps this nudge on screen for an owner who will never connect an OTA.
+  { key: 'listings', label: 'Listings', icon: AirbnbIcon, optional: true },
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
   isMultiKey
@@ -166,10 +173,31 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
 
-  const basicsDone = !!name.trim() && (!!editAddress.trim() || !!address.trim());
-  const contactDone = !!(editEmail.trim() || editPhone.trim() || email.trim() || phone.trim());
-  const paymentsDone = !!(editUpiId.trim() || editGstin.trim() || upiId.trim() || upiQrCodeUrl.trim() || gstin.trim());
-  const operationsDone = isMultiKey || !!editCheckinTime || !!checkinTime || (editDefaultTariff.trim() !== '') || (defaultTariff != null && String(defaultTariff).trim() !== '');
+  // What the SERVER currently holds - seeded from props, and updated ONLY after a real save.
+  // Deliberately not the live editX state above (9 Sep 2026, reported live): the done-flags
+  // below decide whether this component renders at all, so deriving them from unsaved
+  // keystrokes meant a browser autofill on the Contact step's Email field flipped the count to
+  // complete and unmounted the drawer out from under the cursor - having saved nothing, which
+  // is why the nudge reappeared on the next refresh. A step may only tick once it is persisted.
+  const [savedValues, setSavedValues] = useState({
+    address, email, phone, gstin, upiId, upiQrCodeUrl, checkinTime, defaultTariff,
+  });
+
+  // Props win whenever they genuinely change (a property switch, or a reload after onSaved).
+  // This cannot clobber a local save-merge: the props are unchanged then, so it never fires.
+  useEffect(() => {
+    setSavedValues({ address, email, phone, gstin, upiId, upiQrCodeUrl, checkinTime, defaultTariff });
+  }, [propertyId, address, email, phone, gstin, upiId, upiQrCodeUrl, checkinTime, defaultTariff]);
+
+  const trimmed = (v: unknown): string => String(v ?? '').trim();
+
+  const basicsDone = !!name.trim() && !!trimmed(savedValues.address);
+  const contactDone = !!(trimmed(savedValues.email) || trimmed(savedValues.phone));
+  const paymentsDone = !!(
+    trimmed(savedValues.upiId) || trimmed(savedValues.upiQrCodeUrl) || trimmed(savedValues.gstin)
+  );
+  const operationsDone =
+    isMultiKey || !!trimmed(savedValues.checkinTime) || trimmed(savedValues.defaultTariff) !== '';
 
   // Rooms readiness for multi-key properties
   const roomReadiness: RoomReadiness[] = (rooms || []).map((r: any) => ({
@@ -186,11 +214,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   const doneMap: Partial<Record<StepKey, boolean>> = {
     basics: basicsDone,
-    // ALWAYS true, deliberately. This wizard hides itself once every step is done
-    // (`stepsDone === totalSteps` returns null), so a Listings step that stayed incomplete
-    // until an Airbnb import would nag every property that will never use an OTA, forever.
-    // Importing is optional; it must never be what keeps the nudge on screen.
-    listings: true,
+    // Only after a real import - matching PropertyCreationWizard. It used to be hardcoded
+    // true, which painted a green checkmark claiming listings were imported when none were.
+    // Its `optional: true` flag, not a fake tick, is what keeps it from nagging.
+    listings: !!importResult,
     contact: contactDone,
     payments: paymentsDone,
     operations: operationsDone,
@@ -199,17 +226,28 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   const steps = buildStepDefs(isMultiKey).map((s) => ({ ...s, isDone: !!doneMap[s.key] }));
-  const totalSteps = steps.length;
-  const stepsDone = steps.filter((s) => s.isDone).length;
+  // "N of M steps done" counts REQUIRED steps only - an optional step must not inflate the
+  // denominator, nor be able to hold the count below it forever.
+  const requiredSteps = steps.filter((s) => !s.optional);
+  const totalSteps = requiredSteps.length;
+  const stepsDone = requiredSteps.filter((s) => s.isDone).length;
+  const setupComplete = stepsDone === totalSteps;
 
-  const firstIncompleteIndex = Math.max(steps.findIndex((s) => !s.isDone), 0);
+  const firstIncompleteIndex = Math.max(steps.findIndex((s) => !s.optional && !s.isDone), 0);
   const [stepIndex, setStepIndex] = useState(firstIncompleteIndex);
   const activeStep = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
   const step0Valid = !!editAddress.trim();
 
-  // If setup is already complete, return null IMMEDIATELY - no skeleton flash!
-  if (stepsDone === totalSteps) return null;
+  // Latches the first time this property is seen to be incomplete, and never unlatches.
+  // A property already fully set up on mount renders nothing at all (no skeleton flash) -
+  // but one the owner is actively working through keeps its drawer on screen when the last
+  // step ticks over, instead of vanishing mid-flow. The flow ends deliberately instead:
+  // handleFinish / handleSaveAndExit reload, and the closed strip below hides itself once
+  // there is nothing left to nudge about.
+  const wasIncompleteRef = useRef(false);
+  if (!setupComplete) wasIncompleteRef.current = true;
+  if (!wasIncompleteRef.current) return null;
 
   /**
    * Same import the creation wizard runs. Imports only - never pushes ARI, never activates the
@@ -279,6 +317,17 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         setError(data.message || 'Failed to save');
         return false;
       }
+      // The done-flags read savedValues, so record what the server now holds. Without this a
+      // step stayed grey until the next full reload, even straight after saving it.
+      setSavedValues((prev) => ({
+        ...prev,
+        ...(activeStep.key === 'basics' ? { address: editAddress.trim() } : {}),
+        ...(activeStep.key === 'contact' ? { email: editEmail.trim(), phone: editPhone.trim() } : {}),
+        ...(activeStep.key === 'payments' ? { upiId: editUpiId.trim(), gstin: editGstin.trim() } : {}),
+        ...(activeStep.key === 'operations'
+          ? { checkinTime: editCheckinTime, ...(isMultiKey ? {} : { defaultTariff: editDefaultTariff }) }
+          : {}),
+      }));
       return true;
     } catch {
       setError('Network error. Please try again.');
@@ -350,6 +399,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   if (!isOpen) {
+    // Nothing left to nudge about - the owner finished the last step, then closed the drawer
+    // rather than letting Save & Exit reload. Showing "6 of 6 steps done - Continue Setup"
+    // would be a nag with nothing behind it.
+    if (setupComplete) return null;
     // Full-bleed notice bar (26 Aug 2026: "there should be a notice in top of
     // the site") - edge-to-edge, no rounded corners/margin, sits directly
     // under the fixed header as a site-wide notice rather than an inset card
@@ -425,7 +478,9 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               const isStepComplete = step.isDone;
               const isCurrent = idx === stepIndex && !finished;
               const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
-              const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
+              // An optional step is never "incomplete" - skipping past Listings without
+              // importing is a perfectly good outcome, not something to flag in amber.
+              const isPassedIncomplete = isPassedOrVisited && !isStepComplete && !step.optional;
               const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
               const isLast = idx === steps.length - 1;
 

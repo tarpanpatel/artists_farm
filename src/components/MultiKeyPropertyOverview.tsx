@@ -60,6 +60,8 @@ interface OverviewData {
 
 interface MultiKeyPropertyOverviewProps {
   propertyId: number;
+  /** Passed straight through to each room's OperationalDashboard toolbar. */
+  onSyncBookings?: () => Promise<{ pulled: number }>;
   propertySlug: string;
   onNavigateToRoom: (roomSlug: string) => void;
   onBackToOverview?: () => void;
@@ -115,6 +117,7 @@ interface MultiKeyPropertyOverviewProps {
 
 export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> = ({
   propertyId,
+  onSyncBookings,
   propertySlug,
   onNavigateToRoom: _onNavigateToRoom,
   onBackToOverview: _onBackToOverview,
@@ -278,6 +281,7 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
             <>
               {activeTab === 'dashboard' && (
                 <OperationalDashboard
+                  onSyncBookings={onSyncBookings}
                   propertySecurityDeposit={(property as any).security_deposit ?? null}
                   guests={roomGuests}
                   receipts={receipts}

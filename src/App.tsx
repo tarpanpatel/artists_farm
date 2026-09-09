@@ -2021,6 +2021,36 @@ function AppBody({ preloadedData }: AppBodyProps) {
     });
   };
 
+  /**
+   * "Refresh" on the booking calendar. Pulls anything sitting unacknowledged in Channex's
+   * booking_revisions feed, then refetches bookings so the grid repaints.
+   *
+   * Why a button exists at all (9 Sep 2026, asked directly): the SYNC is already fast - a
+   * webhook delivers a new OTA booking within seconds, with a 5-minute feed-drain cron behind
+   * it as the backstop. What was slow was the BROWSER: the dashboard loads bookings once at
+   * page load, so a reservation landing a minute later stayed invisible until a full reload.
+   * So this is mostly a refetch, and the drain is the belt-and-braces half - it also covers the
+   * rarer case of a webhook that never arrived, without waiting out the cron.
+   */
+  const handleSyncBookings = async (): Promise<{ pulled: number }> => {
+    let pulled = 0;
+    try {
+      const res = await apiFetch('/php/api/router.php?action=channex_drain_feed', { method: 'POST' });
+      const json = await res.json();
+      if (json?.status === 'success') pulled = Number(json.processed || 0);
+    } catch {
+      // Best effort. A property with no channel manager (or a 503 because the Channex module
+      // is not installed) must still get the refetch below - that is the half that matters.
+    }
+    const fresh = await fetchGuestsFromDB();
+    // Same `fresh.length` guard as every other refetch in this file: fetchGuestsFromDB()
+    // resolves to [] on a failed request rather than rejecting, so an empty result cannot be
+    // told apart from a genuinely empty property - and blanking a live calendar is worse than
+    // leaving it briefly stale. See CLAUDE.md, "Sidebar Shows Only Kitchen".
+    if (fresh.length) setGuests(fresh);
+    return { pulled };
+  };
+
   const handleUpdateGuest = async (updatedGuest: Guest) => {
     const g = updatedGuest as any;
     const ok = await updateGuestInDB({
@@ -2603,6 +2633,7 @@ ${itemsStr}
               {preloadedData.isMultiKeyProperty && selectedRoomSlugOverride ? (
                 <ErrorBoundary section="Multi-Key Property Overview">
                   <MultiKeyPropertyOverview
+                  onSyncBookings={handleSyncBookings}
                   propertyId={preloadedData.currentProperty?.id}
                   propertySlug={multiKeyPropertySlug}
                   selectedRoomSlug={selectedRoomSlugOverride}
@@ -2645,6 +2676,7 @@ ${itemsStr}
                   <div className="space-y-6">
                     <ErrorBoundary section="Booking Calendar">
                       <TodayOverview
+                        onSyncBookings={handleSyncBookings}
                         guests={guests}
                         rooms={preloadedData.currentProperty?.rooms}
                         isMultiKeyProperty={preloadedData.isMultiKeyProperty}
@@ -2691,6 +2723,7 @@ ${itemsStr}
                     </ErrorBoundary>
                     <ErrorBoundary section="Multi-Key Property Overview">
                       <MultiKeyPropertyOverview
+                      onSyncBookings={handleSyncBookings}
                       propertyId={preloadedData.currentProperty?.id}
                       propertySlug={multiKeyPropertySlug}
                       selectedRoomSlug={null}
@@ -2731,6 +2764,7 @@ ${itemsStr}
                   <div className="space-y-6">
                     <ErrorBoundary section="Operational Dashboard">
                       <OperationalDashboard
+                        onSyncBookings={handleSyncBookings}
                         guests={guests}
                         // FIXED 25 Aug 2026 (live report: "View stock request on dashboard
                         // taking to wrong page") - this wrapper silently dropped the second

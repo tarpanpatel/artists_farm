@@ -518,6 +518,19 @@ Decided 6 Sep 2026. The intended lifecycle:
 
 ## 7. Debugging playbook
 
+### "An OTA booking is taking ages to show up"
+
+Check the browser before the integration. Verified live 9 Sep 2026: the webhook is registered,
+active and global (`booking_new;booking_modification;booking_cancellation`), so a reservation
+reaches the database in **seconds**, with `channex_feed_drain` running every 5 minutes behind it
+and the feed sitting empty. What is stale is the open tab — the dashboard loads bookings once at
+page load and never re-polls.
+
+The **Refresh** button on both booking calendars (`SyncBookingsButton.tsx`, in `TodayOverview`'s
+and `OperationalDashboard`'s toolbars) is the fix: it calls `channex_drain_feed` and then
+refetches bookings. If it reports "up to date" and the booking still is not there, only THEN is it
+a sync problem — check the webhook registration and `channex_booking_revisions`.
+
 **Assume silence, not errors.** Start here:
 
 1. `channex_outbox` — rows with `status='failed'`, high `attempts`, or a `last_error`.
