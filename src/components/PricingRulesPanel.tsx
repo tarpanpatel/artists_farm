@@ -739,7 +739,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
           <div className="space-y-6">
             {/* Dynamic Notice Banner */}
-            <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-start gap-3">
+            <div className="pricing-rules-panel__gutter p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-start gap-3">
               <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                 <DollarSign className="w-4 h-4" />
               </div>
@@ -753,13 +753,21 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     actually does to a booking. Say the effect in ordinary words
                     and keep the industry term only as a quiet subtitle, so it
                     can still be matched against what Airbnb calls the same
-                    setting. */}
-                <p className="text-xs text-emerald-800/90 dark:text-emerald-300 mt-1 leading-relaxed">
-                  Charge more during Diwali. Charge less in a slow month. Ask for 3 nights minimum on New Year.
-                  You pick the dates and set the price — that's it. Dates you don't touch stay at their
-                  normal price, and anything you save here reaches Airbnb, Booking.com and your own
-                  booking page on its own.
-                </p>
+                    setting.
+
+                    Reworded 10 Sep 2026: it was one 55-word paragraph, so the
+                    reassuring parts - untouched dates keep their price, saving
+                    pushes everywhere by itself - were buried at the end where
+                    nobody reaches. Now one idea per line, matching the
+                    "What is Base Price?" box above and this page's own
+                    <= 10-words-per-line rule. Same facts, nothing dropped. */}
+                <div className="space-y-1 text-xs text-emerald-800/90 dark:text-emerald-300 mt-1 leading-relaxed">
+                  <p>• Pick the dates. Set the price for them.</p>
+                  <p>• Charge more for Diwali. Charge less in a quiet month.</p>
+                  <p>• Or ask for 3 nights minimum on New Year.</p>
+                  <p>• Dates you don't touch keep their normal price.</p>
+                  <p>• Saved prices go to Airbnb, Booking.com and your page.</p>
+                </div>
               </div>
             </div>
 
