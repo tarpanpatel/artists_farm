@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
-import { FieldHelpPopover } from './FieldHelpPopover';
+import { FieldHelpPopover, FieldHelpText, useFieldHelpMode } from './FieldHelpPopover';
 
 export type FloatingBgMode = 'modal' | 'page' | 'drawer' | 'card' | (string & {});
 
@@ -67,6 +67,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     },
     ref
   ) => {
+    const helpMode = useFieldHelpMode();
     const inputId = id || `floating-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
     // See allowNegative's doc comment above. Three layers, since each closes a
@@ -182,7 +183,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
               {rightIcon}
             </div>
           )}
-          {helperText && !errorMessage && !successMessage && (
+          {helpMode === 'popover' && helperText && !errorMessage && !successMessage && (
             <div className={`absolute inset-y-0 ${rightIcon ? 'end-8' : 'end-2.5'} flex items-center z-20`}>
               <FieldHelpPopover content={helperText} title={label} />
             </div>
@@ -198,6 +199,8 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <p id={`${inputId}-success`} className="mt-1.5 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
+        ) : helpMode === 'inline' && helperText ? (
+          <FieldHelpText content={helperText} id={`${inputId}-helper`} />
         ) : (!label && helperText) ? (
           <div id={`${inputId}-helper`} className="mt-1.5 flex items-center">
             <FieldHelpPopover content={helperText} title={label} />

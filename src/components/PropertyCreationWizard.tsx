@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FieldHelpModeProvider } from './FieldHelpPopover';
 import {
   Home, Hotel, Layers, Phone, Wallet,
   Clock, FileText, CheckCircle2, Loader2, ArrowRight, ArrowLeft, X,
@@ -165,6 +166,14 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   // --- Step 4: Notes ---
   const [instructions, setInstructions] = useState(existingProperty?.instructions || '');
 
+  // The slug this wizard's property is actually reachable at. Every Channex call below must be
+  // addressed to it (apiFetch's propertySlugOverride): router.php authorises against the property
+  // the REQUEST resolves to, and this wizard runs from the Tenant Dashboard where nothing is in
+  // scope - which is exactly why the Listings step returned "Access denied for this property."
+  // when it first shipped. A resumed draft carries its real slug; a new one is created with
+  // autoSlug(name), the same value sent to create_property_for_tenant.
+  const wizardPropertySlug = existingProperty?.slug || autoSlug(name);
+
   const steps = useMemo(() => STEP_DEFS, []);
   const activeStep = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
@@ -199,7 +208,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
           // Name is deliberately NOT sent. The server refuses it for a MULTI_KEY parent anyway,
           // and for a SINGLE property the owner has already got it from the picker's blank-fill.
         }),
-      });
+      }, wizardPropertySlug);
       const json = await res.json();
       if (json?.status !== 'success') {
         setError(json?.message || 'Import failed');
@@ -392,450 +401,457 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
   };
 
 
+  // Setup screens show field guidance BELOW the field, always visible, rather than behind a
+  // "?" popover (9 Sep 2026, explicit request). The owner is meeting each field for the first
+  // time here, so the help IS the content - a popover nobody opens is help nobody reads.
+  // Scoped to this screen only; the rest of the app keeps the popover.
   return (
-    <Drawer
-      open={isOpen}
-      onClose={onClose}
-      position="right"
-      className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
-    >
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-            <Hotel className="w-4 h-4" />
-          </div>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-            {isResuming ? 'Continue Property Setup' : 'Set Up Your New Property'}
-          </h2>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Timeline stepper (https://flowbite.com/docs/components/stepper/#stepper-with-form) -
-          small circular step icons connected by progress bars, current step highlighted, done
-          steps checked. */}
-      <div className="px-4 pt-3 pb-7 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0">
-        <ol className="flex items-center w-full">
-          {steps.map((step, idx) => {
-            const StepIcon = step.icon;
-            const step0Done = !!name.trim() && !!address.trim();
-            const step1Done = !!(email.trim() || phone.trim());
-            const step2Done = !!(upiId.trim() || gstin.trim());
-            const step3Done = propertyType === 'MULTI_KEY' || !!checkinTime || (defaultTariff != null && String(defaultTariff).trim() !== '');
-            const step4Done = !!instructions.trim();
-            // Listings is optional (a property with no OTA listing is perfectly valid), so it
-            // counts as done once anything was actually imported.
-            const listingsDone = !!importResult;
-            const stepDoneFlags = [step0Done, listingsDone, step1Done, step2Done, step3Done, step4Done];
-
-            const isStepComplete = stepDoneFlags[idx] ?? false;
-            const isCurrent = idx === stepIndex && !finished;
-            const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
-            const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
-            const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
-            const isLast = idx === steps.length - 1;
-
-            return (
-              <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
-                <div className="relative flex items-center justify-center shrink-0">
-                  <span
-                    className={`wizard-step-btn flex items-center justify-center w-9 h-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] aspect-square rounded-full shrink-0 transition-all ${
-                      isCurrent
-                        ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
-                        : isFullyComplete
-                        ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
-                        : isPassedIncomplete
-                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-2 border-amber-500'
-                        : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
-                    }`}
-                  >
-                    {isFullyComplete ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : isPassedIncomplete ? (
-                      <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <StepIcon className="w-4 h-4" />
-                    )}
-                  </span>
-                  <span
-                    className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 text-2xs font-semibold whitespace-nowrap ${
-                      isCurrent
-                        ? 'text-indigo-700 dark:text-indigo-300'
-                        : isPassedIncomplete
-                        ? 'text-amber-700 dark:text-amber-400 font-bold'
-                        : isFullyComplete
-                        ? 'text-emerald-700 dark:text-emerald-400'
-                        : 'text-slate-500 dark:text-slate-400'
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-                {!isLast && (
-                  <div
-                    className={`flex-1 h-1 rounded-full mx-1.5 ${
-                      stepDoneFlags[idx] && idx < stepIndex
-                        ? 'bg-emerald-500'
-                        : idx < stepIndex
-                        ? 'bg-amber-400 dark:bg-amber-600'
-                        : 'bg-slate-200 dark:bg-slate-700'
-                    }`}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {error}
-          </div>
-        )}
-
-        {activeStep.key === 'basics' && (
-          <div className="space-y-4">
-            {/* The "Import from Airbnb or Booking.com" shortcut that used to sit
-                here is gone (6 Sep 2026). It scraped the public listing page,
-                which is how a 7-room property once took its name from an og:title
-                meta tag - and it could never reach the values that actually
-                matter (guests included, extra-guest charge, fees, bed layout)
-                because those are not on the page at all.
-
-                A REAL import now lives in the next step (9 Sep 2026). The blocker was only ever
-                that a Channex channel has to attach to a property that exists - and this step
-                creates the draft row, so by the Listings step there is one. The scraper is still
-                not coming back: the import there goes through the Channex channel API, same as
-                Edit Property's "Import from Airbnb". */}
-            {!isResuming && (
-              <div className="flex items-start gap-2.5 p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/80 rounded-xl">
-                <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-xs border border-indigo-100 dark:border-indigo-800 shrink-0 text-amber-500">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                    Already listed on Airbnb?
-                  </div>
-                  <div className="text-2xs text-indigo-700/80 dark:text-indigo-300/80">
-                    Just name it here &mdash; the next step connects Airbnb and imports your
-                    listings, so your check-in times, fees, capacity and base price arrive filled
-                    in instead of retyped.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Property Type</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  disabled={isResuming}
-                  onClick={() => setPropertyType('SINGLE')}
-                  className={`flex flex-col items-start gap-1.5 p-3.5 rounded-lg border-2 text-left transition-all disabled:opacity-60 disabled:cursor-not-allowed ${propertyType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
-                >
-                  <Home className={`w-5 h-5 ${propertyType === 'SINGLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                  <span className={`text-xs font-semibold ${propertyType === 'SINGLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Single Property</span>
-                  <span className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
-                    One whole place rented as a single unit - a house, cottage, or apartment. Guests book the whole thing at once.
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  disabled={isResuming}
-                  onClick={() => setPropertyType('MULTI_KEY')}
-                  className={`flex flex-col items-start gap-1.5 p-3.5 rounded-lg border-2 text-left transition-all disabled:opacity-60 disabled:cursor-not-allowed ${propertyType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
-                >
-                  <Layers className={`w-5 h-5 ${propertyType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                  <span className={`text-xs font-semibold ${propertyType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Multi-Key Property</span>
-                  <span className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
-                    One address, several separately bookable keys - rooms, suites, or even whole villas/cottages - like a small hotel, guesthouse, or resort. Different guests can be in different keys at the same time.
-                  </span>
-                </button>
-              </div>
-              {isResuming && (
-                <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1.5">Property type can't be changed after creation.</p>
-              )}
+    <FieldHelpModeProvider mode="inline">
+      <Drawer
+        open={isOpen}
+        onClose={onClose}
+        position="right"
+        className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <Hotel className="w-4 h-4" />
             </div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
+              {isResuming ? 'Continue Property Setup' : 'Set Up Your New Property'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-            {propertyType === 'MULTI_KEY' && (
+        {/* Timeline stepper (https://flowbite.com/docs/components/stepper/#stepper-with-form) -
+            small circular step icons connected by progress bars, current step highlighted, done
+            steps checked. */}
+        <div className="px-4 pt-3 pb-7 border-b border-gray-200 dark:border-gray-700 overflow-x-auto shrink-0">
+          <ol className="flex items-center w-full">
+            {steps.map((step, idx) => {
+              const StepIcon = step.icon;
+              const step0Done = !!name.trim() && !!address.trim();
+              const step1Done = !!(email.trim() || phone.trim());
+              const step2Done = !!(upiId.trim() || gstin.trim());
+              const step3Done = propertyType === 'MULTI_KEY' || !!checkinTime || (defaultTariff != null && String(defaultTariff).trim() !== '');
+              const step4Done = !!instructions.trim();
+              // Listings is optional (a property with no OTA listing is perfectly valid), so it
+              // counts as done once anything was actually imported.
+              const listingsDone = !!importResult;
+              const stepDoneFlags = [step0Done, listingsDone, step1Done, step2Done, step3Done, step4Done];
+
+              const isStepComplete = stepDoneFlags[idx] ?? false;
+              const isCurrent = idx === stepIndex && !finished;
+              const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
+              const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
+              const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
+              const isLast = idx === steps.length - 1;
+
+              return (
+                <li key={step.key} className={`flex items-center ${!isLast ? 'flex-1' : ''}`}>
+                  <div className="relative flex items-center justify-center shrink-0">
+                    <span
+                      className={`wizard-step-btn flex items-center justify-center w-9 h-9 min-w-[36px] max-w-[36px] min-h-[36px] max-h-[36px] aspect-square rounded-full shrink-0 transition-all ${
+                        isCurrent
+                          ? 'bg-indigo-600 text-white shadow-xs ring-4 ring-indigo-100 dark:ring-indigo-900/60'
+                          : isFullyComplete
+                          ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
+                          : isPassedIncomplete
+                          ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-2 border-amber-500'
+                          : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
+                      }`}
+                    >
+                      {isFullyComplete ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : isPassedIncomplete ? (
+                        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <StepIcon className="w-4 h-4" />
+                      )}
+                    </span>
+                    <span
+                      className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 text-2xs font-semibold whitespace-nowrap ${
+                        isCurrent
+                          ? 'text-indigo-700 dark:text-indigo-300'
+                          : isPassedIncomplete
+                          ? 'text-amber-700 dark:text-amber-400 font-bold'
+                          : isFullyComplete
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                  {!isLast && (
+                    <div
+                      className={`flex-1 h-1 rounded-full mx-1.5 ${
+                        stepDoneFlags[idx] && idx < stepIndex
+                          ? 'bg-emerald-500'
+                          : idx < stepIndex
+                          ? 'bg-amber-400 dark:bg-amber-600'
+                          : 'bg-slate-200 dark:bg-slate-700'
+                      }`}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {activeStep.key === 'basics' && (
+            <div className="space-y-4">
+              {/* The "Import from Airbnb or Booking.com" shortcut that used to sit
+                  here is gone (6 Sep 2026). It scraped the public listing page,
+                  which is how a 7-room property once took its name from an og:title
+                  meta tag - and it could never reach the values that actually
+                  matter (guests included, extra-guest charge, fees, bed layout)
+                  because those are not on the page at all.
+
+                  A REAL import now lives in the next step (9 Sep 2026). The blocker was only ever
+                  that a Channex channel has to attach to a property that exists - and this step
+                  creates the draft row, so by the Listings step there is one. The scraper is still
+                  not coming back: the import there goes through the Channex channel API, same as
+                  Edit Property's "Import from Airbnb". */}
+              {!isResuming && (
+                <div className="flex items-start gap-2.5 p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/80 rounded-xl">
+                  <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-xs border border-indigo-100 dark:border-indigo-800 shrink-0 text-amber-500">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                      Already listed on Airbnb?
+                    </div>
+                    <div className="text-2xs text-indigo-700/80 dark:text-indigo-300/80">
+                      Just name it here &mdash; the next step connects Airbnb and imports your
+                      listings, so your check-in times, fees, capacity and base price arrive filled
+                      in instead of retyped.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <Input
-                  type="number"
-                  min={1}
-                  max={remainingSlots}
-                  disabled={isResuming}
-                  label="Number of Rooms"
-                  value={roomCount}
-                  onChange={(e) => setRoomCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  helperText={isResuming ? 'Add or delete rooms later from the property dashboard.' : `Max ${remainingSlots} slot(s) available`}
-                />
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Property Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    disabled={isResuming}
+                    onClick={() => setPropertyType('SINGLE')}
+                    className={`flex flex-col items-start gap-1.5 p-3.5 rounded-lg border-2 text-left transition-all disabled:opacity-60 disabled:cursor-not-allowed ${propertyType === 'SINGLE' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
+                  >
+                    <Home className={`w-5 h-5 ${propertyType === 'SINGLE' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                    <span className={`text-xs font-semibold ${propertyType === 'SINGLE' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Single Property</span>
+                    <span className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
+                      One whole place rented as a single unit - a house, cottage, or apartment. Guests book the whole thing at once.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isResuming}
+                    onClick={() => setPropertyType('MULTI_KEY')}
+                    className={`flex flex-col items-start gap-1.5 p-3.5 rounded-lg border-2 text-left transition-all disabled:opacity-60 disabled:cursor-not-allowed ${propertyType === 'MULTI_KEY' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
+                  >
+                    <Layers className={`w-5 h-5 ${propertyType === 'MULTI_KEY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                    <span className={`text-xs font-semibold ${propertyType === 'MULTI_KEY' ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>Multi-Key Property</span>
+                    <span className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
+                      One address, several separately bookable keys - rooms, suites, or even whole villas/cottages - like a small hotel, guesthouse, or resort. Different guests can be in different keys at the same time.
+                    </span>
+                  </button>
+                </div>
+                {isResuming && (
+                  <p className="text-2xs text-slate-400 dark:text-slate-500 mt-1.5">Property type can't be changed after creation.</p>
+                )}
               </div>
-            )}
 
-            <Input
-              label={propertyType === 'MULTI_KEY' ? 'Parent Property Name' : 'Property Name'}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => setNameTouched(true)}
-              error={nameTouched && !name.trim() ? 'This field is required' : undefined}
-              placeholder="e.g. Sea View Villa"
-            />
-            {name && !isResuming && (
-              <p className="text-2xs text-slate-400 dark:text-slate-500 -mt-2">Slug: <span className="font-mono text-indigo-500">/{autoSlug(name)}</span></p>
-            )}
+              {propertyType === 'MULTI_KEY' && (
+                <div>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={remainingSlots}
+                    disabled={isResuming}
+                    label="Number of Rooms"
+                    value={roomCount}
+                    onChange={(e) => setRoomCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    helperText={isResuming ? 'Add or delete rooms later from the property dashboard.' : `Max ${remainingSlots} slot(s) available`}
+                  />
+                </div>
+              )}
 
-            <Input
-              label="Address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              onBlur={() => setAddressTouched(true)}
-              error={addressTouched && !address.trim() ? 'This field is required' : undefined}
-              placeholder="Full property address"
-            />
+              <Input
+                label={propertyType === 'MULTI_KEY' ? 'Parent Property Name' : 'Property Name'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => setNameTouched(true)}
+                error={nameTouched && !name.trim() ? 'This field is required' : undefined}
+                placeholder="e.g. Sea View Villa"
+              />
+              {name && !isResuming && (
+                <p className="text-2xs text-slate-400 dark:text-slate-500 -mt-2">Slug: <span className="font-mono text-indigo-500">/{autoSlug(name)}</span></p>
+              )}
 
-            <Input
-              label="Google Maps Link (optional)"
-              value={mapsLink}
-              onChange={(e) => setMapsLink(e.target.value)}
-              placeholder="https://maps.app.goo.gl/..."
-            />
+              <Input
+                label="Address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                onBlur={() => setAddressTouched(true)}
+                error={addressTouched && !address.trim() ? 'This field is required' : undefined}
+                placeholder="Full property address"
+              />
 
-            <div>
-              <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Does this property have a kitchen?</label>
-              {!kitchenAnswerLoaded ? (
-                <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading current setting...
+              <Input
+                label="Google Maps Link (optional)"
+                value={mapsLink}
+                onChange={(e) => setMapsLink(e.target.value)}
+                placeholder="https://maps.app.goo.gl/..."
+              />
+
+              <div>
+                <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Does this property have a kitchen?</label>
+                {!kitchenAnswerLoaded ? (
+                  <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading current setting...
+                  </div>
+                ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setHasKitchen(true)}
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${hasKitchen === true ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-300'}`}
+                  >
+                    <ChefHat className={`w-5 h-5 ${hasKitchen === true ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                    <div className="text-left">
+                      <div className={`text-xs font-semibold ${hasKitchen === true ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'}`}>Yes</div>
+                      <div className="text-2xs text-slate-500 dark:text-slate-400">Food orders, KDS, recipes</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHasKitchen(false)}
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${hasKitchen === false ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
+                  >
+                    <X className={`w-5 h-5 ${hasKitchen === false ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                    <div className="text-left">
+                      <div className={`text-xs font-semibold ${hasKitchen === false ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>No</div>
+                      <div className="text-2xs text-slate-500 dark:text-slate-400">No food service - can turn on later</div>
+                    </div>
+                  </button>
+                </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeStep.key === 'listings' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Import your listings
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Optional. Connecting Airbnb pulls your real check-in times, fees, capacity, bed
+                  layout, amenities and base price straight from the listing, so the rest of this
+                  wizard arrives filled in instead of typed. You can skip this and do it later.
+                </p>
+              </div>
+
+              <AirbnbListingPicker
+                propertyId={propertyId}
+                propertySlug={wizardPropertySlug}
+                selectedIds={selectedListingIds}
+                onSelectionChange={setSelectedListingIds}
+                onConnectionChange={setAirbnbConnected}
+                onListingsLoaded={(found: DiscoveredListing[]) => {
+                  // Only ever FILLS A BLANK. Never overwrite a name the owner has already typed,
+                  // and never touch it at all for a MULTI_KEY parent - a parent is the building,
+                  // not one listing, and an import renaming one reached the public booking engine
+                  // once already (CLAUDE.md, "OTA Import Must Never Rewrite a Property's Identity").
+                  if (!name.trim() && propertyType === 'SINGLE' && found.length > 0) {
+                    setName(found[0].title);
+                  }
+                }}
+              />
+
+              {importResult ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">
+                    {importResult}
+                  </span>
                 </div>
               ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setHasKitchen(true)}
-                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${hasKitchen === true ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-emerald-300'}`}
-                >
-                  <ChefHat className={`w-5 h-5 ${hasKitchen === true ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
-                  <div className="text-left">
-                    <div className={`text-xs font-semibold ${hasKitchen === true ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'}`}>Yes</div>
-                    <div className="text-2xs text-slate-500 dark:text-slate-400">Food orders, KDS, recipes</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHasKitchen(false)}
-                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${hasKitchen === false ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300'}`}
-                >
-                  <X className={`w-5 h-5 ${hasKitchen === false ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                  <div className="text-left">
-                    <div className={`text-xs font-semibold ${hasKitchen === false ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-300'}`}>No</div>
-                    <div className="text-2xs text-slate-500 dark:text-slate-400">No food service - can turn on later</div>
-                  </div>
-                </button>
-              </div>
+                airbnbConnected && (
+                  <Button
+                    variant="primary"
+                    className="w-full justify-center"
+                    onClick={handleImportListings}
+                    disabled={importing}
+                    // Greyed but still clickable when nothing is selected, so the click can say why
+                    // instead of silently doing nothing (28 Aug 2026 rule).
+                  >
+                    {importing ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing…</>
+                    ) : (
+                      <><Sparkles className="mr-2 h-4 w-4" /> Import {selectedListingIds.length || ''} selected listing{selectedListingIds.length === 1 ? '' : 's'}</>
+                    )}
+                  </Button>
+                )
               )}
             </div>
-          </div>
-        )}
-
-        {activeStep.key === 'listings' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Import your listings
-              </h3>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Optional. Connecting Airbnb pulls your real check-in times, fees, capacity, bed
-                layout, amenities and base price straight from the listing, so the rest of this
-                wizard arrives filled in instead of typed. You can skip this and do it later.
-              </p>
-            </div>
-
-            <AirbnbListingPicker
-              propertyId={propertyId}
-              selectedIds={selectedListingIds}
-              onSelectionChange={setSelectedListingIds}
-              onConnectionChange={setAirbnbConnected}
-              onListingsLoaded={(found: DiscoveredListing[]) => {
-                // Only ever FILLS A BLANK. Never overwrite a name the owner has already typed,
-                // and never touch it at all for a MULTI_KEY parent - a parent is the building,
-                // not one listing, and an import renaming one reached the public booking engine
-                // once already (CLAUDE.md, "OTA Import Must Never Rewrite a Property's Identity").
-                if (!name.trim() && propertyType === 'SINGLE' && found.length > 0) {
-                  setName(found[0].title);
-                }
-              }}
-            />
-
-            {importResult ? (
-              <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">
-                  {importResult}
-                </span>
-              </div>
-            ) : (
-              airbnbConnected && (
-                <Button
-                  variant="primary"
-                  className="w-full justify-center"
-                  onClick={handleImportListings}
-                  disabled={importing}
-                  // Greyed but still clickable when nothing is selected, so the click can say why
-                  // instead of silently doing nothing (28 Aug 2026 rule).
-                >
-                  {importing ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing…</>
-                  ) : (
-                    <><Sparkles className="mr-2 h-4 w-4" /> Import {selectedListingIds.length || ''} selected listing{selectedListingIds.length === 1 ? '' : 's'}</>
-                  )}
-                </Button>
-              )
-            )}
-          </div>
-        )}
-
-        {activeStep.key === 'contact' && (
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
-            <Input type="email" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" />
-            <Input
-              type="tel"
-              label={propertyType === 'MULTI_KEY' ? 'Parent Property Phone Number' : 'Property Phone Number'}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="Enter 10-digit mobile number"
-              helperText="This is the phone number guests will be shown to contact the property."
-            />
-          </div>
-        )}
-
-        {activeStep.key === 'payments' && (
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
-            <Input
-              label="GSTIN (optional)"
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              placeholder="27ABCDE1234F1Z5"
-              helperText="Printed on GST tax invoices at checkout."
-            />
-            <Input
-              label="UPI ID (optional)"
-              value={upiId}
-              onChange={(e) => setUpiId(e.target.value)}
-              placeholder="yourproperty@okicici"
-              error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? 'Enter a valid UPI ID, e.g. name@bank' : undefined}
-              success={upiId.trim() && isValidUpiIdSyntax(upiId) ? 'Valid UPI ID format' : undefined}
-              helperText="A scannable UPI QR code (generated automatically from this ID) and the ID itself are added to booking/bill messages shared over WhatsApp."
-            />
-            {upiId.trim() && isValidUpiIdSyntax(upiId) && (
-              <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
-            )}
-          </div>
-        )}
-
-        {activeStep.key === 'operations' && (
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Sensible defaults are already filled in - change only what's different for you.</p>
-            <div className="grid grid-cols-2 gap-4">
-              <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} />
-              <Input type="time" label="Check-out Time" value={checkoutTime} onChange={(e) => setCheckoutTime(e.target.value)} />
-            </div>
-            {propertyType !== 'MULTI_KEY' && (
-              <Input
-                type="number"
-                label="Default Tariff / Night (₹, optional)"
-                value={defaultTariff}
-                onChange={(e) => setDefaultTariff(e.target.value)}
-                placeholder="e.g. 2000"
-                helperText="Pre-fills the rate when creating a new booking - still editable per booking."
-              />
-            )}
-          </div>
-        )}
-
-        {activeStep.key === 'notes' && (
-          <div className="space-y-4">
-            {finished ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">Property is live!</p>
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Other Notes (optional)</label>
-                  <Textarea
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    placeholder="e.g. How to reach, check-in instructions, parking notes…"
-                    rows={4}
-                  />
-                </div>
-                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-1">
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">Ready to go live</p>
-                  <p className="text-2xs text-slate-500 dark:text-slate-400 m-0">
-                    "{name || 'This property'}" will become fully active once you finish - guests can be booked in immediately.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* pb-[calc(1rem+env(safe-area-inset-bottom,0px))], not plain p-4 (2 Sep
-          2026, site-wide audit) - see DESIGN.md's "Bottom-Anchored Drawer
-          Footer Safe Area" rule. This footer is a shrink-0 flex child pinned
-          to the physical bottom edge, same as SelfOnboardingWizard.tsx's and
-          PropertySetupWizard.tsx's own footers (already fixed) - this sibling
-          wizard was missed at the time. */}
-      <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0 flex-wrap sm:flex-nowrap">
-        <div className="flex items-center gap-2">
-          {stepIndex > 0 && !finished && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving} className="whitespace-nowrap flex items-center gap-1">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back</span>
-            </Button>
           )}
-          {stepIndex > 0 && !isLastStep && !finished && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap">
-              Save &amp; Exit
-            </Button>
+
+          {activeStep.key === 'contact' && (
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
+              <Input type="email" label="Email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@example.com" />
+              <Input
+                type="tel"
+                label={propertyType === 'MULTI_KEY' ? 'Parent Property Phone Number' : 'Property Phone Number'}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="Enter 10-digit mobile number"
+                helperText="This is the phone number guests will be shown to contact the property."
+              />
+            </div>
+          )}
+
+          {activeStep.key === 'payments' && (
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400">All optional - skip if you'd rather add these later.</p>
+              <Input
+                label="GSTIN (optional)"
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                placeholder="27ABCDE1234F1Z5"
+                helperText="Printed on GST tax invoices at checkout."
+              />
+              <Input
+                label="UPI ID (optional)"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                placeholder="yourproperty@okicici"
+                error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? 'Enter a valid UPI ID, e.g. name@bank' : undefined}
+                success={upiId.trim() && isValidUpiIdSyntax(upiId) ? 'Valid UPI ID format' : undefined}
+                helperText="A scannable UPI QR code (generated automatically from this ID) and the ID itself are added to booking/bill messages shared over WhatsApp."
+              />
+              {upiId.trim() && isValidUpiIdSyntax(upiId) && (
+                <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
+              )}
+            </div>
+          )}
+
+          {activeStep.key === 'operations' && (
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Sensible defaults are already filled in - change only what's different for you.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <Input type="time" label="Check-in Time" value={checkinTime} onChange={(e) => setCheckinTime(e.target.value)} />
+                <Input type="time" label="Check-out Time" value={checkoutTime} onChange={(e) => setCheckoutTime(e.target.value)} />
+              </div>
+              {propertyType !== 'MULTI_KEY' && (
+                <Input
+                  type="number"
+                  label="Default Tariff / Night (₹, optional)"
+                  value={defaultTariff}
+                  onChange={(e) => setDefaultTariff(e.target.value)}
+                  placeholder="e.g. 2000"
+                  helperText="Pre-fills the rate when creating a new booking - still editable per booking."
+                />
+              )}
+            </div>
+          )}
+
+          {activeStep.key === 'notes' && (
+            <div className="space-y-4">
+              {finished ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Property is live!</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Other Notes (optional)</label>
+                    <Textarea
+                      value={instructions}
+                      onChange={(e) => setInstructions(e.target.value)}
+                      placeholder="e.g. How to reach, check-in instructions, parking notes…"
+                      rows={4}
+                    />
+                  </div>
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-1">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 m-0">Ready to go live</p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 m-0">
+                      "{name || 'This property'}" will become fully active once you finish - guests can be booked in immediately.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
 
-        {!finished && (
+        {/* pb-[calc(1rem+env(safe-area-inset-bottom,0px))], not plain p-4 (2 Sep
+            2026, site-wide audit) - see DESIGN.md's "Bottom-Anchored Drawer
+            Footer Safe Area" rule. This footer is a shrink-0 flex child pinned
+            to the physical bottom edge, same as SelfOnboardingWizard.tsx's and
+            PropertySetupWizard.tsx's own footers (already fixed) - this sibling
+            wizard was missed at the time. */}
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 bg-gray-50 dark:bg-gray-850 shrink-0 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2">
-            {stepIndex > 0 && !isLastStep && (
-              <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving} className="whitespace-nowrap">
-                Skip
+            {stepIndex > 0 && !finished && (
+              <Button type="button" variant="secondary" size="sm" onClick={handleBack} disabled={saving} className="whitespace-nowrap flex items-center gap-1">
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
               </Button>
             )}
-            {isLastStep ? (
-              <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving} className="whitespace-nowrap flex items-center gap-1.5">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                <span>Finish Setup</span>
-              </Button>
-            ) : (
-              <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)} className="whitespace-nowrap flex items-center gap-1.5">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                <span>Next Step</span>
-                {!saving && <ArrowRight className="w-3.5 h-3.5" />}
+            {stepIndex > 0 && !isLastStep && !finished && (
+              <Button type="button" variant="secondary" size="sm" onClick={handleSaveAndExit} disabled={saving} className="whitespace-nowrap">
+                Save &amp; Exit
               </Button>
             )}
           </div>
-        )}
-      </div>
-    </Drawer>
+
+          {!finished && (
+            <div className="flex items-center gap-2">
+              {stepIndex > 0 && !isLastStep && (
+                <Button type="button" variant="secondary" size="sm" onClick={handleSkip} disabled={saving} className="whitespace-nowrap">
+                  Skip
+                </Button>
+              )}
+              {isLastStep ? (
+                <Button type="button" variant="primary" size="sm" onClick={handleFinish} disabled={saving} className="whitespace-nowrap flex items-center gap-1.5">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <span>Finish Setup</span>
+                </Button>
+              ) : (
+                <Button type="button" variant="primary" size="sm" onClick={handleNext} disabled={saving || (stepIndex === 0 && !step0Valid)} className="whitespace-nowrap flex items-center gap-1.5">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  <span>Next Step</span>
+                  {!saving && <ArrowRight className="w-3.5 h-3.5" />}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </Drawer>
+    </FieldHelpModeProvider>
   );
 };

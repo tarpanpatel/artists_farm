@@ -46,6 +46,16 @@ export interface DiscoveredListing {
 interface AirbnbListingPickerProps {
   /** The property the channel attaches to. Null until the host has created its draft. */
   propertyId: number | null;
+  /**
+   * The target property's slug, sent as apiFetch's propertySlugOverride.
+   *
+   * REQUIRED, not a nicety. router.php's universal gate authorises against the property the
+   * REQUEST resolves to (from property_slug), not the property_id in the body - and
+   * isPropertyAccessAllowed() returns false outright when nothing resolves. The creation wizard
+   * runs from the Tenant Dashboard, where there is no property in scope, so without this every
+   * call here came back "Access denied for this property." (found live 9 Sep 2026).
+   */
+  propertySlug?: string;
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   /** Fired once when listings first arrive - lets the host default a property name from them. */
@@ -77,6 +87,7 @@ export const defaultListingSelection = (listings: DiscoveredListing[]): string[]
 
 export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
   propertyId,
+  propertySlug,
   selectedIds,
   onSelectionChange,
   onListingsLoaded,
@@ -102,7 +113,7 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ property_id: propertyId }),
-      });
+      }, propertySlug);
       const json = await res.json();
       const conn = (json?.data?.connections || []).find((c: any) => c.channel_code === 'AirBNB');
       const isConnected = !!conn && ['mapping', 'ready_to_activate', 'active'].includes(conn.status);
@@ -115,7 +126,7 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ property_id: propertyId, channel_code: 'AirBNB' }),
-      });
+      }, propertySlug);
       const mapJson = await mapRes.json();
       if (mapJson?.status === 'success' && Array.isArray(mapJson.data?.rooms)) {
         const found: DiscoveredListing[] = mapJson.data.rooms;
@@ -141,7 +152,7 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
     // onSelectionChange/onListingsLoaded are host callbacks that change identity every render;
     // depending on them would re-run this on every keystroke in the host form.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [propertyId, seeded]);
+  }, [propertyId, propertySlug, seeded]);
 
   useEffect(() => {
     void checkConnection();
@@ -169,7 +180,7 @@ export const AirbnbListingPicker: React.FC<AirbnbListingPickerProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ property_id: propertyId }),
-      });
+      }, propertySlug);
       const json = await res.json();
       const url = json?.data?.url;
       if (json?.status === 'success' && url) {

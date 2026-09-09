@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { FieldHelpModeProvider } from './FieldHelpPopover';
 import { Drawer, Dropdown, DropdownItem, Tabs, TabItem } from 'flowbite-react';
 import {
   Send,
@@ -1580,17 +1581,23 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
     );
   }
 
+  // Setup screens show field guidance BELOW the field, always visible, rather than behind a
+  // "?" popover (9 Sep 2026, explicit request). The owner is meeting each field for the first
+  // time here, so the help IS the content - a popover nobody opens is help nobody reads.
+  // Scoped to this screen only; the rest of the app keeps the popover.
   return (
-    <Drawer
-      open={isOpen ?? true}
-      onClose={onClose}
-      position="right"
-      className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between telegram-notification-modal__root"
-    >
-      <div className="flex-1 overflow-y-auto">
-        {contentBody}
-      </div>
-    </Drawer>
+    <FieldHelpModeProvider mode="inline">
+      <Drawer
+        open={isOpen ?? true}
+        onClose={onClose}
+        position="right"
+        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between telegram-notification-modal__root"
+      >
+        <div className="flex-1 overflow-y-auto">
+          {contentBody}
+        </div>
+      </Drawer>
+    </FieldHelpModeProvider>
   );
 };
 

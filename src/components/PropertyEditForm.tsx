@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
+import { FieldHelpModeProvider } from './FieldHelpPopover';
 import { Modal } from 'flowbite-react';
 import { useToast } from './ToastContext';
 import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X, Sparkles, FileText, RotateCcw } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
-import { FieldHelpPopover } from './FieldHelpPopover';
+import { FieldHelpText } from './FieldHelpPopover';
 import { WhatsAppEditor } from './WhatsAppEditor';
 import { AmenitiesSelectModal } from './AmenitiesSelectModal';
 import { getAmenityIcon, normalizeAmenityList } from '../utils/amenityCatalog';
@@ -451,757 +452,761 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     }
   };
 
+  // Setup screens show field guidance BELOW the field, always visible, rather than behind a
+  // "?" popover (9 Sep 2026, explicit request). The owner is meeting each field for the first
+  // time here, so the help IS the content - a popover nobody opens is help nobody reads.
+  // Scoped to this screen only; the rest of the app keeps the popover.
   return (
-    <div className="property-edit-form space-y-4">
-      {error && (
-        <div className="property-edit-form__error flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="property-edit-form__success flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-700 dark:text-emerald-300">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          {t('property_updated_success_message', 'Property details saved')}
-        </div>
-      )}
-
-      {/* Property Name/Email/Contact Phone/GSTIN in a 2x2 grid (20 Aug 2026,
-          explicit request) - was Property Name alone, then Email+Phone and
-          GSTIN+UPI as two separate sm:-gated pairs, all collapsing to one
-          column per row on mobile. Now always 2 columns regardless of
-          viewport, with GSTIN moved up to pair with Phone (was paired with
-          UPI ID) so these first 4 fields read as one 2x2 block; UPI ID +
-          its QR upload block become their own standalone section below
-          since nothing else in this range needs to pair with them. Room
-          mode keeps Property Name (as "Room Name") alone - none of
-          Email/Phone/GSTIN exist for a room. */}
-      {/* grid-cols-1 sm:grid-cols-2 (27 Aug 2026, user report + confirmed follow-up: these
-          rows forced 2 columns at every viewport width, unlike PropertySetupWizard's mobile-
-          first single-column fields - cramped on a ~380px phone screen). Stacks to one column
-          below sm, matching that wizard's own convention. */}
-      {/* Room mode is a 2x2 form (name + tariff, then check-in + check-out) rather
-          than three rows with a half-empty one at the bottom - reported 5 Sep 2026
-          as the Edit Room page being too airy. Property mode keeps its own layout. */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-        <div className="property-edit-form__field">
-          <Input
-            label={isRoom ? t('room_name_label', 'Room Name') : isMultiKeyParent ? t('tenant_property_name_label_parent', 'Parent Property Name') : t('tenant_property_name_label', 'Property Name')}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setNameTouched(true)}
-            error={nameTouched && !name.trim() ? 'This field is required' : undefined}
-          />
-        </div>
-        {isRoom && property.property_type !== 'MULTI_KEY' && (
-          <div className="property-edit-form__field">
-            <Input
-              type="number"
-              label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
-              value={defaultTariff}
-              onChange={(e) => setDefaultTariff(e.target.value)}
-              placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
-              helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
-            />
+    <FieldHelpModeProvider mode="inline">
+      <div className="property-edit-form space-y-4">
+        {error && (
+          <div className="property-edit-form__error flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
           </div>
         )}
+        {success && (
+          <div className="property-edit-form__success flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-sm text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {t('property_updated_success_message', 'Property details saved')}
+          </div>
+        )}
+
+        {/* Property Name/Email/Contact Phone/GSTIN in a 2x2 grid (20 Aug 2026,
+            explicit request) - was Property Name alone, then Email+Phone and
+            GSTIN+UPI as two separate sm:-gated pairs, all collapsing to one
+            column per row on mobile. Now always 2 columns regardless of
+            viewport, with GSTIN moved up to pair with Phone (was paired with
+            UPI ID) so these first 4 fields read as one 2x2 block; UPI ID +
+            its QR upload block become their own standalone section below
+            since nothing else in this range needs to pair with them. Room
+            mode keeps Property Name (as "Room Name") alone - none of
+            Email/Phone/GSTIN exist for a room. */}
+        {/* grid-cols-1 sm:grid-cols-2 (27 Aug 2026, user report + confirmed follow-up: these
+            rows forced 2 columns at every viewport width, unlike PropertySetupWizard's mobile-
+            first single-column fields - cramped on a ~380px phone screen). Stacks to one column
+            below sm, matching that wizard's own convention. */}
+        {/* Room mode is a 2x2 form (name + tariff, then check-in + check-out) rather
+            than three rows with a half-empty one at the bottom - reported 5 Sep 2026
+            as the Edit Room page being too airy. Property mode keeps its own layout. */}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <div className="property-edit-form__field">
+            <Input
+              label={isRoom ? t('room_name_label', 'Room Name') : isMultiKeyParent ? t('tenant_property_name_label_parent', 'Parent Property Name') : t('tenant_property_name_label', 'Property Name')}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => setNameTouched(true)}
+              error={nameTouched && !name.trim() ? 'This field is required' : undefined}
+            />
+          </div>
+          {isRoom && property.property_type !== 'MULTI_KEY' && (
+            <div className="property-edit-form__field">
+              <Input
+                type="number"
+                label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+                value={defaultTariff}
+                onChange={(e) => setDefaultTariff(e.target.value)}
+                placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+                helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
+              />
+            </div>
+          )}
+          {!isRoom && (
+            <div className="property-edit-form__field">
+              <Input
+                type="email"
+                label={t('email_label', 'Email')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('email_placeholder', 'info@example.com')}
+              />
+            </div>
+          )}
+        </div>
+
+        {!isRoom && (
+          <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="property-edit-form__field">
+              <Input
+                type="tel"
+                label={isMultiKeyParent ? t('tenant_contact_phone_label_parent', 'Parent Property Phone Number') : t('tenant_contact_phone_label', 'Contact number of property')}
+                value={phone}
+                // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
+                // truncates raw typed characters before digit-stripping runs, silently dropping
+                // trailing digits from any formatted phone number.
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder={t('contact_phone_placeholder', 'Enter 10-digit mobile number')}
+                helperText={t('property_phone_helper_text', 'This is the phone number guests will be shown to contact the property.')}
+              />
+            </div>
+            <div className="property-edit-form__field">
+              <Input
+                type="text"
+                label={t('gstin_optional_label', 'GSTIN (optional)')}
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                placeholder="27ABCDE1234F1Z5"
+              />
+            </div>
+          </div>
+        )}
+
+        {!isRoom && (
+          <div className="property-edit-form__field">
+            <div>
+              <Input
+                type="text"
+                label={t('upi_id_optional_label', 'UPI ID (optional)')}
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                placeholder="yourproperty@okicici"
+                // Live syntax check (26 Aug 2026, explicit request) - optional field, so an
+                // empty value shows neither state; a non-empty one shows red/green the moment
+                // it stops/starts matching the standard <handle>@<bank> VPA format, instead of
+                // only being caught (or not caught at all) on save.
+                error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
+                success={upiId.trim() && isValidUpiIdSyntax(upiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
+                helperText={t('upi_qr_code_help_text', 'A scannable UPI QR code is generated automatically from this ID and added to booking/bill messages shared over WhatsApp.')}
+              />
+              {upiId.trim() && isValidUpiIdSyntax(upiId) && (
+                <div className="mt-2">
+                  <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {!isRoom && (
           <div className="property-edit-form__field">
             <Input
-              type="email"
-              label={t('email_label', 'Email')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('email_placeholder', 'info@example.com')}
+              type="number"
+              min={1}
+              max={200}
+              label={t('walk_in_table_count_label', 'Number of Tables (Walk-in Orders)')}
+              value={walkInTableCount}
+              onChange={(e) => setWalkInTableCount(e.target.value)}
+              placeholder="10"
+              helperText={t('walk_in_table_count_help', "How many number of tables the Kitchen can serve.")}
             />
           </div>
         )}
-      </div>
 
-      {!isRoom && (
+        {!isRoom && (
+          <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="property-edit-form__field">
+              <Input
+                type="text"
+                label={t('address_label', 'Address')}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder={t('full_property_address_placeholder', 'Full property address')}
+              />
+            </div>
+            <div className="property-edit-form__field">
+              <Input
+                type="text"
+                label={t('google_maps_link_label', 'Google Maps Link')}
+                value={mapsLink}
+                onChange={(e) => setMapsLink(e.target.value)}
+                placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="property-edit-form__field">
-            <Input
-              type="tel"
-              label={isMultiKeyParent ? t('tenant_contact_phone_label_parent', 'Parent Property Phone Number') : t('tenant_contact_phone_label', 'Contact number of property')}
-              value={phone}
-              // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): it
-              // truncates raw typed characters before digit-stripping runs, silently dropping
-              // trailing digits from any formatted phone number.
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder={t('contact_phone_placeholder', 'Enter 10-digit mobile number')}
-              helperText={t('property_phone_helper_text', 'This is the phone number guests will be shown to contact the property.')}
-            />
-          </div>
-          <div className="property-edit-form__field">
-            <Input
-              type="text"
-              label={t('gstin_optional_label', 'GSTIN (optional)')}
-              value={gstin}
-              onChange={(e) => setGstin(e.target.value.toUpperCase())}
-              placeholder="27ABCDE1234F1Z5"
-            />
-          </div>
-        </div>
-      )}
-
-      {!isRoom && (
-        <div className="property-edit-form__field">
-          <div>
-            <Input
-              type="text"
-              label={t('upi_id_optional_label', 'UPI ID (optional)')}
-              value={upiId}
-              onChange={(e) => setUpiId(e.target.value)}
-              placeholder="yourproperty@okicici"
-              // Live syntax check (26 Aug 2026, explicit request) - optional field, so an
-              // empty value shows neither state; a non-empty one shows red/green the moment
-              // it stops/starts matching the standard <handle>@<bank> VPA format, instead of
-              // only being caught (or not caught at all) on save.
-              error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
-              success={upiId.trim() && isValidUpiIdSyntax(upiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
-              helperText={t('upi_qr_code_help_text', 'A scannable UPI QR code is generated automatically from this ID and added to booking/bill messages shared over WhatsApp.')}
-            />
-            {upiId.trim() && isValidUpiIdSyntax(upiId) && (
-              <div className="mt-2">
-                <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!isRoom && (
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            min={1}
-            max={200}
-            label={t('walk_in_table_count_label', 'Number of Tables (Walk-in Orders)')}
-            value={walkInTableCount}
-            onChange={(e) => setWalkInTableCount(e.target.value)}
-            placeholder="10"
-            helperText={t('walk_in_table_count_help', "How many number of tables the Kitchen can serve.")}
-          />
-        </div>
-      )}
-
-      {!isRoom && (
-        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="property-edit-form__field">
-            <Input
-              type="text"
-              label={t('address_label', 'Address')}
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder={t('full_property_address_placeholder', 'Full property address')}
-            />
-          </div>
-          <div className="property-edit-form__field">
-            <Input
-              type="text"
-              label={t('google_maps_link_label', 'Google Maps Link')}
-              value={mapsLink}
-              onChange={(e) => setMapsLink(e.target.value)}
-              placeholder={t('google_maps_link_placeholder', 'https://maps.app.goo.gl/...')}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Sleeps (added 5 Sep 2026). This is what Channex publishes as the room
-            type's capacity/occ_adults to every OTA. Until this field existed the
-            sync hardcoded 6 for every room, so a two-person studio was listed as
-            sleeping six - see php/channex/content_sync.php. */}
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            label={t('max_capacity_label', 'Sleeps (max guests)')}
-            value={maxCapacity}
-            onChange={(e) => setMaxCapacity(e.target.value)}
-            placeholder={t('max_capacity_placeholder', 'e.g. 2')}
-            error={maxCapacity !== '' && (!/^\d+$/.test(maxCapacity) || Number(maxCapacity) < 1 || Number(maxCapacity) > 99)
-              ? t('max_capacity_invalid', 'Enter a whole number of guests between 1 and 99.')
-              : undefined}
-            helperText={isRoom
-              ? t('max_capacity_help_room', "How many guests this room sleeps. Published to Airbnb and Booking.com.")
-              : t('max_capacity_help', 'How many guests this property sleeps. Published to Airbnb and Booking.com.')}
-          />
-        </div>
-
-        {/* Occupancy pricing (6 Sep 2026). Before this a property could express
-            exactly one number - a flat nightly rate - so a real "first N guests
-            included, then X per head" structure had nowhere to live and survived
-            only on the OTAs' own pricing screens. That is the two-sources-of-truth
-            problem the Channex guide warns about: staff quote one number and the
-            guest pays another. Airbnb already returns both halves for a connected
-            listing (guests_included / price_per_extra_person), so these can be
-            imported rather than retyped. */}
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            label={t('included_occupancy_label', 'Guests Included in the Rate')}
-            value={includedOccupancy}
-            onChange={(e) => setIncludedOccupancy(e.target.value)}
-            placeholder={t('included_occupancy_placeholder', 'e.g. 2')}
-            error={includedOccupancyInvalid
-              ? t('included_occupancy_invalid', 'Enter a whole number of guests between 1 and 99.')
-              : undefined}
-            helperText={t('included_occupancy_help', 'How many guests the nightly rate already covers. Extra guests are charged below.')}
-          />
-        </div>
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            label={t('extra_guest_charge_label', 'Extra Guest Charge / Night')}
-            value={extraGuestCharge}
-            onChange={(e) => setExtraGuestCharge(e.target.value)}
-            placeholder={t('extra_guest_charge_placeholder', 'e.g. 950')}
-            error={isBadMoney(extraGuestCharge)
-              ? t('extra_guest_charge_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
-              : undefined}
-            helperText={extraGuestUnreachable
-              ? t('extra_guest_charge_unreachable', 'This never applies - the included guests already fill the room, so nobody can be an extra guest.')
-              : t('extra_guest_charge_help', 'Charged per night for each guest beyond the included count.')}
-          />
-        </div>
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            label={t('cleaning_fee_label', 'Cleaning Fee (once per stay)')}
-            value={cleaningFee}
-            onChange={(e) => setCleaningFee(e.target.value)}
-            placeholder={t('cleaning_fee_placeholder', 'e.g. 500')}
-            error={isBadMoney(cleaningFee)
-              ? t('cleaning_fee_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
-              : undefined}
-            helperText={t('cleaning_fee_help', 'Added once to the bill, not per night. Leave blank if you do not charge one.')}
-          />
-        </div>
-        <div className="property-edit-form__field">
-          <Input
-            type="number"
-            label={t('security_deposit_label', 'Security Deposit (refundable)')}
-            value={securityDeposit}
-            onChange={(e) => setSecurityDeposit(e.target.value)}
-            placeholder={t('security_deposit_placeholder', 'e.g. 2000')}
-            error={isBadMoney(securityDeposit)
-              ? t('security_deposit_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
-              : undefined}
-            helperText={t('security_deposit_help', 'Held against damage and returned at checkout. Not revenue.')}
-          />
-        </div>
-        <div className="property-edit-form__field">
-          <Input
-            type="time"
-            label={t('checkin_time_label', 'Check-in Time')}
-            value={checkinTime}
-            onChange={(e) => setCheckinTime(e.target.value)}
-            helperText={isRoom ? t('checkin_time_help_room', "This room's own check-in time.") : t('checkin_time_help', 'Applied to all rooms under this property.')}
-          />
-        </div>
-        <div className="property-edit-form__field">
-          <Input
-            type="time"
-            label={t('checkout_time_label', 'Check-out Time')}
-            value={checkoutTime}
-            onChange={(e) => setCheckoutTime(e.target.value)}
-            helperText={isRoom ? t('checkout_time_help_room', "This room's own check-out time.") : t('checkout_time_help', 'Applied to all rooms under this property.')}
-          />
-        </div>
-      </div>
-
-      {/* Multi-key parent properties aren't themselves bookable - each room has
-          its own tariff, set here (in room mode) instead. */}
-      {!isRoom && property.property_type !== 'MULTI_KEY' && (
-        <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Sleeps (added 5 Sep 2026). This is what Channex publishes as the room
+              type's capacity/occ_adults to every OTA. Until this field existed the
+              sync hardcoded 6 for every room, so a two-person studio was listed as
+              sleeping six - see php/channex/content_sync.php. */}
           <div className="property-edit-form__field">
             <Input
               type="number"
-              label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
-              value={defaultTariff}
-              onChange={(e) => setDefaultTariff(e.target.value)}
-              placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
-              helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
+              label={t('max_capacity_label', 'Sleeps (max guests)')}
+              value={maxCapacity}
+              onChange={(e) => setMaxCapacity(e.target.value)}
+              placeholder={t('max_capacity_placeholder', 'e.g. 2')}
+              error={maxCapacity !== '' && (!/^\d+$/.test(maxCapacity) || Number(maxCapacity) < 1 || Number(maxCapacity) > 99)
+                ? t('max_capacity_invalid', 'Enter a whole number of guests between 1 and 99.')
+                : undefined}
+              helperText={isRoom
+                ? t('max_capacity_help_room', "How many guests this room sleeps. Published to Airbnb and Booking.com.")
+                : t('max_capacity_help', 'How many guests this property sleeps. Published to Airbnb and Booking.com.')}
+            />
+          </div>
+
+          {/* Occupancy pricing (6 Sep 2026). Before this a property could express
+              exactly one number - a flat nightly rate - so a real "first N guests
+              included, then X per head" structure had nowhere to live and survived
+              only on the OTAs' own pricing screens. That is the two-sources-of-truth
+              problem the Channex guide warns about: staff quote one number and the
+              guest pays another. Airbnb already returns both halves for a connected
+              listing (guests_included / price_per_extra_person), so these can be
+              imported rather than retyped. */}
+          <div className="property-edit-form__field">
+            <Input
+              type="number"
+              label={t('included_occupancy_label', 'Guests Included in the Rate')}
+              value={includedOccupancy}
+              onChange={(e) => setIncludedOccupancy(e.target.value)}
+              placeholder={t('included_occupancy_placeholder', 'e.g. 2')}
+              error={includedOccupancyInvalid
+                ? t('included_occupancy_invalid', 'Enter a whole number of guests between 1 and 99.')
+                : undefined}
+              helperText={t('included_occupancy_help', 'How many guests the nightly rate already covers. Extra guests are charged below.')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="number"
+              label={t('extra_guest_charge_label', 'Extra Guest Charge / Night')}
+              value={extraGuestCharge}
+              onChange={(e) => setExtraGuestCharge(e.target.value)}
+              placeholder={t('extra_guest_charge_placeholder', 'e.g. 950')}
+              error={isBadMoney(extraGuestCharge)
+                ? t('extra_guest_charge_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
+                : undefined}
+              helperText={extraGuestUnreachable
+                ? t('extra_guest_charge_unreachable', 'This never applies - the included guests already fill the room, so nobody can be an extra guest.')
+                : t('extra_guest_charge_help', 'Charged per night for each guest beyond the included count.')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="number"
+              label={t('cleaning_fee_label', 'Cleaning Fee (once per stay)')}
+              value={cleaningFee}
+              onChange={(e) => setCleaningFee(e.target.value)}
+              placeholder={t('cleaning_fee_placeholder', 'e.g. 500')}
+              error={isBadMoney(cleaningFee)
+                ? t('cleaning_fee_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
+                : undefined}
+              helperText={t('cleaning_fee_help', 'Added once to the bill, not per night. Leave blank if you do not charge one.')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="number"
+              label={t('security_deposit_label', 'Security Deposit (refundable)')}
+              value={securityDeposit}
+              onChange={(e) => setSecurityDeposit(e.target.value)}
+              placeholder={t('security_deposit_placeholder', 'e.g. 2000')}
+              error={isBadMoney(securityDeposit)
+                ? t('security_deposit_invalid', 'Enter an amount up to 1,000,000 with at most 2 decimals.')
+                : undefined}
+              helperText={t('security_deposit_help', 'Held against damage and returned at checkout. Not revenue.')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="time"
+              label={t('checkin_time_label', 'Check-in Time')}
+              value={checkinTime}
+              onChange={(e) => setCheckinTime(e.target.value)}
+              helperText={isRoom ? t('checkin_time_help_room', "This room's own check-in time.") : t('checkin_time_help', 'Applied to all rooms under this property.')}
+            />
+          </div>
+          <div className="property-edit-form__field">
+            <Input
+              type="time"
+              label={t('checkout_time_label', 'Check-out Time')}
+              value={checkoutTime}
+              onChange={(e) => setCheckoutTime(e.target.value)}
+              helperText={isRoom ? t('checkout_time_help_room', "This room's own check-out time.") : t('checkout_time_help', 'Applied to all rooms under this property.')}
             />
           </div>
         </div>
-      )}
 
-      {!isRoom && (
-      <div className="property-edit-form__field">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
-        <WhatsAppEditor
-          value={instructions}
-          onChange={setInstructions}
-          placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
-          rows={4}
-        />
-      </div>
-      )}
-
-      {/* Listing content (6 Sep 2026). Rendered on the public booking page under
-          the room name - description, the facts line, and amenity chips. Imported
-          from Airbnb when a listing is connected, editable here either way. */}
-      <div className="property-edit-form__field">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-          {t('property_description_label', 'Description')}
-        </label>
-        <WhatsAppEditor
-          value={description}
-          onChange={setDescription}
-          placeholder={t('property_description_placeholder', 'What makes this place worth booking - shown to guests on your booking page.')}
-          rows={4}
-        />
-      </div>
-
-      <div className="property-edit-form__field grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Input
-          label={t('bedrooms_label', 'Bedrooms')}
-          type="number"
-          min="0"
-          value={bedrooms}
-          onChange={(e) => setBedrooms(e.target.value)}
-          placeholder={t('bedrooms_placeholder', 'e.g. 1')}
-        />
-        <Input
-          label={t('beds_count_label', 'Beds')}
-          type="number"
-          min="0"
-          value={bedsCount}
-          onChange={(e) => setBedsCount(e.target.value)}
-          placeholder={t('beds_count_placeholder', 'e.g. 2')}
-        />
-        <Input
-          label={t('bathrooms_label', 'Bathrooms')}
-          type="number"
-          min="0"
-          step="0.5"
-          value={bathrooms}
-          onChange={(e) => setBathrooms(e.target.value)}
-          placeholder={t('bathrooms_placeholder', 'e.g. 1.5')}
-          helperText={t('bathrooms_help', 'Half counts as 0.5.')}
-        />
-      </div>
-
-      {/* Bed configuration (7 Sep 2026) - the detailed per-room bed breakdown
-          behind the "Beds" count above (e.g. "1 Queen Bed, 1 Sofa Bed" instead
-          of just "2"). Shown to guests in PublicBookingEngine's room-facts
-          line. Imported from Airbnb when connected, editable here either way -
-          bed type is free text (not a fixed picker) so it renders correctly
-          either way, since PublicBookingEngine's humanizeKey() just title-cases
-          whatever string is stored. */}
-      <div className="property-edit-form__field space-y-2">
-        <div className="flex items-center gap-2">
-          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
-            {t('bed_configuration_label', 'Bed Configuration')}
-          </label>
-          <FieldHelpPopover
-            content={t('bed_configuration_help', 'Shown to guests as part of the room facts (e.g. "1 Queen Bed"). Optional.')}
-            title={t('bed_configuration_label', 'Bed Configuration')}
-          />
-        </div>
-        <div className="space-y-3">
-          {bedConfig.map((room, roomIdx) => (
-            <div key={roomIdx} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2.5">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={room.room_type}
-                  onChange={(e) => updateBedRoomName(roomIdx, e.target.value)}
-                  placeholder={t('bed_room_name_placeholder', 'e.g. Bedroom 1, Living Room')}
-                  fullWidth
-                />
-                <button
-                  type="button"
-                  onClick={() => removeBedRoom(roomIdx)}
-                  aria-label={t('remove_room_label', 'Remove room')}
-                  className="shrink-0 p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-2">
-                {room.beds.map((bed, bedIdx) => (
-                  <div key={bedIdx} className="flex items-center gap-2 pl-2">
-                    <Input
-                      value={bed.type}
-                      onChange={(e) => updateBedType(roomIdx, bedIdx, e.target.value)}
-                      placeholder={t('bed_type_placeholder', 'e.g. Queen bed, Sofa bed')}
-                      fullWidth
-                    />
-                    <Input
-                      type="number"
-                      min="1"
-                      value={String(bed.quantity)}
-                      onChange={(e) => updateBedQuantity(roomIdx, bedIdx, e.target.value)}
-                      className="w-20 shrink-0"
-                      fullWidth={false}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeBed(roomIdx, bedIdx)}
-                      aria-label={t('remove_bed_label', 'Remove bed')}
-                      className="shrink-0 p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <Button type="button" variant="secondary" size="xs" onClick={() => addBed(roomIdx)} className="flex items-center gap-1">
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t('add_bed_button', 'Add Bed')}</span>
-              </Button>
+        {/* Multi-key parent properties aren't themselves bookable - each room has
+            its own tariff, set here (in room mode) instead. */}
+        {!isRoom && property.property_type !== 'MULTI_KEY' && (
+          <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="property-edit-form__field">
+              <Input
+                type="number"
+                label={t('default_tariff_label', 'Default Tariff / Night (₹, optional)')}
+                value={defaultTariff}
+                onChange={(e) => setDefaultTariff(e.target.value)}
+                placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
+                helperText={t('default_tariff_help', 'Pre-fills the rate when creating a new booking - still editable per booking.')}
+              />
             </div>
-          ))}
-        </div>
-        <Button type="button" variant="secondary" size="sm" onClick={addBedRoom} className="flex items-center gap-1.5">
-          <Plus className="w-4 h-4" />
-          <span>{t('add_room_button', 'Add Room')}</span>
-        </Button>
-      </div>
-
-      <div className="property-edit-form__field">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-          {t('house_rules_label', 'House Rules')}
-        </label>
-        <WhatsAppEditor
-          value={houseRules}
-          onChange={setHouseRules}
-          placeholder={t('house_rules_placeholder', 'e.g. No smoking indoors, quiet hours after 10pm, no parties…')}
-          rows={3}
-        />
-      </div>
-
-      {/* Kept separate from House Rules on purpose (7 Sep 2026): house rules
-          govern behaviour during a stay, cancellation governs money before one.
-          A guest disputing a refund has to be able to point at the exact terms
-          that applied, not search for them inside a list about smoking and quiet
-          hours. Both appear on the public booking voucher. */}
-      <div className="property-edit-form__field">
-        <div className="flex items-center gap-2 mb-1.5">
-          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
-            {t('cancellation_policy_label', 'Cancellation Policy')}
-          </label>
-          <FieldHelpPopover
-            content={t('cancellation_policy_help', 'Shown to the guest on their booking voucher.')}
-            title={t('cancellation_policy_label', 'Cancellation Policy')}
-          />
-        </div>
-        <WhatsAppEditor
-          value={cancellationPolicy}
-          onChange={setCancellationPolicy}
-          placeholder={t('cancellation_policy_placeholder', 'e.g. Free cancellation up to 7 days before check-in. After that, the advance is not refundable.')}
-          rows={3}
-        />
-      </div>
-
-      {/* Amenities (7 Sep 2026) - shown to guests as chips under the room
-          description on the public booking page (PublicBookingEngine.tsx).
-          Free text, not a fixed checklist - Airbnb's own amenity vocabulary
-          keeps growing and this needs to cover anything a property actually
-          has, imported or not. Stored as plain human-readable strings; a
-          duplicate (case-insensitive) is silently ignored rather than added
-          twice. */}
-      {/* Amenities (7 Sep 2026) - select via modal or quick add */}
-      <div className="property-edit-form__field space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <label className="app-label block text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {t('amenities_label', 'Amenities')}
-            </label>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {t('amenities_subtitle', 'Shown to guests on your direct booking page.')}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowAmenitiesModal(true)}
-            className="shrink-0 flex items-center gap-1.5"
-          >
-            <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>{t('select_amenities_button', 'Select Amenities')}</span>
-            {amenities.length > 0 && (
-              <span className="ms-1 px-1.5 py-0.2 rounded text-2xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
-                {amenities.length}
-              </span>
-            )}
-          </Button>
-        </div>
-
-        {amenities.length > 0 ? (
-          <div className="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80">
-            {amenities.map((a, idx) => {
-              const Icon = getAmenityIcon(a);
-              return (
-                <span
-                  key={idx}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium pl-2.5 pr-1.5 py-1 border border-slate-200 dark:border-slate-700 shadow-2xs"
-                >
-                  <Icon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-                  <span>{a}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeAmenity(idx)}
-                    aria-label={t('remove_amenity_label', 'Remove amenity')}
-                    className="p-0.5 rounded text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
-            <span>{t('no_amenities_added_message', 'No amenities added yet.')}</span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              onClick={() => setShowAmenitiesModal(true)}
-              className="flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{t('select_amenities_button', 'Select Amenities')}</span>
-            </Button>
           </div>
         )}
 
-        {/* Amenities Selection Modal */}
-        <AmenitiesSelectModal
-          isOpen={showAmenitiesModal}
-          onClose={() => setShowAmenitiesModal(false)}
-          selectedAmenities={amenities}
-          onSave={(newAmenities) => setAmenities(newAmenities)}
-        />
-      </div>
+        {!isRoom && (
+        <div className="property-edit-form__field">
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">{t('other_notes_label', 'Other Notes')}</label>
+          <WhatsAppEditor
+            value={instructions}
+            onChange={setInstructions}
+            placeholder={t('other_notes_placeholder', 'e.g. How to reach, check-in instructions, parking notes…')}
+            rows={4}
+          />
+        </div>
+        )}
 
-      {/* Guest arrival info (6 Sep 2026). Appears on the WhatsApp booking
-          voucher via {wifi_network}/{wifi_password}/{house_manual}; an empty
-          field drops its whole line, so leaving these blank changes nothing.
-          Imported from Airbnb when a listing is connected. */}
-      <div className="property-edit-form__field grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input
-          label={t('wifi_network_label', 'WiFi Network')}
-          value={wifiNetwork}
-          onChange={(e) => setWifiNetwork(e.target.value)}
-          placeholder={t('wifi_network_placeholder', 'e.g. Artistic_Sthan_23')}
-          helperText={t('wifi_network_help', 'Shown to the guest on their booking voucher.')}
-        />
-        <Input
-          label={t('wifi_password_label', 'WiFi Password')}
-          value={wifiPassword}
-          onChange={(e) => setWifiPassword(e.target.value)}
-          placeholder={t('wifi_password_placeholder', 'e.g. welcome@123')}
-        />
-      </div>
+        {/* Listing content (6 Sep 2026). Rendered on the public booking page under
+            the room name - description, the facts line, and amenity chips. Imported
+            from Airbnb when a listing is connected, editable here either way. */}
+        <div className="property-edit-form__field">
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+            {t('property_description_label', 'Description')}
+          </label>
+          <WhatsAppEditor
+            value={description}
+            onChange={setDescription}
+            placeholder={t('property_description_placeholder', 'What makes this place worth booking - shown to guests on your booking page.')}
+            rows={4}
+          />
+        </div>
 
-      <div className="property-edit-form__field">
-        <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
-          {t('house_manual_label', 'House Manual')}
-        </label>
-        <WhatsAppEditor
-          value={houseManual}
-          onChange={setHouseManual}
-          placeholder={t('house_manual_placeholder', 'e.g. How the AC and geyser work, rubbish collection day, what to do if the internet drops…')}
-          rows={4}
-        />
-      </div>
+        <div className="property-edit-form__field grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Input
+            label={t('bedrooms_label', 'Bedrooms')}
+            type="number"
+            min="0"
+            value={bedrooms}
+            onChange={(e) => setBedrooms(e.target.value)}
+            placeholder={t('bedrooms_placeholder', 'e.g. 1')}
+          />
+          <Input
+            label={t('beds_count_label', 'Beds')}
+            type="number"
+            min="0"
+            value={bedsCount}
+            onChange={(e) => setBedsCount(e.target.value)}
+            placeholder={t('beds_count_placeholder', 'e.g. 2')}
+          />
+          <Input
+            label={t('bathrooms_label', 'Bathrooms')}
+            type="number"
+            min="0"
+            step="0.5"
+            value={bathrooms}
+            onChange={(e) => setBathrooms(e.target.value)}
+            placeholder={t('bathrooms_placeholder', 'e.g. 1.5')}
+            helperText={t('bathrooms_help', 'Half counts as 0.5.')}
+          />
+        </div>
 
-      {/* Live WhatsApp voucher preview (26 Aug 2026) - not editable, see this
-          file's own top comment for why. Guest/booking fields (name, dates,
-          amounts) are fixed sample values; every property/contact field
-          below is read live from this form's own state, not the last-saved
-          `property` prop, so it updates as you type. */}
-      {!isRoom && (
-        <div className="property-edit-form__whatsapp-preview mt-2 border border-slate-200 dark:border-slate-700/80 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-              <MessageCircle className="w-3.5 h-3.5" />
-            </span>
+        {/* Bed configuration (7 Sep 2026) - the detailed per-room bed breakdown
+            behind the "Beds" count above (e.g. "1 Queen Bed, 1 Sofa Bed" instead
+            of just "2"). Shown to guests in PublicBookingEngine's room-facts
+            line. Imported from Airbnb when connected, editable here either way -
+            bed type is free text (not a fixed picker) so it renders correctly
+            either way, since PublicBookingEngine's humanizeKey() just title-cases
+            whatever string is stored. */}
+        <div className="property-edit-form__field space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
+              {t('bed_configuration_label', 'Bed Configuration')}
+            </label>
+          </div>
+          <FieldHelpText
+            content={t('bed_configuration_help', 'Shown to guests as part of the room facts (e.g. "1 Queen Bed"). Optional.')}
+          />
+          <div className="space-y-3">
+            {bedConfig.map((room, roomIdx) => (
+              <div key={roomIdx} className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={room.room_type}
+                    onChange={(e) => updateBedRoomName(roomIdx, e.target.value)}
+                    placeholder={t('bed_room_name_placeholder', 'e.g. Bedroom 1, Living Room')}
+                    fullWidth
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeBedRoom(roomIdx)}
+                    aria-label={t('remove_room_label', 'Remove room')}
+                    className="shrink-0 p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {room.beds.map((bed, bedIdx) => (
+                    <div key={bedIdx} className="flex items-center gap-2 pl-2">
+                      <Input
+                        value={bed.type}
+                        onChange={(e) => updateBedType(roomIdx, bedIdx, e.target.value)}
+                        placeholder={t('bed_type_placeholder', 'e.g. Queen bed, Sofa bed')}
+                        fullWidth
+                      />
+                      <Input
+                        type="number"
+                        min="1"
+                        value={String(bed.quantity)}
+                        onChange={(e) => updateBedQuantity(roomIdx, bedIdx, e.target.value)}
+                        className="w-20 shrink-0"
+                        fullWidth={false}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeBed(roomIdx, bedIdx)}
+                        aria-label={t('remove_bed_label', 'Remove bed')}
+                        className="shrink-0 p-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="secondary" size="xs" onClick={() => addBed(roomIdx)} className="flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{t('add_bed_button', 'Add Bed')}</span>
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button type="button" variant="secondary" size="sm" onClick={addBedRoom} className="flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />
+            <span>{t('add_room_button', 'Add Room')}</span>
+          </Button>
+        </div>
+
+        <div className="property-edit-form__field">
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+            {t('house_rules_label', 'House Rules')}
+          </label>
+          <WhatsAppEditor
+            value={houseRules}
+            onChange={setHouseRules}
+            placeholder={t('house_rules_placeholder', 'e.g. No smoking indoors, quiet hours after 10pm, no parties…')}
+            rows={3}
+          />
+        </div>
+
+        {/* Kept separate from House Rules on purpose (7 Sep 2026): house rules
+            govern behaviour during a stay, cancellation governs money before one.
+            A guest disputing a refund has to be able to point at the exact terms
+            that applied, not search for them inside a list about smoking and quiet
+            hours. Both appear on the public booking voucher. */}
+        <div className="property-edit-form__field">
+          <div className="flex items-center gap-2 mb-1.5">
+            <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200">
+              {t('cancellation_policy_label', 'Cancellation Policy')}
+            </label>
+          </div>
+          <FieldHelpText
+            content={t('cancellation_policy_help', 'Shown to the guest on their booking voucher.')}
+          />
+          <WhatsAppEditor
+            value={cancellationPolicy}
+            onChange={setCancellationPolicy}
+            placeholder={t('cancellation_policy_placeholder', 'e.g. Free cancellation up to 7 days before check-in. After that, the advance is not refundable.')}
+            rows={3}
+          />
+        </div>
+
+        {/* Amenities (7 Sep 2026) - shown to guests as chips under the room
+            description on the public booking page (PublicBookingEngine.tsx).
+            Free text, not a fixed checklist - Airbnb's own amenity vocabulary
+            keeps growing and this needs to cover anything a property actually
+            has, imported or not. Stored as plain human-readable strings; a
+            duplicate (case-insensitive) is silently ignored rather than added
+            twice. */}
+        {/* Amenities (7 Sep 2026) - select via modal or quick add */}
+        <div className="property-edit-form__field space-y-3">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h4 className="property-edit-form__preview-caption text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-                {t('whatsapp_preview_heading', 'Guest booking confirmation message/email')}
-              </h4>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                {t('whatsapp_preview_subtitle', 'Updates live as you edit the fields above - this is exactly what guests receive.')}
+              <label className="app-label block text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {t('amenities_label', 'Amenities')}
+              </label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('amenities_subtitle', 'Shown to guests on your direct booking page.')}
               </p>
             </div>
-            <div className="ms-auto flex items-center gap-2">
-              {voucherTemplate.trim() && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => setVoucherTemplate('')}
-                  className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
-                >
-                  <RotateCcw className="w-3 h-3 mr-1" />
-                  <span>{t('reset_to_default_button', 'Reset')}</span>
-                </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAmenitiesModal(true)}
+              className="shrink-0 flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span>{t('select_amenities_button', 'Select Amenities')}</span>
+              {amenities.length > 0 && (
+                <span className="ms-1 px-1.5 py-0.2 rounded text-2xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200">
+                  {amenities.length}
+                </span>
               )}
+            </Button>
+          </div>
+
+          {amenities.length > 0 ? (
+            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700/80">
+              {amenities.map((a, idx) => {
+                const Icon = getAmenityIcon(a);
+                return (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-medium pl-2.5 pr-1.5 py-1 border border-slate-200 dark:border-slate-700 shadow-2xs"
+                  >
+                    <Icon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                    <span>{a}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAmenity(idx)}
+                      aria-label={t('remove_amenity_label', 'Remove amenity')}
+                      className="p-0.5 rounded text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-2">
+              <span>{t('no_amenities_added_message', 'No amenities added yet.')}</span>
               <Button
                 type="button"
                 variant="secondary"
                 size="xs"
-                onClick={handleOpenVoucherModal}
+                onClick={() => setShowAmenitiesModal(true)}
                 className="flex items-center gap-1.5"
               >
-                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>{t('whatsapp_template_edit', 'Edit wording')}</span>
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>{t('select_amenities_button', 'Select Amenities')}</span>
               </Button>
             </div>
+          )}
+
+          {/* Amenities Selection Modal */}
+          <AmenitiesSelectModal
+            isOpen={showAmenitiesModal}
+            onClose={() => setShowAmenitiesModal(false)}
+            selectedAmenities={amenities}
+            onSave={(newAmenities) => setAmenities(newAmenities)}
+          />
+        </div>
+
+        {/* Guest arrival info (6 Sep 2026). Appears on the WhatsApp booking
+            voucher via {wifi_network}/{wifi_password}/{house_manual}; an empty
+            field drops its whole line, so leaving these blank changes nothing.
+            Imported from Airbnb when a listing is connected. */}
+        <div className="property-edit-form__field grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label={t('wifi_network_label', 'WiFi Network')}
+            value={wifiNetwork}
+            onChange={(e) => setWifiNetwork(e.target.value)}
+            placeholder={t('wifi_network_placeholder', 'e.g. Artistic_Sthan_23')}
+            helperText={t('wifi_network_help', 'Shown to the guest on their booking voucher.')}
+          />
+          <Input
+            label={t('wifi_password_label', 'WiFi Password')}
+            value={wifiPassword}
+            onChange={(e) => setWifiPassword(e.target.value)}
+            placeholder={t('wifi_password_placeholder', 'e.g. welcome@123')}
+          />
+        </div>
+
+        <div className="property-edit-form__field">
+          <label className="app-label block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+            {t('house_manual_label', 'House Manual')}
+          </label>
+          <WhatsAppEditor
+            value={houseManual}
+            onChange={setHouseManual}
+            placeholder={t('house_manual_placeholder', 'e.g. How the AC and geyser work, rubbish collection day, what to do if the internet drops…')}
+            rows={4}
+          />
+        </div>
+
+        {/* Live WhatsApp voucher preview (26 Aug 2026) - not editable, see this
+            file's own top comment for why. Guest/booking fields (name, dates,
+            amounts) are fixed sample values; every property/contact field
+            below is read live from this form's own state, not the last-saved
+            `property` prop, so it updates as you type. */}
+        {!isRoom && (
+          <div className="property-edit-form__whatsapp-preview mt-2 border border-slate-200 dark:border-slate-700/80 rounded-lg overflow-hidden bg-slate-50/50 dark:bg-slate-900/60 p-4">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <MessageCircle className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <h4 className="property-edit-form__preview-caption text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                  {t('whatsapp_preview_heading', 'Guest booking confirmation message/email')}
+                </h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  {t('whatsapp_preview_subtitle', 'Updates live as you edit the fields above - this is exactly what guests receive.')}
+                </p>
+              </div>
+              <div className="ms-auto flex items-center gap-2">
+                {voucherTemplate.trim() && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => setVoucherTemplate('')}
+                    className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    <span>{t('reset_to_default_button', 'Reset')}</span>
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={handleOpenVoucherModal}
+                  className="flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>{t('whatsapp_template_edit', 'Edit wording')}</span>
+                </Button>
+              </div>
+            </div>
+            <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
+              <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
+                <MessageQrPreview
+                  text={getPreviewText()}
+                  cardClassName="my-2.5 p-2 bg-slate-50 dark:bg-[#111b21] rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-start gap-1.5 shadow-2xs"
+                  captionClassName="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"
+                />
+              </div>
+            </div>
           </div>
-          <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
-            <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-emerald-500">
-              <MessageQrPreview
-                text={getPreviewText()}
-                cardClassName="my-2.5 p-2 bg-slate-50 dark:bg-[#111b21] rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-start gap-1.5 shadow-2xs"
-                captionClassName="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"
+        )}
+
+        <div className="flex justify-end gap-3 pt-2">
+          {onCancel && (
+            <Button variant="secondary" type="button" onClick={onCancel}>
+              {cancelLabel || t('cancel_button', 'Cancel')}
+            </Button>
+          )}
+          <Button
+            onClick={handleSave}
+            variant="primary"
+            disabled={isSaving || !name.trim()}
+            className="flex items-center gap-2"
+          >
+            {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {submitLabel || t('save_changes_button', 'Save Changes')}
+          </Button>
+        </div>
+        {/* Edit Booking Confirmation Voucher Modal */}
+        <Modal
+          show={showVoucherModal}
+          onClose={() => setShowVoucherModal(false)}
+          size="2xl"
+          dismissible
+          className="z-50"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <MessageCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white m-0 leading-tight">
+                  {t('edit_booking_voucher_modal_title', 'Edit Booking Confirmation Voucher')}
+                </h3>
+                <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5 m-0">
+                  {t('edit_booking_voucher_modal_subtitle', 'Customise the message guests receive when a booking is created or shared on WhatsApp.')}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowVoucherModal(false)}
+              aria-label={t('close_button', 'Close')}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="text-slate-600 dark:text-slate-300">
+                {modalTemplate.trim() && modalTemplate.trim() !== inheritedTemplate.trim()
+                  ? t('whatsapp_template_overridden', 'Custom wording active for this property.')
+                  : `${t('whatsapp_template_inherited', 'Currently matching')} ${inheritedFrom}.`}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                onClick={handleResetToRootDefault}
+                className="flex items-center gap-1 shrink-0 text-slate-700 dark:text-slate-200"
+              >
+                <RotateCcw className="w-3 h-3 text-slate-500" />
+                <span>{t('reset_to_root_default_button', 'Reset to Root Dashboard Default')}</span>
+              </Button>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
+                {t('voucher_template_text_label', 'Voucher Template Text')}
+              </label>
+              <textarea
+                ref={voucherTextareaRef}
+                value={modalTemplate}
+                onChange={(e) => setModalTemplate(e.target.value)}
+                placeholder={inheritedTemplate}
+                rows={13}
+                spellCheck={false}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'copy';
+                }}
+                onDrop={handleDropToken}
+                className="w-full px-3 py-2 text-xs font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-          </div>
-        </div>
-      )}
 
-      <div className="flex justify-end gap-3 pt-2">
-        {onCancel && (
-          <Button variant="secondary" type="button" onClick={onCancel}>
-            {cancelLabel || t('cancel_button', 'Cancel')}
-          </Button>
-        )}
-        <Button
-          onClick={handleSave}
-          variant="primary"
-          disabled={isSaving || !name.trim()}
-          className="flex items-center gap-2"
-        >
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {submitLabel || t('save_changes_button', 'Save Changes')}
-        </Button>
-      </div>
-      {/* Edit Booking Confirmation Voucher Modal */}
-      <Modal
-        show={showVoucherModal}
-        onClose={() => setShowVoucherModal(false)}
-        size="2xl"
-        dismissible
-        className="z-50"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-              <MessageCircle className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white m-0 leading-tight">
-                {t('edit_booking_voucher_modal_title', 'Edit Booking Confirmation Voucher')}
-              </h3>
-              <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5 m-0">
-                {t('edit_booking_voucher_modal_subtitle', 'Customise the message guests receive when a booking is created or shared on WhatsApp.')}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-2xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  {t('available_tokens_label', 'Available Tokens (Click to insert or drag & drop):')}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-700/80">
+                {VOUCHER_TOKENS.map((token) => (
+                  <span
+                    key={token}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', token);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    onClick={() => insertTokenAtCursor(token)}
+                    className="text-2xs font-mono px-2 py-1 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-grab active:cursor-grabbing select-none transition-colors"
+                  >
+                    + {token}
+                  </span>
+                ))}
+              </div>
+              <p className="text-2xs text-slate-500 dark:text-slate-400">
+                {t('whatsapp_template_optional_note', 'A line whose value is empty is removed automatically, so you can keep lines you only sometimes use.')}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowVoucherModal(false)}
-            aria-label={t('close_button', 'Close')}
-            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        <div className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
-            <span className="text-slate-600 dark:text-slate-300">
-              {modalTemplate.trim() && modalTemplate.trim() !== inheritedTemplate.trim()
-                ? t('whatsapp_template_overridden', 'Custom wording active for this property.')
-                : `${t('whatsapp_template_inherited', 'Currently matching')} ${inheritedFrom}.`}
-            </span>
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="secondary"
-              size="xs"
-              onClick={handleResetToRootDefault}
-              className="flex items-center gap-1 shrink-0 text-slate-700 dark:text-slate-200"
+              size="sm"
+              onClick={() => setShowVoucherModal(false)}
             >
-              <RotateCcw className="w-3 h-3 text-slate-500" />
-              <span>{t('reset_to_root_default_button', 'Reset to Root Dashboard Default')}</span>
+              {t('cancel_button', 'Cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleSaveVoucherModal}
+            >
+              {t('apply_changes_button', 'Apply Changes')}
             </Button>
           </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
-              {t('voucher_template_text_label', 'Voucher Template Text')}
-            </label>
-            <textarea
-              ref={voucherTextareaRef}
-              value={modalTemplate}
-              onChange={(e) => setModalTemplate(e.target.value)}
-              placeholder={inheritedTemplate}
-              rows={13}
-              spellCheck={false}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'copy';
-              }}
-              onDrop={handleDropToken}
-              className="w-full px-3 py-2 text-xs font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-2xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                {t('available_tokens_label', 'Available Tokens (Click to insert or drag & drop):')}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-700/80">
-              {VOUCHER_TOKENS.map((token) => (
-                <span
-                  key={token}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('text/plain', token);
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  onClick={() => insertTokenAtCursor(token)}
-                  className="text-2xs font-mono px-2 py-1 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-grab active:cursor-grabbing select-none transition-colors"
-                >
-                  + {token}
-                </span>
-              ))}
-            </div>
-            <p className="text-2xs text-slate-500 dark:text-slate-400">
-              {t('whatsapp_template_optional_note', 'A line whose value is empty is removed automatically, so you can keep lines you only sometimes use.')}
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg flex items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowVoucherModal(false)}
-          >
-            {t('cancel_button', 'Cancel')}
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={handleSaveVoucherModal}
-          >
-            {t('apply_changes_button', 'Apply Changes')}
-          </Button>
-        </div>
-      </Modal>
-    </div>
+        </Modal>
+      </div>
+    </FieldHelpModeProvider>
   );
 };

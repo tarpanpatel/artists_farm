@@ -1,6 +1,38 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { Popover } from './Popover';
 import { HelpCircle } from './icons/FlowbiteIcons';
+
+/**
+ * Where a field's helper text is shown (9 Sep 2026, explicit request).
+ *
+ *  - 'popover' (default, unchanged app-wide): a small "?" beside the label, revealed on
+ *    hover/tap. Right for dense operational screens where guidance is occasional reference.
+ *  - 'inline': the text sits BELOW the field, always visible. Right for SETUP screens - property,
+ *    telegram and listing setup - where the owner is meeting each field for the first time and
+ *    the guidance is the point, not a footnote. Help nobody opens is help nobody reads.
+ *
+ * Scoped by CONTEXT rather than a per-field prop deliberately: the property wizard alone has
+ * ~15 fields, and a prop would have to be remembered on every future one. Wrapping the form
+ * makes the setting a property of the SCREEN, which is what it actually is.
+ */
+export type FieldHelpMode = 'popover' | 'inline';
+
+const FieldHelpModeContext = createContext<FieldHelpMode>('popover');
+
+export const useFieldHelpMode = (): FieldHelpMode => useContext(FieldHelpModeContext);
+
+export const FieldHelpModeProvider: React.FC<{ mode: FieldHelpMode; children: React.ReactNode }> = ({
+  mode,
+  children,
+}) => <FieldHelpModeContext.Provider value={mode}>{children}</FieldHelpModeContext.Provider>;
+
+/** Always-visible helper text, for `mode === 'inline'`. */
+export const FieldHelpText: React.FC<{ content: React.ReactNode; id?: string }> = ({ content, id }) =>
+  content ? (
+    <p id={id} className="app-helper-text mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+      {content}
+    </p>
+  ) : null;
 
 export interface FieldHelpPopoverProps {
   content: React.ReactNode;

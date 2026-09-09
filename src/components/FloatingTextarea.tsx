@@ -2,7 +2,7 @@ import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 import { FloatingBgMode, getBgToken } from './FloatingInput';
-import { FieldHelpPopover } from './FieldHelpPopover';
+import { FieldHelpPopover, FieldHelpText, useFieldHelpMode } from './FieldHelpPopover';
 
 export interface FloatingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
@@ -33,6 +33,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
     },
     ref
   ) => {
+    const helpMode = useFieldHelpMode();
     const textareaId = id || `floating-textarea-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
     const hasError = Boolean(error);
     const errorMessage = typeof error === 'string' ? error : undefined;
@@ -93,7 +94,7 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           >
             {label}
           </label>
-          {helperText && !errorMessage && !successMessage && (
+          {helpMode === 'popover' && helperText && !errorMessage && !successMessage && (
             <div className="absolute top-2.5 end-2.5 flex items-center z-20">
               <FieldHelpPopover content={helperText} title={label} />
             </div>
@@ -109,6 +110,8 @@ export const FloatingTextarea = forwardRef<HTMLTextAreaElement, FloatingTextarea
           <p id={`${textareaId}-success`} className="mt-1.5 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
+        ) : helpMode === 'inline' && helperText ? (
+          <FieldHelpText content={helperText} id={`${textareaId}-helper`} />
         ) : (!label && helperText) ? (
           <div id={`${textareaId}-helper`} className="mt-1.5 flex items-center">
             <FieldHelpPopover content={helperText} title={label} />

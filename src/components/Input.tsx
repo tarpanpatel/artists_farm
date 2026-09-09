@@ -2,7 +2,7 @@ import React, { forwardRef } from 'react';
 import { twMerge } from 'tailwind-merge';
 import { AlertTriangle, CheckCircle2 } from './icons/FlowbiteIcons';
 import { FloatingInput, FloatingBgMode } from './FloatingInput';
-import { FieldHelpPopover } from './FieldHelpPopover';
+import { FieldHelpPopover, FieldHelpText, useFieldHelpMode } from './FieldHelpPopover';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -46,6 +46,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     // If floating variant and label is provided, use Flowbite Floating Label
+    // Read before the early return below - hooks must run unconditionally on every render path.
+    const helpMode = useFieldHelpMode();
+
     if (label && variant === 'floating') {
       return (
         <FloatingInput
@@ -114,7 +117,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             >
               {label}
             </label>
-            {helperText && !errorMessage && !successMessage && (
+            {helpMode === 'popover' && helperText && !errorMessage && !successMessage && (
               <FieldHelpPopover content={helperText} title={label} />
             )}
           </div>
@@ -157,6 +160,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <p id={`${inputId}-success`} className="app-success-text mt-1.5 text-xs text-green-600 dark:text-green-500 flex items-center gap-1 font-medium input__success">
             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {successMessage}
           </p>
+        ) : helpMode === 'inline' && helperText ? (
+          <FieldHelpText content={helperText} id={`${inputId}-helper`} />
         ) : (!label && helperText) ? (
           <div id={`${inputId}-helper`} className="app-helper-text mt-1.5 flex items-center input__helper">
             <FieldHelpPopover content={helperText} title={label} />

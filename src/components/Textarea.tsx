@@ -3,7 +3,7 @@ import { AlertTriangle } from './icons/FlowbiteIcons';
 import { Textarea as FlowbiteTextarea, Label as FlowbiteLabel } from 'flowbite-react';
 import { FloatingTextarea } from './FloatingTextarea';
 import { FloatingBgMode } from './FloatingInput';
-import { FieldHelpPopover } from './FieldHelpPopover';
+import { FieldHelpPopover, FieldHelpText, useFieldHelpMode } from './FieldHelpPopover';
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -44,6 +44,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     },
     ref
   ) => {
+    // Read before the early return below - hooks must run unconditionally on every render path.
+    const helpMode = useFieldHelpMode();
+
     if (label && variant === 'floating') {
       return (
         <FloatingTextarea
@@ -79,7 +82,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             >
               {label}
             </FlowbiteLabel>
-            {helperText && !errorMessage && (
+            {helpMode === 'popover' && helperText && !errorMessage && (
               <FieldHelpPopover content={helperText} title={label} />
             )}
           </div>
@@ -97,6 +100,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           <p id={`${textareaId}-error`} className="mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1 textarea__error">
             <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> {errorMessage}
           </p>
+        ) : helpMode === 'inline' && helperText ? (
+          <FieldHelpText content={helperText} id={`${textareaId}-helper`} />
         ) : (!label && helperText) ? (
           <div id={`${textareaId}-helper`} className="mt-2 flex items-center textarea__helper">
             <FieldHelpPopover content={helperText} title={label} />
