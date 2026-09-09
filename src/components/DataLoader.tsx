@@ -142,7 +142,23 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         if (property && property.property_type === 'MULTI_KEY') {
           if (isAuthenticated) {
             try {
-              property = await fetchMultiKeyRooms(property.id);
+              const fullProperty = await fetchMultiKeyRooms(property.id);
+              // A MULTI_KEY property always has at least one real child room -
+              // an empty/missing `rooms` array on an otherwise-successful
+              // response is never legitimately correct, only a cold-start
+              // race on the backend (same anti-pattern safeFetchNavItems
+              // below already guards against for nav items: a 200/success
+              // response with hollow data looks identical to a genuine
+              // failure unless checked for explicitly, so the retry-and-
+              // patch-in loop further down never fired for it - found live
+              // 9 Sep 2026, "same old bug", the calendar grid reading "No
+              // rooms available" on a first dashboard load for a property
+              // that definitely has rooms).
+              if (!Array.isArray(fullProperty?.rooms) || fullProperty.rooms.length === 0) {
+                roomsFetchFailed = true;
+              } else {
+                property = fullProperty;
+              }
             } catch (err) {
               console.error('Failed to fetch MultiKey property details:', err);
               roomsFetchFailed = true;
@@ -282,6 +298,17 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
               try {
                 const fullProperty = await fetchMultiKeyRooms(propId);
                 if (isStale()) return;
+                // Same emptiness check as the initial fetch above - a retry
+                // that comes back success:true but still with no rooms isn't
+                // actually done, it just hit the same race again. Fall
+                // through to the next attempt instead of accepting it and
+                // stopping.
+                if (!Array.isArray(fullProperty?.rooms) || fullProperty.rooms.length === 0) {
+                  if (attempt === maxAttempts) {
+                    console.error('Retry for MultiKey property details exhausted all attempts: rooms still empty');
+                  }
+                  continue;
+                }
                 setData((prev) => prev ? { ...prev, currentProperty: fullProperty } : prev);
                 return;
               } catch (err) {
