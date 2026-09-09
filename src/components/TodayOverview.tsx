@@ -1055,7 +1055,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               onClick={() => { setRateModalRoomIds(undefined); setShowRateRuleModal(true); }}
               className="h-7 text-xs font-semibold px-2.5 shrink-0"
             >
-              Prices &amp; rules
+              Dynamic Pricing
             </Button>
             <div className="flex items-center gap-1 ms-auto sm:ms-0">
               <button

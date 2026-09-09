@@ -86,7 +86,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
             <DollarSign className="w-4 h-4" />
           </div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-            Prices & Booking Rules
+            Dynamic Pricing
           </h3>
           {rooms.length > 0 && (
             <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-md border ${

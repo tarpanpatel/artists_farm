@@ -41,8 +41,8 @@ export const PricingPage: React.FC<PricingPageProps> = ({ rooms }) => {
   return (
     <div className="pricing-page max-w-5xl mx-auto">
       <PageHeader
-        title="Pricing"
-        subtitle="Set your usual nightly price, then layer date-range rules on top for Diwali, weekends, or a slow month - Charge more, charge less, or block dates outright. Everything here reaches Airbnb, Booking.com and your own booking page automatically."
+        title="Dynamic Pricing"
+        subtitle="Set your usual nightly price, then change it for the dates that need it - Diwali, a weekend, a quiet month. You can also block dates or ask for a minimum stay. Everything you save goes to Airbnb, Booking.com and your own booking page."
       />
       {isLoading ? (
         <div className="text-center py-10 text-xs text-gray-400">Loading pricing…</div>

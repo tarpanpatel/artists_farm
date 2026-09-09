@@ -239,19 +239,64 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     return Math.min(100, Math.round((inHouseCount / totalRooms) * 100));
   }, [safeProperties, selectedAnalyticsPropId, inHouseCount]);
 
+  // Cold-start race guard (found 10 Sep 2026, same shape as the MULTI_KEY
+  // rooms fetch in DataLoader.tsx and the nav-items loader in App.tsx - see
+  // CLAUDE.md's "Sidebar Shows Only Kitchen" note): apiFetch() never throws
+  // on a non-2xx or error-shaped response (no response.ok check), so a
+  // transient failure on a cold PWA launch - the two Promise.all requests
+  // below racing PHP's per-request session-file lock, a cold PHP-FPM
+  // worker, etc. - used to come back as {status:'error',...} or a bare
+  // object with no .data, get silently coerced to an empty array by
+  // `Array.isArray(rawProps) ? rawProps : []`, and settle as a
+  // fully-rendered dashboard showing permanent zeros with no retry and no
+  // visible error - indistinguishable from a real "this tenant has no
+  // properties yet" state. Fixed by treating a non-ok response OR a
+  // clearly-error-shaped body as a real failure worth retrying a few times
+  // before accepting it, exactly like DataLoader's roomsFetchFailed pattern.
+  const fetchTenantPropsAndSlots = async (): Promise<{ propsList: Property[]; slotData: SlotUsage | null }> => {
+    const [propsRes, slotRes] = await Promise.all([
+      apiFetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`),
+      apiFetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
+    ]);
+    if (!propsRes.ok || !slotRes.ok) {
+      throw new Error(`Tenant dashboard fetch failed (props ${propsRes.status}, slots ${slotRes.status})`);
+    }
+    const propsJson = await propsRes.json();
+    const slotJson = await slotRes.json();
+    if (propsJson?.status === 'error' || slotJson?.status === 'error') {
+      throw new Error(propsJson?.message || slotJson?.message || 'Tenant dashboard fetch returned an error');
+    }
+    const rawProps = propsJson.data || propsJson;
+    const propsList = Array.isArray(rawProps) ? (rawProps as Property[]) : [];
+    const slotData = (slotJson.data || slotJson) as SlotUsage;
+    return { propsList, slotData };
+  };
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const maxAttempts = 4;
     try {
-      const [propsRes, slotRes] = await Promise.all([
-        apiFetch(`/php/api/router.php?action=get_tenant_properties&tenant_id=${tenantId}`),
-        apiFetch(`/php/api/router.php?action=get_tenant_slot_usage&tenant_id=${tenantId}`),
-      ]);
-      const propsJson = await propsRes.json();
-      const slotJson = await slotRes.json();
-      const rawProps = propsJson.data || propsJson;
-      const propsList = Array.isArray(rawProps) ? (rawProps as Property[]) : [];
-      const slotData = (slotJson.data || slotJson) as SlotUsage;
+      let propsList: Property[] = [];
+      let slotData: SlotUsage | null = null;
+      let lastErr: unknown = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const result = await fetchTenantPropsAndSlots();
+          propsList = result.propsList;
+          slotData = result.slotData;
+          lastErr = null;
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+          }
+        }
+      }
+      if (lastErr) {
+        throw lastErr;
+      }
 
       setProperties(propsList);
       setSlotUsage(slotData);

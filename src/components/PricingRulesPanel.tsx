@@ -9,6 +9,7 @@ import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { formatDateOrdinal, formatDateDDMMYY } from '../utils/dateUtils';
+import { HolidaysGuideModal } from './HolidaysGuideModal';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -82,8 +83,8 @@ export interface PricingRulesPanelProps {
 }
 
 /**
- * The actual "Prices & Booking Rules" content - base price editing, the
- * date-range rule form (day-of-week, min/max stay, stop sell, floor/fixed
+ * The actual "Dynamic Pricing" content - base price editing, the
+ * dynamic pricing rule form (day-of-week, min/max stay, stop sell, floor/fixed
  * pricing), and the active rules table. Deliberately has no Modal/Drawer
  * chrome of its own (no header bar, no X, no backdrop) so it can be reused
  * verbatim by both `RateRuleModal.tsx` (wraps this in a `<Modal>`) and
@@ -127,12 +128,27 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   const [rulesPage, setRulesPage] = useState(1);
   const [rulesSearchQuery, setRulesSearchQuery] = useState<string>('');
 
-  // Editing state for existing date-range rules
+  // Editing state for existing dynamic pricing rules
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Mobile-friendly inline unit picker
   const [isUnitsPickerOpen, setIsUnitsPickerOpen] = useState<boolean>(false);
+
+  // Indian Holidays & Wedding Muhurats Guide Modal state
+  const [showHolidaysModal, setShowHolidaysModal] = useState<boolean>(false);
+
+  const handleApplyHolidayDates = (start: string, end: string, suggestedName?: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    if (suggestedName && !ruleName.trim()) {
+      setRuleName(suggestedName);
+    }
+    showToast(
+      `Applied dates for ${suggestedName || 'selected occasion'} (${formatDateDDMMYY(start)} → ${formatDateDDMMYY(end)})`,
+      { type: 'success' }
+    );
+  };
 
   // Restriction state fields
   const [hasStayRestrictions, setHasStayRestrictions] = useState<boolean>(false);
@@ -745,7 +761,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               </div>
               <div>
                 <h5 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
-                  Prices vary by date
+                  How dynamic pricing works
                 </h5>
                 {/* Plain-language explainer (4 Sep 2026). This page is the one
                     place an owner meets channel-manager vocabulary - Stop Sell,
@@ -773,12 +789,24 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
             {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
             <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  {editingRuleId ? <Edit2 className="w-3.5 h-3.5 text-blue-600" /> : <Plus className="w-3.5 h-3.5 text-blue-600" />}
-                  {editingRuleId ? `Edit date range rule #${editingRuleId}` : 'Set prices & rules for a date range'}
-                </h4>
-                <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                    {editingRuleId ? <Edit2 className="w-3.5 h-3.5 text-blue-600" /> : <Plus className="w-3.5 h-3.5 text-blue-600" />}
+                    {editingRuleId ? `Edit dynamic pricing rule #${editingRuleId}` : 'Set prices & rules for a date range'}
+                  </h4>
+                  <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={() => setShowHolidaysModal(true)}
+                  className="self-start sm:self-auto text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-800"
+                  leftIcon={<Calendar className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+                >
+                  Indian Festivals & Wedding Dates
+                </Button>
               </div>
 
               {/* Editing Rule Active Banner */}
@@ -1391,7 +1419,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Active Date-Range Rules ({rateRules.length})
+                  Active rules ({rateRules.length})
                 </h4>
                 {rateRules.length > 0 && (
                   <button
@@ -1705,6 +1733,13 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               )}
             </div>
           </div>
+
+      {/* Indian Holidays, Festivals & Wedding Muhurats Guide Modal */}
+      <HolidaysGuideModal
+        isOpen={showHolidaysModal}
+        onClose={() => setShowHolidaysModal(false)}
+        onSelectRange={handleApplyHolidayDates}
+      />
     </div>
   );
 };

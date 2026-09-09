@@ -871,7 +871,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
   // Dedicated Pricing page (Bookings > Pricing in the sidebar, 9 Sep 2026,
   // explicit request) - renders the same PricingRulesPanel content the
-  // "Prices & Booking Rules" modal already uses, just as a standalone page
+  // "Dynamic Pricing" modal already uses, just as a standalone page
   // instead of an overlay. See PricingPage.tsx's own header comment.
   if (activeMenuItemKey === 'pricing') {
     return <PricingPage rooms={rooms} />;
