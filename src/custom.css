@@ -35,9 +35,22 @@ body,
    reported. This app never used the bounce gesture for anything (no
    pull-to-refresh feature is built in - Header.tsx/UpdateAvailableBanner
    already own that), so disabling it outright removes the trigger for this
-   whole class of glitch rather than working around the glitch itself. */
-html,
-body {
+   whole class of glitch rather than working around the glitch itself.
+
+   html ONLY, not body too (fixed 9 Sep 2026, "scrolling not working in the
+   right side of the app" - reported live, confirmed on staging via a real
+   mouse-wheel event, not just window.scrollBy): this app's own
+   `overflow-x: hidden` rule above makes `html` (not `body`) the real
+   document.scrollingElement here. Setting `overscroll-behavior-y: none` on
+   BOTH html and body broke ordinary wheel scrolling everywhere, not just
+   the bounce at the edges - verified directly by toggling each one back to
+   `auto` independently: overriding html alone changed nothing, overriding
+   body alone immediately restored scrolling. Chromium apparently routes the
+   wheel scroll chain through body first even when html is the element that
+   actually scrolls, so body's `none` was blocking the chain before it ever
+   reached html's scrollbox. html alone is sufficient for the original PWA
+   fix - it's the element that actually bounces. */
+html {
   overscroll-behavior-y: none;
 }
 
