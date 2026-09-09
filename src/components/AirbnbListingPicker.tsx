@@ -144,7 +144,7 @@ export const locationLabel = (
   locations: Record<string, ListingLocation>,
 ): string => {
   const loc = items.map((l) => locations[l.id]).find((x) => x && (x.street || x.zipcode));
-  const city = cityOf(items[0]);
+  const city = (loc?.city || '').trim() || cityOf(items[0]);
   if (!loc) return city;
   const street = (loc.street || '').trim();
   const zip = (loc.zipcode || '').trim();
