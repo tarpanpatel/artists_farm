@@ -26,6 +26,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
 import { BillingCheckout } from './BillingCheckout';
+import { PricingPage } from './PricingPage';
 import { t } from '../i18n/en';
 import { createBookingHoldDB, fetchRateRulesDB } from '../services/api';
 
@@ -867,6 +868,14 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       setSharingAllRooms(false);
     }
   };
+
+  // Dedicated Pricing page (Bookings > Pricing in the sidebar, 9 Sep 2026,
+  // explicit request) - renders the same PricingRulesPanel content the
+  // "Prices & Booking Rules" modal already uses, just as a standalone page
+  // instead of an overlay. See PricingPage.tsx's own header comment.
+  if (activeMenuItemKey === 'pricing') {
+    return <PricingPage rooms={rooms} />;
+  }
 
   if (activeMenuItemKey === 'guest_registration') {
     return (

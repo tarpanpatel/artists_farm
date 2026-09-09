@@ -9,6 +9,7 @@ import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
 import { KpiCard } from './KpiCard';
 import { fetchRateRulesDB, RateRule } from '../services/api';
 import { Button } from './Button';
+import { SyncBookingsButton } from './SyncBookingsButton';
 import { useToast } from './ToastContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
@@ -20,6 +21,8 @@ import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 
 interface TodayOverviewProps {
   guests: Guest[];
+  /** Drains the OTA feed and refetches bookings. Omitted -> no Refresh button is rendered. */
+  onSyncBookings?: () => Promise<{ pulled: number }>;
   // default_tariff (4 Sep 2026, unbooked-date price display) - already
   // present on the real objects this prop is fed (App.tsx passes
   // preloadedData.currentProperty.rooms straight through, and RateRuleModal
@@ -65,6 +68,7 @@ interface TodayOverviewProps {
 
 export const TodayOverview: React.FC<TodayOverviewProps> = ({
   guests,
+  onSyncBookings,
   rooms = [],
   isMultiKeyProperty = false,
   // kitchenModuleEnabled: still in the props interface (App.tsx passes it) but
@@ -889,12 +893,43 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
    */
   const setSelectionDates = (startStr: string, endStr: string) => {
     if (!selRect) return;
-    const idxOf = (dateStr: string) => daysArray.findIndex((d) => formatDateStr(d) === dateStr);
-    const a = idxOf(startStr);
-    const b = idxOf(endStr);
+    const idxOf = (dateStr: string, arr: Date[]) => arr.findIndex((d) => formatDateStr(d) === dateStr);
+    let a = idxOf(startStr, daysArray);
+    let b = idxOf(endStr, daysArray);
     if (a < 0 || b < 0) {
-      showToast('Pick a date inside the visible calendar, or scroll to it first.', { type: 'info' });
-      return;
+      // The picked date isn't in the currently-scrolled-to window - this is
+      // the ordinary case for the "First night"/"Last night" fields, which
+      // (like any date picker) accept literally any date, not just one
+      // already scrolled into the grid's rolling ~5-month buffer (9 Sep
+      // 2026, "this error shouldn't come" - refusing a perfectly valid pick
+      // just because the grid hadn't scrolled there yet was the bug, not
+      // something to keep warning about). Re-center the window on the
+      // picked range - same PAST_BUFFER_DAYS convention the initial window
+      // uses - and recompute against that, rather than the stale daysArray
+      // still sitting in this closure.
+      const parseIsoLocal = (s: string) => {
+        const [y, m, d] = s.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+      const startD = parseIsoLocal(startStr);
+      const endD = parseIsoLocal(endStr);
+      const earliest = startD < endD ? startD : endD;
+      const recenteredStart = new Date(earliest);
+      recenteredStart.setDate(recenteredStart.getDate() - PAST_BUFFER_DAYS);
+      const recenteredDays = Array.from({ length: WINDOW_DAYS }, (_, i) => {
+        const d = new Date(recenteredStart);
+        d.setDate(d.getDate() + i);
+        return d;
+      });
+      a = idxOf(startStr, recenteredDays);
+      b = idxOf(endStr, recenteredDays);
+      if (a < 0 || b < 0) {
+        // Only reachable if the range itself is wider than the whole
+        // window (~5 months) - genuinely nothing to snap to.
+        showToast('Pick a date inside the visible calendar, or scroll to it first.', { type: 'info' });
+        return;
+      }
+      setWindowStart(recenteredStart);
     }
     setSelAnchor({ roomIdx: selRect.roomFrom, dateIdx: Math.min(a, b) });
     setSelFocus({ roomIdx: selRect.roomTo, dateIdx: Math.max(a, b) });
@@ -1013,6 +1048,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <span className="text-2xs text-slate-500 dark:text-slate-400 hidden md:inline">
               Drag across the grid to price or block dates &middot; tap a date at the top for every unit
             </span>
+            {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
             <Button
               variant="secondary"
               size="xs"

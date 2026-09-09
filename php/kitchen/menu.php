@@ -362,6 +362,62 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                 markSchemaVerified('nav_menu_self_heal_v15');
             }
 
+            // v16 (9 Sep 2026): dedicated "Pricing" page nested under Bookings
+            // (unique_key='all_bookings') - the same "Prices & Booking Rules"
+            // content that already lives in RateRuleModal.tsx's modal, now also
+            // reachable as its own sidebar page (src/components/PricingPage.tsx).
+            // parent_id is resolved via a subquery rather than a hardcoded id
+            // (Bookings' own row id has been observed to differ - it's whatever
+            // this environment's original seed happened to assign, not a fixed
+            // literal like the hand-picked 'nav-*' ids used elsewhere in this
+            // file) - self-healing has to work on any environment's actual data,
+            // not just the one this was written against. tab_key='guests' (not a
+            // new TabType) so this rides the exact same routing GuestManagement.tsx
+            // already does for 'all_bookings' - see App.tsx's dynamic-nav-item
+            // fallback in getInitialActiveState()/handleUrlChange, which resolves
+            // an unrecognized hash straight from this row's own tab_key/unique_key,
+            // no routeMap entry required.
+            if (!isSchemaVerified('nav_menu_self_heal_v16')) {
+                try {
+                    $pdo->exec("INSERT IGNORE INTO nav_menu_items
+                        (id, property_id, title, tab_key, unique_key, url_slug, category, icon_name, display_order, roles_json, is_visible, parent_id)
+                        SELECT 'nav-pricing', 1, 'Pricing', 'guests', 'pricing', 'pricing', category, 'DollarSign', 1, roles_json, 1, id
+                        FROM nav_menu_items
+                        WHERE unique_key = 'all_bookings' AND parent_id IS NULL
+                        LIMIT 1");
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_menu_self_heal_v16');
+            }
+
+            // Makes "Pricing" pickable in Root Admin's NavMenuEditor "Page"
+            // dropdown too (9 Sep 2026) - that list is a single JSON blob
+            // (ui_configuration.config_key='nav_page_options', seeded once by
+            // seed_configuration_data.php with no write endpoint of its own -
+            // see that file's own comment), so getting a new option into it
+            // needs a read-modify-write self-heal like this one, not another
+            // INSERT IGNORE (which only ever fires on a row that doesn't exist
+            // yet at all).
+            if (!isSchemaVerified('nav_page_options_pricing_v1')) {
+                try {
+                    $stmt = $pdo->prepare("SELECT config_value FROM ui_configuration WHERE config_key = 'nav_page_options'");
+                    $stmt->execute();
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($row) {
+                        $options = json_decode($row['config_value'], true) ?: [];
+                        $alreadyThere = false;
+                        foreach ($options as $opt) {
+                            if (($opt['uniqueKey'] ?? '') === 'pricing') { $alreadyThere = true; break; }
+                        }
+                        if (!$alreadyThere) {
+                            $options[] = ['label' => 'Pricing', 'tabKey' => 'guests', 'uniqueKey' => 'pricing'];
+                            $update = $pdo->prepare("UPDATE ui_configuration SET config_value = ? WHERE config_key = 'nav_page_options'");
+                            $update->execute([json_encode($options)]);
+                        }
+                    }
+                } catch (Exception $e) {}
+                markSchemaVerified('nav_page_options_pricing_v1');
+            }
+
             if (!isSchemaVerified('nav_menu_self_heal_v2')) {
             try {
 
