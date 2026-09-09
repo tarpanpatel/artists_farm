@@ -288,23 +288,29 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       setError('Enter a valid UPI ID, e.g. name@bank');
       return false;
     }
+
+    const payload: Record<string, any> =
+      activeStep.key === 'basics'
+        ? { address: editAddress.trim(), google_maps_link: editMapsLink.trim() }
+        : activeStep.key === 'contact'
+        ? { email: editEmail.trim(), phone: editPhone.trim() }
+        : activeStep.key === 'payments'
+        ? { upi_id: editUpiId.trim(), gstin: editGstin.trim() }
+        : activeStep.key === 'operations'
+        ? {
+            checkin_time: editCheckinTime,
+            checkout_time: editCheckoutTime,
+            ...(isMultiKey ? {} : { default_tariff: editDefaultTariff }),
+          }
+        : {};
+
+    // Steps without property table columns (listings, rooms, app) have nothing to persist to update_property
+    if (Object.keys(payload).length === 0) {
+      return true;
+    }
+
     setSaving(true);
     try {
-      const payload: Record<string, any> =
-        activeStep.key === 'basics'
-          ? { address: editAddress.trim(), google_maps_link: editMapsLink.trim() }
-          : activeStep.key === 'contact'
-          ? { email: editEmail.trim(), phone: editPhone.trim() }
-          : activeStep.key === 'payments'
-          ? { upi_id: editUpiId.trim(), gstin: editGstin.trim() }
-          : activeStep.key === 'operations'
-          ? {
-              checkin_time: editCheckinTime,
-              checkout_time: editCheckoutTime,
-              ...(isMultiKey ? {} : { default_tariff: editDefaultTariff }),
-            }
-          : {};
-
       const res = await fetch('/php/api/router.php?action=update_property', {
         method: 'POST',
         credentials: 'include',
@@ -337,15 +343,23 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   const handleNext = async () => {
+    if (stepIndex === 0 && !step0Valid) {
+      setError('Add the property address before moving on.');
+      return;
+    }
     const ok = await persistCurrentStep();
     if (ok) setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   };
 
   const handleSkip = () => {
+    setError(null);
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   };
 
-  const handleBack = () => setStepIndex((i) => Math.max(i - 1, 0));
+  const handleBack = () => {
+    setError(null);
+    setStepIndex((i) => Math.max(i - 1, 0));
+  };
 
   const handleStepClick = async (idx: number) => {
     if (saving || finished || idx === stepIndex) return;
@@ -379,6 +393,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   };
 
   const handleSaveAndExit = async () => {
+    if (stepIndex === 0 && !step0Valid) {
+      setError('Add the property address before moving on.');
+      return;
+    }
     const ok = await persistCurrentStep();
     if (ok) {
       onSaved();
@@ -437,10 +455,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       <>
         <Drawer
           open={isOpen}
-        onClose={handleCloseDrawer}
-        position="right"
-        className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between property-setup-wizard"
-      >
+          onClose={handleCloseDrawer}
+          position="right"
+          className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between property-setup-wizard"
+        >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -477,9 +495,8 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               const isStepComplete = step.isDone;
               const isCurrent = idx === stepIndex && !finished;
               const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
-              // An optional step is never "incomplete" - skipping past Listings without
-              // importing is a perfectly good outcome, not something to flag in amber.
-              const isPassedIncomplete = isPassedOrVisited && !isStepComplete && !step.optional;
+              // Any skipped or passed step with missing data shows in amber with an incomplete AlertCircle icon
+              const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
               const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
               const isLast = idx === steps.length - 1;
 
