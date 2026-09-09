@@ -546,7 +546,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     return (
                       <div
                         key={room.id}
-                        className="p-3 bg-white dark:bg-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/70 dark:hover:bg-gray-750 transition-colors"
+                        className="p-3 bg-white dark:bg-gray-800 flex items-center justify-between gap-3 hover:bg-gray-50/70 dark:hover:bg-gray-750 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-600 dark:text-gray-300">
@@ -562,7 +562,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0 ml-auto">
                           {isEditing ? (
                             <div className="flex items-center gap-2">
                               <div className="relative">
@@ -779,23 +779,23 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 toLabel="Last date *"
               />
 
-              {/* Day-of-Week Scoping (4 Sep 2026, "Monday to Friday 3000,
-                  Saturday and Sunday 4000") - all 7 selected (the default)
-                  means every day, identical to before this existed. Two
-                  quick presets for the two most common patterns, plus the
-                  individual day toggles for anything else.
-                  Hidden for a single-night rule - see isSingleNight. */}
-              {!isSingleNight && (() => {
+              {/* Day-of-Week Scoping - radio options for Every Day, Weekdays, Weekends, Custom */}
+              {(() => {
                 const isAllDays = selectedDays.length === 7;
                 const isWeekdaysOnly = selectedDays.length === 5 && WEEKDAY_CODES.every((d) => selectedDays.includes(d));
                 const isWeekendsOnly = selectedDays.length === 2 && WEEKEND_CODES.every((d) => selectedDays.includes(d));
                 const dayPreset = isAllDays ? 'all' : isWeekdaysOnly ? 'weekdays' : isWeekendsOnly ? 'weekends' : 'custom';
 
                 return (
-                  <div className="space-y-2">
-                    <label className="block text-2xs font-semibold text-gray-700 dark:text-gray-300">
-                      Only on these days
-                    </label>
+                  <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-white">
+                        Applicable Days
+                      </label>
+                      <p className="text-2xs text-gray-500 dark:text-gray-400">
+                        Choose whether this price/rule applies Every Day, on Weekdays, on Weekends, or Custom Days.
+                      </p>
+                    </div>
 
                     {/* Radio Options: Every Day, Weekdays, Weekends, Custom */}
                     <div className="flex flex-wrap items-center gap-4 sm:gap-6 py-1">
