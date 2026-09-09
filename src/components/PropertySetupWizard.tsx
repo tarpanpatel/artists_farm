@@ -9,6 +9,9 @@ import {
 import { Button } from './Button';
 import { Input } from './Input';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
+import { AirbnbListingPicker } from './AirbnbListingPicker';
+import { AirbnbIcon } from './icons/AirbnbIcon';
+import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 import { detectInstallPlatform } from '../utils/installPlatform';
@@ -43,7 +46,7 @@ interface PropertySetupWizardProps {
   onSaved: () => void;
 }
 
-type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'app';
+type StepKey = 'basics' | 'listings' | 'contact' | 'payments' | 'operations' | 'rooms' | 'app';
 
 /**
  * A MULTI_KEY parent gets a Rooms step where a single-unit property gets
@@ -51,6 +54,11 @@ type StepKey = 'basics' | 'contact' | 'payments' | 'operations' | 'rooms' | 'app
  */
 const buildStepDefs = (isMultiKey: boolean): { key: StepKey; label: string; icon: React.ElementType }[] => [
   { key: 'basics', label: 'Basics', icon: Home },
+  // Mirrors PropertyCreationWizard's own Listings step (9 Sep 2026). Without it the two flows
+  // diverged: a property created through the wizard could import its listings, but the same
+  // property reached through this "finish setting up" nudge had no path to Airbnb at all - which
+  // is exactly the state Winter was in, fully set up bar a channel connection it could not reach.
+  { key: 'listings', label: 'Listings', icon: AirbnbIcon },
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'payments', label: 'Payments', icon: Wallet },
   isMultiKey
@@ -153,6 +161,10 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [editCheckinTime, setEditCheckinTime] = useState(checkinTime);
   const [editCheckoutTime, setEditCheckoutTime] = useState(checkoutTime);
   const [editDefaultTariff, setEditDefaultTariff] = useState(defaultTariff != null ? String(defaultTariff) : '');
+  const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
+  const [airbnbConnected, setAirbnbConnected] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   const basicsDone = !!name.trim() && (!!editAddress.trim() || !!address.trim());
   const contactDone = !!(editEmail.trim() || editPhone.trim() || email.trim() || phone.trim());
@@ -174,6 +186,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   const doneMap: Partial<Record<StepKey, boolean>> = {
     basics: basicsDone,
+    // ALWAYS true, deliberately. This wizard hides itself once every step is done
+    // (`stepsDone === totalSteps` returns null), so a Listings step that stayed incomplete
+    // until an Airbnb import would nag every property that will never use an OTA, forever.
+    // Importing is optional; it must never be what keeps the nudge on screen.
+    listings: true,
     contact: contactDone,
     payments: paymentsDone,
     operations: operationsDone,
@@ -193,6 +210,39 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
 
   // If setup is already complete, return null IMMEDIATELY - no skeleton flash!
   if (stepsDone === totalSteps) return null;
+
+  /**
+   * Same import the creation wizard runs. Imports only - never pushes ARI, never activates the
+   * channel (CHANNEX.md 5.4a), so nothing reaches Airbnb from here.
+   */
+  const handleImportListings = async () => {
+    if (!propertyId) return;
+    if (selectedListingIds.length === 0) {
+      setError('Select at least one listing to import, or use Skip to move on.');
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_auto_provision_from_airbnb`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ property_id: propertyId, selected_listing_ids: selectedListingIds }),
+      });
+      const json = await res.json();
+      if (json?.status !== 'success') {
+        setError(json?.message || 'Import failed');
+        return;
+      }
+      setImportResult(
+        `Imported ${json.rooms_count ?? selectedListingIds.length} listing(s). Nothing was sent to Airbnb - the channel is not live yet.`,
+      );
+    } catch (err: any) {
+      setError(err?.message || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   /** Persists whatever the CURRENT step holds. Returns true on success. */
   const persistCurrentStep = async (): Promise<boolean> => {
@@ -461,6 +511,44 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                 placeholder="Full property address"
               />
               <Input label="Google Maps Link (optional)" value={editMapsLink} onChange={(e) => setEditMapsLink(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+            </div>
+          )}
+
+          {activeStep.key === 'listings' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Import your listings</h3>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Optional. Connecting Airbnb pulls your real check-in times, fees, capacity, bed
+                  layout, amenities and base price straight from the listing. Nothing is sent to
+                  Airbnb &mdash; this only reads.
+                </p>
+              </div>
+
+              <AirbnbListingPicker
+                propertyId={propertyId}
+                selectedIds={selectedListingIds}
+                onSelectionChange={setSelectedListingIds}
+                onConnectionChange={setAirbnbConnected}
+              />
+
+              {importResult ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-300">{importResult}</span>
+                </div>
+              ) : (
+                airbnbConnected && (
+                  <Button
+                    variant="primary"
+                    className="w-full justify-center"
+                    onClick={handleImportListings}
+                    disabled={importing}
+                  >
+                    {importing ? 'Importing...' : `Import ${selectedListingIds.length || ''} selected listing${selectedListingIds.length === 1 ? '' : 's'}`}
+                  </Button>
+                )
+              )}
             </div>
           )}
 
