@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dropdown } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
-import { Trash2, Plus, DollarSign, Loader2, Pencil, ChevronDown } from './icons/FlowbiteIcons';
+import { Trash2, Plus, DollarSign, Loader2, Pencil, ChevronDown, ChevronUp, Check, Home, Info } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
@@ -152,6 +152,23 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   const [roomTariffs, setRoomTariffs] = useState<Record<number, string>>({});
   const [editingRoomId, setEditingRoomId] = useState<number | null>(null);
   const [isSavingTariff, setIsSavingTariff] = useState(false);
+  const [isBasePriceOpen, setIsBasePriceOpen] = useState(false);
+  const [bulkTariff, setBulkTariff] = useState('');
+  const [isSavingBulkTariff, setIsSavingBulkTariff] = useState(false);
+
+  const validTariffs = localRooms
+    .map((r) => (r.default_tariff != null ? Number(r.default_tariff) : null))
+    .filter((t): t is number => t !== null && !isNaN(t));
+  const minTariff = validTariffs.length > 0 ? Math.min(...validTariffs) : null;
+  const maxTariff = validTariffs.length > 0 ? Math.max(...validTariffs) : null;
+  const priceRangeDisplay =
+    minTariff !== null && maxTariff !== null
+      ? minTariff === maxTariff
+        ? `₹${Math.round(minTariff)}/night`
+        : `₹${Math.round(minTariff)} – ₹${Math.round(maxTariff)}/night`
+      : defaultTariff != null
+      ? `₹${Math.round(defaultTariff)}/night`
+      : 'Not set';
 
   useEffect(() => {
     if (rooms && rooms.length > 0) {
@@ -215,6 +232,40 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
       showToast('Network error updating base tariff', { type: 'error' });
     } finally {
       setIsSavingTariff(false);
+    }
+  };
+
+  const handleSaveAllRoomsTariff = async () => {
+    if (!bulkTariff || isNaN(parseFloat(bulkTariff)) || parseFloat(bulkTariff) < 0) {
+      showToast('Please enter a valid rate per night.', { type: 'error' });
+      return;
+    }
+    const numTariff = parseFloat(bulkTariff);
+    setIsSavingBulkTariff(true);
+    try {
+      const roomIds = localRooms.map((r) => r.id);
+      const res = await apiFetch('/php/api/router.php?action=update_room_tariff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_ids: roomIds, default_tariff: numTariff }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLocalRooms((prev) =>
+          prev.map((r) => ({ ...r, default_tariff: numTariff }))
+        );
+        setBulkTariff('');
+        showToast(`Base tariff updated to ₹${Math.round(numTariff)}/night for all ${roomIds.length} units.`, {
+          type: 'success',
+        });
+        onRulesUpdated();
+      } else {
+        showToast(data.message || 'Failed to update all room tariffs', { type: 'error' });
+      }
+    } catch {
+      showToast('Network error updating room tariffs', { type: 'error' });
+    } finally {
+      setIsSavingBulkTariff(false);
     }
   };
 
@@ -361,52 +412,145 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   return (
     <div className="space-y-6">
         <div className="space-y-5">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Base price {localRooms.length > 0 ? `(${localRooms.length} units)` : ''}
-                  </h4>
+          {!isBasePriceOpen ? (
+            /* Collapsed Base Price Summary Card */
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+                      Base Price {localRooms.length > 0 ? `(${localRooms.length} units)` : ''}
+                    </h4>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      {priceRangeDisplay}
+                    </span>
+                  </div>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    The usual nightly price. Any date you don't give a rule below is sold at this.
+                    Default nightly rate when no special date rules are set.
                   </p>
                 </div>
               </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsBasePriceOpen(true)}
+                leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                className="shrink-0"
+              >
+                Edit Base Price
+              </Button>
+            </div>
+          ) : (
+            /* Uncollapsed Base Price Editor */
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+                      Base Price {localRooms.length > 0 ? `(${localRooms.length} units)` : ''}
+                    </h4>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      {priceRangeDisplay}
+                    </span>
+                  </div>
+                  <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Default nightly rate when no special date rules are set.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => {
+                    setIsBasePriceOpen(false);
+                    setEditingRoomId(null);
+                  }}
+                  rightIcon={<ChevronUp className="w-3.5 h-3.5" />}
+                  className="shrink-0"
+                >
+                  Collapse
+                </Button>
+              </div>
 
+              {/* Inform user: What is a Base Price? (GroundCode Brand Manifesto: <= 10 words per line, friendly homestay tone) */}
+              <div className="p-3.5 rounded-lg border border-blue-100 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <Info className="w-4 h-4" />
+                </div>
+                <div className="space-y-1 text-2xs text-gray-600 dark:text-gray-300">
+                  <p className="font-bold text-gray-900 dark:text-white text-xs">What is Base Price?</p>
+                  <p>• Your property’s default nightly rate.</p>
+                  <p>• Used when no seasonal or holiday rules exist.</p>
+                  <p>• Direct bookings and OTA channels use this price.</p>
+                </div>
+              </div>
+
+              {/* Bulk Apply to All Units */}
+              {localRooms.length > 1 && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-900 dark:text-white">
+                      Apply to all {localRooms.length} units
+                    </p>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400">
+                      Set the same base rate across every room.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Rate / night"
+                        value={bulkTariff}
+                        onChange={(e) => setBulkTariff(e.target.value)}
+                        className="w-28 h-8 pl-6 pr-2 text-xs bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      disabled={isSavingBulkTariff || !bulkTariff}
+                      onClick={handleSaveAllRoomsTariff}
+                      leftIcon={isSavingBulkTariff ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    >
+                      {isSavingBulkTariff ? 'Applying...' : 'Apply to All'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Individual Units List */}
               {localRooms.length > 0 ? (
-                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                <div className="divide-y divide-gray-100 dark:divide-gray-700 border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
                   {localRooms.map((room) => {
                     const isEditing = editingRoomId === room.id;
-                    const currentVal = roomTariffs[room.id] !== undefined ? roomTariffs[room.id] : (room.default_tariff != null ? String(room.default_tariff) : '');
+                    const currentVal =
+                      roomTariffs[room.id] !== undefined
+                        ? roomTariffs[room.id]
+                        : room.default_tariff != null
+                        ? String(room.default_tariff)
+                        : '';
 
                     return (
                       <div
                         key={room.id}
-                        className={`py-3 px-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                          selectedRoomIds.includes(room.id)
-                            ? 'bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 shadow-2xs'
-                            : 'hover:bg-gray-50/60 dark:hover:bg-gray-800/40'
-                        }`}
+                        className="p-3 bg-white dark:bg-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/70 dark:hover:bg-gray-750 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                            selectedRoomIds.includes(room.id)
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                          }`}>
-                            {room.name.slice(0, 2).toUpperCase()}
+                          <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-gray-600 dark:text-gray-300">
+                            <Home className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{room.name}</p>
-                              {selectedRoomIds.includes(room.id) && (
-                                <span className="px-1.5 py-0.5 text-3xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 rounded">
-                                  Chosen Unit
-                                </span>
-                              )}
-                            </div>
+                            <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                              {room.name}
+                            </p>
                             <p className="text-2xs text-gray-500 dark:text-gray-400">
-                              Base Tariff: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{room.default_tariff != null ? `₹${Math.round(room.default_tariff)}/night` : 'Not set'}</span>
+                              Base Rate: <span className="font-bold text-emerald-600 dark:text-emerald-400">{room.default_tariff != null ? `₹${Math.round(room.default_tariff)}/night` : 'Not set'}</span>
                             </p>
                           </div>
                         </div>
@@ -415,7 +559,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                           {isEditing ? (
                             <div className="flex items-center gap-2">
                               <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">₹</span>
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">₹</span>
                                 <input
                                   type="number"
                                   min="0"
@@ -423,7 +567,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                                   placeholder="Rate / night"
                                   value={currentVal}
                                   onChange={(e) => setRoomTariffs({ ...roomTariffs, [room.id]: e.target.value })}
-                                  className="w-28 h-8 pl-6 pr-2 text-xs bg-white dark:bg-gray-900 border border-blue-400 dark:border-blue-500 rounded-lg text-gray-900 dark:text-white font-semibold"
+                                  className="w-28 h-8 pl-6 pr-2 text-xs bg-white dark:bg-gray-900 border border-blue-400 dark:border-blue-500 rounded-lg text-gray-900 dark:text-white font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                   autoFocus
                                 />
                               </div>
@@ -445,19 +589,20 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                               </Button>
                             </div>
                           ) : (
-                            <>
-                              <Button
-                                variant="edit"
-                                size="xs"
-                                onClick={() => {
-                                  setEditingRoomId(room.id);
-                                  setRoomTariffs({ ...roomTariffs, [room.id]: room.default_tariff != null ? String(room.default_tariff) : '' });
-                                }}
-                                leftIcon={<Pencil className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
-                              >
-                                Edit Rate
-                              </Button>
-                            </>
+                            <Button
+                              variant="edit"
+                              size="xs"
+                              onClick={() => {
+                                setEditingRoomId(room.id);
+                                setRoomTariffs({
+                                  ...roomTariffs,
+                                  [room.id]: room.default_tariff != null ? String(room.default_tariff) : '',
+                                });
+                              }}
+                              leftIcon={<Pencil className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
+                            >
+                              Edit Rate
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -476,8 +621,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 </div>
               )}
             </div>
-
-          </div>
+          )}
+        </div>
 
           <div className="space-y-6">
             {/* Dynamic Notice Banner */}

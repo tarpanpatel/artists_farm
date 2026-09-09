@@ -566,10 +566,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                 // only being caught (or not caught at all) on save.
                 error={upiId.trim() && !isValidUpiIdSyntax(upiId) ? t('upi_id_invalid_format_error', 'Enter a valid UPI ID, e.g. name@bank') : undefined}
                 success={upiId.trim() && isValidUpiIdSyntax(upiId) ? t('upi_id_valid_format_success', 'Valid UPI ID format') : undefined}
-                helperText={t('upi_qr_code_help_text', 'A scannable UPI QR code is generated automatically from this ID and added to booking/bill messages shared over WhatsApp.')}
+                helperText={t('upi_qr_code_help_text', 'This will be shown to customer at checkout.')}
               />
               {upiId.trim() && isValidUpiIdSyntax(upiId) && (
-                <div className="mt-2">
+                <div className="mt-2 space-y-1.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('upi_qr_code_help_text', 'This will be shown to customer at checkout.')}</p>
                   <UpiPaymentBlock upiId={upiId.trim()} payeeName={name.trim() || 'Payment'} qrCodeImageUrl={upiQrCodeUrl} />
                 </div>
               )}

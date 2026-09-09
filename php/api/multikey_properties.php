@@ -974,13 +974,14 @@ function updateRoomName($pdo, $propertyId = 0, $currentProperty = []) {
  */
 function updateRoomTariff($pdo, $propertyId = 0, $currentProperty = []) {
     $input = json_decode(file_get_contents('php://input'), true);
-    $room_id = $input['room_id'] ?? '';
+    $raw_room_ids = $input['room_ids'] ?? (isset($input['room_id']) ? [$input['room_id']] : []);
+    $room_ids = array_values(array_unique(array_filter(array_map('intval', (array)$raw_room_ids), fn($id) => $id > 0)));
     $hasTariff = array_key_exists('default_tariff', (array)$input);
     $raw_tariff = $input['default_tariff'] ?? null;
 
-    if (!$room_id) {
+    if (empty($room_ids)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'room_id is required']);
+        echo json_encode(['success' => false, 'message' => 'room_id or room_ids is required']);
         exit;
     }
     // Explicitly allow clearing the tariff back to "not set" (null/empty string),
@@ -992,19 +993,25 @@ function updateRoomTariff($pdo, $propertyId = 0, $currentProperty = []) {
     }
     $new_tariff = ($hasTariff && $raw_tariff !== null && $raw_tariff !== '') ? (float)$raw_tariff : null;
 
-    denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $room_id);
+    foreach ($room_ids as $rId) {
+        denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $rId);
+    }
 
     try {
-        $stmt = $pdo->prepare("SELECT id FROM properties WHERE id = ? AND property_type = 'MULTI_KEY_ROOM'");
-        $stmt->execute([$room_id]);
-        if (!$stmt->fetch()) {
+        $placeholders = implode(',', array_fill(0, count($room_ids), '?'));
+        $stmt = $pdo->prepare("SELECT id FROM properties WHERE id IN ($placeholders) AND property_type = 'MULTI_KEY_ROOM'");
+        $stmt->execute($room_ids);
+        $validRoomIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($validRoomIds)) {
             http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Room not found']);
+            echo json_encode(['success' => false, 'message' => 'No valid rooms found']);
             exit;
         }
 
-        $stmt = $pdo->prepare("UPDATE properties SET default_tariff = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
-        $stmt->execute([$new_tariff, $room_id]);
+        $inClause = implode(',', array_fill(0, count($validRoomIds), '?'));
+        $stmt = $pdo->prepare("UPDATE properties SET default_tariff = ?, updated_at = CURRENT_TIMESTAMP WHERE id IN ($inClause)");
+        $stmt->execute(array_merge([$new_tariff], $validRoomIds));
 
         // Channel Manager Outbox: Push the updated base rate to Channex & OTAs
         if (is_file(__DIR__ . '/../channex/outbox.php')) {
@@ -1019,7 +1026,9 @@ function updateRoomTariff($pdo, $propertyId = 0, $currentProperty = []) {
                     'rate_per_night' => $new_tariff,
                     'changed_fields' => ['rate_per_night'],
                 ];
-                enqueueOutboxItem($pdo, $targetPropId, (int)$room_id, 'rates', $today, $future, $payload);
+                foreach ($validRoomIds as $rId) {
+                    enqueueOutboxItem($pdo, $targetPropId, (int)$rId, 'rates', $today, $future, $payload);
+                }
             }
             if (function_exists('triggerEventDrivenChannexDrain')) {
                 triggerEventDrivenChannexDrain($pdo);
@@ -1028,8 +1037,9 @@ function updateRoomTariff($pdo, $propertyId = 0, $currentProperty = []) {
 
         echo json_encode([
             'success' => true,
-            'message' => 'Room tariff updated successfully',
-            'room_id' => (int)$room_id,
+            'message' => count($validRoomIds) > 1 ? 'All room tariffs updated successfully' : 'Room tariff updated successfully',
+            'room_ids' => array_map('intval', $validRoomIds),
+            'room_id' => (int)$validRoomIds[0],
             'default_tariff' => $new_tariff
         ]);
 
