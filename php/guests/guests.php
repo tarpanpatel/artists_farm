@@ -882,7 +882,14 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         ]);
                     }
 
-                    $pdo->commit();
+                    // Guarded, matching update_guest's own commit below. Belt and braces for
+                    // the implicit-commit class of bug fixed in booking_holds.php (9 Sep 2026):
+                    // if anything on this path ever ends the transaction early again, the write
+                    // has already landed, so reporting failure here would be a lie that makes
+                    // the owner re-submit a booking that already exists.
+                    if ($pdo->inTransaction()) {
+                        $pdo->commit();
+                    }
 
                     // Respond to the client NOW, before any of the notification/outbox
                     // work below - same convention as the C-Form save fix (24 Aug 2026,

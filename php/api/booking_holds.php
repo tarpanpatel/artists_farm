@@ -40,6 +40,27 @@ function resolveBookingHoldMinutes($rawHours): int {
 function ensureBookingHoldsSchema(PDO $pdo): void {
     static $done = false;
     if ($done) return;
+
+    // CREATE/ALTER TABLE implicitly commits any open transaction in MySQL, and this file is
+    // require_once'd from INSIDE add_guest's and update_guest's own booking transactions
+    // (guests.php calls getActiveBookingHoldConflict() to stop a staff booking landing on top
+    // of a pending WhatsApp quote). Running the DDL there silently ends that transaction, so
+    // the caller's later commit() throws "There is no active transaction" and the API reports
+    // the booking as FAILED even though the guest row was already durably written - the owner
+    // then clicks Save again on a booking that actually succeeded. Reported live 9 Sep 2026.
+    //
+    // This is the same bug ensureChannexOutboxSchema() was fixed for on 31 Aug 2026 (see its
+    // own comment); it was never applied here. Worse here, in fact: that one is gated by
+    // isSchemaVerified()'s shared hourly cache, while this `static $done` is per PHP process,
+    // so it re-fired on every fresh PHP-FPM worker - which is exactly why the failure looked
+    // random ("first save failed, second worked" = the second request hit a warm worker).
+    //
+    // Deliberately does NOT set $done: the self-heal is deferred, not skipped, so the next
+    // call outside a transaction still runs it. These tables already exist in every real
+    // deployment; this only matters on a genuinely fresh install, which has no bookings to
+    // conflict-check in the first place.
+    if ($pdo->inTransaction()) return;
+
     $done = true;
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS booking_holds (

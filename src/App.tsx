@@ -937,6 +937,21 @@ function AppBody({ preloadedData }: AppBodyProps) {
   // OperationalDashboard's own month-grid calendar has its own local drawer
   // and prefill state, wired directly there instead.
   const [addBookingPrefill, setAddBookingPrefill] = useState<{ roomName: string; checkin: string; checkout: string } | null>(null);
+  // Bumped on every open so the Add Booking drawer's GuestManagement remounts with a clean
+  // form. A flowbite Drawer stays mounted at all times, so its child's state outlives a
+  // close - and GuestManagement only calls resetBookingForm() on a SUCCESSFUL save. A failed
+  // save therefore left the previous guest's name, phone, dates and amounts sitting in the
+  // form, and reopening the drawer for a different booking showed them as if they were the
+  // new booking's values. Reported live 9 Sep 2026, alongside the transaction bug that made
+  // saves fail in the first place (php/api/booking_holds.php) - but this half is worth fixing
+  // on its own: no error path should be able to leave a stale booking primed for submission.
+  const [addBookingSession, setAddBookingSession] = useState(0);
+
+  const openAddBooking = (prefill?: { roomName: string; checkin: string; checkout: string } | null) => {
+    setAddBookingPrefill(prefill || null);
+    setAddBookingSession((n) => n + 1);
+    setIsAddBookingModalOpen(true);
+  };
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
   // FAQ (2 Sep 2026): Header.tsx's Help button opens LegalDrawer straight to its
   // 'faq' tab - replaces the old isAIChatOpen toggle for this same header slot.
@@ -2531,7 +2546,7 @@ ${itemsStr}
             onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             isSidebarOpen={isSidebarOpen}
             kitchenModuleEnabled={kitchenEnabled}
-            onOpenAddBooking={() => setIsAddBookingModalOpen(true)}
+            onOpenAddBooking={() => openAddBooking()}
             onOpenAddExpense={() => { setInitialExpenseData(null); setIsAddExpenseModalOpen(true); }}
             onOpenAddServiceRequest={() => { setInitialServiceRequestData(null); handleNavigateTab('service_requests', 'service_requests'); }}
             permissions={mobileNavPermissions}
@@ -2686,7 +2701,7 @@ ${itemsStr}
                         })()}
                         onNavigateToRoom={handleNavigateToRoom}
                         onNavigate={(tab) => handleNavigateTab(tab)}
-                        onAddBooking={(prefill) => { setAddBookingPrefill(prefill || null); setIsAddBookingModalOpen(true); }}
+                        onAddBooking={(prefill) => openAddBooking(prefill)}
                         onAddGuest={handleAddGuest}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
@@ -3116,6 +3131,7 @@ ${itemsStr}
           </div>
           <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
             <GuestManagement
+              key={addBookingSession}
               propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
               guests={guests}
               receipts={receipts}
