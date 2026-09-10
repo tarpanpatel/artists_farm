@@ -253,13 +253,16 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         explicit_fields: ['stop_sell'],
       });
       if (res.success) {
+        setShowConfirmModal(false);
         showToast(
           availability === 'blocked'
             ? `Blocked ${nights} night${nights === 1 ? '' : 's'} for ${unitLabel}.`
             : 'Saved. These dates are updated everywhere.',
           { type: 'success' },
         );
-        onSaved();
+        setTimeout(() => {
+          onSaved();
+        }, 300);
       } else {
         showToast(res.message || 'Could not save these dates.', { type: 'error' });
       }
@@ -621,18 +624,18 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
             </div>
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 space-y-2 text-xs">
-            <div>
+          <div className="bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 flex flex-wrap gap-4 items-start justify-between text-xs">
+            <div className="min-w-0 flex-1">
               <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
                 Unit{selection.roomNames.length === 1 ? '' : 's'}
               </span>
-              <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">{unitLabel}</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5 truncate">{unitLabel}</p>
             </div>
-            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="min-w-0 shrink-0 text-right">
               <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
                 Dates
               </span>
-              <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">
+              <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5 whitespace-nowrap">
                 {shortDate(selection.startDate)}
                 {nights > 1 && <> &ndash; {shortDate(selection.endDate)}</>}
                 <span className="text-gray-400 font-normal"> &middot; {nights} night{nights === 1 ? '' : 's'}</span>
@@ -642,9 +645,6 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         </div>
 
         <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/50">
-          <Button variant="secondary" size="sm" disabled={isSaving} onClick={() => setShowConfirmModal(false)}>
-            Cancel & Go Back
-          </Button>
           <Button
             variant="primary"
             size="sm"
