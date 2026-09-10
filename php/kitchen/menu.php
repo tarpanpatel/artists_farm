@@ -452,10 +452,11 @@ function handleMenuRequests($pdo, $request_method, $action, $propertyId) {
                     // embedded directly in Edit Property for single properties
                     // (EditPropertyPage.tsx) and in the Units page for multi-key properties
                     // (MultiKeyPropertyOverview.tsx). Someone added it as a standalone nav item
-                    // via the Nav Menu Editor UI when the feature was built; App.tsx's routeMap
-                    // already redirects the 'ical_sync_manager'/'ical_sync' hashes into
-                    // edit_property, so the standalone entry was always redundant, never wired
-                    // to its own page.
+                    // via the Nav Menu Editor UI when the feature was built; App.tsx's own
+                    // 'ical_sync_manager'/'ical_sync' hash redirects to edit_property were
+                    // removed 11 Sep 2026 (site still in testing, no stale bookmarks to honor),
+                    // so an orphaned row here would now be a dead, click-nothing item - delete
+                    // it so every environment's nav_menu_items converges.
                     $pdo->exec("DELETE FROM nav_menu_items WHERE unique_key = 'ical_sync_manager'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Reports & Earnings' WHERE unique_key = 'dashboard_analytics'");
                     $pdo->exec("UPDATE nav_menu_items SET title = 'Past Bills & Receipts' WHERE unique_key = 'past_receipts_log'");

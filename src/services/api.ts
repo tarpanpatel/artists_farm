@@ -154,7 +154,7 @@ export function getRoomSlugFromHash(validRoomSlugs?: string[]): string | null {
   // Reserved names that are NOT room slugs (tab names, etc.)
   const reserved = new Set([
     'dashboard', 'guests', 'kitchen', 'inventory', 'petty_cash', 'staff',
-    'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram', 'ical_sync',
+    'analytics', 'audit_logs', 'export', 'menu_manager', 'telegram',
     'licenses', 'license_management'
   ]);
 

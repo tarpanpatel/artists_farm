@@ -358,12 +358,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         telegram: { tab: 'telegram', key: 'telegram' },
         data_export_center: { tab: 'export', key: 'data_export_center' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
-        // Standalone "iCal Sync" page removed - calendar management moved onto
-        // each room's own Edit Room page (MultiKeyPropertyOverview.tsx) and,
-        // for single properties, onto Edit Property. Old bookmarks/links to
-        // this hash land on Edit Property instead of a dead tab.
-        ical_sync_manager: { tab: 'edit_property', key: 'edit_property' },
-        ical_sync: { tab: 'edit_property', key: 'edit_property' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         license_management: { tab: 'licenses', key: 'license_management' },
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
@@ -1581,12 +1575,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
         'kitchen_purchases', 'edit_kitchen_stock', 'cash_drawer', 'finances', 'staff_payees_control',
         'attendance_salaries', 'attendance_calendar', 'staff_directory_salaries', 'staff_permissions',
         'dashboard_analytics', 'past_receipts_log', 'data_export_center',
-        // 'ical_sync'/'ical_sync_manager' deliberately NOT here either - same
-        // reasoning as 'edit_property' below: both legacy hashes now redirect
-        // to 'edit_property' (see routeMap), and that page is room-scoped
-        // when opened from inside a room (the iCal section only shows that
-        // room's own feeds), so visiting either from within a room should
-        // stay in that room too, not kick out to the parent property.
+        // 'ical_sync'/'ical_sync_manager' deliberately NOT here - iCal sync was
+        // fully retired (3 Sep 2026) and its hash redirects to 'edit_property'
+        // removed (11 Sep 2026, site still in testing), so these are dead/unknown
+        // hashes now and never match either branch below.
         'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
         'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'subscription'
       ]);
@@ -1684,12 +1676,6 @@ function AppBody({ preloadedData }: AppBodyProps) {
         data_export_center: { tab: 'export', key: 'data_export_center' },
         telegram: { tab: 'telegram', key: 'telegram' },
         beta_recipe_builder: { tab: 'kitchen', key: 'beta_recipe_builder' },
-        // Standalone "iCal Sync" page removed - calendar management moved onto
-        // each room's own Edit Room page (MultiKeyPropertyOverview.tsx) and,
-        // for single properties, onto Edit Property. Old bookmarks/links to
-        // this hash land on Edit Property instead of a dead tab.
-        ical_sync_manager: { tab: 'edit_property', key: 'edit_property' },
-        ical_sync: { tab: 'edit_property', key: 'edit_property' },
         service_requests: { tab: 'service_requests', key: 'service_requests' },
         edit_property: { tab: 'edit_property', key: 'edit_property' },
         license_management: { tab: 'licenses', key: 'license_management' },

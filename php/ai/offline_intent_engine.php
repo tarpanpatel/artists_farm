@@ -581,8 +581,8 @@ function getIntentTable(): array {
                 ['hotel', 'phone'], ['hotel', 'address'],
                 // OTA/channel calendar sync (added 27 Aug 2026, live gap: "sync my Airbnb/
                 // Booking.com calendar so rooms don't get double-booked" scored 0 everywhere -
-                // ICalSyncManager.tsx is embedded directly on THIS page (see EditPropertyPage.tsx),
-                // there's no separate nav destination for it.
+                // the Channex channel-manager / OTA sync entry point lives on THIS page
+                // (see EditPropertyPage.tsx), there's no separate nav destination for it.
                 'airbnb', 'booking.com', 'ical sync', 'ota sync', 'channel manager', 'sync calendar',
                 'double booking', 'double-booked', ['sync', 'calendar'], ['sync', 'airbnb'],
                 ['airbnb', 'calendar'], ['ota', 'calendar'], ['calendar', 'sync'],
