@@ -29,6 +29,16 @@ interface TodayOverviewProps {
   // below reads default_tariff off this same array), just not declared
   // here until now.
   rooms?: Array<{ id: number; name: string; slug: string; default_tariff?: number }>;
+  // True only while `rooms` above is still empty because the initial fetch
+  // failed/came back hollow and DataLoader's background retry hasn't landed
+  // real rooms yet (see PreloadedData.roomsFetchPending's own comment) - NOT
+  // "rooms is empty". Added 10 Sep 2026 after the same blank-calendar symptom
+  // recurred the day after an earlier fix: without this, an in-flight retry
+  // and a genuinely-failed-to-load state both look identical to this
+  // component (an empty `rooms` array), so it rendered nothing useful for
+  // either - blank space during the retry, and a misleading "No rooms
+  // available" once it gave up (a MULTI_KEY property always has >=1 room).
+  roomsLoading?: boolean;
   isMultiKeyProperty?: boolean;
   kitchenModuleEnabled?: boolean;
   onNavigateToRoom?: (roomSlug: string) => void;
@@ -70,6 +80,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   guests,
   onSyncBookings,
   rooms = [],
+  roomsLoading = false,
   isMultiKeyProperty = false,
   // kitchenModuleEnabled: still in the props interface (App.tsx passes it) but
   // no longer read here since "Share Food Menu" moved to the sidebar.
@@ -1629,9 +1640,33 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 </div>
               );
             })
+          ) : roomsLoading ? (
+            // Background retry still in flight (see roomsLoading's own doc
+            // comment) - a real spinner here, not blank space or a
+            // misleading "no rooms" message, so this doesn't read as broken
+            // while it's just still loading.
+            <div className="flex flex-col items-center justify-center gap-3 py-10">
+              <div className="w-8 h-8 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('today_rooms_loading_message', 'Loading rooms...')}</p>
+            </div>
           ) : (
-            <div className="text-center py-8 text-slate-600 dark:text-slate-400">
-              {t('today_no_rooms_message', 'No rooms available')}
+            // Reached only once the background retry has exhausted every
+            // attempt (roomsLoading is now false) and `rooms` is STILL
+            // empty. A MULTI_KEY property always has at least one real
+            // child room, so this is a genuine fetch failure, not "no
+            // rooms" - the old wording here was misleading and gave the
+            // user nothing to do about it except a blind full reload.
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {t('today_rooms_load_failed_message', "Couldn't load rooms. Check your connection and try again.")}
+              </p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-1 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {t('today_rooms_load_failed_retry', 'Tap to retry')}
+              </button>
             </div>
           )}
         </div>

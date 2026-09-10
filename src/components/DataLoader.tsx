@@ -36,6 +36,19 @@ export interface PreloadedData {
   // instead of guessing from array length (which can never tell the two
   // apart and would show a loading spinner forever on an empty property).
   guestsFetchPending?: boolean;
+  // Same pattern as guestsFetchPending, for a MULTI_KEY property's rooms
+  // (added 10 Sep 2026, same-symptom recurrence of the 9 Sep "same old bug" -
+  // see roomsFetchFailed's own comment below). True only while the initial
+  // rooms fetch came back empty/failed and the background retry loop hasn't
+  // landed real rooms yet. TodayOverview reads this to show a loading spinner
+  // while a retry is in flight instead of either a misleading "No rooms
+  // available" or - worse, when `rooms` briefly holds a non-empty-but-not-
+  // yet-real array - fully blank space with no indication anything is
+  // happening. Once every retry attempt is exhausted, this flips to false
+  // and TodayOverview treats a still-empty result as a genuine fetch
+  // failure (a MULTI_KEY property always has >=1 real room), not "no rooms
+  // available", with its own retry affordance rather than a dead-end message.
+  roomsFetchPending?: boolean;
 }
 
 interface DataLoaderProps {
@@ -278,6 +291,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           initialReceipts: Array.isArray(initialReceipts) ? initialReceipts : [],
           initialMenu: Array.isArray(initialMenu) ? initialMenu : [],
           guestsFetchPending: initialGuestsR.failed,
+          roomsFetchPending: roomsFetchFailed,
         });
 
         // Rooms fetch failed OR was skipped above (see BUG note near fetchMultiKeyRooms) -
@@ -290,10 +304,22 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // recovers fine within the same loop too.
         if (roomsFetchFailed && property?.id) {
           (async () => {
-            const maxAttempts = 4;
+            // Widened 10 Sep 2026 from 4 attempts/~7s total to 7/~16s - the
+            // exact same "empty rooms" symptom recurred live the very next
+            // day after the 9 Sep fix, on a device with real KPI numbers
+            // (guests/session were fine) but a blank calendar grid, which
+            // points at the retry window running out before a slower
+            // cold-start (mobile PWA relaunch, cold PHP-FPM worker) finished
+            // - not a case this loop failed to detect, just one it gave up
+            // on too early. Capping each step at 3000ms keeps the tail end
+            // from ballooning per-attempt while still giving ~16s of total
+            // runway. roomsFetchPending (set false in both the success and
+            // exhaustion paths below) is what lets TodayOverview show a real
+            // loading state for this whole window instead of blank space.
+            const maxAttempts = 7;
             const propId = property.id;
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
+              await new Promise((resolve) => setTimeout(resolve, Math.min(700 * attempt, 3000)));
               if (isStale()) return;
               try {
                 const fullProperty = await fetchMultiKeyRooms(propId);
@@ -306,14 +332,16 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
                 if (!Array.isArray(fullProperty?.rooms) || fullProperty.rooms.length === 0) {
                   if (attempt === maxAttempts) {
                     console.error('Retry for MultiKey property details exhausted all attempts: rooms still empty');
+                    setData((prev) => prev ? { ...prev, roomsFetchPending: false } : prev);
                   }
                   continue;
                 }
-                setData((prev) => prev ? { ...prev, currentProperty: fullProperty } : prev);
+                setData((prev) => prev ? { ...prev, currentProperty: fullProperty, roomsFetchPending: false } : prev);
                 return;
               } catch (err) {
                 if (attempt === maxAttempts) {
                   console.error('Retry for MultiKey property details exhausted all attempts:', err);
+                  setData((prev) => prev ? { ...prev, roomsFetchPending: false } : prev);
                 }
               }
             }

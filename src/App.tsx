@@ -2694,6 +2694,7 @@ ${itemsStr}
                         onSyncBookings={handleSyncBookings}
                         guests={guests}
                         rooms={preloadedData.currentProperty?.rooms}
+                        roomsLoading={!!preloadedData.roomsFetchPending}
                         isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                         kitchenModuleEnabled={(() => {
                           const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');

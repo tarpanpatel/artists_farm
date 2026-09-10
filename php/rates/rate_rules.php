@@ -310,18 +310,22 @@ function saveRateRule($pdo, $propertyId) {
         usort($selectedDays, fn($a, $b) => array_search($a, $allDayCodes) <=> array_search($b, $allDayCodes));
         $daysOfWeek = (empty($selectedDays) || count($selectedDays) === 7) ? null : implode(',', $selectedDays);
 
+        $explicitFieldsRaw = is_array($input['explicit_fields'] ?? null) ? $input['explicit_fields'] : [];
+        $explicitlyUnblocking = $stopSell === 0 && in_array('stop_sell', $explicitFieldsRaw, true);
+
         $hasRestriction = $minStayArrival !== null || $minStayThrough !== null || $maxStay !== null
             || $stopSell || $closedToArrival || $closedToDeparture;
 
         // A rule must now carry a rate OR at least one restriction - previously
         // rate was unconditionally required, which made "3-night minimum at the
-        // usual price" impossible to express.
+        // usual price" impossible to express. An explicit unblock (stop_sell=0
+        // with explicit_fields) is also valid on its own without a rate change.
         if (!$startDate || !$endDate) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Start date and end date are required.']);
             return;
         }
-        if ($ratePerNight === null && !$hasRestriction) {
+        if ($ratePerNight === null && !$hasRestriction && !$explicitlyUnblocking) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Set a rate per night, or at least one restriction (minimum stay, stop sell, or arrival/departure closure).']);
             return;

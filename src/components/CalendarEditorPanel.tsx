@@ -195,6 +195,10 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
       showToast('Some of these nights are blocked and some are not - pick Available or Blocked first.', { type: 'error' });
       return false;
     }
+    if (!hasPrice && !hasMinStay && !availabilityChanged) {
+      showToast('Enter a nightly price or choose an availability/restriction change.', { type: 'error' });
+      return false;
+    }
     const rateNum = hasPrice ? parseFloat(price) : null;
     if (rateNum !== null && (isNaN(rateNum) || rateNum < 0)) {
       showToast('Enter a nightly price of zero or more.', { type: 'error' });

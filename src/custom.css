@@ -2265,6 +2265,20 @@ pre,
     border-radius: 0 !important;
   }
 
+  /* Multi-room calendar (TodayOverview.tsx) - mobile only (10 Sep 2026,
+     explicit request). The shared full-bleed block above already zeroes this
+     card's own margin/border-radius/side-border, but .today-overview__calendar
+     also carries its own p-4 sm:p-6 Tailwind padding - that horizontal
+     padding is what was still leaving a visible gutter on each side even
+     though the card itself reaches the screen edge (.app-shell__main is
+     already px-0 on mobile). Left/right only - top/bottom padding stays, for
+     spacing against the KPI cards above and the legend below. */
+  .today-overview__calendar {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-radius: 0 !important;
+  }
+
   /* Bookings desk: everything below search field spans full width with no extra padding */
   .billing-checkout__list-content {
     margin-left: -1rem !important;
