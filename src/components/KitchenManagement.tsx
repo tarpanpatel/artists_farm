@@ -1675,9 +1675,21 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
           {activeOrders.length === 0 ? (
             <EmptyState
-              icon={UtensilsCrossed}
               title={t('no_kitchen_orders_title', 'Currently, there are no kitchen orders')}
               description={t('no_kitchen_orders_desc', 'New orders placed from POS or room service will automatically appear in this live ticket queue.')}
+              actionLabel={isRestrictedStaffKitchenView ? undefined : t('take_orders_label', 'Take Orders')}
+              actionIcon={isRestrictedStaffKitchenView ? undefined : Plus}
+              onAction={isRestrictedStaffKitchenView ? undefined : () => {
+                setActiveTab('new_order');
+                if (tabsRef.current) {
+                  tabsRef.current.setActiveTab(1);
+                }
+                if (typeof window !== 'undefined') {
+                  window.location.hash = '#take_food_order';
+                }
+              }}
+              actionVariant="primary"
+              className="rounded-none sm:rounded-lg border-x-0 sm:border-x"
             />
           ) : (
             <div className="kds-tickets-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

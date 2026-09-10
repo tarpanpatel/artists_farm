@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, LogOut, Bell, User, Globe, ArrowRight } from './icons/FlowbiteIcons';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LogIn, LogOut, Bell, User, Globe, ArrowRight } from './icons/FlowbiteIcons';
 import { Dropdown, DropdownItem } from 'flowbite-react';
 import { Popover } from './Popover';
 import { Guest } from '../types';
@@ -542,6 +542,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     return rate;
   };
 
+  /**
+   * Returns any note or custom label attached to this night/room from rate rules.
+   */
+  const getNightNote = (dateStr: string, room: { id: number }): string | null => {
+    const match = resolvedRateRules.find((r) => {
+      const roomMatch = !r.room_id || Number(r.room_id) === Number(room.id);
+      return roomMatch && r.start_date <= dateStr && r.end_date >= dateStr && !!r.rule_name?.trim();
+    });
+    return match?.rule_name?.trim() || null;
+  };
+
   // iCal sync retired app-wide (3 Sep 2026, superseded by the Channex channel
   // manager - see _unwanted/ical/README.md). This used to fetch
   // php/api/ical_sync.php?action=get_blocked_dates on mount, now archived;
@@ -1024,10 +1035,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           Badge greys out ("neutral") when every value it covers is zero -
           a colored "Active"/"Today" badge next to two zeros reads as a real
           status when there's nothing to actually flag. */}
-      <div className="today-overview__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4 px-4 sm:px-0">
+      <div className="today-overview__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
         <MergedKpiCard
           items={[
-            { label: 'Arrivals', icon: Calendar, value: todaysArrivals },
+            { label: 'Arrivals', icon: LogIn, value: todaysArrivals },
             { label: 'Departures', icon: LogOut, value: todaysDepartures },
           ]}
           badge={{ text: 'Today', color: (todaysArrivals > 0 || todaysDepartures > 0) ? 'info' : 'neutral' }}
@@ -1038,20 +1049,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               { label: 'Checked-In Guests', icon: User, value: inHouseCount },
               { label: 'Service Requests', icon: Bell, value: pendingRequests },
             ]}
-            badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequests > 0) ? 'success' : 'neutral' }}
+            badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequests > 0) ? 'info' : 'neutral' }}
           />
         ) : isMultiKeyProperty ? (
           <KpiCard
             label="Checked-In Guests"
             icon={User}
-            badge={{ text: 'Active', color: inHouseCount > 0 ? 'success' : 'neutral' }}
+            badge={{ text: 'Active', color: inHouseCount > 0 ? 'info' : 'neutral' }}
             value={inHouseCount}
           />
         ) : serviceRequestsAccessAllowed ? (
           <KpiCard
             label="Service Requests"
             icon={Bell}
-            badge={{ text: 'Active', color: pendingRequests > 0 ? 'failure' : 'neutral' }}
+            badge={{ text: 'Active', color: pendingRequests > 0 ? 'info' : 'neutral' }}
             value={pendingRequests}
           />
         ) : null}
@@ -1410,8 +1421,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       const dateStr = formatDateStr(day);
                       const isPast = day < today;
                       const isOccupied = roomOccupiedDateStrings.includes(dateStr);
-                      const isUnavailable = isPast || isOccupied;
                       const isBlockedNight = !isOccupied && isNightBlocked(dateStr, room.id);
+                      const nightNote = !isOccupied ? getNightNote(dateStr, room) : null;
+                      const dayPrice = !isOccupied ? Math.round(getDayPrice(dateStr, room)) : 0;
                       // Airbnb draws the selection as one outlined rectangle
                       // over the whole block, not a border per cell - so each
                       // cell contributes only the edges that are on the outside
@@ -1428,6 +1440,22 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                             dateIdx === selRect.dateTo ? 'border-r-2 border-r-slate-900 dark:border-r-white' : '',
                           ].join(' ')
                         : '';
+
+                      let cellBg = '';
+                      if (inSel) {
+                        cellBg = 'bg-slate-900/[0.07] dark:bg-white/10';
+                      } else if (isPast) {
+                        cellBg = isBlockedNight
+                          ? 'bg-[#ebeef1] dark:bg-slate-800/90 border-slate-200 dark:border-slate-700'
+                          : 'bg-[#f1f3f5] dark:bg-slate-800/70 border-slate-200 dark:border-slate-700';
+                      } else if (isBlockedNight) {
+                        cellBg = 'bg-[#f8f9fa] dark:bg-slate-800/60 border-slate-200 dark:border-slate-700';
+                      } else if (isToday) {
+                        cellBg = 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40';
+                      } else {
+                        cellBg = 'bg-white dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/50';
+                      }
+
                       return (
                         <div
                           key={`bg-${day.toISOString()}`}
@@ -1438,41 +1466,77 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           onPointerMove={isPast ? undefined : handleGridPointerMove}
                           onPointerUp={isPast ? undefined : handleGridPointerUp}
                           title={isPast ? 'This date is in the past and can no longer be priced, blocked, or booked' : 'Drag to select these nights'}
-                          className={`w-16 min-w-16 shrink-0 border-r transition flex items-center justify-center select-none ${
+                          className={`w-16 min-w-16 shrink-0 border-r transition flex flex-col items-center justify-center select-none relative ${
                             isPast ? '' : 'cursor-pointer'
-                          } ${
-                            inSel
-                              ? 'bg-slate-900/[0.07] dark:bg-white/10'
-                              // Past greying (9 Sep 2026, explicit request) outranks the
-                              // blocked-night stripe below - both already share the same
-                              // slate-100 tone, so a past+blocked night reads as simply
-                              // "past" without needing a third combined style.
-                              : isPast
-                              ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
-                              : isBlockedNight
-                              ? 'bg-slate-100 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700'
-                              : isToday
-                              ? 'bg-blue-50/70 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40'
-                              : 'border-slate-100 dark:border-slate-700/50 bg-white dark:bg-slate-800/30'
-                          } ${!isPast && !inSel ? 'hover:bg-blue-50/60 dark:hover:bg-blue-900/20' : ''} ${selEdge}`}
+                          } ${cellBg} ${!isPast && !inSel ? 'hover:bg-slate-50 dark:hover:bg-slate-700/30' : ''} ${selEdge}`}
                           style={inSel ? { touchAction: 'none' } : undefined}
                         >
-                          {/* Small per-day price on unbooked dates (4 Sep
-                              2026, explicit request) - z-10 to sit above the
-                              capsule overlay's own stacking context, though
-                              in practice a capsule never actually reaches an
-                              unavailable/unbooked cell in the first place. */}
-                          {!isUnavailable && (
+                          {/* Blocked night diagonal slash (Airbnb multicalendar style) */}
+                          {isBlockedNight && (
+                            <svg
+                              className="absolute inset-0 w-full h-full pointer-events-none"
+                              preserveAspectRatio="none"
+                              viewBox="0 0 100 100"
+                              aria-hidden="true"
+                            >
+                              <line
+                                x1="0"
+                                y1="100"
+                                x2="100"
+                                y2="0"
+                                vectorEffect="non-scaling-stroke"
+                                strokeWidth="1"
+                                className={isPast ? 'stroke-slate-300/80 dark:stroke-slate-600/70' : 'stroke-slate-300 dark:stroke-slate-600'}
+                              />
+                            </svg>
+                          )}
+
+                          {/* Note dot indicator at top center (Airbnb style) */}
+                          {nightNote && (
+                            <Popover
+                              trigger="hover"
+                              placement="top"
+                              className="z-50"
+                              title={
+                                <div className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                  {isBlockedNight ? 'Blocked Note' : 'Note'}
+                                </div>
+                              }
+                              content={
+                                <div className="p-2.5 max-w-xs text-xs font-medium text-slate-900 dark:text-white wrap-break-word">
+                                  {nightNote}
+                                </div>
+                              }
+                            >
+                              <button
+                                type="button"
+                                tabIndex={-1}
+                                aria-label={`Note: ${nightNote}`}
+                                className={`absolute top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full pointer-events-auto transition-transform hover:scale-125 focus:outline-hidden ${
+                                  isPast
+                                    ? 'bg-slate-400/80 dark:bg-slate-500/80'
+                                    : 'bg-slate-500 dark:bg-slate-400'
+                                }`}
+                              />
+                            </Popover>
+                          )}
+
+                          {/* Per-day price on unbooked and blocked dates (Airbnb multicalendar style) */}
+                          {!isOccupied && dayPrice > 0 && (
                             <span
-                              className={`relative z-10 text-[9px] leading-none font-medium select-none pointer-events-none ${
+                              className={`relative z-10 select-none pointer-events-none ${
                                 isBlockedNight
-                                  ? 'text-slate-400 dark:text-slate-500 line-through'
+                                  ? isPast
+                                    ? 'text-[10px] leading-none font-normal text-slate-400/70 dark:text-slate-600 line-through'
+                                    : 'text-[10px] leading-none font-normal text-slate-400 dark:text-slate-500 line-through'
+                                  : isPast
+                                  ? 'text-[10px] leading-none font-normal text-slate-400 dark:text-slate-500'
                                   : inSel
-                                  ? 'text-slate-900 dark:text-white font-bold'
-                                  : 'text-slate-400 dark:text-slate-500'
+                                  ? 'text-[11px] leading-none font-extrabold text-slate-900 dark:text-white'
+                                  : 'text-[11px] leading-none font-bold text-slate-800 dark:text-slate-100'
                               }`}
                             >
-                              ₹{Math.round(getDayPrice(dateStr, room))}
+                              ₹{dayPrice}
                             </span>
                           )}
                         </div>
@@ -1778,6 +1842,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md" />
             <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-3.5 rounded-xs bg-[#f8f9fa] dark:bg-slate-800 border border-slate-300 dark:border-slate-600 relative overflow-hidden inline-block shadow-md">
+              <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden="true">
+                <line x1="0" y1="100" x2="100" y2="0" vectorEffect="non-scaling-stroke" strokeWidth="1.5" stroke="currentColor" className="text-slate-400 dark:text-slate-500" />
+              </svg>
+            </span>
+            <span>{t('legend_blocked_date', 'Blocked')}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-3.5 rounded-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 relative inline-flex items-center justify-center shadow-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-500 dark:bg-slate-400" />
+            </span>
+            <span>{t('legend_date_note', 'Note')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />

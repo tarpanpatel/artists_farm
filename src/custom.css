@@ -2161,24 +2161,6 @@ pre,
     padding-right: 1rem !important;
   }
 
-  /* TodayOverview's merged KPI cards (11 Sep 2026, found in review): the
-     metrics grid gained its own px-4 mobile gutter (10 Sep 2026, "update
-     zero value styling and polish today overview") so the two merged cards
-     sit inset from the screen edge - but .kpi-card is still in the
-     full-bleed wildcard list below, which force-strips rounded corners and
-     side borders with !important. Same "broken half-bled hybrid" as the
-     pricing-page rows above: an inset card with square corners and no
-     left/right border. Scoped narrowly to these two cards (not a blanket
-     .kpi-card exception) since every OTHER .kpi-card usage still sits in a
-     flush, gutter-less container where the full-bleed treatment is correct. */
-  .today-overview__metrics .kpi-card {
-    border-radius: 0.5rem !important;
-    border-left-width: 1px !important;
-    border-right-width: 1px !important;
-    border-left-style: solid !important;
-    border-right-style: solid !important;
-  }
-
   /* Full-bleed card standard on mobile screens */
   [data-testid="flowbite-card"],
   .flowbite-card,

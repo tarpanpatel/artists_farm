@@ -514,6 +514,7 @@ export const strings: Record<string, string> = {
   no_billing_receipts_message: "No billing receipts found in database.",
   no_kitchen_orders_title: "Currently, there are no kitchen orders",
   no_kitchen_orders_desc: "New orders placed from POS or room service will automatically appear in this live ticket queue.",
+  take_orders_label: "Take Orders",
   staff_activity_attendance_heading: "Staff Activity & Attendance Trail",
   search_activity_placeholder: "Search activity...",
   all_users_option_label: "All Users",

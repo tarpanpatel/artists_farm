@@ -192,9 +192,9 @@ try {
                 'day' => 14,
                 'title' => $interpolate($conf['title'] ?? "14 Days Remaining in Your Trial"),
                 'email_subject' => $interpolate($conf['email_subject'] ?? "Halfway through your Ground Code Trial — 14 Days Remaining"),
-                'summary' => "Your 30-day trial is halfway through. Ensure your OTA calendars (Airbnb, Booking.com) are connected.",
-                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nMake sure to connect your Airbnb and Booking.com iCal feeds in Settings → Calendar Sync to avoid double-bookings automatically.\n\nYour trial remains active until {expires_at}."),
-                'telegram' => $interpolate($conf['telegram_message'] ?? "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Sync your Airbnb / OTA calendars in Settings."),
+                'summary' => "Your 30-day trial is halfway through. Connect your Airbnb and Booking.com channels via the Channex Channel Manager.",
+                'body' => $interpolate($conf['email_body'] ?? "Hello {tenant_name},\n\nYou are halfway through your 30-day trial of Ground Code for {property_name}.\n\nConnect your Airbnb and Booking.com channels via the Channex Channel Manager in Settings → Channel Connections to prevent double-bookings automatically.\n\nYour trial remains active until {expires_at}."),
+                'telegram' => $interpolate($conf['telegram_message'] ?? "⏳ <b>HALFWAY TRIAL CHECK-IN</b>\n━━━━━━━━━━━━━━━━━━\n🏷️ <b>Property:</b> {property_name}\n📅 14 days remaining in your trial (Expires: {expires_at}).\n💡 Tip: Connect your OTA channels via Channex in Settings → Channel Connections."),
             ];
         }
 

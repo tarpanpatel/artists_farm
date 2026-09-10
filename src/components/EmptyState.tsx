@@ -30,7 +30,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 transition-all ${
+      className={`flex flex-col items-center justify-center text-center rounded-none sm:rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 transition-all ${
         compact ? 'p-4 sm:p-6' : 'p-6 sm:p-10'
       } ${className}`}
     >

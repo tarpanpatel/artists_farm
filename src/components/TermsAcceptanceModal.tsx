@@ -27,7 +27,7 @@ const HIGHLIGHT_SECTIONS: { title: string; icon: React.FC<any>; points: string[]
       'GroundCode Pro: ₹1,499/month (or ₹14,990/year) for the first key, plus ₹350/month per additional key.',
       'Billing is direct and offline via manual invoice - no automated recurring card debits without your explicit authorization.',
       'You control staff PINs/access roles and are responsible for accurate GST/tax filings.',
-      "Telegram alerts and iCal/OTA calendar sync are provided as-is - Ground Code isn't responsible for delays or inaccuracies from third-party OTA feeds.",
+      "Telegram alerts and OTA channel sync are provided as-is - Ground Code isn't responsible for delays or inaccuracies from third-party OTA feeds.",
       'Cancel anytime, no penalty - and request a full data export before closing your account.',
       '99.9% uptime target; not liable for indirect damages from outages, ISP failures, or third-party hardware issues.',
     ],

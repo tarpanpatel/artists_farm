@@ -393,6 +393,11 @@ export const Header: React.FC<HeaderProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
+          {/* App / Property Logo */}
+          <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold shrink-0">
+            <Building2 className="w-5 h-5" />
+          </div>
+
           {/* Logo / Property Dropdown */}
           {canSwitchProperties && (properties.length > 1 || onSwitchProperty) ? (
             <Dropdown
@@ -403,18 +408,11 @@ export const Header: React.FC<HeaderProps> = ({
               renderTrigger={() => (
                 <button
                   type="button"
-                  aria-label="Switch property"
-                  className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer group"
+                  aria-label={t('switch_property_aria', 'Switch property')}
+                  className="flex items-center gap-1.5 h-8.5 px-2.5 py-1 rounded-lg text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 bg-slate-50/90 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/90 dark:border-slate-700 transition-colors cursor-pointer group shadow-2xs"
                 >
-                  <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold shrink-0">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div className="header__logo-text block text-left">
-                    <span className="text-sm font-semibold text-gray-800 dark:text-white tracking-tight truncate block max-w-[150px] sm:max-w-[220px] md:max-w-xs">
-                      {propertyName}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-transform shrink-0 ml-0.5" />
+                  <span className="truncate max-w-[130px] sm:max-w-[200px] md:max-w-xs">{propertyName}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-transform shrink-0" />
                 </button>
               )}
             >
@@ -478,24 +476,11 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </Dropdown>
           ) : (
-            // Non-interactive for anyone who can't actually switch
-            // properties (11 Sep 2026, found in review; re-applied same day
-            // after a concurrent edit to this file silently reverted it once
-            // already - see git blame if this reverts a third time). This
-            // used to be a <button> with the same hover background and
-            // dropdown chevron as the working switcher branch above, but no
-            // onClick - looked clickable, did nothing, and had no cursor cue
-            // on touch. A plain <div> with no hover state and no chevron
-            // reads as the static label it actually is.
-            <div className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5">
-              <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold shrink-0">
-                <Building2 className="w-5 h-5" />
-              </div>
-              <div className="header__logo-text block text-left">
-                <span className="text-sm font-semibold text-gray-800 dark:text-white tracking-tight truncate block max-w-[150px] sm:max-w-[220px] md:max-w-xs">
-                  {propertyName}
-                </span>
-              </div>
+            // Non-interactive for anyone who can't actually switch properties
+            <div className="header__logo-text block text-left">
+              <span className="text-sm font-semibold text-gray-800 dark:text-white tracking-tight truncate block max-w-[150px] sm:max-w-[220px] md:max-w-xs">
+                {propertyName}
+              </span>
             </div>
           )}
         </div>

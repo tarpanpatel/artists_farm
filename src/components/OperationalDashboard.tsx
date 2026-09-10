@@ -40,6 +40,7 @@ import { PageHeader, PageHeaderButton } from './PageHeader';
 import { Button } from './Button';
 import { SyncBookingsButton } from './SyncBookingsButton';
 import { KpiCard } from './KpiCard';
+import { MergedKpiCard } from './MergedKpiCard';
 import { Input } from './Input';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
@@ -1003,37 +1004,51 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </PageHeader>
       )}
 
-      {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
+      {/* Metric Blocks Grid - merged into 2 cards (11 Sep 2026, parity pass -
+          TodayOverview got this 10 Sep 2026: "Merge arrival and departure
+          cards and have only one Today badge in the right. Do the same for
+          cards below and have only one active badge in the right", this file
+          was the one left behind). Arrivals+Departures used to each carry
+          their own identical "Today" badge; Checked-In Guests+Service
+          Requests likewise both said "Active" - the duplication was the
+          complaint, not the two numbers themselves. Badge greys out
+          ("neutral") when every value it covers is zero. The Checked-In/
+          Service-Requests three-way branch (both/just one/neither) preserves
+          exactly the same isMultiKeyProperty/serviceRequestsAccessAllowed
+          gating the two separate cards already had - only the visual
+          grouping changed, not which properties/rooms see which card. */}
       {!minimalMode && (
-      <div className={`operational-dashboard__metrics grid grid-cols-2 ${isMultiKeyProperty ? 'lg:grid-cols-4' : 'md:grid-cols-3'} gap-2 sm:gap-2.5 md:gap-4`}>
-        <KpiCard
-          label="Arrivals"
-          icon={Calendar}
-          badge={{ text: 'Today', color: 'info' }}
-          value={todaysArrivalsCount}
+      <div className="operational-dashboard__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
+        <MergedKpiCard
+          items={[
+            { label: 'Arrivals', icon: Calendar, value: todaysArrivalsCount },
+            { label: 'Departures', icon: LogOut, value: todaysDeparturesCount },
+          ]}
+          badge={{ text: 'Today', color: (todaysArrivalsCount > 0 || todaysDeparturesCount > 0) ? 'info' : 'neutral' }}
         />
-        <KpiCard
-          label="Departures"
-          icon={LogOut}
-          badge={{ text: 'Today', color: 'warning' }}
-          value={todaysDeparturesCount}
-        />
-        {isMultiKeyProperty && (
+        {isMultiKeyProperty && serviceRequestsAccessAllowed ? (
+          <MergedKpiCard
+            items={[
+              { label: 'Checked-In Guests', icon: User, value: inHouseCount },
+              { label: 'Service Requests', icon: Bell, value: pendingRequestsCount },
+            ]}
+            badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'success' : 'neutral' }}
+          />
+        ) : isMultiKeyProperty ? (
           <KpiCard
             label="Checked-In Guests"
             icon={User}
-            badge={{ text: 'Active', color: 'success' }}
+            badge={{ text: 'Active', color: inHouseCount > 0 ? 'success' : 'neutral' }}
             value={inHouseCount}
           />
-        )}
-        {serviceRequestsAccessAllowed && (
+        ) : serviceRequestsAccessAllowed ? (
           <KpiCard
             label="Service Requests"
             icon={Bell}
-            badge={{ text: 'Active', color: 'failure' }}
+            badge={{ text: 'Active', color: pendingRequestsCount > 0 ? 'failure' : 'neutral' }}
             value={pendingRequestsCount}
           />
-        )}
+        ) : null}
       </div>
       )}
 
@@ -1385,6 +1400,21 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             that put New Booking ABOVE the title, not beside it as asked.
             Date-nav controls now get their own row underneath instead. */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+          {/* Row 1: title + the one action that doesn't already exist
+              elsewhere on this page. Restructured 11 Sep 2026 (explicit
+              request: "the top of this calendar is a mess", with TodayOverview
+              - the multi-key equivalent of this same calendar - as the target
+              to match) - this row used to also carry New Booking and Booking
+              Page, which is what overflowed into a jumbled multi-line wrap on
+              a real phone width. New Booking was a straight duplicate of the
+              "+ Add Booking" button the PageHeader above already renders
+              (setShowAddGuestModal(true), same modal, same state) in every
+              mode this component runs in (minimalMode's own header included) -
+              removed here, not there. Booking Page is NOT a duplicate of the
+              sidebar's "Share Availability" (that composes a share
+              message/link for a guest; this opens the page directly for the
+              owner to preview) so it stays, just moved to row 2 below with
+              Refresh where TodayOverview keeps its own secondary actions. */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-500 shrink-0" />
@@ -1392,7 +1422,68 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
               </h3>
             </div>
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedRateRuleStartDate(undefined);
+                setSelectedRateRuleEndDate(undefined);
+                setShowRateRuleModal(true);
+              }}
+              className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+            >
+              <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+              {/* "Pricing", not "Dynamic Pricing" - label parity with
+                  TodayOverview's own button, renamed there 10 Sep 2026 (this
+                  one was missed in that pass; matching its plain hardcoded
+                  string rather than inventing a new i18n key for the same
+                  text one file already hardcodes). */}
+              <span>Pricing</span>
+            </button>
+          </div>
+          {/* Row 2: date nav on the left (Today/prev/jump-to-month/next, one
+              unit - splitting it up would be worse, not better), secondary
+              actions on the right. flex-wrap so Booking Page/Refresh drop to
+              their own line on a narrow phone instead of visually colliding
+              with the date nav, same safety net TodayOverview's own toolbar
+              rows rely on. */}
+          <div className="flex items-center flex-wrap gap-y-2 gap-x-2">
+            <div className="flex items-center gap-1 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setMonthOffset(0)}
+                className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer mr-1 shrink-0"
+              >
+                {t('today_button', 'Today')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMonthOffset((o) => o - 1)}
+                aria-label={t('previous_month_button', 'Previous month')}
+                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <Datepicker
+                value={viewDate}
+                onChange={handleMonthPickerChange}
+                readOnly
+                language="en"
+                showClearButton={false}
+                showTodayButton={false}
+                sizing="sm"
+                className="w-48 shrink-0 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
+                aria-label={t('jump_to_month_tooltip', 'Jump to any month/date')}
+              />
+              <button
+                type="button"
+                onClick={() => setMonthOffset((o) => o + 1)}
+                aria-label={t('next_month_button', 'Next month')}
+                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 ms-auto">
               {/* The Add Booking / Change Prices toggle was removed 6 Sep 2026
                   - the calendar has no modes now. Drag a range of days and the
                   editor panel offers whatever that range supports: price it,
@@ -1402,27 +1493,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <span className="text-2xs text-gray-500 dark:text-gray-400 hidden lg:inline">
                 Drag across days to price or block them
               </span>
-              <button
-                type="button"
-                onClick={() => setShowAddGuestModal(true)}
-                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-xs px-3 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t('new_booking_btn', 'New Booking')}</span>
-              </button>
               {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} />}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedRateRuleStartDate(undefined);
-                  setSelectedRateRuleEndDate(undefined);
-                  setShowRateRuleModal(true);
-                }}
-                className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-              >
-                <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-                <span>Dynamic Pricing</span>
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -1437,42 +1508,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 <span>Booking Page</span>
               </button>
             </div>
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setMonthOffset(0)}
-              className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer mr-1 shrink-0"
-            >
-              {t('today_button', 'Today')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMonthOffset((o) => o - 1)}
-              aria-label={t('previous_month_button', 'Previous month')}
-              className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <Datepicker
-              value={viewDate}
-              onChange={handleMonthPickerChange}
-              readOnly
-              language="en"
-              showClearButton={false}
-              showTodayButton={false}
-              sizing="sm"
-              className="w-48 shrink-0 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
-              aria-label={t('jump_to_month_tooltip', 'Jump to any month/date')}
-            />
-            <button
-              type="button"
-              onClick={() => setMonthOffset((o) => o + 1)}
-              aria-label={t('next_month_button', 'Next month')}
-              className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
 

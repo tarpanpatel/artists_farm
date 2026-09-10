@@ -1418,7 +1418,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </h4>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-9">
-                  To modify room tariffs, check-in/checkout times, contact numbers, address, or iCal sync feeds for <strong className="font-semibold text-slate-900 dark:text-white">{currentProp.name}</strong>, please proceed to the Property Settings page.
+                  To modify room tariffs, check-in/checkout times, contact numbers, address, or OTA channel connections for <strong className="font-semibold text-slate-900 dark:text-white">{currentProp.name}</strong>, please proceed to the Property Settings page.
                 </p>
               </div>
 

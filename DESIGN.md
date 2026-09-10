@@ -468,4 +468,23 @@ All guest booking cards across the platform—including **Today**, **Upcoming**,
    - When any search or filter query is active (`searchTerm.trim().length > 0`), the empty state across all tabs must strictly display: `"No bookings found matching your criteria."` (`t('no_bookings_matching_criteria')`).
    - Default empty states (e.g. `"No bookings today."`, `"No upcoming bookings."`, `"No past bookings."`) are strictly reserved for when no search or filter query is entered.
 
+## No Border-Radius on Edge-to-Edge / Full-Bleed Mobile Blocks Rule (added 11 Sep 2026, explicit request)
+
+On mobile screen viewports (`< sm` / `< 640px`), the outer main page container (`.app-shell__main`) enforces full-bleed edge-to-edge layout with zero horizontal padding (`px-0`).
+
+Consequently, any block, card, dashed empty-state container, table wrapper, or filter row that spans the full viewport width (`w-full`) touching the left and right screen edges must strictly follow these rules:
+
+1. **Remove Border-Radius on Mobile (`rounded-none sm:rounded-lg`)**:
+   - Never use `rounded-lg`, `rounded-xl`, or any curved corners on blocks that bleed to the edges of mobile viewports.
+   - When curved corners are applied to an edge-to-edge element, the rounded corners visibly curve away from the straight physical edges and bezels of the phone, leaving awkward empty notches, gaps, and broken visual alignments.
+   - All full-bleed containers and empty-state boxes must strictly use `rounded-none sm:rounded-lg` (or `rounded-none sm:rounded-xl`).
+
+2. **Remove Left/Right Side Borders on Mobile (`border-x-0 sm:border-x` or `border-y sm:border`)**:
+   - Any bordered or dashed full-bleed container must drop its left and right vertical borders on mobile viewports (`border-x-0 sm:border-x` or `border-y sm:border`).
+   - Having vertical border lines pressed directly against the physical phone bezel looks unpolished; borders on full-bleed mobile elements must strictly serve as top and bottom horizontal dividers (`border-y`).
+
+3. **Empty States (`<EmptyState>`) Mobile Standard**:
+   - `<EmptyState>` components default to `rounded-none sm:rounded-lg`. When placed in full-bleed views (e.g. Live Tickets, queue tabs, log views), ensure `border-x-0 sm:border-x` is applied to maintain clean edge-to-edge continuity.
+
+
 

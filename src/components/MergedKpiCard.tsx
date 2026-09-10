@@ -41,7 +41,7 @@ export const MergedKpiCard: React.FC<MergedKpiCardProps> = ({ items, badge, clas
 
   return (
     <div
-      className={`kpi-card flex items-center justify-between gap-1.5 sm:gap-3 p-2 sm:p-2.5 md:p-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xs sm:shadow-2xs hover:shadow-xs transition-shadow ${className}`}
+      className={`kpi-card flex items-center justify-between gap-1.5 sm:gap-3 px-4 py-3 sm:px-3 sm:py-2.5 md:p-3.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xs sm:shadow-2xs hover:shadow-xs transition-shadow ${className}`}
     >
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
         {items.map((item, idx) => {
@@ -72,7 +72,7 @@ export const MergedKpiCard: React.FC<MergedKpiCardProps> = ({ items, badge, clas
       </div>
 
       {badge && (
-        <Badge variant={badgeVariant} size="sm" className="shrink-0 font-medium text-[9px] sm:text-2xs px-1.5 py-0.5 sm:px-2">
+        <Badge variant={badgeVariant} size="sm" className="shrink-0 font-medium text-[9px] sm:text-2xs px-1.5 py-0.5 sm:px-2 pointer-events-none">
           {badge.text}
         </Badge>
       )}

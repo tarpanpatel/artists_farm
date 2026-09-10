@@ -322,7 +322,7 @@ export const LegalDrawer: React.FC<LegalDrawerProps> = ({ activeTab, onClose, te
                 <span>Ground Code Dedicated Support</span>
               </div>
               <p className="text-xs text-sky-800 dark:text-sky-400 leading-normal">
-                Our support team is available 7 days a week to assist with property configuration, staff PINs, KDS menus, and iCal calendar setup.
+                Our support team is available 7 days a week to assist with property configuration, staff PINs, KDS menus, and OTA channel manager setup.
               </p>
             </div>
 
