@@ -457,7 +457,21 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
           open={isOpen}
           onClose={handleCloseDrawer}
           position="right"
-          className="z-58 w-full sm:w-140 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between property-setup-wizard"
+          // Deliberately NOT w-full on mobile like every other drawer in the app
+          // (see DESIGN.md's drawer spec) - this one auto-opens itself on page
+          // load, unlike every other drawer here which only opens because the
+          // owner tapped something. A full-bleed panel with no visible margin
+          // left nothing for flowbite-react's own backdrop (z-30, dimmed,
+          // click-to-close - confirmed present and correctly wired, just
+          // fully covered) to actually show, so it was indistinguishable from
+          // real page content and silently ate every tap on the page behind
+          // it - reported live as "unable to select dates in single calendar"
+          // (11 Sep 2026; reproduced via Playwright, which found this exact
+          // Drawer subtree intercepting a plain click on a day cell). Leaving
+          // a visible strip of dimmed backdrop on every viewport width makes
+          // it unmistakably an overlay - tap it and the drawer closes/snoozes
+          // itself via the backdrop's own onClose wiring, same as a real modal.
+          className="z-58 w-[calc(100%-2.5rem)] max-w-sm sm:w-140 sm:max-w-none p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between property-setup-wizard"
         >
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0">
           <div className="flex items-center gap-2.5">
