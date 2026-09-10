@@ -1171,6 +1171,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
+              {/* operational-dashboard__month-picker - restyles the input to
+                  a pill button matching Today/Pricing and TodayOverview's own
+                  month-dropdown trigger (11 Sep 2026 parity pass; see
+                  custom.css for why this needs a descendant-selector
+                  override rather than a plain className). Cosmetic only -
+                  still a real date-jump picker underneath. */}
               <Datepicker
                 value={viewDate}
                 onChange={handleMonthPickerChange}
@@ -1179,7 +1185,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 showClearButton={false}
                 showTodayButton={false}
                 sizing="sm"
-                className="w-48 shrink-0 [&_input]:cursor-pointer [&_input]:text-center [&_input]:text-xs [&_input]:font-semibold"
+                className="operational-dashboard__month-picker w-40 shrink-0 [&_input]:cursor-pointer [&_input]:text-center"
                 aria-label={t('jump_to_month_tooltip', 'Jump to any month/date')}
               />
               <button
