@@ -231,6 +231,27 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
     executeSave();
   };
 
+  // Dismissing the confirm-before-block modal WITHOUT confirming (11 Sep
+  // 2026, found live: "closes, but it keeps the toggle off... I didn't save
+  // in the modal"). The Availability toggle already flipped to 'blocked' the
+  // moment the user touched it, BEFORE Save opened this modal - closing the
+  // modal only ever hid it (setShowConfirmModal(false)), it never reset that
+  // toggle back. Nothing was persisted, so the panel is left visually
+  // claiming "Blocked" for a selection that is still whatever it actually
+  // was in the DB. Revert to currentAvailability (the live DB-backed value
+  // for this selection, recomputed every render - unaffected by the user's
+  // own uncommitted toggle change) rather than back to null, so the toggle
+  // reflects reality again instead of going back to an unset state.
+  // Re-applied same day after a concurrent edit to this file clobbered it
+  // once already (same for Header.tsx's finding #6 fix this same session) -
+  // if this reverts a third time, check for another live concurrent session
+  // before re-typing it again.
+  const handleCancelBlock = () => {
+    if (isSaving) return;
+    setAvailability(currentAvailability);
+    setShowConfirmModal(false);
+  };
+
   const executeSave = async () => {
     const rateNum = hasPrice ? parseFloat(price) : null;
     const minStayNum = hasMinStay ? parseInt(minStay, 10) : null;
@@ -615,7 +636,7 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         PricingRulesPanel's own confirm modal - a red "not reversible"
         callout plus a plain-English summary of exactly what's about to
         close, not just a generic "are you sure?". */}
-    <Modal show={showConfirmModal} onClose={() => !isSaving && setShowConfirmModal(false)} size="md" popup className="z-70">
+    <Modal show={showConfirmModal} onClose={handleCancelBlock} size="md" popup className="z-70">
       <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
@@ -624,7 +645,7 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
           </div>
           <button
             type="button"
-            onClick={() => !isSaving && setShowConfirmModal(false)}
+            onClick={handleCancelBlock}
             className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
             aria-label="Close"
           >
