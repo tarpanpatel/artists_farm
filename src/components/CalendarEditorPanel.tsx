@@ -296,47 +296,46 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
       aria-label="Edit selected dates"
       className="z-58 w-full sm:w-96 p-0 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col"
     >
-      {/* Header: what is selected, stated plainly. */}
-      <div className="flex items-start justify-between gap-3 p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
-        <div className="min-w-0">
-          <div className="text-base font-bold text-slate-900 dark:text-white">
-            {shortDate(selection.startDate)}
-            {nights > 1 && <span className="text-slate-400 font-normal"> &ndash; </span>}
-            {nights > 1 && shortDate(selection.endDate)}
+      {/* Header: what is selected, stated plainly.
+          Header and attached tabs share the standard page-tone background (bg-slate-50 dark:bg-slate-900)
+          so the active tab's white body pops out with full contrast, matching the attached tabs pattern across other pages. */}
+      <div className="bg-slate-50 dark:bg-slate-900 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-1">
+          <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
+            <span className="text-base font-bold text-slate-900 dark:text-white">
+              {shortDate(selection.startDate)}
+              {nights > 1 && <span className="text-slate-400 font-normal"> &ndash; </span>}
+              {nights > 1 && shortDate(selection.endDate)}
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              &middot; {nights} night{nights === 1 ? '' : 's'} &middot; {unitLabel}
+            </span>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {nights} night{nights === 1 ? '' : 's'} &middot; {unitLabel}
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1.5 -m-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="p-1.5 -m-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
 
-      {/* Mode Switcher Tabs - DESIGN.md's Attached Tabs Specification (10 Sep
-          2026): this used to be a hand-rolled pill/segmented switcher, which
-          isn't the app's tab pattern. attachedTabsTheme is the shared
-          reference implementation every other attached tab bar imports (see
-          InventoryManagement.tsx's Master Materials/Categories tabs) - each
-          TabItem stays childless per that spec, since the actual content
-          lives in the scrollable pane below, driven by the same activeTab
-          state, not as this component's own tabpanel. */}
-      <div className="px-4 pt-3 shrink-0">
-        <Tabs
-          aria-label="Calendar editor mode"
-          variant="default"
-          theme={attachedTabsTheme}
-          clearTheme={attachedTabsClearTheme}
-          onActiveTabChange={(tabIndex: number) => setActiveTab(tabIndex === 0 ? 'rates' : 'booking')}
-        >
-          <TabItem active={activeTab === 'rates'} title="Rates & Availability" icon={Tag} />
-          <TabItem active={activeTab === 'booking'} title="New Booking" icon={UserPlus} />
-        </Tabs>
+        {/* Mode Switcher Tabs - DESIGN.md's Attached Tabs Specification:
+            No horizontal padding (px-4) here so the tablist's bottom border-b line stretches
+            edge-to-edge from the left to right ends of the drawer view. */}
+        <div className="pt-1 shrink-0">
+          <Tabs
+            aria-label="Calendar editor mode"
+            variant="default"
+            theme={attachedTabsTheme}
+            clearTheme={attachedTabsClearTheme}
+            onActiveTabChange={(tabIndex: number) => setActiveTab(tabIndex === 0 ? 'rates' : 'booking')}
+          >
+            <TabItem active={activeTab === 'rates'} title="Rates & Availability" icon={Tag} />
+            <TabItem active={activeTab === 'booking'} title="New Booking" icon={UserPlus} />
+          </Tabs>
+        </div>
       </div>
 
       {/* -mt-px closes the seam with the active tab's bottom edge, same as
@@ -398,24 +397,24 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
                 </p>
               )}
               <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                   {availability === 'blocked' ? (
-                    <Lock className="w-3.5 h-3.5 text-slate-500" />
+                    <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   ) : (
-                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   )}
-                  {availability === 'blocked' ? 'Blocked' : 'Available'}
-                </span>
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {availability === 'blocked' ? 'Blocked' : 'Available'}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    &middot; {availability === 'blocked' ? "Can't be booked." : 'Open to book.'}
+                  </span>
+                </div>
                 <ToggleSwitch
                   enabled={availability !== 'blocked'}
                   onChange={(enabled) => setAvailability(enabled ? 'available' : 'blocked')}
                 />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {availability === 'blocked'
-                  ? 'Nobody can book. Use it for repairs, or when you need the place yourself.'
-                  : 'Guests can book these nights.'}
-              </p>
             </div>
 
             {/* --- Nightly price --- */}
