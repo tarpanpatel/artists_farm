@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Drawer, Modal } from 'flowbite-react';
+import { Drawer, Modal, Tabs, TabItem } from 'flowbite-react';
 import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle, AlertTriangle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { ToggleSwitch } from './ToggleSwitch';
 import { DateRangePicker } from './DateRangePicker';
 import { useToast } from './ToastContext';
 import { saveRateRuleDB } from '../services/api';
+import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 
 /**
  * Airbnb-Multi-Calendar-style editor panel (6 Sep 2026, explicit request:
@@ -300,37 +301,32 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         </button>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 shrink-0">
-        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/80 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-          <button
-            type="button"
-            onClick={() => setActiveTab('rates')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-              activeTab === 'rates'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-600'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5" />
-            <span>Rates &amp; Availability</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('booking')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-              activeTab === 'booking'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/80 dark:border-slate-600'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>New Booking</span>
-          </button>
-        </div>
+      {/* Mode Switcher Tabs - DESIGN.md's Attached Tabs Specification (10 Sep
+          2026): this used to be a hand-rolled pill/segmented switcher, which
+          isn't the app's tab pattern. attachedTabsTheme is the shared
+          reference implementation every other attached tab bar imports (see
+          InventoryManagement.tsx's Master Materials/Categories tabs) - each
+          TabItem stays childless per that spec, since the actual content
+          lives in the scrollable pane below, driven by the same activeTab
+          state, not as this component's own tabpanel. */}
+      <div className="px-4 pt-3 shrink-0">
+        <Tabs
+          aria-label="Calendar editor mode"
+          variant="default"
+          theme={attachedTabsTheme}
+          clearTheme={attachedTabsClearTheme}
+          onActiveTabChange={(tabIndex: number) => setActiveTab(tabIndex === 0 ? 'rates' : 'booking')}
+        >
+          <TabItem active={activeTab === 'rates'} title="Rates & Availability" icon={Tag} />
+          <TabItem active={activeTab === 'booking'} title="New Booking" icon={UserPlus} />
+        </Tabs>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      {/* -mt-px closes the seam with the active tab's bottom edge, same as
+          every other attached-tabs card (see tabsTheme.ts) - no rounded/
+          border classes to cancel here since this pane, unlike a bordered
+          card, never had its own top border or rounded corner to begin with. */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 -mt-px">
         {/* Dates, still editable - a one-day nudge is faster typed than
             redrawn. This is the app's standard calendar (flowbite-datepicker
             via DateRangePicker), not a one-off - it used to be a plain
