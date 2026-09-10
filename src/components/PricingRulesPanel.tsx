@@ -11,6 +11,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { formatDateOrdinal, formatDateDDMMYY } from '../utils/dateUtils';
 import { HolidaysGuideModal } from './HolidaysGuideModal';
 import { Popover } from './Popover';
+import { ToggleSwitch } from './ToggleSwitch';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -382,7 +383,9 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         // can only ever be a no-op or a contradiction. Always send "every day"
         // there rather than whatever the (hidden) picker happens to hold - it
         // could still be a narrowed selection left over from a wider range.
-        days_of_week: isSingleNight ? [...ALL_DAY_CODES] : selectedDays,
+        // Same for a "Block these dates" rule: the day picker is hidden in
+        // block mode, and a block must cover every day of the chosen range.
+        days_of_week: isSingleNight || stopSell ? [...ALL_DAY_CODES] : selectedDays,
         rule_type: rateNum !== null ? ruleType : 'fixed',
       };
 
@@ -559,7 +562,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     </span>
                   </div>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Default nightly rate when no special date rules are set.
+                    Default nightly rate when no dynamic rules are set.
                   </p>
                 </div>
               </div>
@@ -587,7 +590,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     </span>
                   </div>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Default nightly rate when no special date rules are set.
+                    Default nightly rate when no dynamic rules are set.
                   </p>
                 </div>
                 <Button
@@ -821,13 +824,42 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 </div>
               )}
 
+              {/* Block these dates - the primary action, kept at the very top of
+                  the form. Converting it from a bottom-placed checkbox to a
+                  toggle makes blocking the headline operation. When ON, the
+                  rate/pricing/stay sections below are hidden entirely: a block
+                  needs dates + a unit, nothing more. When OFF, everything below
+                  is shown for building a normal dynamic pricing rule. */}
+              <div className={`p-3.5 rounded-xl border transition-colors ${
+                stopSell
+                  ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800'
+                  : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {stopSell && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                        {stopSell ? 'These dates are blocked' : 'Block these dates'}
+                      </span>
+                    </div>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {stopSell
+                        ? 'Nobody can book these nights. Pick the dates & unit below and save.'
+                        : 'Nobody can book. Use it for repairs, or when you need the room yourself.'}
+                    </p>
+                  </div>
+                  <ToggleSwitch enabled={stopSell} onChange={setStopSell} />
+                </div>
+              </div>
+
               {/* Chosen Unit / Target Room Selector */}
               {rooms.length > 1 ? (
                 <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
                       <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 shrink-0">
-                        Target Unit
+                        Selected Unit
                       </span>
                       <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
                         selectedRoomIds.length > 0 && selectedRoomIds.length === rooms.length
@@ -922,7 +954,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               ) : rooms.length === 1 ? (
                 <div className="flex items-center gap-2">
                   <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Target Unit:
+                    Selected Unit:
                   </span>
                   <span className="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200">
                     🏠 {rooms[0].name}
@@ -944,6 +976,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 toLabel="Last date *"
               />
 
+              {/* Rate, days & stay rules are irrelevant for a block - hide all
+                  of the below when "Block these dates" is switched on so the
+                  form reduces to just picks dates + unit and save. */}
+              {!stopSell && (
+                <>
               {/* Day-of-Week Scoping - radio options for Every Day, Weekdays, Weekends, Custom */}
               <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2.5">
                 <div>
@@ -1118,7 +1155,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     />
                     <div className="text-xs">
                       <span className="font-semibold block text-gray-900 dark:text-white">
-                        {ratePerNight.trim() !== '' ? `Minimum Floor (Never below ₹${ratePerNight})` : 'Minimum Floor (Never below ₹X)'}
+                        Force Minimum Price
                       </span>
                       <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
                         {ratePerNight.trim() !== ''
@@ -1191,27 +1228,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   </div>
                 )}
               </div>
-
-              {/* Availability & Check-in/out Block Controls (Stop Sell / CTA / CTD) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                <label className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
-                  stopSell
-                    ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800 text-red-900 dark:text-red-300'
-                    : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  <input
-                    type="checkbox"
-                    checked={stopSell}
-                    onChange={(e) => setStopSell(e.target.checked)}
-                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-xs">
-                    <span className="font-semibold block">Block these dates</span>
-                    <span className="text-2xs opacity-75">Nobody can book. Use it for repairs, or when you need the room yourself.</span>
-                  </span>
-                </label>
-
-              </div>
+              </>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 {editingRuleId && (
@@ -1233,8 +1251,10 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 >
                   {editingRuleId
                     ? 'Update Rate & Restrictions'
+                    : stopSell
+                    ? 'Block These Dates'
                     : ruleType === 'floor' && ratePerNight.trim() !== ''
-                    ? `Save Minimum Floor (≥ ₹${ratePerNight})`
+                    ? `Force Minimum Price (≥ ₹${ratePerNight})`
                     : 'Save Rate & Restrictions Rule'}
                 </Button>
               </div>
@@ -1409,7 +1429,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
             {/* Existing Rate Rules Section - collapsed by default, rows paginated, with search and mobile cards */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
+<div className="pricing-rules-panel__gutter flex items-center justify-between gap-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                   Active rules ({rateRules.length})
                 </h4>
@@ -1425,11 +1445,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               </div>
 
               {rateRules.length === 0 ? (
-                <div className="text-center py-6 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                <div className="pricing-rules-panel__gutter text-center py-6 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                   No custom rate rules set. All dates use standard base tariffs and restrictions.
                 </div>
               ) : !showRulesList ? (
-                <div className="text-center py-4 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                <div className="pricing-rules-panel__gutter text-center py-4 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                   {rateRules.length} active rule{rateRules.length === 1 ? '' : 's'} cover your dates. Setting a rate above adds a new one or overrides these for the dates it touches.{' '}
                   <button
                     type="button"
@@ -1443,7 +1463,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               ) : (
                 <div className="space-y-3">
                   {/* Search Bar Toolbar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="pricing-rules-panel__gutter flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
                     <div className="relative flex-1">
                       <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-gray-400">
                         <Search className="w-4 h-4" />
@@ -1474,8 +1494,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   </div>
 
                   {filteredRules.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
-                      No pricing rules match "{rulesSearchQuery}".
+<div className="pricing-rules-panel__gutter text-center py-8 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                      No rate rules match "{rulesSearchQuery}".
                     </div>
                   ) : (
                     <>

@@ -2146,6 +2146,21 @@ pre,
     padding-right: 1rem !important;
   }
 
+  /* Pricing page's shared PricingRulesPanel (PricingPage.tsx): the free-floating
+     rows between its full-bleed cards (notice banner, "Active Date-Range Rules"
+     heading, empty-state/summary boxes, search toolbar) rest directly in the
+     panel's space-y-6 root, so they lose their gutters under the px-0 mobile
+     main (they aren't white cards, so the full-bleed wildcard just below leaves
+     them flush at the screen edge AND keeps their rounded corners - a broken
+     half-bled hybrid). Restore just these rows' 1rem gutter. Scoped under
+     .pricing-page so the shared panel inside RateRuleModal's drawer (padded by
+     its own p-6 chrome) is unaffected, matching the .app-shell__main scoping of
+     the full-bleed cards themselves. */
+  .app-shell__main .pricing-page .pricing-rules-panel__gutter {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
   /* Full-bleed card standard on mobile screens */
   [data-testid="flowbite-card"],
   .flowbite-card,
