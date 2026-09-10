@@ -1152,20 +1152,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 placement="bottom-start"
                 dismissOnClick
                 label=""
-                className="z-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden text-xs py-1 min-w-[160px]"
+                className="z-60 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg text-xs py-1"
                 renderTrigger={() => (
                   <button
                     type="button"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                    className="h-7 inline-flex items-center gap-1.5 px-2.5 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-white"
                   >
-                    <span className="text-sm font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                    <span className="whitespace-nowrap">
                       {visibleMonthLabel}
                     </span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
                   </button>
                 )}
               >
-                <div className="max-h-64 overflow-y-auto py-1">
+                <div className="max-h-60 overflow-y-auto py-1">
                   {(() => {
                     const months: { label: string; offset: number }[] = [];
                     for (let i = -3; i <= 9; i++) {

@@ -2197,12 +2197,12 @@ pre,
      never part of the full-bleed initiative or its padding removal above).
      Everything else in this list is already scoped by a specific component
      class name, so it's unaffected either way. */
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute) {
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
@@ -2241,15 +2241,28 @@ pre,
   html.dark .whatsapp-template-settings,
   html.dark .add-expenses-container,
   html.dark .app-card,
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute) {
     border-top-color: #334155 !important;
     border-bottom-color: #334155 !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;
+  }
+
+  /* Protect all Flowbite Dropdown menus from being stretched or flattened on mobile */
+  [data-testid="flowbite-dropdown"],
+  div[role="menu"][data-testid="flowbite-dropdown"],
+  .app-shell__main [data-testid="flowbite-dropdown"] {
+    width: auto !important;
+    max-width: calc(100vw - 2rem) !important;
+    border-radius: 0.5rem !important;
+    border-left-width: 1px !important;
+    border-right-width: 1px !important;
+    border-left-style: solid !important;
+    border-right-style: solid !important;
   }
 
   /* Seamless "attached flush under a tab bar" panels (BillingCheckout's
