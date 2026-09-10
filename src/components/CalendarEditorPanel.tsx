@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Drawer } from 'flowbite-react';
-import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle } from './icons/FlowbiteIcons';
+import { Drawer, Modal } from 'flowbite-react';
+import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle, AlertTriangle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { ToggleSwitch } from './ToggleSwitch';
 import { DateRangePicker } from './DateRangePicker';
@@ -178,22 +178,49 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   const hasMinStay = minStay.trim() !== '';
   const canSave = hasPrice || hasMinStay || availabilityChanged;
 
-  const handleSave = async () => {
+  // Confirm-before-save gate (10 Sep 2026, explicit request) - scoped to
+  // NEWLY blocking a selection specifically, not every save. Unblocking and
+  // plain price/min-stay edits stay one click, same as before: the "can't
+  // unblock" fix just shipped is about making that direction frictionless,
+  // and gating it too would fight that. Blocking is the one action here that
+  // closes real nights across Airbnb/Booking.com/direct booking at once, so
+  // it gets the same style of review-before-you-push step PricingRulesPanel
+  // already has for its own rule form.
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const isNewBlock = availability === 'blocked' && availabilityChanged;
+
+  const validateBeforeSave = (): boolean => {
     if (isMixed && availability === null) {
       showToast('Some of these nights are blocked and some are not - pick Available or Blocked first.', { type: 'error' });
-      return;
+      return false;
     }
     const rateNum = hasPrice ? parseFloat(price) : null;
     if (rateNum !== null && (isNaN(rateNum) || rateNum < 0)) {
       showToast('Enter a nightly price of zero or more.', { type: 'error' });
-      return;
+      return false;
     }
     const minStayNum = hasMinStay ? parseInt(minStay, 10) : null;
     if (minStayNum !== null && (isNaN(minStayNum) || minStayNum < 1)) {
       showToast('Minimum stay must be at least 1 night.', { type: 'error' });
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = () => {
+    if (!validateBeforeSave()) return;
+    if (isNewBlock) {
+      setShowConfirmModal(true);
       return;
     }
+    executeSave();
+  };
 
+  const executeSave = async () => {
+    const rateNum = hasPrice ? parseFloat(price) : null;
+    const minStayNum = hasMinStay ? parseInt(minStay, 10) : null;
+
+    setShowConfirmModal(false);
     setIsSaving(true);
     try {
       const res = await saveRateRuleDB({
@@ -239,6 +266,7 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   };
 
   return (
+    <>
     <Drawer
       open={isOpen}
       onClose={onClose}
@@ -556,5 +584,79 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         )}
       </div>
     </Drawer>
+
+    {/* Confirm-before-block modal (10 Sep 2026) - only ever opens for a new
+        block (see isNewBlock above); unblocking and plain edits save
+        immediately without this step. Same visual language as
+        PricingRulesPanel's own confirm modal - a red "not reversible"
+        callout plus a plain-English summary of exactly what's about to
+        close, not just a generic "are you sure?". */}
+    <Modal show={showConfirmModal} onClose={() => !isSaving && setShowConfirmModal(false)} size="md" popup className="z-70">
+      <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Confirm Before Blocking</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => !isSaving && setShowConfirmModal(false)}
+            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="p-3.5 rounded-lg border border-red-200 dark:border-red-800/80 bg-red-50 dark:bg-red-950/40 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-red-800 dark:text-red-200 uppercase tracking-wide">
+                Nobody will be able to book these nights
+              </p>
+              <p className="text-2xs text-red-700 dark:text-red-300 mt-0.5 leading-relaxed">
+                This closes the dates below on Airbnb, Booking.com, and your own booking page as soon as you confirm.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 space-y-2 text-xs">
+            <div>
+              <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                Unit{selection.roomNames.length === 1 ? '' : 's'}
+              </span>
+              <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">{unitLabel}</p>
+            </div>
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+                Dates
+              </span>
+              <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5">
+                {shortDate(selection.startDate)}
+                {nights > 1 && <> &ndash; {shortDate(selection.endDate)}</>}
+                <span className="text-gray-400 font-normal"> &middot; {nights} night{nights === 1 ? '' : 's'}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/50">
+          <Button variant="secondary" size="sm" disabled={isSaving} onClick={() => setShowConfirmModal(false)}>
+            Cancel & Go Back
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={isSaving}
+            onClick={executeSave}
+            leftIcon={isSaving ? undefined : <Lock className="w-3.5 h-3.5" />}
+          >
+            {isSaving ? 'Blocking...' : 'Confirm & Block These Dates'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 };

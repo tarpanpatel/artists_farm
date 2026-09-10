@@ -398,6 +398,75 @@ function saveRateRule($pdo, $propertyId) {
             }
         }
 
+        // Clear any older block this save just explicitly overrode (found 10
+        // Sep 2026, reported live: "also cant unblock"). Saving here only ever
+        // INSERTs a new row (or UPDATEs the one row being edited) - it never
+        // touched any OTHER pre-existing row. So "Available" + Save from the
+        // calendar/pricing UI added a stop_sell=0 row right alongside the old
+        // stop_sell=1 row instead of replacing it, and the old row kept
+        // matching AriDrainWorker::computeCompressedAvailability()'s "ANY
+        // overlapping stop_sell=1 row closes the night" query (see that
+        // file's comment - the frontend deliberately mirrors the same rule).
+        // Ground Code's own calendar could show the date open while Airbnb
+        // stayed shut, with no way to fix it short of hunting down the old
+        // rule in "Show the full list" and deleting it by hand.
+        //
+        // Scoped tightly to an EXPLICIT unblock - stop_sell asserted to 0 via
+        // explicit_fields (CalendarEditorPanel's Availability toggle, and the
+        // Pricing page's "Block these dates" switched off) - never a plain
+        // rate/restriction save that happens to carry stop_sell=0 as its
+        // unset default; that must keep leaving existing blocks alone.
+        $explicitFieldsRaw = is_array($input['explicit_fields'] ?? null) ? $input['explicit_fields'] : [];
+        $explicitlyUnblocking = $stopSell === 0 && in_array('stop_sell', $explicitFieldsRaw, true);
+        if ($explicitlyUnblocking) {
+            foreach ($targetRoomIds as $rId) {
+                $roomId = !empty($rId) ? (int)$rId : null;
+                $overlapParams = [$propertyId, $roomId, $roomId, $endDate, $startDate];
+                $excludeSelf = '';
+                if ($ruleId) {
+                    $excludeSelf = 'AND id != ?';
+                    $overlapParams[] = $ruleId;
+                }
+                // room_id IS NULL for a single-unit property (or a rule
+                // scoped to "the whole property") - can't use `= ?` against
+                // NULL, so match either a real id or the NULL case explicitly
+                // rather than relying on driver-specific NULL-safe operators.
+                $overlapStmt = $pdo->prepare("
+                    SELECT * FROM room_rate_rules
+                    WHERE property_id = ? AND stop_sell = 1
+                      AND (room_id = ? OR (room_id IS NULL AND ? IS NULL))
+                      AND start_date <= ? AND end_date >= ?
+                      $excludeSelf
+                ");
+                $overlapStmt->execute($overlapParams);
+                $oldBlocks = $overlapStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($oldBlocks as $old) {
+                    $delStmt = $pdo->prepare("DELETE FROM room_rate_rules WHERE id = ?");
+                    $delStmt->execute([$old['id']]);
+
+                    // Re-create whatever part of the old block falls OUTSIDE
+                    // the range just unblocked, so unblocking a slice in the
+                    // middle of a wider block doesn't reopen the whole thing.
+                    $reinsert = $pdo->prepare("
+                        INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, rule_name,
+                            min_stay_arrival, min_stay_through, max_stay, stop_sell, closed_to_arrival, closed_to_departure, days_of_week, rule_type)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    if ($old['start_date'] < $startDate) {
+                        $beforeEnd = date('Y-m-d', strtotime($startDate . ' -1 day'));
+                        $reinsert->execute([$propertyId, $old['room_id'], $old['start_date'], $beforeEnd, $old['rate_per_night'], $old['rule_name'],
+                            $old['min_stay_arrival'], $old['min_stay_through'], $old['max_stay'], 1, $old['closed_to_arrival'], $old['closed_to_departure'], $old['days_of_week'], $old['rule_type']]);
+                    }
+                    if ($old['end_date'] > $endDate) {
+                        $afterStart = date('Y-m-d', strtotime($endDate . ' +1 day'));
+                        $reinsert->execute([$propertyId, $old['room_id'], $afterStart, $old['end_date'], $old['rate_per_night'], $old['rule_name'],
+                            $old['min_stay_arrival'], $old['min_stay_through'], $old['max_stay'], 1, $old['closed_to_arrival'], $old['closed_to_departure'], $old['days_of_week'], $old['rule_type']]);
+                    }
+                }
+            }
+        }
+
         // Turn dated pricing on the first time a date price is ever set
         // (6 Sep 2026). `pricing_mode` defaults to 'flat', and 'flat' does not
         // merely hide rate rules on the owner's own calendar - it SUSPENDS

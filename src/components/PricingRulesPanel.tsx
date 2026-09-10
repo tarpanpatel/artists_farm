@@ -530,9 +530,16 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   };
 
   const filteredRules = useMemo(() => {
-    if (!rulesSearchQuery.trim()) return rateRules;
+    // Newest additions first (10 Sep 2026, explicit request) - `id` is a
+    // plain auto-increment on room_rate_rules, so a higher id is always a
+    // more recently created row; there's no separate created_at column to
+    // sort by instead. An edited rule keeps its original id (saveRateRule()
+    // UPDATEs in place rather than re-inserting), so this orders by when a
+    // rule was first created, not last touched - matches "last additions".
+    const sorted = [...rateRules].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+    if (!rulesSearchQuery.trim()) return sorted;
     const q = rulesSearchQuery.toLowerCase().trim();
-    return rateRules.filter((rule) => {
+    return sorted.filter((rule) => {
       const roomName = (rule.room_name || 'all rooms / property').toLowerCase();
       const ruleName = (rule.rule_name || '').toLowerCase();
       const startFormatted = formatDateDDMMYY(rule.start_date).toLowerCase();
@@ -848,35 +855,6 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 </div>
               )}
 
-              {/* Block these dates - the primary action, kept at the very top of
-                  the form. Converting it from a bottom-placed checkbox to a
-                  toggle makes blocking the headline operation. When ON, the
-                  rate/pricing/stay sections below are hidden entirely: a block
-                  needs dates + a unit, nothing more. When OFF, everything below
-                  is shown for building a normal dynamic pricing rule. */}
-              <div className={`p-3.5 rounded-xl border transition-colors ${
-                stopSell
-                  ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800'
-                  : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'
-              }`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {stopSell && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
-                      <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                        {stopSell ? 'These dates are blocked' : 'Block these dates'}
-                      </span>
-                    </div>
-                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {stopSell
-                        ? 'Nobody can book these nights. Pick the dates & unit below and save.'
-                        : 'Nobody can book. Use it for repairs, or when you need the room yourself.'}
-                    </p>
-                  </div>
-                  <ToggleSwitch enabled={stopSell} onChange={setStopSell} />
-                </div>
-              </div>
-
               {/* Chosen Unit / Target Room Selector */}
               {rooms.length > 1 ? (
                 <div className="space-y-3">
@@ -999,6 +977,35 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 fromLabel="First date *"
                 toLabel="Last date *"
               />
+
+              {/* Block these dates - moved below the unit/date pickers (10 Sep
+                  2026, explicit request) so the dates being blocked are chosen
+                  first and this toggle reads as "block THIS selection" rather
+                  than a mode switch at the top of an otherwise-empty form.
+                  When ON, the rate/pricing/stay sections below are hidden
+                  entirely: a block needs dates + a unit, nothing more. */}
+              <div className={`p-3.5 rounded-xl border transition-colors ${
+                stopSell
+                  ? 'bg-red-50 dark:bg-red-950/60 border-red-300 dark:border-red-800'
+                  : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700'
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {stopSell && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />}
+                      <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                        {stopSell ? 'These dates are blocked' : 'Block these dates'}
+                      </span>
+                    </div>
+                    <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {stopSell
+                        ? 'Nobody can book these nights. Save to apply.'
+                        : 'Nobody can book. Use it for repairs, or when you need the room yourself.'}
+                    </p>
+                  </div>
+                  <ToggleSwitch enabled={stopSell} onChange={setStopSell} />
+                </div>
+              </div>
 
               {/* Rate, days & stay rules are irrelevant for a block - hide all
                   of the below when "Block these dates" is switched on so the
@@ -1525,7 +1532,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     <>
                       {/* Mobile Cards View (md:hidden) */}
                       <div className="md:hidden space-y-3">
-                        {filteredRules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map((rule) => (
+                        {filteredRules.slice(0, rulesPage * RULES_PAGE_SIZE).map((rule) => (
                           <div
                             key={rule.id}
                             className="p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-2.5"
@@ -1655,7 +1662,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                            {filteredRules.slice((rulesPage - 1) * RULES_PAGE_SIZE, rulesPage * RULES_PAGE_SIZE).map((rule) => (
+                            {filteredRules.slice(0, rulesPage * RULES_PAGE_SIZE).map((rule) => (
                               <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                                 <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                                   <div>
@@ -1755,6 +1762,26 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Load More (10 Sep 2026, explicit request) - grows the
+                          accumulated view by one more page of the newest-first
+                          list instead of jumping straight to a numbered page.
+                          Shares `rulesPage` with the TablePagination below it
+                          (both call setRulesPage), so Next/Previous there just
+                          grows/shrinks the same accumulated view rather than
+                          isolating a single page - "load more" and "jump to a
+                          page" are the same mechanism, not two competing ones. */}
+                      {rulesPage * RULES_PAGE_SIZE < filteredRules.length && (
+                        <div className="pricing-rules-panel__gutter flex justify-center">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setRulesPage((p) => p + 1)}
+                          >
+                            Load more ({filteredRules.length - rulesPage * RULES_PAGE_SIZE} more)
+                          </Button>
+                        </div>
+                      )}
 
                       <TablePagination
                         page={rulesPage}
