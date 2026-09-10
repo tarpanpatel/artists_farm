@@ -957,6 +957,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const scrollTargetIdx = todayIdx >= 0 ? Math.max(0, todayIdx - 2) : 0;
   const scrollTargetRef = useRef<HTMLDivElement>(null);
 
+  // Fixed-position target for a deliberate "jump to month" navigation (the
+  // month dropdown below), as opposed to scrollTargetRef above which always
+  // tracks TODAY's column. Every jump sets windowStart to (month start - 2
+  // days), so the picked month's 1st always lands at a fixed index (2) of
+  // the new daysArray, regardless of where today ends up. Using
+  // scrollTargetRef for this (as before 11 Sep 2026) was a real bug: if
+  // today still falls inside the newly-jumped-to window - true for every
+  // "past" month the dropdown offers, since the window is 150 days wide -
+  // scrollTargetRef re-binds to today's (unmoved) column instead of the
+  // requested month, so the whole dropdown silently did nothing for every
+  // month except ones far enough out that today drops out of the window.
+  const jumpTargetRef = useRef<HTMLDivElement>(null);
+
   // BUG (found 14 Aug 2026): the previous approach computed a pixel offset
   // by hand (targetIdx * COLUMN_WIDTH) and applied it via a bare
   // setTimeout(..., 50) - a guess at how long layout takes, not a real
@@ -1084,7 +1097,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           newStart.setDate(newStart.getDate() - 2);
                           setWindowStart(newStart);
                           setTimeout(() => {
-                            scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                            jumpTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
                           }, 50);
                         }}
                         className={`px-3.5 py-2 text-xs cursor-pointer ${
@@ -1194,6 +1207,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   key={day.toISOString()}
                   ref={(el) => {
                     if (idx === scrollTargetIdx) scrollTargetRef.current = el;
+                    if (idx === 2) jumpTargetRef.current = el;
                     if (idx === 0) columnWidthRef.current = el;
                   }}
                   data-cal-room-idx={-1}

@@ -19,7 +19,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, parseDateToYMD } from '../utils/dateUtils';
 
 // Units that are physically divisible (weight/volume, or a dozen - which
 // still resolves to a whole number of pieces, e.g. 0.5 Doz = 6 bananas).
@@ -566,23 +566,32 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [fulfillDesktopPage, setFulfillDesktopPage] = useState(1);
   const FULFILL_DESKTOP_PAGE_SIZE = 10;
 
-  const todayDate = new Date();
-  const padDate = (n: number) => String(n).padStart(2, '0');
-  const todayStr = `${todayDate.getFullYear()}-${padDate(todayDate.getMonth() + 1)}-${padDate(todayDate.getDate())}`;
-  const weekAgoDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - 6);
-  const weekAgoStr = `${weekAgoDate.getFullYear()}-${padDate(weekAgoDate.getMonth() + 1)}-${padDate(weekAgoDate.getDate())}`;
-
-  const [fulfillFromDraft, setFulfillFromDraft] = useState(weekAgoStr);
-  const [fulfillToDraft, setFulfillToDraft] = useState(todayStr);
+  const [fulfillFromDraft, setFulfillFromDraft] = useState('');
+  const [fulfillToDraft, setFulfillToDraft] = useState('');
 
   const filteredFulfillSheets = useMemo(() => {
     return recentSheets.filter(sheet => {
+      if (!fulfillFromDraft && !fulfillToDraft) return true;
       const sheetDateStr = sheet.date.split(' - ')[0].trim();
-      const sheetDate = new Date(sheetDateStr);
-      const from = new Date(fulfillFromDraft);
-      const to = new Date(fulfillToDraft);
-      to.setHours(23, 59, 59, 999);
-      return isNaN(sheetDate.getTime()) || (sheetDate >= from && sheetDate <= to);
+      const ymd = parseDateToYMD(sheetDateStr);
+      if (!ymd) return true;
+      const sheetDate = new Date(ymd[0], ymd[1] - 1, ymd[2]);
+
+      if (fulfillFromDraft) {
+        const fromYmd = parseDateToYMD(fulfillFromDraft);
+        if (fromYmd) {
+          const fromDate = new Date(fromYmd[0], fromYmd[1] - 1, fromYmd[2]);
+          if (sheetDate < fromDate) return false;
+        }
+      }
+      if (fulfillToDraft) {
+        const toYmd = parseDateToYMD(fulfillToDraft);
+        if (toYmd) {
+          const toDate = new Date(toYmd[0], toYmd[1] - 1, toYmd[2], 23, 59, 59, 999);
+          if (sheetDate > toDate) return false;
+        }
+      }
+      return true;
     });
   }, [recentSheets, fulfillFromDraft, fulfillToDraft]);
 
@@ -1706,21 +1715,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           ...attachedTabsTheme,
           tablist: {
             ...attachedTabsTheme.tablist,
-            // Keep the creation tab visually first and flush left. Wrapping
-            // is preferable to a horizontal scrollbar for these two tabs.
-            // gap-px keeps the shared site-wide tab gap (attachedTabsTheme
-            // has it now, 11 Sep 2026) - this base override is a full
-            // replacement so it must repeat it.
-            base: 'justify-end flex-row-reverse gap-px',
+            base: 'justify-start gap-px',
             variant: { default: 'flex-wrap overflow-visible' },
           },
         }}
         clearTheme={attachedTabsClearTheme}
         onActiveTabChange={(tabIndex: number) => {
-          const tabs: ('fulfill' | 'requisitions')[] = ['fulfill', 'requisitions'];
+          const tabs: ('requisitions' | 'fulfill')[] = ['requisitions', 'fulfill'];
           if (tabs[tabIndex]) setActiveTab(tabs[tabIndex]);
         }}
       >
+        <TabItem
+          active={activeTab === 'requisitions'}
+          title="Request Materials"
+          icon={PackagePlus}
+        />
         <TabItem
           active={activeTab === 'fulfill'}
           title={
@@ -1734,41 +1743,33 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </span>
           }
           icon={CheckCircle2}
-        >
-          {/* Chrome (bg/border/rounded/padding) is mobile-only - at md: and up
-              the table's own card below already provides it, so keeping
-              this unconditional just doubled the border/shadow around a
-              single piece of content ("block inside a block", 20 Aug 2026).
-              rounded-tl-none border-t-0 -mt-px (2 Sep 2026, same "attached
-              tabs" flush treatment as BillingCheckout.tsx's desk-body Card -
-              see its comment for the fuller writeup): the Tabs row above
-              doesn't span this card's full width, so only the top-left
-              corner sits under a tab and needs to stay square; top-right
-              stays rounded like the bottom two. */}
-          <div className="space-y-4 bg-white dark:bg-gray-800 rounded-lg rounded-tl-none border border-t-0 border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 -mt-px md:bg-transparent md:dark:bg-transparent md:border-0 md:rounded-none md:p-0 md:mt-0">
-            {/* Same flush treatment as the mobile wrapper above, for the same
-                reason - this desktop table card sits directly under the same
-                Tabs row at md: and up. */}
-            <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg rounded-tl-none border border-t-0 border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto -mt-px">
-              <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
-                <FlowbiteTextInput
-                  type="text"
-                  placeholder="Search requests by item name, status..."
-                  value={fulfillSearch}
-                  onChange={(e) => setFulfillSearch(e.target.value)}
-                  className="w-full sm:max-w-md"
+        />
+      </Tabs>
+
+      {activeTab === 'fulfill' && (
+        <div className="space-y-4">
+          <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg rounded-t-none border border-t-0 border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto -mt-px">
+            <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-700/80">
+              <FlowbiteTextInput
+                type="text"
+                placeholder="Search requests by item name, status..."
+                value={fulfillSearch}
+                onChange={(e) => setFulfillSearch(e.target.value)}
+                className="w-full sm:max-w-md"
+              />
+              <div className="w-full sm:w-72 sm:shrink-0">
+                <DateRangePicker
+                  checkinDate={fulfillFromDraft}
+                  checkoutDate={fulfillToDraft}
+                  onCheckinChange={setFulfillFromDraft}
+                  onCheckoutChange={setFulfillToDraft}
+                  fromPlaceholder={t('from_label', 'From')}
+                  toPlaceholder={t('to_label', 'To')}
+                  fromLabel={t('from_label', 'From')}
+                  toLabel={t('to_label', 'To')}
                 />
-                <div className="w-full sm:w-72 sm:shrink-0">
-                  <DateRangePicker
-                    checkinDate={fulfillFromDraft}
-                    checkoutDate={fulfillToDraft}
-                    onCheckinChange={setFulfillFromDraft}
-                    onCheckoutChange={setFulfillToDraft}
-                    fromPlaceholder={t('from_label', 'From')}
-                    toPlaceholder={t('to_label', 'To')}
-                  />
-                </div>
               </div>
+            </div>
               {(() => {
                 const fulfillColumns = [
                   {
@@ -2101,21 +2102,11 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </>
               )}
             </FlowbiteDrawer>
-          </div>
-        </TabItem>
+        </div>
+      )}
 
-        <TabItem
-          active={activeTab === 'requisitions'}
-          title="Request Materials"
-          icon={PackagePlus}
-        >
-          {/* Chrome (bg/border/rounded/padding) is mobile-only - at lg: and up
-              the catalog + basket cards below already provide it, so keeping
-              this unconditional just doubled the border around them ("block
-              inside a block", 20 Aug 2026 - this wrapper used to also house
-              the tab switcher itself before it became a real Tabs component
-              above, which is why it still carries card chrome at all). */}
-          <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 lg:bg-transparent lg:dark:bg-transparent lg:border-0 lg:rounded-none lg:p-0">
+      {activeTab === 'requisitions' && (
+        <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg rounded-t-none border border-t-0 border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 -mt-px lg:p-4 shadow-md">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width). Card
               chrome (bg/border/rounded/shadow/padding) is lg:-only - the
@@ -2449,9 +2440,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           </div>
         )}
       </div>
-    </TabItem>
-  </Tabs>
-      </div>
+    )}
+  </div>
 );
 }
 

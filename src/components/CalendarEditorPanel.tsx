@@ -102,6 +102,15 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   const [minStay, setMinStay] = useState('');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  // Confirm-before-save gate (10 Sep 2026) - declared here, not down by its
+  // own usage, because every hook in this component must run before the
+  // `if (!selection) return null` guard below (Rules of Hooks). Both call
+  // sites currently only mount this component once selection is non-null,
+  // so this was harmless in practice - but a hook declared after an early
+  // return is a real "Rendered fewer hooks than expected" crash waiting for
+  // the next call site that doesn't guarantee that (found in review, 11 Sep
+  // 2026).
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Both call sites mount this only while a selection exists, so the Drawer
   // would otherwise appear already-open and skip its slide-in - flowbite
@@ -186,8 +195,9 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   // and gating it too would fight that. Blocking is the one action here that
   // closes real nights across Airbnb/Booking.com/direct booking at once, so
   // it gets the same style of review-before-you-push step PricingRulesPanel
-  // already has for its own rule form.
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  // already has for its own rule form. (showConfirmModal itself is declared
+  // above, before the `if (!selection) return null` guard - see that
+  // comment for why.)
   const isNewBlock = availability === 'blocked' && availabilityChanged;
 
   const validateBeforeSave = (): boolean => {
