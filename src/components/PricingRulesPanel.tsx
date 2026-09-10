@@ -387,7 +387,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
       const res = await saveRateRuleDB(payload);
       if (res.success) {
-        showToast(editingRuleId ? 'Rate rule updated successfully.' : 'Saved. These dates are updated everywhere.', { type: 'success' });
+        showToast(editingRuleId ? 'Pricing rule updated.' : 'Saved. These dates are updated everywhere.', { type: 'success' });
         setEditingRuleId(null);
         setRatePerNight('');
         setRuleType('fixed');
@@ -402,10 +402,10 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         setShowConfirmModal(false);
         onRulesUpdated();
       } else {
-        showToast(res.message || 'Failed to save rate rule', { type: 'error' });
+        showToast(res.message || 'Could not save this pricing rule', { type: 'error' });
       }
     } catch {
-      showToast('Network error saving rate rule', { type: 'error' });
+      showToast('Network problem - this pricing rule was not saved', { type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -469,16 +469,16 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
     try {
       const res = await deleteRateRuleDB(id);
       if (res.success) {
-        showToast('Rate rule removed.', { type: 'info' });
+        showToast('Pricing rule removed.', { type: 'info' });
         if (editingRuleId === id) {
           cancelEdit();
         }
         onRulesUpdated();
       } else {
-        showToast(res.message || 'Failed to delete rate rule', { type: 'error' });
+        showToast(res.message || 'Could not delete this pricing rule', { type: 'error' });
       }
     } catch {
-      showToast('Network error deleting rate rule', { type: 'error' });
+      showToast('Network problem - this pricing rule was not deleted', { type: 'error' });
     }
   };
 
@@ -793,7 +793,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                     {editingRuleId ? <Edit2 className="w-3.5 h-3.5 text-blue-600" /> : <Plus className="w-3.5 h-3.5 text-blue-600" />}
-                    {editingRuleId ? `Edit dynamic pricing rule #${editingRuleId}` : 'Set prices & rules for a date range'}
+                    {editingRuleId ? `Edit dynamic pricing rule #${editingRuleId}` : 'Add a dynamic pricing rule'}
                   </h4>
                   <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
                 </div>
@@ -1483,7 +1483,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
                   {filteredRules.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
-                      No rate rules match "{rulesSearchQuery}".
+                      No pricing rules match "{rulesSearchQuery}".
                     </div>
                   ) : (
                     <>
