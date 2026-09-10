@@ -542,17 +542,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     return rate;
   };
 
-  /**
-   * Returns any note or custom label attached to this night/room from rate rules.
-   */
-  const getNightNote = (dateStr: string, room: { id: number }): string | null => {
-    const match = resolvedRateRules.find((r) => {
-      const roomMatch = !r.room_id || Number(r.room_id) === Number(room.id);
-      return roomMatch && r.start_date <= dateStr && r.end_date >= dateStr && !!r.rule_name?.trim();
-    });
-    return match?.rule_name?.trim() || null;
-  };
-
   // iCal sync retired app-wide (3 Sep 2026, superseded by the Channex channel
   // manager - see _unwanted/ical/README.md). This used to fetch
   // php/api/ical_sync.php?action=get_blocked_dates on mount, now archived;
@@ -1422,7 +1411,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       const isPast = day < today;
                       const isOccupied = roomOccupiedDateStrings.includes(dateStr);
                       const isBlockedNight = !isOccupied && isNightBlocked(dateStr, room.id);
-                      const nightNote = !isOccupied ? getNightNote(dateStr, room) : null;
                       const dayPrice = !isOccupied ? Math.round(getDayPrice(dateStr, room)) : 0;
                       // Airbnb draws the selection as one outlined rectangle
                       // over the whole block, not a border per cell - so each
@@ -1489,36 +1477,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 className={isPast ? 'stroke-slate-300/80 dark:stroke-slate-600/70' : 'stroke-slate-300 dark:stroke-slate-600'}
                               />
                             </svg>
-                          )}
-
-                          {/* Note dot indicator at top center (Airbnb style) */}
-                          {nightNote && (
-                            <Popover
-                              trigger="hover"
-                              placement="top"
-                              className="z-50"
-                              title={
-                                <div className="text-2xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                  {isBlockedNight ? 'Blocked Note' : 'Note'}
-                                </div>
-                              }
-                              content={
-                                <div className="p-2.5 max-w-xs text-xs font-medium text-slate-900 dark:text-white wrap-break-word">
-                                  {nightNote}
-                                </div>
-                              }
-                            >
-                              <button
-                                type="button"
-                                tabIndex={-1}
-                                aria-label={`Note: ${nightNote}`}
-                                className={`absolute top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full pointer-events-auto transition-transform hover:scale-125 focus:outline-hidden ${
-                                  isPast
-                                    ? 'bg-slate-400/80 dark:bg-slate-500/80'
-                                    : 'bg-slate-500 dark:bg-slate-400'
-                                }`}
-                              />
-                            </Popover>
                           )}
 
                           {/* Per-day price on unbooked and blocked dates (Airbnb multicalendar style) */}
@@ -1850,12 +1808,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               </svg>
             </span>
             <span>{t('legend_blocked_date', 'Blocked')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 relative inline-flex items-center justify-center shadow-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-500 dark:bg-slate-400" />
-            </span>
-            <span>{t('legend_date_note', 'Note')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
