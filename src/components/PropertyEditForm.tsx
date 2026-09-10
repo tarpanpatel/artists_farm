@@ -617,6 +617,17 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         )}
 
         <div className="property-edit-form__row grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Sleeps / occupancy pricing / cleaning fee / security deposit are all
+              per-bookable-unit concepts - a SINGLE property books as itself, and
+              each MULTI_KEY_ROOM books as itself (isRoom=true here), but a
+              MULTI_KEY parent is just the building and is never booked directly,
+              so none of these five have anywhere to apply on the parent's own
+              form (10 Sep 2026, explicit report: "there are lot of fields which
+              dont apply to multikey property, remove them" - screenshot was this
+              parent's Edit Property page). Each room sets its own via its own
+              Edit Room page (isRoom=true routes back through this same form). */}
+          {!isMultiKeyParent && (
+          <>
           {/* Sleeps (added 5 Sep 2026). This is what Channex publishes as the room
               type's capacity/occ_adults to every OTA. Until this field existed the
               sync hardcoded 6 for every room, so a two-person studio was listed as
@@ -699,6 +710,8 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               helperText={t('security_deposit_help', 'Held against damage and returned at checkout. Not revenue.')}
             />
           </div>
+          </>
+          )}
           <div className="property-edit-form__field">
             <Input
               type="time"
@@ -748,6 +761,20 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         </div>
         )}
 
+        {/* Listing content block (Description through Amenities below) - all of
+            it is genuinely per-bookable-unit: PublicBookingEngine.tsx reads
+            description/amenities/bed_configuration/bedrooms/beds_count/bathrooms
+            straight off each ROOM record with no property-level fallback (unlike
+            wifi_network/house_manual/instructions above, which DO fall back to
+            the parent - those stayed visible), and house_rules/cancellation_policy
+            work the same way in PublicVoucherPage.tsx. On a MULTI_KEY parent this
+            entire block is unread dead data (10 Sep 2026, explicit report: "there
+            are lot of fields which dont apply to multikey property, remove them" -
+            confirmed by checking every one of these fields' actual read sites
+            before removing, not assumed). Each room still edits its own copy via
+            its own Edit Room page (isRoom=true routes back through this form). */}
+        {!isMultiKeyParent && (
+        <>
         {/* Listing content (6 Sep 2026). Rendered on the public booking page under
             the room name - description, the facts line, and amenity chips. Imported
             from Airbnb when a listing is connected, editable here either way. */}
@@ -984,6 +1011,8 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             onSave={(newAmenities) => setAmenities(newAmenities)}
           />
         </div>
+        </>
+        )}
 
         {/* Guest arrival info (6 Sep 2026). Appears on the WhatsApp booking
             voucher via {wifi_network}/{wifi_password}/{house_manual}; an empty
