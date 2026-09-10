@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from 'flowbite-react';
 import { RateRule } from '../services/api';
-import { DollarSign, X } from './icons/FlowbiteIcons';
+import { Home, X } from './icons/FlowbiteIcons';
 import { PricingRulesPanel } from './PricingRulesPanel';
 
 interface RateRuleModalProps {
@@ -62,6 +62,9 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
   );
 
   return (
+    // z-70 stacks this modal above CalendarEditorPanel (the drawer, z-58/z-59)
+    // so closing this modal returns cleanly to the drawer without dropping
+    // the user back to the dashboard.
     // No `dismissible` (9 Sep 2026, "as soon as i will click on any date in
     // the calendar, the modal will close, its a bug"). flowbite-react's
     // dismissible option (@floating-ui/react's useDismiss) closes on any
@@ -78,29 +81,34 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       show={isOpen}
       onClose={onClose}
       size="3xl"
-      className="z-50"
+      className="z-70"
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <DollarSign className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm select-none">
+            ₹
           </div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-            Dynamic Pricing
+            Pricing
           </h3>
           {rooms.length > 0 && (
-            <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-md border ${
+            <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md border ${
               selectedRoomIdsForBadge.length === 0
                 ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
                 : selectedRoomIdsForBadge.length === 1
                 ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
                 : 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
             }`}>
-              {selectedRoomIdsForBadge.length === 0
-                ? 'No units selected'
-                : selectedRoomIdsForBadge.length === 1
-                ? `🏠 ${rooms.find((r) => r.id === selectedRoomIdsForBadge[0])?.name || '1 Unit'}`
-                : `${selectedRoomIdsForBadge.length} Units`}
+              {selectedRoomIdsForBadge.length === 0 ? (
+                'No units selected'
+              ) : selectedRoomIdsForBadge.length === 1 ? (
+                <>
+                  <Home className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <span>{rooms.find((r) => r.id === selectedRoomIdsForBadge[0])?.name || '1 Unit'}</span>
+                </>
+              ) : (
+                `${selectedRoomIdsForBadge.length} Units`
+              )}
             </span>
           )}
         </div>
@@ -113,7 +121,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
         </button>
       </div>
 
-      <div className="p-6 overflow-y-auto max-h-[82vh]">
+      <div className="px-3 sm:px-6 py-4 overflow-y-auto max-h-[82vh]">
         <PricingRulesPanel
           propertyId={propertyId}
           rooms={rooms}
@@ -125,6 +133,7 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
           initialRoomIds={initialRoomIds}
           initialRatePerNight={initialRatePerNight}
           onSelectionChange={setSelectedRoomIdsForBadge}
+          hideSelectedUnitBadge={true}
         />
       </div>
     </Modal>

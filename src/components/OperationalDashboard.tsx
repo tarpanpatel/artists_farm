@@ -2313,16 +2313,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             setSelectedRateRuleStartDate(selectionInfo.selection.startDate);
             setSelectedRateRuleEndDate(selectionInfo.selection.endDate);
             setShowRateRuleModal(true);
-            // This panel is a Drawer that deliberately stays open with no
-            // backdrop (see its own header comment), and custom.css's global
-            // scale always renders Drawers (z-59) above Modals (z-58) - true
-            // everywhere else in the app because no other Drawer/Modal pair
-            // is ever open together. Opening RateRuleModal without closing
-            // this one first left it rendering fully behind the still-open
-            // panel - clicking "See all pricing rules" looked like nothing
-            // happened (9 Sep 2026, reported live, same fix as
-            // TodayOverview.tsx's identical onOpenAllRules).
-            clearSelection();
           }}
         />
       )}

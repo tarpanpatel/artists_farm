@@ -82,6 +82,9 @@ export interface PricingRulesPanelProps {
   // this purely to keep its own header badge in sync, PricingPage.tsx has no
   // use for it and simply omits the prop.
   onSelectionChange?: (roomIds: number[]) => void;
+  // When true (e.g. inside RateRuleModal where the header already displays the
+  // selected unit), hides the redundant in-form "Selected Unit" label and chip.
+  hideSelectedUnitBadge?: boolean;
 }
 
 /**
@@ -112,6 +115,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   initialRoomIds,
   initialRatePerNight,
   onSelectionChange,
+  hideSelectedUnitBadge = false,
 }) => {
   const { showToast } = useToast();
   const [startDate, setStartDate] = useState(initialStartDate || new Date().toISOString().split('T')[0]);
@@ -583,7 +587,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         <div className="space-y-5">
           {!isBasePriceOpen ? (
             /* Collapsed Base Price Summary Card */
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 px-0 py-4 sm:p-4 shadow-none sm:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                   <span className="text-base font-bold leading-none select-none">₹</span>
@@ -614,7 +618,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
             </div>
           ) : (
             /* Uncollapsed Base Price Editor */
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-xs space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 px-0 py-4 sm:p-5 shadow-none sm:shadow-xs space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -795,7 +799,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
           <div className="space-y-6">
             {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
-            <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
+            <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 px-0 py-4 sm:p-5 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 shadow-none sm:shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -863,30 +867,32 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               {/* Chosen Unit / Target Room Selector */}
               {rooms.length > 1 ? (
                 <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 shrink-0">
-                        Selected Unit
-                      </span>
-                      <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
-                        selectedRoomIds.length > 0 && selectedRoomIds.length === rooms.length
-                          ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
-                          : selectedRoomIds.length === 0
-                          ? 'bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
-                          : selectedRoomIds.length === 1
-                          ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
-                          : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
-                      }`}>
-                        {selectedRoomIds.length === 0
-                          ? 'No units selected'
-                          : selectedRoomIds.length === rooms.length
-                          ? `All ${rooms.length} units`
-                          : rooms
-                              .filter((r) => selectedRoomIds.includes(r.id))
-                              .map((r) => r.name)
-                              .join(', ')}
-                      </span>
-                    </div>
+                  <div className={`flex flex-col sm:flex-row sm:items-center ${hideSelectedUnitBadge ? 'justify-end' : 'justify-between'} gap-2.5`}>
+                    {!hideSelectedUnitBadge && (
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 shrink-0">
+                          Selected Unit
+                        </span>
+                        <span className={`px-2.5 py-0.5 text-2xs font-semibold rounded-md border ${
+                          selectedRoomIds.length > 0 && selectedRoomIds.length === rooms.length
+                            ? 'bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200'
+                            : selectedRoomIds.length === 0
+                            ? 'bg-amber-100 dark:bg-amber-900/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
+                            : selectedRoomIds.length === 1
+                            ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200 font-bold'
+                            : 'bg-purple-100 dark:bg-purple-900/60 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200'
+                        }`}>
+                          {selectedRoomIds.length === 0
+                            ? 'No units selected'
+                            : selectedRoomIds.length === rooms.length
+                            ? `All ${rooms.length} units`
+                            : rooms
+                                .filter((r) => selectedRoomIds.includes(r.id))
+                                .map((r) => r.name)
+                                .join(', ')}
+                        </span>
+                      </div>
+                    )}
 
                     <Button
                       type="button"
@@ -958,13 +964,14 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     </div>
                   )}
                 </div>
-              ) : rooms.length === 1 ? (
+              ) : rooms.length === 1 && !hideSelectedUnitBadge ? (
                 <div className="flex items-center gap-2">
                   <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                     Selected Unit:
                   </span>
-                  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200">
-                    🏠 {rooms[0].name}
+                  <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200">
+                    <Home className="w-3.5 h-3.5 mr-1 shrink-0" />
+                    {rooms[0].name}
                   </span>
                 </div>
               ) : null}
@@ -1143,7 +1150,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 />
                 <FloatingInput
                   type="text"
-                  label="Name this rule (Optional)"
+                  label="Name this rule"
                   placeholder=" "
                   value={ruleName}
                   onChange={(e) => setRuleName(e.target.value)}
@@ -1494,11 +1501,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               </div>
 
               {rateRules.length === 0 ? (
-                <div className="pricing-rules-panel__gutter text-center py-6 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                <div className="pricing-rules-panel__gutter text-center py-6 px-0 sm:px-3 bg-gray-50 dark:bg-gray-800/40 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                   No custom rate rules set. All dates use standard base tariffs and restrictions.
                 </div>
               ) : (
-                <div className="pricing-rules-panel__gutter text-center py-4 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                <div className="pricing-rules-panel__gutter text-center py-4 px-0 sm:px-3 bg-gray-50 dark:bg-gray-800/40 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 space-y-2.5">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {rateRules.length} active rule{rateRules.length === 1 ? '' : 's'} cover your dates. Setting a rate above adds a new one or overrides these for the dates it touches.
                   </p>

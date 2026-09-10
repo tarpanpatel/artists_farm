@@ -1795,19 +1795,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             setRateRuleStartDate(selectionInfo.selection.startDate);
             setRateRuleEndDate(selectionInfo.selection.endDate);
             setShowRateRuleModal(true);
-            // This panel is a Drawer that deliberately stays open with no
-            // backdrop so the grid underneath stays clickable (see its own
-            // header comment) - every OTHER Drawer/Modal pair in the app is
-            // mutually exclusive, so custom.css's global scale never had to
-            // account for a Drawer and a Modal being open together, and
-            // simply always renders Drawers (z-59) above Modals (z-58).
-            // RateRuleModal opened without closing this one first, so it
-            // silently rendered fully behind it - clicking "See all pricing
-            // rules" looked like nothing happened (9 Sep 2026, reported live).
-            // Closing the selection here is the actual fix, not a one-off
-            // z-index bump: once RateRuleModal is open there is nothing left
-            // for this panel to do anyway.
-            clearSelection();
           }}
         />
       )}
