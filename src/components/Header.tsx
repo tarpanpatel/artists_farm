@@ -467,7 +467,10 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </Dropdown>
           ) : (
-            <div className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5 rounded-lg bg-gray-100/60 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-default group"
+            >
               <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold shrink-0">
                 <Building2 className="w-5 h-5" />
               </div>
@@ -476,7 +479,8 @@ export const Header: React.FC<HeaderProps> = ({
                   {propertyName}
                 </span>
               </div>
-            </div>
+              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform shrink-0 ml-0.5" />
+            </button>
           )}
         </div>
 

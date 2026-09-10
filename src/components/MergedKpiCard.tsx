@@ -45,17 +45,23 @@ export const MergedKpiCard: React.FC<MergedKpiCardProps> = ({ items, badge, clas
     >
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
         {items.map((item, idx) => {
+          const isZero = item.value === 0;
           return (
             <React.Fragment key={item.label}>
               {idx === 1 && (
                 <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 shrink-0" aria-hidden="true" />
               )}
-              <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-                <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+                {item.icon && (
+                  <div className="flex items-center justify-center text-gray-400 dark:text-gray-500 shrink-0">
+                    <item.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] sm:text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-none truncate m-0">
                     {item.label}
                   </p>
-                  <span className={`text-sm sm:text-base md:text-lg font-extrabold tracking-tight leading-none inline-flex items-center whitespace-nowrap ${item.value === 0 ? 'text-gray-500 dark:text-gray-400' : (item.valueClassName || 'text-gray-900 dark:text-white')}`}>
+                  <span className={`text-sm sm:text-base md:text-lg font-extrabold tracking-tight leading-none inline-flex items-center whitespace-nowrap mt-0.5 ${isZero ? 'text-gray-500 dark:text-gray-400' : (item.valueClassName || 'text-gray-900 dark:text-white')}`}>
                     {item.value}
                   </span>
                 </div>

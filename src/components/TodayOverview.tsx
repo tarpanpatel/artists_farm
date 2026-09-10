@@ -1066,37 +1066,39 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 </button>
               )}
             >
-              {(() => {
-                const months: { label: string; date: Date }[] = [];
-                for (let i = -3; i <= 9; i++) {
-                  const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-                  months.push({ label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), date: d });
-                }
-                return months.map(({ label, date }) => {
-                  const isCurrent = visibleMonthLabel === label || visibleMonthLabel.startsWith(label.split(' ')[0]);
-                  return (
-                    <DropdownItem
-                      key={label}
-                      onClick={() => {
-                        // Jump windowStart so this month starts at the left edge (+2 day lead)
-                        const newStart = new Date(date);
-                        newStart.setDate(newStart.getDate() - 2);
-                        setWindowStart(newStart);
-                        setTimeout(() => {
-                          scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
-                        }, 50);
-                      }}
-                      className={`px-3.5 py-2 text-xs cursor-pointer ${
-                        isCurrent
-                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold'
-                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {label}
-                    </DropdownItem>
-                  );
-                });
-              })()}
+              <div className="max-h-64 overflow-y-auto py-1">
+                {(() => {
+                  const months: { label: string; date: Date }[] = [];
+                  for (let i = -3; i <= 9; i++) {
+                    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                    months.push({ label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), date: d });
+                  }
+                  return months.map(({ label, date }) => {
+                    const isCurrent = visibleMonthLabel === label || visibleMonthLabel.startsWith(label.split(' ')[0]);
+                    return (
+                      <DropdownItem
+                        key={label}
+                        onClick={() => {
+                          // Jump windowStart so this month starts at the left edge (+2 day lead)
+                          const newStart = new Date(date);
+                          newStart.setDate(newStart.getDate() - 2);
+                          setWindowStart(newStart);
+                          setTimeout(() => {
+                            scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                          }, 50);
+                        }}
+                        className={`px-3.5 py-2 text-xs cursor-pointer ${
+                          isCurrent
+                            ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold'
+                            : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {label}
+                      </DropdownItem>
+                    );
+                  });
+                })()}
+              </div>
             </Dropdown>
             <Button
               variant="secondary"
