@@ -254,13 +254,25 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         // concept in this panel (Airbnb has none either), so always "every
         // day", which the backend normalizes to NULL.
         days_of_week: ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'],
-        // Availability is always a deliberate statement on this panel, never a
-        // field that happens to ride along - so it must reach the channels even
-        // when its value matches the neutral baseline. Without this, "make these
-        // dates Available again" computes as an unchanged field and is silently
-        // dropped from the push, leaving the dates open here and still blocked
-        // on Airbnb. See computeChannexFieldDiff() in php/channex/outbox.php.
-        explicit_fields: ['stop_sell'],
+        // Availability is a deliberate statement ONLY when the user actually
+        // changed it (availabilityChanged) - gated 11 Sep 2026, found in
+        // review. This used to be unconditional: "stop_sell is always an
+        // explicit assertion on this panel" is true for the toggle itself,
+        // but every save goes through this same call, including a plain
+        // price/min-stay edit where the toggle was never touched. The
+        // backend treats explicit_fields containing stop_sell=0 as an
+        // EXPLICIT UNBLOCK and deletes any overlapping block row it finds
+        // (php/rates/rate_rules.php's stale-block-clearing) - sending it
+        // unconditionally meant any price save over a selection the panel
+        // (wrongly, via TodayOverview's isNightBlocked/blockedCells) believed
+        // was "available" could silently delete a real block it never meant
+        // to touch. availabilityChanged only becomes true once the user
+        // actually flips the radio, so this keeps the original bug this
+        // comment used to describe fixed (an explicit "make these dates
+        // Available again" still reaches the channels even at the neutral
+        // baseline) without also firing on every unrelated save. See
+        // computeChannexFieldDiff() in php/channex/outbox.php.
+        explicit_fields: availabilityChanged ? ['stop_sell'] : [],
       });
       if (res.success) {
         setShowConfirmModal(false);
