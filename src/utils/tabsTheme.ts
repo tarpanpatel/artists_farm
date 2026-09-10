@@ -19,9 +19,13 @@
  *    mechanism behind "tabs sit on the card", not just proximity.
  *  - Inactive tabs stay fully transparent (no fill) so only the border
  *    outline shows against whatever's behind them.
- *  - -mb-px/-ml-px overlap adjacent tab borders, and the seam where the
- *    tabs meet the card below, into a single 1px line instead of doubling
- *    up border thickness.
+ *  - -mb-px overlaps the seam where the tabs meet the card below into a
+ *    single 1px line instead of doubling up border thickness (added 11 Sep
+ *    2026 - the adjacent-tab half of this was removed: the tablist now
+ *    carries `gap-px`, a deliberate 1px separation between tabs, so the
+ *    `-ml-px`/`first:ml-0` pair that used to overlap one tab's border onto
+ *    the next is gone - user requested a visible 1px gap between tabs,
+ *    site-wide).
  *
  * Usage: place `<Tabs variant="default" theme={attachedTabsTheme}
  * clearTheme={attachedTabsClearTheme} .../>` directly above the card/table
@@ -77,8 +81,11 @@ export const attachedTabsTheme = {
     // *text inside* each tab, not the row of tabs as a group - so with few
     // short tabs the whole strip packed flush left, leaving a lopsided gap
     // of bare border on the right. justify-center centers the tab group
-    // itself within the tablist's full width (found 21 Aug 2026).
-    base: 'justify-center',
+    // itself within the tablist's full width (found 21 Aug 2026). gap-px
+    // (added 11 Sep 2026) separates adjacent tabs by 1px, and the
+    // tabitem.base below dropped its -ml-px/first:ml-0 border-overlap pair
+    // so that gap is visible rather than collapsed back into a seam.
+    base: 'justify-center gap-px',
     // Deliberately NOT overriding this to border-b-0 (tried first, found
     // wrong 21 Aug 2026): with only 2-3 short tabs, the tablist is usually
     // much wider than the tabs themselves, and without the tablist's own
@@ -93,7 +100,7 @@ export const attachedTabsTheme = {
     // own border-bottom, and the empty trailing space) shows the tablist's
     // border normally.
     tabitem: {
-      base: 'relative -mb-px -ml-px first:ml-0 border border-b-0 border-gray-200 dark:border-gray-700',
+      base: 'relative -mb-px border border-b-0 border-gray-200 dark:border-gray-700',
       variant: {
         default: {
           base: '',

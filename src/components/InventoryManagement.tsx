@@ -1708,7 +1708,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             ...attachedTabsTheme.tablist,
             // Keep the creation tab visually first and flush left. Wrapping
             // is preferable to a horizontal scrollbar for these two tabs.
-            base: 'justify-end flex-row-reverse',
+            // gap-px keeps the shared site-wide tab gap (attachedTabsTheme
+            // has it now, 11 Sep 2026) - this base override is a full
+            // replacement so it must repeat it.
+            base: 'justify-end flex-row-reverse gap-px',
             variant: { default: 'flex-wrap overflow-visible' },
           },
         }}
