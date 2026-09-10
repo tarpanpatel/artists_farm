@@ -340,6 +340,19 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
     loadData();
   }, [loadData]);
 
+  // Distinct browser-tab title (11 Sep 2026, same report as the header's
+  // indigo/"Account" badge above) - mirrors App.tsx's own property-page
+  // pattern (`{propertyName} — Ground Code`) so a tenant dashboard tab reads
+  // "{org name} — Account" instead of sitting on index.html's static
+  // "Ground Code Resort Management" default, which gave no clue which
+  // account tab was open when several were open side by side.
+  useEffect(() => {
+    const orgName = tenantInfo?.name;
+    if (orgName) {
+      document.title = `${orgName} — Account`;
+    }
+  }, [tenantInfo?.name]);
+
   const handleLogout = () => {
     localStorage.removeItem('artists_farm_user_session');
     onLogout();
@@ -470,15 +483,28 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Brand Icon Badge */}
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs shrink-0">
+          {/* Brand Icon Badge - indigo, not the blue every property dashboard
+              uses (11 Sep 2026, explicit report: "how to make sure the user
+              knows he is on tenant dashboard, current tenant dashboard and
+              property dashboards look identical" - this page's chrome was a
+              verbatim copy of Header.tsx's, down to the same blue icon in
+              the same slot, so color was the only thing left to tell them
+              apart at a glance). Indigo is already this file's own convention
+              for "account/org level" - see the MULTI_KEY badge and Slot Usage
+              widget below, both indigo for the same reason. */}
+          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
 
-          {/* Brand Organization Title */}
-          <div className="min-w-0">
-            <span className="text-sm font-bold text-gray-900 dark:text-white truncate block">
+          {/* Brand Organization Title + "ACCOUNT" eyebrow badge - the badge
+              carries the signal even when the org's own name could be
+              mistaken for a property name (or is generic/truncated). */}
+          <div className="min-w-0 flex items-center gap-2">
+            <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
               {tenantInfo?.name ?? 'Super Admin'}
+            </span>
+            <span className="shrink-0 inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+              {t('tenant_dashboard_account_badge', 'Account')}
             </span>
           </div>
         </div>
@@ -527,20 +553,20 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       onClick={() => handleTabChange(item.tab)}
                       className={`flex items-center w-full p-2 text-sm font-medium rounded-lg group transition duration-75 cursor-pointer ${
                         isActive
-                          ? 'bg-gray-100 text-blue-600 dark:bg-gray-700 dark:text-blue-400 font-semibold'
+                          ? 'bg-gray-100 text-indigo-600 dark:bg-gray-700 dark:text-indigo-400 font-semibold'
                           : 'text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700'
                       }`}
                     >
                       <ItemIcon
                         className={`w-5 h-5 transition duration-75 shrink-0 ${
                           isActive
-                            ? 'text-blue-600 dark:text-blue-400'
+                            ? 'text-indigo-600 dark:text-indigo-400'
                             : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white'
                         }`}
                       />
                       <span className="ms-3 flex-1 text-left whitespace-nowrap truncate">{item.label}</span>
                       {item.badge && (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-semibold rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
                           {item.badge}
                         </span>
                       )}
@@ -560,15 +586,15 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') handleTabChange('account');
               }}
-              className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-blue-50 dark:bg-gray-700/50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 transition-all cursor-pointer shadow-2xs group"
+              className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-indigo-50 dark:bg-gray-700/50 dark:hover:bg-indigo-950/40 border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer shadow-2xs group"
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-blue-500/30 shrink-0">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 ring-2 ring-indigo-500/30 shrink-0">
                 <UserRound className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate flex items-center justify-between">
                   <span>{username}</span>
-                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 transition-colors shrink-0" />
                 </div>
                 <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate capitalize">
                   {isPlatformAdmin ? t('root_admin_label', 'Root Admin') : t('tenant_manager_label', 'Super Admin')}
