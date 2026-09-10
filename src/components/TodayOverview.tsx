@@ -990,7 +990,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   }, [daysArray]);
 
   return (
-    <div className="today-overview space-y-6">
+    <div className="today-overview space-y-2 sm:space-y-4 md:space-y-6">
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
       <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 px-4 sm:px-0">
         <div className="min-w-0 flex-1">
@@ -1246,7 +1246,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   }`}
                 >
                   <div className={`text-[8px] uppercase tracking-wider font-bold ${isToday ? 'text-blue-500 dark:text-blue-400' : isPastDay ? 'text-slate-400 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'}`}>{dayName}</div>
-                  <div className="text-sm font-extrabold leading-none mt-0.5">{day.getDate()}</div>
+                  <div className="text-[11px] font-bold leading-none mt-0.5">{day.getDate()}</div>
                 </div>
               );
             })}
@@ -1482,16 +1482,16 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           {/* Per-day price on unbooked and blocked dates (Airbnb multicalendar style) */}
                           {!isOccupied && dayPrice > 0 && (
                             <span
-                              className={`relative z-10 select-none pointer-events-none ${
+                              className={`relative z-10 select-none pointer-events-none text-[11px] leading-none font-normal ${
                                 isBlockedNight
                                   ? isPast
-                                    ? 'text-[10px] leading-none font-normal text-slate-400/70 dark:text-slate-600 line-through'
-                                    : 'text-[10px] leading-none font-normal text-slate-400 dark:text-slate-500 line-through'
+                                    ? 'text-slate-400/70 dark:text-slate-600 line-through'
+                                    : 'text-slate-400 dark:text-slate-500 line-through'
                                   : isPast
-                                  ? 'text-[10px] leading-none font-normal text-slate-400 dark:text-slate-500'
+                                  ? 'text-slate-400 dark:text-slate-500'
                                   : inSel
-                                  ? 'text-[11px] leading-none font-extrabold text-slate-900 dark:text-white'
-                                  : 'text-[11px] leading-none font-bold text-slate-800 dark:text-slate-100'
+                                  ? 'text-slate-900 dark:text-white'
+                                  : 'text-slate-800 dark:text-slate-100'
                               }`}
                             >
                               ₹{dayPrice}
