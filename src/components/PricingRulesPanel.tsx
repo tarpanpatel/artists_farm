@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
-import { Trash2, Plus, DollarSign, Loader2, Pencil, Edit2, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X, Search, Calendar } from './icons/FlowbiteIcons';
+import { Trash2, Plus, Loader2, Pencil, Edit2, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X, Search, Calendar } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
@@ -10,6 +10,7 @@ import { FloatingSelect } from './FloatingSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { formatDateOrdinal, formatDateDDMMYY } from '../utils/dateUtils';
 import { HolidaysGuideModal } from './HolidaysGuideModal';
+import { Popover } from './Popover';
 
 // Channex's own 2-letter day codes (used verbatim in the API's `days`
 // param) - single source of truth for the picker below and for reading a
@@ -546,7 +547,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                  <DollarSign className="w-5 h-5" />
+                  <span className="text-base font-bold leading-none select-none">₹</span>
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -754,47 +755,38 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         </div>
 
           <div className="space-y-6">
-            {/* Dynamic Notice Banner */}
-            <div className="pricing-rules-panel__gutter p-4 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                <DollarSign className="w-4 h-4" />
-              </div>
-              <div>
-                <h5 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
-                  How dynamic pricing works
-                </h5>
-                {/* Plain-language explainer (4 Sep 2026). This page is the one
-                    place an owner meets channel-manager vocabulary - Stop Sell,
-                    CTA, CTD, "min stay type" - none of which says what it
-                    actually does to a booking. Say the effect in ordinary words
-                    and keep the industry term only as a quiet subtitle, so it
-                    can still be matched against what Airbnb calls the same
-                    setting.
-
-                    Reworded 10 Sep 2026: it was one 55-word paragraph, so the
-                    reassuring parts - untouched dates keep their price, saving
-                    pushes everywhere by itself - were buried at the end where
-                    nobody reaches. Now one idea per line, matching the
-                    "What is Base Price?" box above and this page's own
-                    <= 10-words-per-line rule. Same facts, nothing dropped. */}
-                <div className="space-y-1 text-xs text-emerald-800/90 dark:text-emerald-300 mt-1 leading-relaxed">
-                  <p>• Pick the dates. Set the price for them.</p>
-                  <p>• Charge more for Diwali. Charge less in a quiet month.</p>
-                  <p>• Or ask for 3 nights minimum on New Year.</p>
-                  <p>• Dates you don't touch keep their normal price.</p>
-                  <p>• Saved prices go to Airbnb, Booking.com and your page.</p>
-                </div>
-              </div>
-            </div>
-
             {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
             <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                    {editingRuleId ? <Edit2 className="w-3.5 h-3.5 text-blue-600" /> : <Plus className="w-3.5 h-3.5 text-blue-600" />}
-                    {editingRuleId ? `Edit dynamic pricing rule #${editingRuleId}` : 'Add a dynamic pricing rule'}
-                  </h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                      {editingRuleId ? <Edit2 className="w-3.5 h-3.5 text-blue-600" /> : <Plus className="w-3.5 h-3.5 text-blue-600" />}
+                      {editingRuleId ? `Edit dynamic pricing rule #${editingRuleId}` : 'Add a dynamic pricing rule'}
+                    </h4>
+                    <Popover
+                      placement="bottom"
+                      trigger="click"
+                      title="How dynamic pricing works"
+                      content={
+                        <div className="p-3 text-xs text-gray-700 dark:text-gray-200 space-y-2 leading-relaxed max-w-xs">
+                          <p>• Pick the dates. Set the price for them.</p>
+                          <p>• e.g. Charge more for Diwali. Charge less in a quiet month.</p>
+                          <p>• Or ask for 3 nights minimum on New Year.</p>
+                          <p>• Dates you don't touch keep their normal price.</p>
+                          <p>• Saved prices go to Airbnb, Booking.com and your page.</p>
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        aria-label="How dynamic pricing works"
+                        className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Help?
+                      </button>
+                    </Popover>
+                  </div>
                   <span className="text-2xs text-gray-400">Sent to Airbnb, Booking.com & your own booking page</span>
                 </div>
                 <Button
@@ -829,9 +821,9 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 </div>
               )}
 
-              {/* Chosen Unit / Target Room Selector (Mobile-Friendly Collapsible Card) */}
+              {/* Chosen Unit / Target Room Selector */}
               {rooms.length > 1 ? (
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                <div className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
                       <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 shrink-0">
@@ -871,7 +863,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   </div>
 
                   {isUnitsPickerOpen && (
-                    <div className="pt-2.5 border-t border-gray-200 dark:border-gray-700 space-y-2.5">
+                    <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2.5">
                       <div className="flex items-center justify-between px-1">
                         <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                           {selectedRoomIds.length} of {rooms.length} selected
@@ -928,7 +920,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   )}
                 </div>
               ) : rooms.length === 1 ? (
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                     Target Unit:
                   </span>
