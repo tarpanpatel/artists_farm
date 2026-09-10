@@ -15,7 +15,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { useToast } from './ToastContext';
 import { Alert as FlowbiteAlert, Modal, Toast as FlowbiteToast, ToastToggle } from 'flowbite-react';
-import { KpiCard } from './KpiCard';
+import { MergedKpiCard } from './MergedKpiCard';
 import { ToggleSwitch } from './ToggleSwitch';
 import { PropertyCreationWizard } from './PropertyCreationWizard';
 import { SubscriptionPanel } from './SubscriptionPanel';
@@ -665,35 +665,27 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
           {/* ═══════════ TAB 1: DASHBOARD ═══════════ */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              {/* Top Operational Metrics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <KpiCard
-                  label="Arrivals"
-                  icon={Calendar}
-                  badge={{ text: 'Today', color: 'info' }}
-                  value={todaysArrivalsCount}
-                  layout="stacked"
+              {/* Top Operational Metrics - merged into 2 single-badge cards
+                  (11 Sep 2026, explicit request: "fix this page... if you
+                  compare with multikey dashboard" - matching the same
+                  MergedKpiCard treatment TodayOverview.tsx already got:
+                  Arrivals+Departures behind one "Today" badge, In-House+
+                  Requests behind one "Active" badge, each greying out to
+                  'neutral' when every value it covers is zero). */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <MergedKpiCard
+                  items={[
+                    { label: 'Arrivals', icon: Calendar, value: todaysArrivalsCount },
+                    { label: 'Departures', icon: LogOut, value: todaysDeparturesCount },
+                  ]}
+                  badge={{ text: 'Today', color: (todaysArrivalsCount > 0 || todaysDeparturesCount > 0) ? 'info' : 'neutral' }}
                 />
-                <KpiCard
-                  label="Departures"
-                  icon={LogOut}
-                  badge={{ text: 'Today', color: 'warning' }}
-                  value={todaysDeparturesCount}
-                  layout="stacked"
-                />
-                <KpiCard
-                  label="In-House"
-                  icon={User}
-                  badge={{ text: 'Active', color: 'success' }}
-                  value={inHouseCount}
-                  layout="stacked"
-                />
-                <KpiCard
-                  label="Requests"
-                  icon={Bell}
-                  badge={{ text: 'Pending', color: 'failure' }}
-                  value={pendingRequestsCount}
-                  layout="stacked"
+                <MergedKpiCard
+                  items={[
+                    { label: 'In-House', icon: User, value: inHouseCount },
+                    { label: 'Requests', icon: Bell, value: pendingRequestsCount },
+                  ]}
+                  badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'success' : 'neutral' }}
                 />
               </div>
 
@@ -866,35 +858,24 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 )}
               </div>
 
-              {/* Analytics Top KPIs */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <KpiCard
-                  label="Arrivals"
-                  icon={Calendar}
-                  badge={{ text: 'Today', color: 'info' }}
-                  value={todaysArrivalsCount}
-                  layout="stacked"
+              {/* Analytics Top KPIs - same merged-card treatment as the
+                  Dashboard tab above (11 Sep 2026) - this was the exact same
+                  4-card block duplicated verbatim, so it gets the exact same
+                  fix rather than drifting from it again. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <MergedKpiCard
+                  items={[
+                    { label: 'Arrivals', icon: Calendar, value: todaysArrivalsCount },
+                    { label: 'Departures', icon: LogOut, value: todaysDeparturesCount },
+                  ]}
+                  badge={{ text: 'Today', color: (todaysArrivalsCount > 0 || todaysDeparturesCount > 0) ? 'info' : 'neutral' }}
                 />
-                <KpiCard
-                  label="Departures"
-                  icon={LogOut}
-                  badge={{ text: 'Today', color: 'warning' }}
-                  value={todaysDeparturesCount}
-                  layout="stacked"
-                />
-                <KpiCard
-                  label="In-House"
-                  icon={User}
-                  badge={{ text: 'Active', color: 'success' }}
-                  value={inHouseCount}
-                  layout="stacked"
-                />
-                <KpiCard
-                  label="Requests"
-                  icon={Bell}
-                  badge={{ text: 'Pending', color: 'failure' }}
-                  value={pendingRequestsCount}
-                  layout="stacked"
+                <MergedKpiCard
+                  items={[
+                    { label: 'In-House', icon: User, value: inHouseCount },
+                    { label: 'Requests', icon: Bell, value: pendingRequestsCount },
+                  ]}
+                  badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'success' : 'neutral' }}
                 />
               </div>
 
