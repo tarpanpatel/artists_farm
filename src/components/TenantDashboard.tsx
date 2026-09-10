@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Building2, LogOut, Plus, AlertCircle,
+  Building2, LogOut, LogIn, Plus, AlertCircle,
   Pencil, Trash2, ExternalLink, CheckCircle, Layers,
   Home, TrendingUp, ChevronRight, Zap, User, UserRound,
-  Calendar, Bell, ArrowRight, HelpCircle, LayoutDashboard,
+  Bell, ArrowRight, HelpCircle, LayoutDashboard,
   CreditCard, Menu, X, KeyRound, Eye, EyeOff, Save, Loader2,
   BarChart3, PieChart
 } from './icons/FlowbiteIcons';
@@ -618,11 +618,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       </aside>
 
       {/* ──────────────── Main Content Area (Property Page Standard) ──────────────── */}
-      <main className="md:pl-64 pt-[calc(4rem+env(safe-area-inset-top,0px))] min-h-screen bg-gray-50 dark:bg-gray-900 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-8 flex flex-col flex-1">
-        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col justify-between space-y-6">
-          <div className="space-y-6 flex-1">
+      <main className="app-shell__main md:pl-64 pt-[calc(4rem+env(safe-area-inset-top,0px))] min-h-screen bg-gray-50 dark:bg-gray-900 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pb-8 flex flex-col flex-1">
+        <div className="max-w-7xl w-full mx-auto px-0 sm:px-6 lg:px-8 py-3 sm:py-6 flex-1 flex flex-col justify-between space-y-2 sm:space-y-4 md:space-y-6">
+          <div className="space-y-2 sm:space-y-4 md:space-y-6 flex-1">
             {/* Page Title Row (Property Page Standard) */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="tenant-dashboard__page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-0">
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -690,18 +690,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* ═══════════ TAB 1: DASHBOARD ═══════════ */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Top Operational Metrics - merged into 2 single-badge cards
-                  (11 Sep 2026, explicit request: "fix this page... if you
-                  compare with multikey dashboard" - matching the same
-                  MergedKpiCard treatment TodayOverview.tsx already got:
-                  Arrivals+Departures behind one "Today" badge, In-House+
-                  Requests behind one "Active" badge, each greying out to
-                  'neutral' when every value it covers is zero). */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-2 sm:space-y-4 md:space-y-6">
+              {/* Top Operational Metrics - merged into 2 single-badge cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
                 <MergedKpiCard
                   items={[
-                    { label: 'Arrivals', icon: Calendar, value: todaysArrivalsCount },
+                    { label: 'Arrivals', icon: LogIn, value: todaysArrivalsCount },
                     { label: 'Departures', icon: LogOut, value: todaysDeparturesCount },
                   ]}
                   badge={{ text: 'Today', color: (todaysArrivalsCount > 0 || todaysDeparturesCount > 0) ? 'info' : 'neutral' }}
@@ -711,15 +705,12 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     { label: 'In-House', icon: User, value: inHouseCount },
                     { label: 'Requests', icon: Bell, value: pendingRequestsCount },
                   ]}
-                  badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'success' : 'neutral' }}
+                  badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'info' : 'neutral' }}
                 />
               </div>
 
-              {/* Properties Overview Grid - moved directly below the KPI row
-                  (10 Sep 2026, explicit request: "Move active properties
-                  below in house, requests"), ahead of Slot Usage and the
-                  summary stats. */}
-              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+              {/* Properties Overview Grid - moved directly below the KPI row */}
+              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-gray-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
@@ -735,7 +726,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
                   {safeProperties.map((property) => {
                     const isMultiKey = property.property_type === 'MULTI_KEY';
                     const tenantSlug = tenantInfo?.slug ?? '';
@@ -747,7 +738,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     return (
                       <div
                         key={property.id}
-                        className="flex items-center justify-between p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        className="flex items-center justify-between p-3 sm:p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
@@ -792,7 +783,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
               </section>
 
               {/* Slot Usage Widget */}
-              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs">
+              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
@@ -835,35 +826,32 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
               </section>
 
-              {/* Quick Summary Cards - compact stat strip (10 Sep 2026,
-                  explicit request: "make total bookings, combined revenue
-                  etc compact"). Mirrors the Analytics tab's own compact
-                  version of these same 3 numbers further down this file,
-                  instead of the old one-stacked-card-per-metric layout that
-                  ate most of a mobile screen for three numbers. */}
-              <div className="tenant-dashboard__full-bleed grid grid-cols-3 gap-2 sm:gap-3">
-                <div className="tenant-dashboard__stat-cell bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
-                  <TrendingUp className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
-                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('total_bookings_label', 'Total Bookings')}</p>
-                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{totalBookingsAnalytics}</p>
+              {/* Quick Summary Cards - compact stat strip */}
+              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-3 sm:p-4 shadow-xs">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                    <TrendingUp className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
+                    <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('total_bookings_label', 'Total Bookings')}</p>
+                    <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{totalBookingsAnalytics}</p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                    <Building2 className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                    <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                    <p className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 leading-tight tabular-nums">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                    <Layers className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                    <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                    <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{avgOccupancyAnalytics}%</p>
+                  </div>
                 </div>
-                <div className="tenant-dashboard__stat-cell bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
-                  <Building2 className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
-                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('combined_revenue_label', 'Combined Revenue')}</p>
-                  <p className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 leading-tight tabular-nums">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
-                </div>
-                <div className="tenant-dashboard__stat-cell bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
-                  <Layers className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{avgOccupancyAnalytics}%</p>
-                </div>
-              </div>
+              </section>
             </div>
           )}
 
           {/* ═══════════ TAB 2: ANALYTICS ═══════════ */}
           {activeTab === 'analytics' && (
-            <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-6">
+            <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Portfolio Performance & Key Metrics
@@ -884,14 +872,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 )}
               </div>
 
-              {/* Analytics Top KPIs - same merged-card treatment as the
-                  Dashboard tab above (11 Sep 2026) - this was the exact same
-                  4-card block duplicated verbatim, so it gets the exact same
-                  fix rather than drifting from it again. */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {/* Analytics Top KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
                 <MergedKpiCard
                   items={[
-                    { label: 'Arrivals', icon: Calendar, value: todaysArrivalsCount },
+                    { label: 'Arrivals', icon: LogIn, value: todaysArrivalsCount },
                     { label: 'Departures', icon: LogOut, value: todaysDeparturesCount },
                   ]}
                   badge={{ text: 'Today', color: (todaysArrivalsCount > 0 || todaysDeparturesCount > 0) ? 'info' : 'neutral' }}
@@ -901,7 +886,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                     { label: 'In-House', icon: User, value: inHouseCount },
                     { label: 'Requests', icon: Bell, value: pendingRequestsCount },
                   ]}
-                  badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'success' : 'neutral' }}
+                  badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequestsCount > 0) ? 'info' : 'neutral' }}
                 />
               </div>
 
@@ -928,9 +913,9 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* ═══════════ TAB 3: PROPERTIES ═══════════ */}
           {activeTab === 'properties' && (
-            <section className="space-y-5">
+            <section className="space-y-2 sm:space-y-4 md:space-y-5">
               {safeProperties.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+                <div className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-dashed border-gray-300 dark:border-gray-700 p-8 sm:p-12 text-center">
                   <Building2 className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                   <p className="text-gray-600 dark:text-gray-300 font-semibold">{t('tenant_no_properties_yet_message', 'No properties yet')}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('add_first_property_help_text', 'Add your first property to get started')}</p>
@@ -1048,7 +1033,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   </div>
 
                   {/* Mobile Responsive Cards */}
-                  <div className="block md:hidden space-y-3">
+                  <div className="block md:hidden space-y-2 sm:space-y-3">
                     {safeProperties.map((property) => {
                       const isMultiKey = property.property_type === 'MULTI_KEY';
                       const roomCount = property.room_count ?? 0;
@@ -1060,7 +1045,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
                       if (isDraft) {
                         return (
-                          <div key={property.id} className="bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-800 p-4 shadow-2xs space-y-3">
+                          <div key={property.id} className="tenant-dashboard__full-bleed bg-amber-50/50 dark:bg-amber-950/20 rounded-none sm:rounded-lg border-y sm:border border-dashed border-amber-300 dark:border-amber-800 p-4 shadow-2xs space-y-3">
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-2.5">
                                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800' : 'bg-amber-100/70 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800'}`}>
@@ -1100,7 +1085,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       }
 
                       return (
-                        <div key={property.id} className="tenant-dashboard__full-bleed bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
+                        <div key={property.id} className="tenant-dashboard__full-bleed bg-white dark:bg-slate-900 rounded-none sm:rounded-lg border-y sm:border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-2.5">
                               <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200'}`}>
@@ -1148,10 +1133,10 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* ═══════════ TAB 4: ACCOUNT ═══════════ */}
           {activeTab === 'account' && (
-            <section className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <section className="space-y-2 sm:space-y-4 md:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-4 md:gap-5">
                 {/* Profile Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+                <div className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-4">
                   <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Administrator Profile
                   </div>
@@ -1191,7 +1176,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 </div>
 
                 {/* Change Passcode Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+                <div className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-4">
                   <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                     Security Credentials
                   </div>
@@ -1282,7 +1267,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
 
           {/* ═══════════ TAB 5: BILLING ═══════════ */}
           {activeTab === 'billing' && (
-            <section className="space-y-5">
+            <section className="space-y-2 sm:space-y-4 md:space-y-5">
               <SubscriptionPanel
                 embedded
                 tenantId={tenantId}

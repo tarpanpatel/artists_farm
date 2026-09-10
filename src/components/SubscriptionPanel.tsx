@@ -204,13 +204,13 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
   };
 
   return (
-    <div className={embedded ? 'space-y-6' : 'px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-3xl mx-auto'}>
+    <div className={embedded ? 'space-y-2 sm:space-y-4 md:space-y-6' : 'px-0 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-2 sm:space-y-4 md:space-y-6 max-w-3xl mx-auto'}>
       {!embedded && (
         <PageHeader title={t('subscription_heading', 'Subscription')} subtitle={t('subscription_subheading', 'Your plan, renewal date, and account options.')} />
       )}
 
       {/* Status card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+      <div className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-4">
         <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Current Plan & Entitlements
         </div>
@@ -269,7 +269,7 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
 
       {/* Amount due at renewal - ESTIMATE only, offline billing, never "charge"/"pay now" */}
       {pricing && monthlyTotal !== null && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-3">
+        <div className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-3">
           <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             Billing Breakdown
           </div>
@@ -294,7 +294,7 @@ export const SubscriptionPanel: React.FC<SubscriptionPanelProps> = ({ propertyId
       )}
 
       {/* Cancel / Close account */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-3">
+      <div className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-gray-200 dark:border-gray-700 p-4 sm:p-6 shadow-xs space-y-3">
         <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           Account Lifecycle
         </div>

@@ -2181,6 +2181,8 @@ pre,
   .page-header,
   .tab-buttons-container,
   .today-overview__header,
+  .today-overview__page-header,
+  .tenant-dashboard__page-header,
   .billing-checkout__header,
   .kitchen-management__desk > .flex {
     padding-left: 1rem !important;
@@ -2234,7 +2236,10 @@ pre,
      class name, so it's unaffected either way. */
   .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
   .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
@@ -2275,7 +2280,10 @@ pre,
   html.dark .app-card,
   html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
   html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not(.fixed):not(.absolute) {
     border-top-color: #334155 !important;
     border-bottom-color: #334155 !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;
@@ -2334,21 +2342,11 @@ pre,
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
+    border-left-style: none !important;
+    border-right-style: none !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
     width: 100% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  /* The compact stat strip's 3 cells (Total Bookings/Combined Revenue/Avg
-     Occupancy) read as one continuous flush row, matching the KpiCard row
-     right above it on this same page, instead of 3 separate floating
-     rounded chips once their shared container goes edge-to-edge. */
-  .tenant-dashboard__stat-cell {
-    border-radius: 0 !important;
-    border-left-width: 0 !important;
-    border-right-width: 0 !important;
   }
 
   /* Bookings desk: everything below search field spans full width with no extra padding */
