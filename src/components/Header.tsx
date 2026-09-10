@@ -472,10 +472,16 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </Dropdown>
           ) : (
-            <button
-              type="button"
-              className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-default group"
-            >
+            // Non-interactive for anyone who can't actually switch
+            // properties (11 Sep 2026, found in review; re-applied same day
+            // after a concurrent edit to this file silently reverted it once
+            // already - see git blame if this reverts a third time). This
+            // used to be a <button> with the same hover background and
+            // dropdown chevron as the working switcher branch above, but no
+            // onClick - looked clickable, did nothing, and had no cursor cue
+            // on touch. A plain <div> with no hover state and no chevron
+            // reads as the static label it actually is.
+            <div className="header__logo pos-logo-container flex items-center gap-2 p-1.5 -ml-1.5">
               <div className="header__logo-icon w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs font-semibold shrink-0">
                 <Building2 className="w-5 h-5" />
               </div>
@@ -484,8 +490,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {propertyName}
                 </span>
               </div>
-              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform shrink-0 ml-0.5" />
-            </button>
+            </div>
           )}
         </div>
 
