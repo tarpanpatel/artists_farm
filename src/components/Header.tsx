@@ -228,14 +228,20 @@ export const Header: React.FC<HeaderProps> = ({
       const latestRaw = alerts.reduce((max, a) => (a.date_to > max ? a.date_to : max), alerts[0].date_to);
       const earliestFrom = formatDateOrdinal(earliestRaw);
       const latestTo = formatDateOrdinal(latestRaw);
-      const dateRange = earliestRaw === latestRaw ? `for ${earliestFrom}` : `covering ${earliestFrom} to ${latestTo}`;
+      const dateRange = earliestRaw === latestRaw ? (
+        <>for <strong className="font-semibold text-slate-900 dark:text-white">{earliestFrom}</strong></>
+      ) : (
+        <>covering <strong className="font-semibold text-slate-900 dark:text-white">{earliestFrom}</strong> to <strong className="font-semibold text-slate-900 dark:text-white">{latestTo}</strong></>
+      );
       
       const roomsLine = roomNames.length <= 4
         ? roomNames.join(', ')
         : `${roomNames.length} units`;
 
       (window as any).showAlert?.(
-        `Your rates and restrictions for ${roomsLine} ${dateRange} were successfully pushed to connected channels (Airbnb/Booking.com).`,
+        <span>
+          Your rates and restrictions for {roomsLine} {dateRange} were successfully pushed to connected channels (Airbnb/Booking.com).
+        </span>,
         'alert',
         'Rates Were Pushed to Your Channels'
       );

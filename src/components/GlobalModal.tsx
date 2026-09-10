@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal } from 'flowbite-react';
 import { AlertTriangle, CheckCircle, Info, X } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
@@ -8,7 +8,7 @@ type ModalType = 'alert' | 'confirm' | 'success' | 'error';
 interface ModalOptions {
   type: ModalType;
   title?: string;
-  message: string;
+  message: ReactNode;
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -67,7 +67,7 @@ export const GlobalModal = () => {
     // We MUST refactor native confirm calls to use a custom promise or callback.
     // For now, we will expose a global function `window.showConfirm`.
 
-    (window as any).showConfirm = (message: string, onConfirm: () => void, onCancel?: () => void) => {
+    (window as any).showConfirm = (message: ReactNode, onConfirm: () => void, onCancel?: () => void) => {
       setModal({
         type: 'confirm',
         title: t('global_modal_confirm_title'),
@@ -77,7 +77,7 @@ export const GlobalModal = () => {
       });
     };
 
-    (window as any).showAlert = (message: string, type: ModalType = 'alert', title?: string) => {
+    (window as any).showAlert = (message: ReactNode, type: ModalType = 'alert', title?: string) => {
       setModal({
         type,
         title: title || (type === 'error' ? t('global_modal_error_title') : type === 'success' ? t('global_modal_success_title') : t('global_modal_notification_title')),
