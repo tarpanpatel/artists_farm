@@ -935,8 +935,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     syncEndCeilingRef.current(toIsoDate(rangepicker.dates[0]));
   }, [blockedDates]);
 
-  const startLabel = fromLabel || (label && label.includes('*') ? 'Check-in *' : 'Check-in Date');
-  const endLabel = toLabel || (label && label.includes('*') ? 'Check-out *' : 'Check-out Date');
+  const startLabel = fromLabel || (label && label.includes('*') ? 'Check-in *' : 'Check-in');
+  const endLabel = toLabel || (label && label.includes('*') ? 'Check-out *' : 'Check-out');
   const isSpecialLabel = label && (label.includes('locked') || label.includes('past'));
 
   return (

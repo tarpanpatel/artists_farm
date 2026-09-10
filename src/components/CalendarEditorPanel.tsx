@@ -388,8 +388,8 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
           checkoutDate={checkoutDateStr}
           onCheckinChange={(date) => date && onChangeDates(date, selection.endDate)}
           onCheckoutChange={(date) => date && onChangeDates(selection.startDate, toLastNight(date))}
-          fromLabel="First night"
-          toLabel="Last night"
+          fromLabel="Check-in"
+          toLabel="Check-out"
           disablePastDates
           bgMode="bg-white dark:bg-slate-900"
         />
