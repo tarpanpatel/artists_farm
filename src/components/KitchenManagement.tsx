@@ -2484,7 +2484,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
                 {/* Menu Items: Thumbnail Grid vs List Stack */}
                 {filteredPosMenuItems.length === 0 ? (
-                  <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg">
+                  <div className="rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-gray-200 dark:border-gray-600 text-center py-10">
                     <UtensilsCrossed className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                     <p className="text-gray-600 dark:text-gray-400 font-semibold text-xs">{t('no_food_items_found_text')} "{posSearch}"</p>
                   </div>

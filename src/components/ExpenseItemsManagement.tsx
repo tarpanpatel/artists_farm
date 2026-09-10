@@ -255,7 +255,7 @@ export const ExpenseItemsManagement: React.FC = () => {
 
       {/* Messages */}
       {items.length === 0 && !loading && (
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-12 text-center">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-300 dark:border-slate-600 p-12 text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">
             {t('no_expense_items_loaded_text')}
           </p>

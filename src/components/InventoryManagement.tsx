@@ -2190,12 +2190,12 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Stock Items Grid with Row Items (Mobile: 1 col, Sm: 2 cols, Lg: 3 cols) */}
             {inventoryLoading ? (
-              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center gap-2">
+              <div className="rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-200 text-center py-10 flex flex-col items-center gap-2">
                 <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
                 <p className="text-slate-500 font-semibold text-xs">Loading catalog...</p>
               </div>
             ) : filteredCatalog.length === 0 ? (
-              <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-lg">
+              <div className="rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-200 text-center py-10">
                 <Boxes className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                 <p className="text-slate-600 font-semibold text-xs">{t('no_catalog_items_found_message')} "{reqSearch}"</p>
               </div>

@@ -656,7 +656,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
           {/* Empty State */}
           {filteredFoodItems.length === 0 ? (
-            <div className="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+            <div className="rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-200 dark:border-slate-700 text-center py-10">
               <UtensilsCrossed className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
               <p className="text-slate-600 dark:text-slate-400 font-semibold text-xs">
                 {t('no_food_items_found_text', 'No food items found matching')} "{foodSearch}"

@@ -253,7 +253,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
 
       {/* Empty State */}
       {bills.length === 0 && !loading && (
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
           <Receipt className="w-10 h-10 text-slate-400 mx-auto mb-3" />
           <p className="text-sm text-slate-600 dark:text-slate-400">No bill types yet. Click <strong>"Add New Bill"</strong> to create your first one.</p>
         </div>
@@ -261,7 +261,7 @@ export const DefaultBillsManager: React.FC<DefaultBillsManagerProps> = ({ onLogo
 
       {/* No Search Results */}
       {bills.length > 0 && query && filteredBills.length === 0 && (
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-400">No bill types match "{searchQuery}".</p>
         </div>
       )}

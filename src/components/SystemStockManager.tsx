@@ -371,7 +371,7 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
 
       {/* Empty State */}
       {allCategories.length === 0 && (
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-400">
             No stock categories yet. Click <strong>"Sync Defaults"</strong> above to populate a starter set of categories and items.
           </p>
@@ -380,7 +380,7 @@ export const SystemStockManager: React.FC<SystemStockManagerProps> = ({ onLogout
 
       {/* No Search Results */}
       {allCategories.length > 0 && query && categories.length === 0 && (
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-300 dark:border-slate-600 p-8 text-center">
           <p className="text-sm text-slate-600 dark:text-slate-400">
             No stock items match "{searchQuery}".
           </p>

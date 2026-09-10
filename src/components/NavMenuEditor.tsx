@@ -925,7 +925,7 @@ export const NavMenuEditor: React.FC<NavMenuEditorProps> = ({
       {/* Menu Tree */}
       <div ref={sortableContainerRef} className="nav-menu-editor__tree flex-1 overflow-y-auto p-3">
         {tree.length === 0 ? (
-          <div className="nav-menu-editor__empty text-center py-16 border-2 border-dashed border-slate-200 rounded-lg">
+          <div className="nav-menu-editor__empty text-center py-16 rounded-none sm:rounded-lg border-x-0 sm:border-2 border-y-2 sm:border-y-2 border-dashed border-slate-200">
             <LayoutDashboard className="w-12 h-12 text-slate-200 mx-auto mb-3" />
             <p className="text-slate-500 font-semibold text-sm mb-1">{t('nav_menu_empty_message', 'Menu is empty')}</p>
             <p className="text-slate-400 text-xs">{t('nav_menu_empty_subtitle', 'Click "Add Item" to start building your menu')}</p>
