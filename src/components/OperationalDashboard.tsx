@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Datepicker } from 'flowbite-react';
+import { Drawer, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Dropdown, DropdownItem } from 'flowbite-react';
 import { X, ChevronLeft, ChevronRight } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import {
   AlertTriangle,
   User,
-  Calendar,
   Utensils,
   ArrowRight,
   CheckCircle2,
@@ -18,7 +17,6 @@ import {
   ChevronDown,
   Globe,
   LogIn,
-  Share2,
 } from './icons/FlowbiteIcons';
 import { RateRuleModal } from './RateRuleModal';
 import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
@@ -32,7 +30,7 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { getPropertySlug, fetchRateRulesDB, RateRule } from '../services/api';
+import { fetchRateRulesDB, RateRule } from '../services/api';
 import { GuestManagement } from './GuestManagement';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -470,21 +468,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
-
-  // Month/year dropdown (22 Aug 2026) - the "August 2026" label used to be
-  // plain text, only movable one month at a time via the arrow buttons on
-  // either side. flowbite-react's own Datepicker already has a built-in
-  // Months/Years/Decades picker (click its header title to cycle views) -
-  // reused here as a fast "jump straight to November" path instead of
-  // building a custom month/year selector from scratch. It only ever
-  // DISPLAYS viewDate and reports a new one back via onChange - monthOffset
-  // (not the picker) stays the single source of truth for which month the
-  // grid below actually renders, same as the arrow buttons already do.
-  const handleMonthPickerChange = (date: Date | null) => {
-    if (!date) return;
-    const newOffset = (date.getFullYear() - today.getFullYear()) * 12 + (date.getMonth() - today.getMonth());
-    setMonthOffset(newOffset);
-  };
+  const visibleMonthLabel = viewDate.toLocaleString('default', { month: 'short', year: 'numeric' });
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -1160,32 +1144,65 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             that put New Booking ABOVE the title, not beside it as asked.
             Date-nav controls now get their own row underneath instead. */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
-          {/* Row 1: title + the one action that doesn't already exist
-              elsewhere on this page. Restructured 11 Sep 2026 (explicit
-              request: "the top of this calendar is a mess", with TodayOverview
-              - the multi-key equivalent of this same calendar - as the target
-              to match) - this row used to also carry New Booking and Booking
-              Page, which is what overflowed into a jumbled multi-line wrap on
-              a real phone width. New Booking was a straight duplicate of the
-              "+ Add Booking" button the PageHeader above already renders
-              (setShowAddGuestModal(true), same modal, same state) in every
-              mode this component runs in (minimalMode's own header included) -
-              removed here, not there. Booking Page is NOT a duplicate of the
-              sidebar's "Share Availability" (that composes a share
-              message/link for a guest; this opens the page directly for the
-              owner to preview) so it stays, just moved to row 2 below with
-              Refresh where TodayOverview keeps its own secondary actions. */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-500 shrink-0" />
-              <h3 className="operational-dashboard__subtitle font-bold text-gray-900 dark:text-white text-base truncate">
-                {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
-              </h3>
+          {/* Row 1: Month dropdown (like Airbnb) on left, Pricing on right */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Airbnb-style month dropdown */}
+              <Dropdown
+                placement="bottom-start"
+                dismissOnClick
+                label=""
+                className="z-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden text-xs py-1 min-w-[160px]"
+                renderTrigger={() => (
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                  >
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                      {visibleMonthLabel}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                  </button>
+                )}
+              >
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {(() => {
+                    const months: { label: string; offset: number }[] = [];
+                    for (let i = -3; i <= 9; i++) {
+                      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                      months.push({
+                        label: d.toLocaleString('default', { month: 'short', year: 'numeric' }),
+                        offset: i,
+                      });
+                    }
+                    return months.map(({ label, offset }) => {
+                      const isCurrent = monthOffset === offset;
+                      return (
+                        <DropdownItem
+                          key={label}
+                          onClick={() => setMonthOffset(offset)}
+                          className={`px-3.5 py-2 text-xs cursor-pointer ${
+                            isCurrent
+                              ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold'
+                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {label}
+                        </DropdownItem>
+                      );
+                    });
+                  })()}
+                </div>
+              </Dropdown>
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={() => setMonthOffset(0)}
+                className="h-7 text-xs font-semibold px-2.5 shrink-0"
+              >
+                {t('today_button', 'Today')}
+              </Button>
             </div>
-            {/* Plain text, no icon, Button component at size="xs" - exact
-                parity with TodayOverview's own Pricing button (11 Sep 2026;
-                the DollarSign icon here was the one remaining visual
-                mismatch after the earlier label-only parity pass). */}
             <Button
               variant="secondary"
               size="xs"
@@ -1199,88 +1216,29 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               Pricing
             </Button>
           </div>
-          {/* Row 2: date nav on the left (Today/prev/jump-to-month/next, one
-              unit - splitting it up would be worse, not better), secondary
-              actions on the right. flex-wrap so Booking Page/Refresh drop to
-              their own line on a narrow phone instead of visually colliding
-              with the date nav, same safety net TodayOverview's own toolbar
-              rows rely on. */}
-          <div className="flex items-center flex-wrap gap-y-2 gap-x-2">
-            <div className="flex items-center gap-1 overflow-x-auto">
-              {/* Today/prev/next restyled to match TodayOverview's toolbar
-                  buttons exactly (11 Sep 2026 parity pass) - the blue-tinted
-                  custom Today pill and gray-toned chevrons were the only two
-                  pieces of this row still visually distinct from the
-                  multi-key calendar. The underlying navigation MODEL (month-
-                  offset pagination + jump-to-month Datepicker here, vs a
-                  rolling scroll-window + month dropdown there) is left alone
-                  - that's tied to the protected calendar grid logic below,
-                  not a styling choice. */}
-              <Button
-                variant="secondary"
-                size="xs"
-                onClick={() => setMonthOffset(0)}
-                className="h-7 text-xs font-semibold px-2.5 shrink-0"
-              >
-                {t('today_button', 'Today')}
-              </Button>
+
+          {/* Row 2: hint + Refresh on left, prev/next on right */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="text-2xs text-slate-500 dark:text-slate-400 hidden md:inline">
+              Drag across days to price or block them
+            </span>
+            {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
+            <div className="flex items-center gap-1 ms-auto">
               <button
                 type="button"
                 onClick={() => setMonthOffset((o) => o - 1)}
                 aria-label={t('previous_month_button', 'Previous month')}
-                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer shrink-0"
+                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              {/* operational-dashboard__month-picker - restyles the input to
-                  a pill button matching Today/Pricing and TodayOverview's own
-                  month-dropdown trigger (11 Sep 2026 parity pass; see
-                  custom.css for why this needs a descendant-selector
-                  override rather than a plain className). Cosmetic only -
-                  still a real date-jump picker underneath. */}
-              <Datepicker
-                value={viewDate}
-                onChange={handleMonthPickerChange}
-                readOnly
-                language="en"
-                showClearButton={false}
-                showTodayButton={false}
-                sizing="sm"
-                className="operational-dashboard__month-picker w-40 shrink-0 [&_input]:cursor-pointer [&_input]:text-center"
-                aria-label={t('jump_to_month_tooltip', 'Jump to any month/date')}
-              />
               <button
                 type="button"
                 onClick={() => setMonthOffset((o) => o + 1)}
                 aria-label={t('next_month_button', 'Next month')}
-                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer shrink-0"
+                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2 ms-auto">
-              {/* The Add Booking / Change Prices toggle was removed 6 Sep 2026
-                  - the calendar has no modes now. Drag a range of days and the
-                  editor panel offers whatever that range supports: price it,
-                  block it, or book it. Both actions used to be behind a switch
-                  that had to be set BEFORE picking dates, so getting it wrong
-                  meant re-picking them. See selAnchorDate above. */}
-              <span className="text-2xs text-gray-500 dark:text-gray-400 hidden lg:inline">
-                Drag across days to price or block them
-              </span>
-              {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
-              <button
-                type="button"
-                onClick={() => {
-                  const slug = getPropertySlug() || '';
-                  const url = `${window.location.origin}/${slug ? `${slug}/#book` : '#book'}`;
-                  window.open(url, '_blank');
-                }}
-                className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                aria-label="Open public direct booking engine & availability"
-              >
-                <Share2 className="w-3.5 h-3.5 text-blue-600" />
-                <span>Booking Page</span>
               </button>
             </div>
           </div>

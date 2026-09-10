@@ -1100,43 +1100,6 @@ html.dark .shadow-xs {
    explicit report + screenshot: "Why ru not making this part just like
    multi key" - comparing this single-key calendar's toolbar against
    TodayOverview.tsx's, the one real remaining mismatch was this control
-   rendering as a plain bordered form-input box while every sibling control
-   (Today/Pricing/Refresh, and TodayOverview's own month dropdown) is a
-   pill-shaped button). flowbite-react's <Datepicker> puts the `className`
-   prop on its own OUTER wrapper div, not on the actual <input> - the same
-   "className reaches the wrong DOM node" gap already documented for Card/
-   TextInput/FooterLink elsewhere in this file - so restyling the input
-   itself needs a descendant selector with !important, not a plain
-   className tweak. Purely cosmetic: readOnly/behavior/the underlying
-   month-offset navigation model are all untouched (that's the protected
-   calendar-grid logic's own concern, not this toolbar's styling). */
-.operational-dashboard__month-picker input {
-  border-radius: 0.5rem !important;
-  border: 1px solid #e5e7eb !important;
-  background-color: #f9fafb !important;
-  box-shadow: none !important;
-  padding-top: 0.375rem !important;
-  padding-bottom: 0.375rem !important;
-  font-size: 0.875rem !important;
-  font-weight: 600 !important;
-  color: #0f172a !important;
-}
-.operational-dashboard__month-picker input:focus {
-  box-shadow: none !important;
-  border-color: #e5e7eb !important;
-}
-.operational-dashboard__month-picker input:hover {
-  background-color: #f3f4f6 !important;
-}
-html.dark .operational-dashboard__month-picker input {
-  background-color: #334155 !important;
-  border-color: #475569 !important;
-  color: #ffffff !important;
-}
-html.dark .operational-dashboard__month-picker input:hover {
-  background-color: #475569 !important;
-}
-
 /* Custom Scrollbar for Matrix Tables & Containers */
 .overflow-x-auto::-webkit-scrollbar {
   height: 6px;
