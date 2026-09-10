@@ -196,7 +196,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     startX: number;
     startY: number;
     longPressTimer: number | null;
-  }>({ armed: false, startX: 0, startY: 0, longPressTimer: null });
+    // 2-click selection mode - ported from TodayOverview.tsx's own
+    // handleGridPointerDown/Move/Up (11 Sep 2026, explicit request: "date
+    // selection should be like multicalendar.. first click starting date and
+    // second click end selection"). moved tracks whether THIS pointer-down
+    // turned into a real drag (opens the panel immediately on release, same
+    // as before); isClickSelecting is true between a plain click-1 (no
+    // movement) and click-2, during which the range's far edge follows the
+    // pointer on hover, mirroring the multi-key calendar's own two-tap flow.
+    moved: boolean;
+    isClickSelecting: boolean;
+    pointerDownActive: boolean;
+  }>({ armed: false, startX: 0, startY: 0, longPressTimer: null, moved: false, isClickSelecting: false, pointerDownActive: false });
   const [addBookingPrefillDates, setAddBookingPrefillDates] = useState<{ checkin: string; checkout: string } | null>(null);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
@@ -502,6 +513,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       dragRef.current.longPressTimer = null;
     }
     dragRef.current.armed = false;
+    dragRef.current.pointerDownActive = false;
     setIsDragArmed(false);
   };
 
@@ -510,6 +522,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   }, []);
 
   const clearSelection = () => {
+    dragRef.current.isClickSelecting = false;
     setSelAnchorDate(null);
     setSelFocusDate(null);
     setIsPanelOpen(false);
@@ -523,7 +536,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   // here besides clicking elsewhere.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && (selAnchorDate || isPanelOpen)) {
+      if (e.key === 'Escape' && (selAnchorDate || isPanelOpen || dragRef.current.isClickSelecting)) {
         clearSelection();
       }
     };
@@ -552,6 +565,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     const d = dragRef.current;
     d.startX = e.clientX;
     d.startY = e.clientY;
+    d.moved = false;
+    d.pointerDownActive = true;
+
+    // 2-click selection (11 Sep 2026 parity pass, ported from TodayOverview's
+    // handleGridPointerDown): if click 1 already armed click-select mode and
+    // is waiting for click 2, THIS press is click 2 - set the far edge and
+    // let handleDayPointerUp open the panel. Anchor stays put.
+    if (d.isClickSelecting && selAnchorDate) {
+      setSelFocusDate(dateStr);
+      return;
+    }
+
     setSelAnchorDate(dateStr);
     setSelFocusDate(dateStr);
     setIsPanelOpen(false);
@@ -575,7 +600,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const handleDayPointerMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!selAnchorDate) return;
+
+    // Mode A: click-1 already landed, waiting for click-2 - follow the
+    // pointer/mouse so the range previews live, same as TodayOverview.
+    if (d.isClickSelecting) {
+      const hit = dateFromPoint(e.clientX, e.clientY);
+      if (hit) setSelFocusDate(hit);
+      return;
+    }
+
+    // Mode B: an actual press-and-drag.
     if (!d.armed) {
+      if (!d.pointerDownActive) return;
       if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 10) {
         endDrag();
         setSelAnchorDate(null);
@@ -583,15 +619,40 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       }
       return;
     }
+    if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 5) d.moved = true;
     if (e.pointerType !== 'mouse') e.preventDefault();
     const hit = dateFromPoint(e.clientX, e.clientY);
     if (hit) setSelFocusDate(hit);
   };
 
   const handleDayPointerUp = () => {
+    const d = dragRef.current;
     if (!selAnchorDate) { endDrag(); return; }
+
+    // A real drag opens the panel immediately, same as before.
+    if (d.moved) {
+      d.isClickSelecting = false;
+      endDrag();
+      setIsPanelOpen(true);
+      return;
+    }
+
+    // Click 2 (in click-select mode) confirms the range and opens the panel.
+    if (d.isClickSelecting) {
+      d.isClickSelecting = false;
+      endDrag();
+      setIsPanelOpen(true);
+      return;
+    }
+
+    // Click 1: no movement, not already click-selecting - arm click-select
+    // mode and wait for click 2 instead of opening the panel on a 1-night
+    // selection right away (11 Sep 2026, explicit request: "first click
+    // starting date and second click end selection", matching the multi-key
+    // calendar's own two-tap flow rather than single-tap-selects-one-night).
+    d.isClickSelecting = true;
     endDrag();
-    setIsPanelOpen(true);
+    setIsPanelOpen(false);
   };
 
   // A drag can be released anywhere - off the grid, outside the window. Without
