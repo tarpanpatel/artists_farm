@@ -7,6 +7,7 @@ import { BookingDetailsModal } from './BookingDetailsModal';
 import { RateRuleModal } from './RateRuleModal';
 import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
 import { KpiCard } from './KpiCard';
+import { MergedKpiCard } from './MergedKpiCard';
 import { fetchRateRulesDB, RateRule } from '../services/api';
 import { Button } from './Button';
 import { SyncBookingsButton } from './SyncBookingsButton';
@@ -998,36 +999,48 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
         </div>
       </div>
 
-      {/* Metric Blocks Grid */}
-      <div className={`today-overview__metrics grid grid-cols-2 ${isMultiKeyProperty ? 'lg:grid-cols-4' : 'md:grid-cols-3'} gap-2 sm:gap-2.5 md:gap-4`}>
-        <KpiCard
-          label="Arrivals"
-          icon={Calendar}
-          badge={{ text: 'Today', color: 'info' }}
-          value={todaysArrivals}
+      {/* Metric Blocks Grid - merged into 2 cards (10 Sep 2026, explicit
+          request: "Merge arrival and departure cards and have only one
+          Today badge in the right. Do the same for cards below and have
+          only one active badge in the right"). Arrivals+Departures used to
+          each carry their own identical "Today" badge; Checked-In
+          Guests+Service Requests likewise both said "Active" - the
+          duplication was the complaint, not the two numbers themselves, so
+          MergedKpiCard keeps both values in one card behind a single badge.
+          Badge greys out ("neutral") when every value it covers is zero -
+          a colored "Active"/"Today" badge next to two zeros reads as a real
+          status when there's nothing to actually flag. */}
+      <div className="today-overview__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
+        <MergedKpiCard
+          items={[
+            { label: 'Arrivals', icon: Calendar, value: todaysArrivals },
+            { label: 'Departures', icon: LogOut, value: todaysDepartures },
+          ]}
+          badge={{ text: 'Today', color: (todaysArrivals > 0 || todaysDepartures > 0) ? 'info' : 'neutral' }}
         />
-        <KpiCard
-          label="Departures"
-          icon={LogOut}
-          badge={{ text: 'Today', color: 'warning' }}
-          value={todaysDepartures}
-        />
-        {isMultiKeyProperty && (
+        {isMultiKeyProperty && serviceRequestsAccessAllowed ? (
+          <MergedKpiCard
+            items={[
+              { label: 'Checked-In Guests', icon: User, value: inHouseCount },
+              { label: 'Service Requests', icon: Bell, value: pendingRequests },
+            ]}
+            badge={{ text: 'Active', color: (inHouseCount > 0 || pendingRequests > 0) ? 'success' : 'neutral' }}
+          />
+        ) : isMultiKeyProperty ? (
           <KpiCard
             label="Checked-In Guests"
             icon={User}
-            badge={{ text: 'Active', color: 'success' }}
+            badge={{ text: 'Active', color: inHouseCount > 0 ? 'success' : 'neutral' }}
             value={inHouseCount}
           />
-        )}
-        {serviceRequestsAccessAllowed && (
+        ) : serviceRequestsAccessAllowed ? (
           <KpiCard
             label="Service Requests"
             icon={Bell}
-            badge={{ text: 'Active', color: 'failure' }}
+            badge={{ text: 'Active', color: pendingRequests > 0 ? 'failure' : 'neutral' }}
             value={pendingRequests}
           />
-        )}
+        ) : null}
       </div>
 
       <div data-tour="booking-grid" className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">

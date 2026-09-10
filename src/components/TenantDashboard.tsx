@@ -1093,7 +1093,7 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                       }
 
                       return (
-                        <div key={property.id} className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
+                        <div key={property.id} className="tenant-dashboard__full-bleed bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4 shadow-2xs space-y-3">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center gap-2.5">
                               <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isMultiKey ? 'bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200' : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200'}`}>

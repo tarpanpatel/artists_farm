@@ -2266,17 +2266,21 @@ pre,
   }
 
   /* Multi-room calendar (TodayOverview.tsx) - mobile only (10 Sep 2026,
-     explicit request). The shared full-bleed block above already zeroes this
-     card's own margin/border-radius/side-border, but .today-overview__calendar
-     also carries its own p-4 sm:p-6 Tailwind padding - that horizontal
-     padding is what was still leaving a visible gutter on each side even
-     though the card itself reaches the screen edge (.app-shell__main is
-     already px-0 on mobile). Left/right only - top/bottom padding stays, for
-     spacing against the KPI cards above and the legend below. */
-  .today-overview__calendar {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    border-radius: 0 !important;
+     narrowed same day after a follow-up report: "I wanted padding to be
+     removed only the core calendar part, not for the legend below and other
+     part above calendar"). First attempt zeroed .today-overview__calendar's
+     own left/right padding, which is the outer card wrapping the header row
+     (Sep 2026/Today/Refresh/Dynamic Pricing) AND the legend too, so those
+     went edge-to-edge along with the grid - not what was asked. Scoped down
+     to just .today-overview__scroll-container (the actual Room x date grid,
+     line ~1095 of TodayOverview.tsx) instead: negative margins matching the
+     card's own p-4 (1rem) padding pull just the grid out to the screen
+     edges, while the header row and legend keep their normal inset. The
+     grid's own border/rounded corners are left untouched - only the padding
+     scope was wrong, not the border treatment. */
+  .today-overview__scroll-container {
+    margin-left: -1rem !important;
+    margin-right: -1rem !important;
   }
 
   /* TenantDashboard.tsx Dashboard tab - mobile only (10 Sep 2026, explicit
