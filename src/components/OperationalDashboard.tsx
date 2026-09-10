@@ -17,7 +17,7 @@ import {
   ChevronUp,
   ChevronDown,
   Globe,
-  DollarSign,
+  LogIn,
   Share2,
 } from './icons/FlowbiteIcons';
 import { RateRuleModal } from './RateRuleModal';
@@ -982,7 +982,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     <div className="operational-dashboard space-y-6">
       {minimalMode ? (
         <div className="operational-dashboard__minimal-header flex justify-end">
-          <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
+          {/* size="md" + matching classes - exact parity with TodayOverview's
+              own "Add Booking" button (11 Sep 2026 parity pass; this one
+              defaulted to PageHeaderButton's standard size="sm" everywhere
+              else in the app uses, which is correct for those pages but
+              made single-key's dashboard button visibly smaller than
+              multi-key's for the same action). */}
+          <PageHeaderButton
+            onClick={() => setShowAddGuestModal(true)}
+            icon={Plus}
+            size="md"
+            className="h-10 text-xs font-semibold shadow-none whitespace-nowrap"
+          >
             {t('add_booking_button', 'Add Booking')}
           </PageHeaderButton>
         </div>
@@ -998,7 +1009,18 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
           title={t('dashboard_heading', 'Dashboard')}
           forceRow
         >
-          <PageHeaderButton onClick={() => setShowAddGuestModal(true)} icon={Plus}>
+          {/* size="md" + matching classes - exact parity with TodayOverview's
+              own "Add Booking" button (11 Sep 2026 parity pass; this one
+              defaulted to PageHeaderButton's standard size="sm" everywhere
+              else in the app uses, which is correct for those pages but
+              made single-key's dashboard button visibly smaller than
+              multi-key's for the same action). */}
+          <PageHeaderButton
+            onClick={() => setShowAddGuestModal(true)}
+            icon={Plus}
+            size="md"
+            className="h-10 text-xs font-semibold shadow-none whitespace-nowrap"
+          >
             {t('add_booking_button', 'Add Booking')}
           </PageHeaderButton>
         </PageHeader>
@@ -1021,7 +1043,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       <div className="operational-dashboard__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
         <MergedKpiCard
           items={[
-            { label: 'Arrivals', icon: Calendar, value: todaysArrivalsCount },
+            { label: 'Arrivals', icon: LogIn, value: todaysArrivalsCount },
             { label: 'Departures', icon: LogOut, value: todaysDeparturesCount },
           ]}
           badge={{ text: 'Today', color: (todaysArrivalsCount > 0 || todaysDeparturesCount > 0) ? 'info' : 'neutral' }}
@@ -1049,329 +1071,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             value={pendingRequestsCount}
           />
         ) : null}
-      </div>
-      )}
-
-      {/* Room Info / Property Location Bar */}
-      {!minimalMode && roomName ? (
-        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
-          <div className="operational-dashboard__room-info-content flex-1">
-            {isEditingRoomName ? (
-              <Input
-                value={editingRoomName}
-                onChange={(e) => setEditingRoomName(e.target.value)}
-                onBlur={() => {
-                  if (editingRoomName && editingRoomName !== roomName) {
-                    onUpdateRoomName?.(editingRoomName);
-                  } else {
-                    setEditingRoomName(roomName || '');
-                  }
-                  setIsEditingRoomName(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    if (editingRoomName && editingRoomName !== roomName) {
-                      onUpdateRoomName?.(editingRoomName);
-                    } else {
-                      setEditingRoomName(roomName || '');
-                    }
-                    setIsEditingRoomName(false);
-                  }
-                  if (e.key === 'Escape') {
-                    setEditingRoomName(roomName || '');
-                    setIsEditingRoomName(false);
-                  }
-                }}
-                autoFocus
-                className="text-2xl font-semibold text-slate-900 dark:text-white"
-              />
-            ) : (
-              <div className="flex items-center gap-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="operational-dashboard__subtitle text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
-                    <button
-                      onClick={() => {
-                        setIsEditingRoomName(true);
-                        setEditingRoomName(roomName || '');
-                      }}
-                      className="p-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
-                      aria-label={t('edit_room_name_tooltip', 'Edit room name')}
-                    >
-                      <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-4 mt-1">
-                    {propertyName && <p className="text-xs text-slate-500">in {propertyName}</p>}
-                    {roomId && <p className="text-xs text-slate-400">(ID: {roomId})</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Standalone "C-Form Filing Due" box removed (25 Aug 2026, explicit request: "Remove
-          this individual c form box. It should be part of alerts only") - overdue/due-soon
-          C-Form guests now surface as "Overdue C-Form"/"C-Form Due Soon" rows in the System
-          Alerts panel below instead (see the addAlertReason calls above), same "Resolve"-into-
-          the-booking-modal pattern as every other alert there. */}
-
-      {/* 3-Column Operational Row: System Alerts | Kitchen Queue | Requisitions */}
-      {!minimalMode && (
-      <div className="operational-dashboard__columns grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Column 1: System Alerts Box (replaces Guest Currently Staying for single property) */}
-        <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                {t('alerts_heading', 'Booking Alerts')}
-              </h3>
-              {totalAlerts > 0 ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300">
-                  {totalAlerts}
-                </span>
-              ) : (
-                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                  All Clear
-                </span>
-              )}
-            </div>
-
-            {totalAlerts === 0 ? (
-              <div className="text-center py-6 text-slate-500 dark:text-slate-400 space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto opacity-80" />
-                <p className="text-xs font-medium">{t('no_outstanding_issues', 'No outstanding issues or pending alerts.')}</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
-                {combinedAlerts.slice(0, 5).map((item) => {
-                  const key = item.kind === 'guest' ? item.guest.id : `ota-${item.block.external_event_id}`;
-                  const title = item.kind === 'guest' ? item.guest.guestName : (item.block.source_label || item.block.source || 'OTA Block');
-                  // isMultiKeyProperty gate (25 Aug 2026, explicit request: "in single
-                  // property no need to show property name") - this row's own room/property
-                  // label is only meaningfully distinguishing across a multi-room property;
-                  // on a single property it's redundant (usually just repeats the property
-                  // name you're already looking at) and was cluttering every row.
-                  const subtitle = isMultiKeyProperty ? (item.kind === 'guest' ? item.guest.roomNumber : roomName) : null;
-                  return (
-                    <div
-                      key={key}
-                      className="py-2.5 px-1 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 rounded-lg transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
-                          <span>{title}</span>
-                          {subtitle && <span className="text-2xs font-normal text-slate-400 shrink-0">• {subtitle}</span>}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
-                          {item.reasons.map((r, i) => (
-                            <span
-                              key={i}
-                              className={`font-semibold ${
-                                item.severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'
-                              }`}
-                            >
-                              {r.label}{r.detail ? ` (${r.detail})` : ''}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (item.kind !== 'guest') { handleConvertOtaBlock(item.block); return; }
-                          setSelectedBookingFocusSection(focusSectionForReasons(item.reasons));
-                          setSelectedBooking(item.guest);
-                        }}
-                        className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-md ${
-                          item.severity === 'red'
-                            ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
-                            : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
-                        }`}
-                      >
-                        {item.kind === 'guest' ? t('view_resolve_button', 'Resolve') : t('convert_to_booking_button', 'Convert to Booking')}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {combinedAlerts.length > 5 && (
-              <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end">
-                <button
-                  onClick={() => setShowAllAlertsModal(true)}
-                  className="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>View All System Alerts ({combinedAlerts.length})</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            {clearedGuests.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-                <button
-                  onClick={() => setShowCleared((prev) => !prev)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  {t('cleared_label', 'Cleared')} ({clearedGuests.length})
-                  {showCleared ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-                </button>
-                {showCleared && (
-                  <ul className="space-y-1.5 mt-2">
-                    {clearedGuests.map((g) => (
-                      <li key={g.id}>
-                        <button
-                          onClick={() => { setSelectedBookingFocusSection(null); setSelectedBooking(g); }}
-                          className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
-                        >
-                          <span className="text-xs font-semibold text-emerald-900">
-                            {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
-                          </span>
-                          <span className="text-[10px] font-medium text-emerald-700 whitespace-nowrap inline-flex items-center gap-1">
-                            {formatAlertDate(g.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={() => onNavigate('guests', 'all_bookings')}
-            className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <span>View All ({guests.length})</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Column 2: Kitchen KDS Card - gated on BOTH the property-wide
-            kitchenModuleEnabled toggle AND the viewer's own per-role
-            kitchenAccessAllowed permission (23 Aug 2026 fix - this card used
-            to show real live order data and an "Open Kitchen Orders" button
-            to every role regardless of Kitchen permission, since it only
-            ever checked the module toggle). */}
-        {kitchenModuleEnabled && kitchenAccessAllowed ? (
-          <div data-tour="kds-kitchen" className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
-            <div className="operational-dashboard__col-kitchen-inner">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                  <Utensils className="w-4 h-4 text-blue-600" />
-                  {t('live_kitchen_tickets_heading', 'Live Kitchen Orders')}
-                </h3>
-                <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
-                  {pendingOrders.length}
-                </span>
-              </div>
-
-              {recentOrders.length > 0 ? (
-                <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
-                  {recentOrders.slice(0, 5).map((ord) => (
-                    <li key={ord.id} className="py-2.5 flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>{ord.id}</span>
-                          {ord.roomNumber && <span className="text-slate-400 font-normal">({ord.roomNumber})</span>}
-                        </div>
-                        <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 line-clamp-1">
-                          {ord.items.map((i) => `${i.name} (${i.quantity})`).join(', ')}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-                          ord.status === 'Pending'
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-                            : ord.status === 'Preparing'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
-                        }`}
-                      >
-                        {ord.status}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="py-8 text-center text-slate-400 text-xs font-medium">
-                  {t('no_active_kitchen_tickets_message', 'No active kitchen tickets.')}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => onNavigate('kitchen')}
-              className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <span>{t('open_kitchen_orders_button', 'View Kitchen Orders')} ({pendingOrders.length})</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
-            <Utensils className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
-            <p>
-              {kitchenModuleEnabled
-                ? t('kitchen_access_restricted', 'Kitchen access not available for your role')
-                : t('kitchen_module_disabled', 'Kitchen Module Disabled')}
-            </p>
-          </div>
-        )}
-
-        {/* Column 3: Stock Requests Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
-                {t('stock_requests_label', 'Stock Requests')}
-              </h3>
-              <span className="bg-red-100 text-red-800 text-[10px] font-semibold px-2 py-0.5 rounded">
-                {pendingStockRequests.length} {t('pending_suffix', 'Pending')}
-              </span>
-            </div>
-
-            {pendingStockRequests.length > 0 ? (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
-                {pendingStockRequests.slice(0, 5).map((req) => (
-                  <li key={req.id} className="py-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold text-slate-900 dark:text-white">#{req.id}</p>
-                      <span className="shrink-0 text-slate-400 text-[11px]">{req.date}</span>
-                    </div>
-                    <p className="text-slate-500 text-[11px] truncate mt-0.5">
-                      {Array.isArray(req.items) ? req.items.join(', ') : ''}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="py-8 text-center text-slate-400 text-xs font-medium">
-                {t('no_pending_stock_requests', 'No pending stock requests.')}
-              </div>
-            )}
-          </div>
-
-          <button
-            // FIXED 25 Aug 2026 (live report: "View stock request on dashboard taking to
-            // wrong page") - Stock Requests actually lives under the Inventory tab (see
-            // App.tsx's stock_requests: { tab: 'inventory', key: 'stock_requests' } mapping),
-            // not Kitchen - this landed on Kitchen's own default view instead every time.
-            onClick={() => onNavigate('inventory', 'stock_requests')}
-            className="mt-4 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-2 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <span>{t('view_stock_requests_button', 'View Stock Requests')} ({pendingStockRequestsCount})</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
       </div>
       )}
 
@@ -1422,23 +1121,22 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 {roomName ? `${roomName} Calendar` : t('booking_calendar_heading', 'Booking Calendar')}
               </h3>
             </div>
-            <button
-              type="button"
+            {/* Plain text, no icon, Button component at size="xs" - exact
+                parity with TodayOverview's own Pricing button (11 Sep 2026;
+                the DollarSign icon here was the one remaining visual
+                mismatch after the earlier label-only parity pass). */}
+            <Button
+              variant="secondary"
+              size="xs"
               onClick={() => {
                 setSelectedRateRuleStartDate(undefined);
                 setSelectedRateRuleEndDate(undefined);
                 setShowRateRuleModal(true);
               }}
-              className="text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 font-medium rounded-lg text-xs px-2.5 py-1.5 inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+              className="h-7 text-xs font-semibold px-2.5 shrink-0"
             >
-              <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-              {/* "Pricing", not "Dynamic Pricing" - label parity with
-                  TodayOverview's own button, renamed there 10 Sep 2026 (this
-                  one was missed in that pass; matching its plain hardcoded
-                  string rather than inventing a new i18n key for the same
-                  text one file already hardcodes). */}
-              <span>Pricing</span>
-            </button>
+              Pricing
+            </Button>
           </div>
           {/* Row 2: date nav on the left (Today/prev/jump-to-month/next, one
               unit - splitting it up would be worse, not better), secondary
@@ -1448,20 +1146,30 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               rows rely on. */}
           <div className="flex items-center flex-wrap gap-y-2 gap-x-2">
             <div className="flex items-center gap-1 overflow-x-auto">
-              <button
-                type="button"
+              {/* Today/prev/next restyled to match TodayOverview's toolbar
+                  buttons exactly (11 Sep 2026 parity pass) - the blue-tinted
+                  custom Today pill and gray-toned chevrons were the only two
+                  pieces of this row still visually distinct from the
+                  multi-key calendar. The underlying navigation MODEL (month-
+                  offset pagination + jump-to-month Datepicker here, vs a
+                  rolling scroll-window + month dropdown there) is left alone
+                  - that's tied to the protected calendar grid logic below,
+                  not a styling choice. */}
+              <Button
+                variant="secondary"
+                size="xs"
                 onClick={() => setMonthOffset(0)}
-                className="px-2.5 py-1 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800/80 rounded-lg transition-colors cursor-pointer mr-1 shrink-0"
+                className="h-7 text-xs font-semibold px-2.5 shrink-0"
               >
                 {t('today_button', 'Today')}
-              </button>
+              </Button>
               <button
                 type="button"
                 onClick={() => setMonthOffset((o) => o - 1)}
                 aria-label={t('previous_month_button', 'Previous month')}
-                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer shrink-0"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
               <Datepicker
                 value={viewDate}
@@ -1478,9 +1186,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 type="button"
                 onClick={() => setMonthOffset((o) => o + 1)}
                 aria-label={t('next_month_button', 'Next month')}
-                className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer shrink-0"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
             <div className="flex items-center gap-2 ms-auto">
@@ -1493,7 +1201,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <span className="text-2xs text-gray-500 dark:text-gray-400 hidden lg:inline">
                 Drag across days to price or block them
               </span>
-              {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} />}
+              {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
               <button
                 type="button"
                 onClick={() => {
@@ -2096,6 +1804,329 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         </div>
         </div>
       </div>
+
+      {/* Room Info / Property Location Bar */}
+      {!minimalMode && roomName ? (
+        <div className="operational-dashboard__room-info flex items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md">
+          <div className="operational-dashboard__room-info-content flex-1">
+            {isEditingRoomName ? (
+              <Input
+                value={editingRoomName}
+                onChange={(e) => setEditingRoomName(e.target.value)}
+                onBlur={() => {
+                  if (editingRoomName && editingRoomName !== roomName) {
+                    onUpdateRoomName?.(editingRoomName);
+                  } else {
+                    setEditingRoomName(roomName || '');
+                  }
+                  setIsEditingRoomName(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (editingRoomName && editingRoomName !== roomName) {
+                      onUpdateRoomName?.(editingRoomName);
+                    } else {
+                      setEditingRoomName(roomName || '');
+                    }
+                    setIsEditingRoomName(false);
+                  }
+                  if (e.key === 'Escape') {
+                    setEditingRoomName(roomName || '');
+                    setIsEditingRoomName(false);
+                  }
+                }}
+                autoFocus
+                className="text-2xl font-semibold text-slate-900 dark:text-white"
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="operational-dashboard__subtitle text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">{roomName}</h3>
+                    <button
+                      onClick={() => {
+                        setIsEditingRoomName(true);
+                        setEditingRoomName(roomName || '');
+                      }}
+                      className="p-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg transition cursor-pointer"
+                      aria-label={t('edit_room_name_tooltip', 'Edit room name')}
+                    >
+                      <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1">
+                    {propertyName && <p className="text-xs text-slate-500">in {propertyName}</p>}
+                    {roomId && <p className="text-xs text-slate-400">(ID: {roomId})</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Standalone "C-Form Filing Due" box removed (25 Aug 2026, explicit request: "Remove
+          this individual c form box. It should be part of alerts only") - overdue/due-soon
+          C-Form guests now surface as "Overdue C-Form"/"C-Form Due Soon" rows in the System
+          Alerts panel below instead (see the addAlertReason calls above), same "Resolve"-into-
+          the-booking-modal pattern as every other alert there. */}
+
+      {/* 3-Column Operational Row: System Alerts | Kitchen Queue | Requisitions */}
+      {!minimalMode && (
+      <div className="operational-dashboard__columns grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+        {/* Column 1: System Alerts Box (replaces Guest Currently Staying for single property) */}
+        <div className="operational-dashboard__col-alerts bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 sm:p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                {t('alerts_heading', 'Booking Alerts')}
+              </h3>
+              {totalAlerts > 0 ? (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300">
+                  {totalAlerts}
+                </span>
+              ) : (
+                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                  All Clear
+                </span>
+              )}
+            </div>
+
+            {totalAlerts === 0 ? (
+              <div className="text-center py-4 text-slate-500 dark:text-slate-400 space-y-1.5">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto opacity-80" />
+                <p className="text-xs font-medium">{t('no_outstanding_issues', 'No outstanding issues or pending alerts.')}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                {combinedAlerts.slice(0, 5).map((item) => {
+                  const key = item.kind === 'guest' ? item.guest.id : `ota-${item.block.external_event_id}`;
+                  const title = item.kind === 'guest' ? item.guest.guestName : (item.block.source_label || item.block.source || 'OTA Block');
+                  // isMultiKeyProperty gate (25 Aug 2026, explicit request: "in single
+                  // property no need to show property name") - this row's own room/property
+                  // label is only meaningfully distinguishing across a multi-room property;
+                  // on a single property it's redundant (usually just repeats the property
+                  // name you're already looking at) and was cluttering every row.
+                  const subtitle = isMultiKeyProperty ? (item.kind === 'guest' ? item.guest.roomNumber : roomName) : null;
+                  return (
+                    <div
+                      key={key}
+                      className="py-1.5 px-1 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-700/30 rounded-lg transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center flex-wrap gap-1.5 font-bold text-xs text-slate-900 dark:text-slate-100">
+                          <span>{title}</span>
+                          {subtitle && <span className="text-2xs font-normal text-slate-400 shrink-0">• {subtitle}</span>}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] mt-0.5">
+                          {item.reasons.map((r, i) => (
+                            <span
+                              key={i}
+                              className={`font-semibold ${
+                                item.severity === 'red' ? 'text-red-700 dark:text-red-400' : 'text-amber-700 dark:text-amber-400'
+                              }`}
+                            >
+                              {r.label}{r.detail ? ` (${r.detail})` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (item.kind !== 'guest') { handleConvertOtaBlock(item.block); return; }
+                          setSelectedBookingFocusSection(focusSectionForReasons(item.reasons));
+                          setSelectedBooking(item.guest);
+                        }}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-md text-white transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-md ${
+                          item.severity === 'red'
+                            ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                            : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800'
+                        }`}
+                      >
+                        {item.kind === 'guest' ? t('view_resolve_button', 'Resolve') : t('convert_to_booking_button', 'Convert to Booking')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {combinedAlerts.length > 5 && (
+              <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                <button
+                  onClick={() => setShowAllAlertsModal(true)}
+                  className="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>View All System Alerts ({combinedAlerts.length})</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {clearedGuests.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  onClick={() => setShowCleared((prev) => !prev)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {t('cleared_label', 'Cleared')} ({clearedGuests.length})
+                  {showCleared ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+                </button>
+                {showCleared && (
+                  <ul className="space-y-1.5 mt-2">
+                    {clearedGuests.map((g) => (
+                      <li key={g.id}>
+                        <button
+                          onClick={() => { setSelectedBookingFocusSection(null); setSelectedBooking(g); }}
+                          className="w-full flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-left cursor-pointer hover:opacity-80 transition-opacity"
+                        >
+                          <span className="text-xs font-semibold text-emerald-900">
+                            {g.guestName} <span className="font-normal opacity-75">· {g.roomNumber}</span>
+                          </span>
+                          <span className="text-[10px] font-medium text-emerald-700 whitespace-nowrap inline-flex items-center gap-1">
+                            {formatAlertDate(g.checkinDate)} <ArrowRight className="w-3 h-3" /> {formatAlertDate(g.checkoutDate || g.expectedCheckout)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => onNavigate('guests', 'all_bookings')}
+            className="mt-3 w-full text-white bg-blue-700 hover:bg-blue-800 font-semibold text-xs py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <span>View All ({guests.length})</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Column 2: Kitchen KDS Card - gated on BOTH the property-wide
+            kitchenModuleEnabled toggle AND the viewer's own per-role
+            kitchenAccessAllowed permission (23 Aug 2026 fix - this card used
+            to show real live order data and an "Open Kitchen Orders" button
+            to every role regardless of Kitchen permission, since it only
+            ever checked the module toggle). */}
+        {kitchenModuleEnabled && kitchenAccessAllowed ? (
+          <div data-tour="kds-kitchen" className="operational-dashboard__col-kitchen bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 sm:p-4 flex flex-col justify-between">
+            <div className="operational-dashboard__col-kitchen-inner">
+              <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                  <Utensils className="w-4 h-4 text-blue-600" />
+                  {t('live_kitchen_tickets_heading', 'Live Kitchen Orders')}
+                </h3>
+                <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                  {pendingOrders.length}
+                </span>
+              </div>
+
+              {recentOrders.length > 0 ? (
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
+                  {recentOrders.slice(0, 5).map((ord) => (
+                    <li key={ord.id} className="py-1.5 flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>{ord.id}</span>
+                          {ord.roomNumber && <span className="text-slate-400 font-normal">({ord.roomNumber})</span>}
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5 line-clamp-1">
+                          {ord.items.map((i) => `${i.name} (${i.quantity})`).join(', ')}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                          ord.status === 'Pending'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                            : ord.status === 'Preparing'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300'
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                        }`}
+                      >
+                        {ord.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="py-5 text-center text-slate-400 text-xs font-medium">
+                  {t('no_active_kitchen_tickets_message', 'No active kitchen tickets.')}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => onNavigate('kitchen')}
+              className="mt-3 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <span>{t('open_kitchen_orders_button', 'View Kitchen Orders')} ({pendingOrders.length})</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="operational-dashboard__col-kitchen-disabled bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 sm:p-4 flex flex-col justify-center items-center text-center text-slate-400 text-xs">
+            <Utensils className="w-6 h-6 text-slate-300 dark:text-slate-600 mb-1.5" />
+            <p>
+              {kitchenModuleEnabled
+                ? t('kitchen_access_restricted', 'Kitchen access not available for your role')
+                : t('kitchen_module_disabled', 'Kitchen Module Disabled')}
+            </p>
+          </div>
+        )}
+
+        {/* Column 3: Stock Requests Card */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-3 sm:p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="operational-dashboard__subtitle font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                {t('stock_requests_label', 'Stock Requests')}
+              </h3>
+              <span className="bg-red-100 text-red-800 text-[10px] font-semibold px-2 py-0.5 rounded">
+                {pendingStockRequests.length} {t('pending_suffix', 'Pending')}
+              </span>
+            </div>
+
+            {pendingStockRequests.length > 0 ? (
+              <ul className="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
+                {pendingStockRequests.slice(0, 5).map((req) => (
+                  <li key={req.id} className="py-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-slate-900 dark:text-white">#{req.id}</p>
+                      <span className="shrink-0 text-slate-400 text-[11px]">{req.date}</span>
+                    </div>
+                    <p className="text-slate-500 text-[11px] truncate mt-0.5">
+                      {Array.isArray(req.items) ? req.items.join(', ') : ''}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="py-5 text-center text-slate-400 text-xs font-medium">
+                {t('no_pending_stock_requests', 'No pending stock requests.')}
+              </div>
+            )}
+          </div>
+
+          <button
+            // FIXED 25 Aug 2026 (live report: "View stock request on dashboard taking to
+            // wrong page") - Stock Requests actually lives under the Inventory tab (see
+            // App.tsx's stock_requests: { tab: 'inventory', key: 'stock_requests' } mapping),
+            // not Kitchen - this landed on Kitchen's own default view instead every time.
+            onClick={() => onNavigate('inventory', 'stock_requests')}
+            className="mt-3 w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-semibold text-xs py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <span>{t('view_stock_requests_button', 'View Stock Requests')} ({pendingStockRequestsCount})</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+      )}
 
       {/* Booking Details Modal - Editable */}
       {selectedBooking && !showCheckinVerification && (

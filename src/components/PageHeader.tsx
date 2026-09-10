@@ -118,6 +118,13 @@ interface PageHeaderButtonProps {
   // Extra classes on the button itself - e.g. `w-full sm:w-auto` when a page
   // wants its header actions to split the row evenly on mobile.
   className?: string;
+  // Defaults to 'sm', the standard size for every PageHeader action across
+  // the app. OperationalDashboard.tsx passes 'md' for its "Add Booking"
+  // button specifically - that action also exists, identically, as its own
+  // hand-built button on TodayOverview.tsx (the multi-key equivalent
+  // dashboard), which uses size="md" - so the two need to match here rather
+  // than both defaulting independently (11 Sep 2026 parity pass).
+  size?: 'sm' | 'md';
 }
 
 /**
@@ -132,10 +139,11 @@ export const PageHeaderButton: React.FC<PageHeaderButtonProps> = ({
   variant = 'primary',
   disabled = false,
   className = '',
+  size = 'sm',
 }) => (
   <Button
     variant={variant === 'primary' ? 'primary' : 'secondary'}
-    size="sm"
+    size={size}
     onClick={onClick}
     disabled={disabled}
     leftIcon={Icon && <Icon className={`w-4 h-4 ${iconClassName} page-header-button__icon`} />}
