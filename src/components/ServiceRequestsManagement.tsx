@@ -578,7 +578,20 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           <Tabs
             aria-label="Service Request Status Tabs"
             variant="default"
-            theme={attachedTabsTheme}
+            theme={{
+              ...attachedTabsTheme,
+              tablist: {
+                ...attachedTabsTheme.tablist,
+                base: (attachedTabsTheme.tablist.base || '') + ' gap-[2px]',
+                tabitem: {
+                  ...attachedTabsTheme.tablist.tabitem,
+                  base: attachedTabsTheme.tablist.tabitem.base
+                    .replace('-ml-px', '')
+                    .replace('first:ml-0', '')
+                    .trim(),
+                },
+              },
+            }}
             clearTheme={attachedTabsClearTheme}
             onActiveTabChange={(tabIndex: number) => {
               const tabs: ('pending' | 'fulfilled')[] = ['pending', 'fulfilled'];
