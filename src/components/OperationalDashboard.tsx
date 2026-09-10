@@ -1005,7 +1005,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
       {/* Metric Blocks Grid - Sleek 1-Row Horizontal Cards */}
       {!minimalMode && (
-      <div className={`operational-dashboard__metrics grid grid-cols-1 ${isMultiKeyProperty ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-2.5 md:gap-4`}>
+      <div className={`operational-dashboard__metrics grid grid-cols-2 ${isMultiKeyProperty ? 'lg:grid-cols-4' : 'md:grid-cols-3'} gap-2 sm:gap-2.5 md:gap-4`}>
         <KpiCard
           label="Arrivals"
           icon={Calendar}
