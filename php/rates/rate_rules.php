@@ -365,6 +365,34 @@ function saveRateRule($pdo, $propertyId) {
         ];
         $oldRuleState = $neutralRuleState;
 
+        // Outbox helpers needed both by the stale-block clearing loop below
+        // (to push the fields it silently reverts to default) and by the
+        // normal enqueue further down - required once, early, so both can
+        // use it. ensureChannexOutboxSchema() (called from
+        // enqueueOutboxItem()) already defers its own DDL self-heal while
+        // inside a transaction rather than running it (see that function's
+        // own comment - the exact "There is no active transaction" class of
+        // bug found 31 Aug 2026), so it's safe to call from inside the
+        // transaction opened just below.
+        if (is_file(__DIR__ . '/../channex/outbox.php')) {
+            require_once __DIR__ . '/../channex/outbox.php';
+        }
+
+        // Transaction (11 Sep 2026, found in review): the write below is a
+        // single business event - save this rule, and (for an explicit
+        // unblock) delete-then-split whatever old block row it overrides -
+        // that must land in full or not at all, per CLAUDE.md's "critical
+        // multi-step writes use transactions" rule. Previously the clearing
+        // loop's DELETE and its two re-insert halves ran as three
+        // independent statements with no transaction: if either re-insert
+        // failed, the delete had already committed, silently losing the
+        // months OUTSIDE the range the caller actually meant to unblock,
+        // with no outbox row enqueued to reconcile Channex afterward either.
+        // The outbox enqueue calls stay inside this same transaction too -
+        // CLAUDE.md's own incident writeup for this table is explicit that
+        // the enqueue belongs inside the write it's recording, not after it.
+        $pdo->beginTransaction();
+
         if ($ruleId) {
             $oldStmt = $pdo->prepare("
                 SELECT rate_per_night, min_stay_arrival, min_stay_through, max_stay,
@@ -466,6 +494,56 @@ function saveRateRule($pdo, $propertyId) {
                         $afterStart = date('Y-m-d', strtotime($endDate . ' +1 day'));
                         $reinsert->execute([$propertyId, $old['room_id'], $afterStart, $old['end_date'], $old['rate_per_night'], $old['rule_name'],
                             $old['min_stay_arrival'], $old['min_stay_through'], $old['max_stay'], 1, $old['closed_to_arrival'], $old['closed_to_departure'], $old['days_of_week'], $old['rule_type']]);
+                    }
+
+                    // Push whatever this unblock silently reverted to default
+                    // (found in review, 11 Sep 2026). $old may have carried a
+                    // real rate/min-stay/closure alongside stop_sell=1 - the
+                    // slice of it that overlaps the range just unblocked has
+                    // no reinsert above (that's the whole point: it's the part
+                    // being freed), so it now falls through to "no rule" in
+                    // Ground Code's own booking engine. But THIS save's own
+                    // outbox enqueue below only ever pushes stop_sell (or
+                    // whatever field the caller's own new/updated row
+                    // changed) - it has no way to know $old, a DIFFERENT
+                    // rule, existed. Left alone, only the availability
+                    // reaches Airbnb/Booking.com; the old rate/min-stay stays
+                    // live there until something else happens to touch that
+                    // room+date again - guests would keep seeing a stale
+                    // price after the owner unblocked at a different one.
+                    // enqueueOutboxItem's own kind='rates' push recomputes
+                    // its values live from the DB at drain time (see
+                    // AriDrainWorker::computeCompressedRestrictions -
+                    // outbox payload field values are never read back, only
+                    // changed_fields is), so simply naming the fields $old
+                    // had set is enough; no need to compute what they
+                    // reverted to by hand.
+                    $oldHadPricingInfo = $old['rate_per_night'] !== null
+                        || $old['min_stay_arrival'] !== null || $old['min_stay_through'] !== null
+                        || $old['max_stay'] !== null || $old['closed_to_arrival'] || $old['closed_to_departure'];
+                    if ($oldHadPricingInfo && function_exists('enqueueOutboxItem')) {
+                        $overlapStart = max($old['start_date'], $startDate);
+                        $overlapEnd = min($old['end_date'], $endDate);
+                        if ($overlapStart <= $overlapEnd) {
+                            $revertedFields = array_values(array_filter([
+                                $old['rate_per_night'] !== null ? 'rate_per_night' : null,
+                                $old['min_stay_arrival'] !== null ? 'min_stay_arrival' : null,
+                                $old['min_stay_through'] !== null ? 'min_stay_through' : null,
+                                $old['max_stay'] !== null ? 'max_stay' : null,
+                                $old['closed_to_arrival'] ? 'closed_to_arrival' : null,
+                                $old['closed_to_departure'] ? 'closed_to_departure' : null,
+                            ]));
+                            $revertRoomIds = ($roomId === null && function_exists('getChannexPushRoomIds'))
+                                ? getChannexPushRoomIds($pdo, (int)$propertyId)
+                                : [$roomId];
+                            foreach ($revertRoomIds as $pushRoomId) {
+                                enqueueOutboxItem($pdo, (int)$propertyId, $pushRoomId, 'rates', $overlapStart, $overlapEnd, [
+                                    'action' => 'unblock_reverted_to_default',
+                                    'rule_id' => null,
+                                    'changed_fields' => $revertedFields,
+                                ]);
+                            }
+                        }
                     }
                 }
             }
@@ -588,11 +666,23 @@ function saveRateRule($pdo, $propertyId) {
             }
         }
 
+        if ($pdo->inTransaction()) {
+            $pdo->commit();
+        }
+
         echo json_encode(['status' => 'success', 'message' => 'Rate rule saved successfully.']);
+        // Deliberately OUTSIDE the transaction, same convention as every
+        // other post-commit side effect in this codebase (e.g. Telegram
+        // notifications never roll back an already-committed booking) - a
+        // drain hiccup must never make an already-saved rule report as
+        // failed.
         if (function_exists('triggerEventDrivenChannexDrain')) {
             triggerEventDrivenChannexDrain($pdo);
         }
     } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
