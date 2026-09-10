@@ -29,6 +29,16 @@ export interface BookingCardProps {
   onEditAndCheckoutGuest?: (guest: Guest) => void;
   onOpenWhatsApp?: (phoneNumber: string) => void;
   isProcessing?: boolean;
+  /**
+   * Drop this card's own chrome - border, shadow, white background, rounded
+   * corners and padding - so it reads as plain content inside whatever already
+   * frames it (10 Sep 2026, reported on mobile: a booking sat in its own white
+   * card inside the room's white card, a box drawn inside an identical box for
+   * no gain). Opt-in, because BookingCard is ALSO rendered by
+   * MobileBookingCardStack as a flat list with no room grouping, where the
+   * chrome is the only thing separating one booking from the next.
+   */
+  flush?: boolean;
   className?: string;
 }
 
@@ -118,6 +128,7 @@ export const BookingCard: React.FC<BookingCardProps> = ({
   onEditAndCheckoutGuest,
   onOpenWhatsApp,
   isProcessing = false,
+  flush = false,
   className = '',
 }) => {
   const amountDue = calculateGuestTotal(guest);
@@ -147,16 +158,20 @@ export const BookingCard: React.FC<BookingCardProps> = ({
 
   return (
     <div
-      className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 p-3 sm:p-3.5 rounded-lg bg-white dark:bg-slate-800 transition-all ${
-        isTurnoverRoom
-          ? stayStatus.key === 'checkout'
-            ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
-            : stayStatus.key === 'checkin_pending'
-            ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
-            : stayStatus.key === 'staying'
-            ? 'border-2 border-emerald-300 dark:border-emerald-700/80 shadow-sm'
-            : 'border border-slate-200 dark:border-slate-700 shadow-sm'
-          : 'border border-slate-200 dark:border-slate-700/70 shadow-2xs'
+      className={`billing-checkout__guest-card flex flex-col justify-between space-y-3 transition-all ${
+        flush
+          ? ''
+          : `p-3 sm:p-3.5 rounded-lg bg-white dark:bg-slate-800 ${
+              isTurnoverRoom
+                ? stayStatus.key === 'checkout'
+                  ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
+                  : stayStatus.key === 'checkin_pending'
+                  ? 'border-2 border-amber-300 dark:border-amber-700/80 shadow-sm'
+                  : stayStatus.key === 'staying'
+                  ? 'border-2 border-emerald-300 dark:border-emerald-700/80 shadow-sm'
+                  : 'border border-slate-200 dark:border-slate-700 shadow-sm'
+                : 'border border-slate-200 dark:border-slate-700/70 shadow-2xs'
+            }`
       } ${className}`}
     >
       {/* Guest Name, Contact & Status Badge */}

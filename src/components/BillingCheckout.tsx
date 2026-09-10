@@ -511,6 +511,12 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
                 <BookingCard
                   key={guest.id}
                   guest={guest}
+                  // The room card above already draws the box, so a single
+                  // booking inside it renders flush - no card-in-a-card. A
+                  // TURNOVER room keeps the per-booking cards: there the border
+                  // is the only thing separating two different stays in one
+                  // room, and it carries the amber/emerald status colour too.
+                  flush={!isTurnoverRoom}
                   isTurnoverRoom={isTurnoverRoom}
                   canActOnBooking={canActOnBooking}
                   canCheckoutBookingRole={canCheckoutBookingRole}
