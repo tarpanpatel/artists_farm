@@ -166,8 +166,17 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   // out of the payload: the columns still exist, older rules may still carry
   // them, and the rules list below still displays them - this form simply never
   // sets them any more.
-  const closedToArrival = false;
-  const closedToDeparture = false;
+  //
+  // Round-tripped, not authored (fixed 10 Sep 2026). Hardcoding these to false
+  // did not mean "never set them" - the payload below sends
+  // `closed_to_arrival: closedToArrival ? 1 : 0` on EVERY save, so editing any
+  // older rule that carried CTA/CTD silently cleared it. The rules list still
+  // renders those badges, so the owner could watch a "CTA" badge disappear
+  // after editing something as unrelated as the price, with no warning. Holding
+  // the rule's own values in state and sending them back unchanged keeps the
+  // stated intent (this form never AUTHORS them) without destroying them.
+  const [closedToArrival, setClosedToArrival] = useState(false);
+  const [closedToDeparture, setClosedToDeparture] = useState(false);
   // Day-of-week scoping (4 Sep 2026, "Monday to Friday 3000, Saturday and
   // Sunday 4000") - all 7 selected = applies every day (unchanged default
   // behavior), matching what saveRateRule() on the backend normalizes an
@@ -367,15 +376,24 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         id: editingRuleId || undefined,
         start_date: startDate,
         end_date: endDate,
-        rate_per_night: rateNum,
+        // Block mode hides the rate and stay sections entirely, so it must not
+        // save what it stopped showing (fixed 10 Sep 2026). Typing a price and
+        // THEN switching "Block these dates" on used to save both - an invisible
+        // rate that AriDrainWorker still pushes to Airbnb and Booking.com as the
+        // nightly price for those dates. That is exactly the silent rate push
+        // the whole Push Confirmation Gate exists to prevent (CHANNEX.md 5.4b),
+        // arrived at through a form that told the owner a block needs "dates and
+        // a unit, nothing more". The local state is deliberately NOT cleared, so
+        // toggling Block back off restores whatever they had typed.
+        rate_per_night: stopSell ? null : rateNum,
         rule_name: ruleName.trim() || undefined,
         // [null] means "the property itself" and is ONLY valid for a
         // single-unit property, which has no room rows. With units present the
         // guard above has already required a real selection.
         room_ids: rooms.length === 0 ? [null] : selectedRoomIds,
-        min_stay_arrival: minStayType === 'arrival' ? minStayNum : null,
-        min_stay_through: minStayType === 'through' ? minStayNum : null,
-        max_stay: maxStayNum,
+        min_stay_arrival: stopSell ? null : (minStayType === 'arrival' ? minStayNum : null),
+        min_stay_through: stopSell ? null : (minStayType === 'through' ? minStayNum : null),
+        max_stay: stopSell ? null : maxStayNum,
         stop_sell: stopSell ? 1 : 0,
         closed_to_arrival: closedToArrival ? 1 : 0,
         closed_to_departure: closedToDeparture ? 1 : 0,
@@ -386,7 +404,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         // Same for a "Block these dates" rule: the day picker is hidden in
         // block mode, and a block must cover every day of the chosen range.
         days_of_week: isSingleNight || stopSell ? [...ALL_DAY_CODES] : selectedDays,
-        rule_type: rateNum !== null ? ruleType : 'fixed',
+        rule_type: (!stopSell && rateNum !== null) ? ruleType : 'fixed',
       };
 
       const res = await saveRateRuleDB(payload);
@@ -400,6 +418,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         setMaxStay('');
         setHasStayRestrictions(false);
         setStopSell(false);
+        setClosedToArrival(false);
+        setClosedToDeparture(false);
         setSelectedDays([...ALL_DAY_CODES]);
         setDayPresetSelection('all');
         setSelectedRoomIds([]);
@@ -440,6 +460,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
     setMaxStay(rule.max_stay != null ? String(rule.max_stay) : '');
     setHasStayRestrictions(rule.min_stay_arrival != null || rule.min_stay_through != null || rule.max_stay != null);
     setStopSell(!!rule.stop_sell);
+    setClosedToArrival(!!rule.closed_to_arrival);
+    setClosedToDeparture(!!rule.closed_to_departure);
     if (rule.days_of_week) {
       const days = rule.days_of_week.split(',').filter(Boolean);
       setSelectedDays(days);
@@ -463,6 +485,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
     setMaxStay('');
     setHasStayRestrictions(false);
     setStopSell(false);
+    setClosedToArrival(false);
+    setClosedToDeparture(false);
     setSelectedDays([...ALL_DAY_CODES]);
     setDayPresetSelection('all');
     setSelectedRoomIds([]);
