@@ -45,23 +45,17 @@ export const MergedKpiCard: React.FC<MergedKpiCardProps> = ({ items, badge, clas
     >
       <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
         {items.map((item, idx) => {
-          const Icon = item.icon;
           return (
             <React.Fragment key={item.label}>
               {idx === 1 && (
                 <div className="w-px self-stretch bg-gray-200 dark:bg-gray-700 shrink-0" aria-hidden="true" />
               )}
               <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-                {Icon && (
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 dark:bg-gray-700/60 flex items-center justify-center text-gray-600 dark:text-gray-300 shrink-0">
-                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </div>
-                )}
                 <div className="min-w-0">
                   <p className="text-[10px] sm:text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider leading-none truncate m-0">
                     {item.label}
                   </p>
-                  <span className={`text-sm sm:text-base md:text-lg font-extrabold tracking-tight leading-none inline-flex items-center whitespace-nowrap ${item.valueClassName || 'text-gray-900 dark:text-white'}`}>
+                  <span className={`text-sm sm:text-base md:text-lg font-extrabold tracking-tight leading-none inline-flex items-center whitespace-nowrap ${item.value === 0 ? 'text-gray-500 dark:text-gray-400' : (item.valueClassName || 'text-gray-900 dark:text-white')}`}>
                     {item.value}
                   </span>
                 </div>

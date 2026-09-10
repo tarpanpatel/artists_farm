@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { ChevronLeft, ChevronRight, Plus, Calendar, LogOut, Bell, User, Globe, ArrowRight } from './icons/FlowbiteIcons';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, LogOut, Bell, User, Globe, ArrowRight } from './icons/FlowbiteIcons';
+import { Dropdown, DropdownItem } from 'flowbite-react';
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -978,7 +979,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   return (
     <div className="today-overview space-y-6">
       {/* Sleek Dashboard Header with Top Right Add Booking Button */}
-      <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="today-overview__page-header flex flex-row items-center justify-between gap-3 px-4 sm:px-0">
         <div className="min-w-0 flex-1">
           <h1 className="today-overview__page-title text-base font-semibold text-slate-900 dark:text-white tracking-tight truncate">
             {t('dashboard_heading', 'Dashboard')}
@@ -1010,7 +1011,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           Badge greys out ("neutral") when every value it covers is zero -
           a colored "Active"/"Today" badge next to two zeros reads as a real
           status when there's nothing to actually flag. */}
-      <div className="today-overview__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4">
+      <div className="today-overview__metrics grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-4 px-4 sm:px-0">
         <MergedKpiCard
           items={[
             { label: 'Arrivals', icon: Calendar, value: todaysArrivals },
@@ -1044,9 +1045,59 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       </div>
 
       <div data-tour="booking-grid" className="today-overview__calendar bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
+        {/* Row 1: Month dropdown (like Airbnb) on left, Pricing on right */}
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 shrink-0">
-            <h2 className="today-overview__title text-base font-semibold text-slate-900 dark:text-white">{visibleMonthLabel}</h2>
+            {/* Airbnb-style month dropdown */}
+            <Dropdown
+              placement="bottom-start"
+              dismissOnClick
+              label=""
+              className="z-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden text-xs py-1 min-w-[160px]"
+              renderTrigger={() => (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                    {visibleMonthLabel}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                </button>
+              )}
+            >
+              {(() => {
+                const months: { label: string; date: Date }[] = [];
+                for (let i = -3; i <= 9; i++) {
+                  const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+                  months.push({ label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), date: d });
+                }
+                return months.map(({ label, date }) => {
+                  const isCurrent = visibleMonthLabel === label || visibleMonthLabel.startsWith(label.split(' ')[0]);
+                  return (
+                    <DropdownItem
+                      key={label}
+                      onClick={() => {
+                        // Jump windowStart so this month starts at the left edge (+2 day lead)
+                        const newStart = new Date(date);
+                        newStart.setDate(newStart.getDate() - 2);
+                        setWindowStart(newStart);
+                        setTimeout(() => {
+                          scrollTargetRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+                        }, 50);
+                      }}
+                      className={`px-3.5 py-2 text-xs cursor-pointer ${
+                        isCurrent
+                          ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {label}
+                    </DropdownItem>
+                  );
+                });
+              })()}
+            </Dropdown>
             <Button
               variant="secondary"
               size="xs"
@@ -1063,38 +1114,35 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
               {t('today_button', 'Today')}
             </Button>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
-            {/* No mode toggle any more (6 Sep 2026) - the selection IS the
-                mode. Drag a rectangle on the grid and the editor panel offers
-                whatever that rectangle supports: price it, block it, or book it.
-                See the selAnchor/selFocus block above for why the old
-                Add Booking / Change Prices pair was removed. */}
-            <span className="text-2xs text-slate-500 dark:text-slate-400 hidden md:inline">
-              Drag across the grid to price or block dates &middot; tap a date at the top for every unit
-            </span>
-            {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => { setRateModalRoomIds(undefined); setShowRateRuleModal(true); }}
-              className="h-7 text-xs font-semibold px-2.5 shrink-0"
+          <Button
+            variant="secondary"
+            size="xs"
+            onClick={() => { setRateModalRoomIds(undefined); setShowRateRuleModal(true); }}
+            className="h-7 text-xs font-semibold px-2.5 shrink-0"
+          >
+            Pricing
+          </Button>
+        </div>
+
+        {/* Row 2: hint + Refresh on left, prev/next on right */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="text-2xs text-slate-500 dark:text-slate-400 hidden md:inline">
+            Drag across the grid to price or block dates &middot; tap a date at the top for every unit
+          </span>
+          {onSyncBookings && <SyncBookingsButton onSync={onSyncBookings} className="h-7" />}
+          <div className="flex items-center gap-1 ms-auto">
+            <button
+              onClick={() => navigateWindow(-1)}
+              className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
             >
-              Dynamic Pricing
-            </Button>
-            <div className="flex items-center gap-1 ms-auto sm:ms-0">
-              <button
-                onClick={() => navigateWindow(-1)}
-                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => navigateWindow(1)}
-                className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => navigateWindow(1)}
+              className="p-1.5 sm:p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
