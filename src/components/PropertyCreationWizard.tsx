@@ -450,8 +450,17 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
               const isStepComplete = stepDoneFlags[idx] ?? false;
               const isCurrent = idx === stepIndex && !finished;
               const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
-              // Any skipped or passed step with missing data shows in amber with an AlertCircle icon
-              const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
+              // Amber means "something is wrong and needs you". An OPTIONAL step passed
+              // without being filled in is not wrong - importing listings is a choice, and a
+              // property that will never touch an OTA is complete without it. Spending amber
+              // on a non-problem is how amber stops meaning anything on the steps where it
+              // genuinely matters (no address, no rate). So an optional step gets its own
+              // neutral "skipped" look instead: the step's own icon, slate, dashed border -
+              // visible enough to say "you passed this by, come back any time", quiet enough
+              // not to read as an error. Matches PropertySetupWizard exactly (10 Sep 2026).
+              const isOptionalStep = step.key === 'listings';
+              const isPassedIncomplete = isPassedOrVisited && !isStepComplete && !isOptionalStep;
+              const isSkippedOptional = isPassedOrVisited && !isStepComplete && isOptionalStep;
               const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
               const isLast = idx === steps.length - 1;
 
@@ -466,8 +475,11 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                           ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
                           : isPassedIncomplete
                           ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-2 border-amber-500'
+                          : isSkippedOptional
+                          ? 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-2 border-dashed border-slate-300 dark:border-slate-600'
                           : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
                       }`}
+                      title={isSkippedOptional ? `${step.label} - skipped (optional, you can add it later)` : undefined}
                     >
                       {isFullyComplete ? (
                         <CheckCircle2 className="w-4 h-4" />
@@ -488,7 +500,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                           : 'text-slate-500 dark:text-slate-400'
                       }`}
                     >
-                      {step.label}
+                      {isSkippedOptional ? 'Skipped' : step.label}
                     </span>
                   </div>
                   {!isLast && (
@@ -496,7 +508,7 @@ export const PropertyCreationWizard: React.FC<PropertyCreationWizardProps> = ({
                       className={`flex-1 h-1 rounded-full mx-1.5 ${
                         stepDoneFlags[idx] && idx < stepIndex
                           ? 'bg-emerald-500'
-                          : idx < stepIndex
+                          : idx < stepIndex && !isOptionalStep
                           ? 'bg-amber-400 dark:bg-amber-600'
                           : 'bg-slate-200 dark:bg-slate-700'
                       }`}

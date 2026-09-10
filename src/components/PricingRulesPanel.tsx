@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { RateRule, saveRateRuleDB, deleteRateRuleDB, apiFetch } from '../services/api';
-import { Trash2, Plus, Loader2, Pencil, Edit2, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X, Search, Calendar } from './icons/FlowbiteIcons';
+import { Trash2, Plus, Loader2, Pencil, Edit2, ChevronDown, ChevronUp, Check, Home, Info, AlertTriangle, AlertCircle, X, Search, Calendar, List } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
@@ -472,6 +472,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
       setSelectedDays([...ALL_DAY_CODES]);
       setDayPresetSelection('all');
     }
+    // The rules list now opens in its own modal (10 Sep 2026) - close it
+    // first, or scrollIntoView below would try to scroll the page behind an
+    // overlay that's still covering it, and the editor would be invisible
+    // until the user closed the modal themselves.
+    setShowRulesList(false);
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
     showToast(`Loaded rule #${rule.id} into the editor.`, { type: 'info' });
   };
@@ -1077,11 +1082,24 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                       value="custom"
                       checked={dayPresetSelection === 'custom'}
                       onChange={() => {
+                        // Start from a clean slate (10 Sep 2026, explicit
+                        // request) - switching to Custom used to keep
+                        // whatever days the previous preset (e.g. Weekends)
+                        // had selected, so it looked like Sat/Sun were a
+                        // deliberate custom choice when they were really just
+                        // leftovers. Custom Days means "you pick", not
+                        // "inherit the last preset".
                         setDayPresetSelection('custom');
+                        setSelectedDays([]);
                       }}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                     />
                     <span>Custom Days</span>
+                    {dayPresetSelection === 'custom' && (
+                      <span className="px-1.5 py-0.5 text-2xs font-semibold rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                        Select the days below
+                      </span>
+                    )}
                   </label>
                 </div>
 
@@ -1109,8 +1127,10 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 )}
               </div>
 
-              {/* Nightly Rate & Label */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Nightly Rate & Label - always one row, even on mobile (10
+                  Sep 2026, explicit request) - was grid-cols-1 sm:grid-cols-2,
+                  stacking into two rows below the sm breakpoint. */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <FloatingInput
                   type="number"
                   min="0"
@@ -1131,14 +1151,17 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                 />
               </div>
 
-              {/* Pricing Rule Type: Exact Price vs Minimum Floor (Always visible) */}
+              {/* Pricing Rule Type: Exact Price vs Minimum Price (Always visible) -
+                  "Floor" is internal-only terminology (the rule_type column's
+                  actual value); every user-facing label reads "Minimum Price"
+                  instead (10 Sep 2026, explicit request). */}
               <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 block">
                     Pricing Rule Type
                   </span>
                   <span className="text-2xs font-medium text-gray-500 dark:text-gray-400">
-                    {ruleType === 'floor' ? 'Floor Price Mode' : 'Fixed Price Mode'}
+                    {ruleType === 'floor' ? 'Minimum Price Mode' : 'Fixed Price Mode'}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1402,7 +1425,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                           ) : ratePerNight.trim() !== '' ? (
                             ruleType === 'floor' ? (
                               <span className="text-amber-600 dark:text-amber-400 font-bold">
-                                Floor ≥ ₹{ratePerNight}/night
+                                Minimum price should not be less than ₹{ratePerNight}/night
                               </span>
                             ) : (
                               <span className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -1458,41 +1481,60 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               </div>
             </Modal>
 
-            {/* Existing Rate Rules Section - collapsed by default, rows paginated, with search and mobile cards */}
+            {/* Existing Rate Rules Section - a button that opens the full
+                searchable, paginated list in a modal (10 Sep 2026, explicit
+                request) rather than growing inline in the page - a property
+                with thousands of rules made the page itself thousands of
+                pixels tall every time "Show list" was expanded. */}
             <div className="space-y-3">
-<div className="pricing-rules-panel__gutter flex items-center justify-between gap-2">
+              <div className="pricing-rules-panel__gutter">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
                   Active rules ({rateRules.length})
                 </h4>
-                {rateRules.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { setShowRulesList((v) => !v); setRulesPage(1); }}
-                    className="text-2xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer shrink-0"
-                  >
-                    {showRulesList ? 'Hide list' : 'Show list'}
-                  </button>
-                )}
               </div>
 
               {rateRules.length === 0 ? (
                 <div className="pricing-rules-panel__gutter text-center py-6 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                   No custom rate rules set. All dates use standard base tariffs and restrictions.
                 </div>
-              ) : !showRulesList ? (
-                <div className="pricing-rules-panel__gutter text-center py-4 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                  {rateRules.length} active rule{rateRules.length === 1 ? '' : 's'} cover your dates. Setting a rate above adds a new one or overrides these for the dates it touches.{' '}
+              ) : (
+                <div className="pricing-rules-panel__gutter text-center py-4 px-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {rateRules.length} active rule{rateRules.length === 1 ? '' : 's'} cover your dates. Setting a rate above adds a new one or overrides these for the dates it touches.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => { setShowRulesList(true); setRulesPage(1); }}
+                    leftIcon={<List className="w-3.5 h-3.5" />}
+                  >
+                    View Active Rules ({rateRules.length})
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Active Rules Modal - same search/list/load-more/pagination
+                content that used to render inline; pricing-rules-panel__gutter
+                classes inside are now inert (that CSS rule only matches
+                .app-shell__main .pricing-page, which a modal isn't) but left
+                as-is rather than stripped from every line - harmless either
+                way. */}
+            <Modal show={showRulesList && rateRules.length > 0} onClose={() => setShowRulesList(false)} size="4xl">
+              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Active Rules ({rateRules.length})</h3>
                   <button
                     type="button"
-                    onClick={() => setShowRulesList(true)}
-                    className="text-blue-600 dark:text-blue-400 font-semibold cursor-pointer"
+                    onClick={() => setShowRulesList(false)}
+                    className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                    aria-label="Close"
                   >
-                    Show the full list
-                  </button>{' '}
-                  to review, edit, or delete individual rules.
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
+                <div className="p-4 overflow-y-auto space-y-3">
                   {/* Search Bar Toolbar */}
                   <div className="pricing-rules-panel__gutter flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
                     <div className="relative flex-1">
@@ -1574,7 +1616,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                               <div className="flex items-center gap-1.5 font-semibold">
                                 <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                                 <span>
-                                  {formatDateDDMMYY(rule.start_date)} <span className="font-normal text-gray-400">→</span> {formatDateDDMMYY(rule.end_date)}
+                                  {formatDateOrdinal(rule.start_date)} <span className="font-normal text-gray-400">→</span> {formatDateOrdinal(rule.end_date)}
                                 </span>
                               </div>
                               {rule.days_of_week && (
@@ -1589,14 +1631,12 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                               <div>
                                 {rule.rate_per_night != null ? (
                                   rule.rule_type === 'floor' ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                                        Floor
-                                      </span>
-                                      <span className="font-bold text-amber-700 dark:text-amber-400 text-xs">
-                                        ≥ ₹{Math.round(rule.rate_per_night)}
-                                      </span>
-                                    </div>
+                                    // "Floor" is internal-only terminology - every
+                                    // user-facing label reads as a plain sentence
+                                    // instead (10 Sep 2026, explicit request).
+                                    <span className="font-bold text-amber-700 dark:text-amber-400 text-xs">
+                                      Minimum price should not be less than ₹{Math.round(rule.rate_per_night)}
+                                    </span>
                                   ) : (
                                     <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs">
                                       ₹{Math.round(rule.rate_per_night)}
@@ -1666,7 +1706,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                               <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                                 <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                                   <div>
-                                    {formatDateDDMMYY(rule.start_date)} <span className="font-normal text-gray-400">→</span> {formatDateDDMMYY(rule.end_date)}
+                                    {formatDateOrdinal(rule.start_date)} <span className="font-normal text-gray-400">→</span> {formatDateOrdinal(rule.end_date)}
                                   </div>
                                   {rule.days_of_week && (
                                     <div className="text-2xs font-normal text-blue-600 dark:text-blue-400">
@@ -1683,14 +1723,9 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                                 <td className="px-3 py-2">
                                   {rule.rate_per_night != null ? (
                                     rule.rule_type === 'floor' ? (
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="px-1.5 py-0.5 text-2xs font-bold rounded bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                                          Floor
-                                        </span>
-                                        <span className="font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
-                                          ≥ ₹{Math.round(rule.rate_per_night)}
-                                        </span>
-                                      </div>
+                                      <span className="font-bold text-amber-700 dark:text-amber-400">
+                                        Minimum price should not be less than ₹{Math.round(rule.rate_per_night)}
+                                      </span>
                                     ) : (
                                       <span className="font-bold text-emerald-700 dark:text-emerald-400">
                                         ₹{Math.round(rule.rate_per_night)}
@@ -1793,8 +1828,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     </>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            </Modal>
           </div>
 
       {/* Indian Holidays, Festivals & Wedding Muhurats Guide Modal */}

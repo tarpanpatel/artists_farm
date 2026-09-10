@@ -495,8 +495,21 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
               const isStepComplete = step.isDone;
               const isCurrent = idx === stepIndex && !finished;
               const isPassedOrVisited = idx < stepIndex || (idx === stepIndex && finished);
-              // Any skipped or passed step with missing data shows in amber with an incomplete AlertCircle icon
-              const isPassedIncomplete = isPassedOrVisited && !isStepComplete;
+              // Amber means "something is wrong and needs you". An OPTIONAL step passed
+              // without being filled in is not wrong - importing listings is a choice, and a
+              // property that will never touch an OTA is complete without it. Spending amber
+              // on a non-problem is how amber stops meaning anything on the steps where it
+              // genuinely matters (no address, no rate). So an optional step gets its own
+              // neutral "skipped" look instead: the step's own icon, slate, dashed border -
+              // visible enough to say "you passed this by, come back any time", quiet enough
+              // not to read as an error. Matches PropertyCreationWizard exactly (10 Sep 2026).
+              //
+              // Separately, and NOT a style choice: an optional step is also excluded from the
+              // "N of M steps done" count above (see requiredSteps). This wizard hides itself
+              // only once every counted step is done, so counting Listings would nag forever
+              // on any property that never connects an OTA.
+              const isPassedIncomplete = isPassedOrVisited && !isStepComplete && !step.optional;
+              const isSkippedOptional = isPassedOrVisited && !isStepComplete && !!step.optional;
               const isFullyComplete = isStepComplete && (idx !== stepIndex || finished);
               const isLast = idx === steps.length - 1;
 
@@ -516,8 +529,11 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                           ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
                           : isPassedIncomplete
                           ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-2 border-amber-500'
+                          : isSkippedOptional
+                          ? 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-2 border-dashed border-slate-300 dark:border-slate-600'
                           : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-600'
                       }`}
+                      title={isSkippedOptional ? `${step.label} - skipped (optional, you can add it later)` : undefined}
                     >
                       {isFullyComplete ? (
                         <CheckCircle2 className="w-4 h-4" />
@@ -538,7 +554,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                           : 'text-slate-500 dark:text-slate-400'
                       }`}
                     >
-                      {step.label}
+                      {isSkippedOptional ? 'Skipped' : step.label}
                     </span>
                   </div>
                   {!isLast && (
@@ -546,7 +562,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                       className={`flex-1 h-1 rounded-full mx-1.5 ${
                         steps[idx].isDone && idx < stepIndex
                           ? 'bg-emerald-500'
-                          : idx < stepIndex
+                          : idx < stepIndex && !steps[idx].optional
                           ? 'bg-amber-400 dark:bg-amber-600'
                           : 'bg-slate-200 dark:bg-slate-700'
                       }`}
