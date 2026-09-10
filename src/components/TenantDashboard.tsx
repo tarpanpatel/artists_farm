@@ -697,71 +697,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                 />
               </div>
 
-              {/* Slot Usage Widget */}
-              <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
-                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{usedSlots}/{totalSlots}</span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Subscription Property Slots</p>
-                      <p className="text-2xs text-gray-400 dark:text-gray-500">{remaining > 0 ? `${remaining} slot${remaining !== 1 ? 's' : ''} available` : 'All allocated slots in use'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-28 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden hidden sm:block">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          slotPercent >= 100 ? 'bg-red-500' : slotPercent >= 80 ? 'bg-amber-500' : 'bg-indigo-500'
-                        }`}
-                        style={{ width: `${Math.min(slotPercent, 100)}%` }}
-                      />
-                    </div>
-                    {remaining > 0 ? (
-                      <Button
-                        variant="primary"
-                        size="xs"
-                        leftIcon={<Plus className="w-3.5 h-3.5" />}
-                        onClick={() => setModal({ type: 'wizard' })}
-                      >
-                        Add Property
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
-                        onClick={() => setModal({ type: 'upgrade' })}
-                      >
-                        Upgrade
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Quick Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center shadow-xs">
-                  <TrendingUp className="w-5 h-5 text-indigo-500 mx-auto mb-1.5" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('total_bookings_label', 'Total Bookings')}</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{totalBookingsAnalytics}</p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center shadow-xs">
-                  <Building2 className="w-5 h-5 text-emerald-500 mx-auto mb-1.5" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('combined_revenue_label', 'Combined Revenue')}</p>
-                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center shadow-xs">
-                  <Layers className="w-5 h-5 text-blue-500 mx-auto mb-1.5" />
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{avgOccupancyAnalytics}%</p>
-                </div>
-              </div>
-
-              {/* Properties Overview Grid */}
-              <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
+              {/* Properties Overview Grid - moved directly below the KPI row
+                  (10 Sep 2026, explicit request: "Move active properties
+                  below in house, requests"), ahead of Slot Usage and the
+                  summary stats. */}
+              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-gray-900 dark:text-white">Active Properties ({safeProperties.length})</h3>
@@ -832,6 +772,74 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
                   })}
                 </div>
               </section>
+
+              {/* Slot Usage Widget */}
+              <section className="tenant-dashboard__full-bleed bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center">
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{usedSlots}/{totalSlots}</span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">Subscription Property Slots</p>
+                      <p className="text-2xs text-gray-400 dark:text-gray-500">{remaining > 0 ? `${remaining} slot${remaining !== 1 ? 's' : ''} available` : 'All allocated slots in use'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-28 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden hidden sm:block">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          slotPercent >= 100 ? 'bg-red-500' : slotPercent >= 80 ? 'bg-amber-500' : 'bg-indigo-500'
+                        }`}
+                        style={{ width: `${Math.min(slotPercent, 100)}%` }}
+                      />
+                    </div>
+                    {remaining > 0 ? (
+                      <Button
+                        variant="primary"
+                        size="xs"
+                        leftIcon={<Plus className="w-3.5 h-3.5" />}
+                        onClick={() => setModal({ type: 'wizard' })}
+                      >
+                        Add Property
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
+                        onClick={() => setModal({ type: 'upgrade' })}
+                      >
+                        Upgrade
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Quick Summary Cards - compact stat strip (10 Sep 2026,
+                  explicit request: "make total bookings, combined revenue
+                  etc compact"). Mirrors the Analytics tab's own compact
+                  version of these same 3 numbers further down this file,
+                  instead of the old one-stacked-card-per-metric layout that
+                  ate most of a mobile screen for three numbers. */}
+              <div className="tenant-dashboard__full-bleed grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="tenant-dashboard__stat-cell bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                  <TrendingUp className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('total_bookings_label', 'Total Bookings')}</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{totalBookingsAnalytics}</p>
+                </div>
+                <div className="tenant-dashboard__stat-cell bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                  <Building2 className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('combined_revenue_label', 'Combined Revenue')}</p>
+                  <p className="text-sm sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 leading-tight tabular-nums">₹{combinedRevenueAnalytics.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="tenant-dashboard__stat-cell bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-2.5 text-center border border-gray-200 dark:border-gray-700">
+                  <Layers className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 leading-tight">{t('avg_occupancy_label', 'Avg. Occupancy')}</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 dark:text-white leading-tight tabular-nums">{avgOccupancyAnalytics}%</p>
+                </div>
+              </div>
             </div>
           )}
 

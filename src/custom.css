@@ -2279,6 +2279,33 @@ pre,
     border-radius: 0 !important;
   }
 
+  /* TenantDashboard.tsx Dashboard tab - mobile only (10 Sep 2026, explicit
+     request: "full bleed" on this page's cards). Two of these three sections
+     are actual <section> elements, which the shared wildcard rule above
+     never matches (it only targets `div[...]`) - given their own dedicated
+     class instead of trying to widen that selector and risk touching
+     unrelated <section>s elsewhere in the app. */
+  .tenant-dashboard__full-bleed {
+    border-radius: 0 !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* The compact stat strip's 3 cells (Total Bookings/Combined Revenue/Avg
+     Occupancy) read as one continuous flush row, matching the KpiCard row
+     right above it on this same page, instead of 3 separate floating
+     rounded chips once their shared container goes edge-to-edge. */
+  .tenant-dashboard__stat-cell {
+    border-radius: 0 !important;
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+  }
+
   /* Bookings desk: everything below search field spans full width with no extra padding */
   .billing-checkout__list-content {
     margin-left: -1rem !important;
