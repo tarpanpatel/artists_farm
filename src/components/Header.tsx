@@ -33,6 +33,7 @@ import { TabType } from './Navigation';
 
 import { fulfillServiceRequestInDB, fetchPendingRatePushAlertsDB, acknowledgeRatePushAlertsDB, API_ROOT_BASE, getPropertyAndRoomSlugs } from '../services/api';
 import { useToast } from './ToastContext';
+import { formatDateOrdinal } from '../utils/dateUtils';
 
 interface HeaderProps {
   onLogout?: () => void;
@@ -223,14 +224,18 @@ export const Header: React.FC<HeaderProps> = ({
 
       const roomLabel = (a: (typeof alerts)[number]) => a.room_name || propertyName;
       const roomNames = Array.from(new Set(alerts.map(roomLabel)));
-      const earliestFrom = alerts.reduce((min, a) => (a.date_from < min ? a.date_from : min), alerts[0].date_from);
-      const latestTo = alerts.reduce((max, a) => (a.date_to > max ? a.date_to : max), alerts[0].date_to);
+      const earliestRaw = alerts.reduce((min, a) => (a.date_from < min ? a.date_from : min), alerts[0].date_from);
+      const latestRaw = alerts.reduce((max, a) => (a.date_to > max ? a.date_to : max), alerts[0].date_to);
+      const earliestFrom = formatDateOrdinal(earliestRaw);
+      const latestTo = formatDateOrdinal(latestRaw);
+      const dateRange = earliestRaw === latestRaw ? `for ${earliestFrom}` : `covering ${earliestFrom} to ${latestTo}`;
+      
       const roomsLine = roomNames.length <= 4
         ? roomNames.join(', ')
-        : `${roomNames.length} rooms`;
+        : `${roomNames.length} units`;
 
       (window as any).showAlert?.(
-        `Rates and/or stay restrictions were just pushed to your connected channels (Airbnb/Booking.com) for ${roomsLine}, covering ${earliestFrom} to ${latestTo}.\n\nThis may have come from an action here in Ground Code or a correction made on your behalf - check Channel Manager's Sync Activity log or your channel's own dashboard if you want the exact details.`,
+        `Your rates and restrictions for ${roomsLine} ${dateRange} were successfully pushed to connected channels (Airbnb/Booking.com).`,
         'alert',
         'Rates Were Pushed to Your Channels'
       );
