@@ -51,9 +51,19 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
   };
 
   return (
-    <div className="space-y-6 finances-hub">
-      {/* Attached Tabs Specification (DESIGN.md line 322) */}
-      <div className="finances-hub-tabs-desk">
+    <div className="finances-hub">
+      {/* Attached Tabs Specification (DESIGN.md line 322). Was
+          `space-y-6` on this whole wrapper (24px gap) - each sub-view
+          (CashDrawerManager/PettyCashManagement/ExpenseItemsManagement)
+          opens with its own bare PageHeader (no card/border of its own), so
+          that much empty grey-background space between the attached tab
+          strip and a floating, unbounded title read as "not part of the
+          page" (11 Sep 2026, explicit report + screenshot). None of the 3
+          sub-views' own internal spacing is touched - each still manages
+          its own `space-y-*` inside its own returned JSX; this only
+          tightens the one gap FinancesHub itself controls, between the
+          tabs and whichever sub-view is active. */}
+      <div className="finances-hub-tabs-desk mb-3">
         <Tabs
           ref={tabsRef}
           aria-label="Finances Tabs"
