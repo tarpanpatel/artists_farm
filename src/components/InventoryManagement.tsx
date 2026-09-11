@@ -6,7 +6,7 @@ import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useSwipeTabs } from '../utils/useSwipeTabs';
-import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, ClipboardList, ChefHat, ArrowRight, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
+import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, ClipboardList, ChefHat, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -20,7 +20,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { formatDateDDMMYYYY, parseDateToYMD } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, parseDateToYMD, formatDateOrdinal } from '../utils/dateUtils';
 
 // Units that are physically divisible (weight/volume, or a dozen - which
 // still resolves to a whole number of pieces, e.g. 0.5 Doz = 6 bananas).
@@ -1700,23 +1700,46 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     const visibleReqDrawerItems = isReqCartDrawerExpanded ? [...reqBasket].reverse() : [...reqBasket].slice(-3).reverse();
     const pendingSheetsCount = recentSheets.filter(s => s.status === 'PENDING').length;
 
+    // row.date is stored as "DD/MM/YYYY - hh:mm A" (see handleDispatchReq
+    // and the demo fallback above) - reformats just the date half via the
+    // shared formatDateOrdinal() ("3rd Sep" style, 11 Sep 2026 explicit
+    // request), keeping the time half as-is. Done at render time rather
+    // than at every write site so it applies uniformly to demo data, newly
+    // created sheets, and whatever fetchStockRequestsFromDB() returns.
+    const formatSheetDate = (raw: string): string => {
+      const sepIdx = raw.indexOf(' - ');
+      if (sepIdx === -1) return formatDateOrdinal(raw);
+      return `${formatDateOrdinal(raw.slice(0, sepIdx))} · ${raw.slice(sepIdx + 3)}`;
+    };
+
     return (
       <div data-tour="stock-requisition">
-      <div className="mb-3.5 p-3 bg-blue-50/70 dark:bg-gray-800/80 rounded-lg border border-blue-200 dark:border-blue-800 text-xs">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 flex items-center justify-center shrink-0">
+      {/* "How Grocery Requests Work" - moved behind a "How this works?"
+          popover trigger (11 Sep 2026, explicit request: the always-visible
+          banner "doesn't look nice") instead of a permanently-open info box
+          eating vertical space above the tabs on every visit. Same click-
+          triggered Popover pattern as PageHeader.tsx's own "Help?" link. */}
+      <div className="flex justify-end mb-2">
+        <Popover
+          placement="bottom"
+          trigger="click"
+          title="How Grocery Requests Work"
+          content={
+            <div className="p-3 max-w-xs space-y-1.5 text-xs text-gray-600 dark:text-gray-300">
+              <span className="flex items-center gap-1.5"><ChefHat className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" /> <strong>1.</strong> Cook requests items</span>
+              <span className="flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" /> <strong>2.</strong> Shows in Pending Requests</span>
+              <span className="flex items-center gap-1.5"><PackagePlus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" /> <strong>3.</strong> Tap "Received" when bought to restock automatically</span>
+            </div>
+          }
+        >
+          <button
+            type="button"
+            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+          >
             <Boxes className="w-3.5 h-3.5" />
-          </div>
-          <span className="font-semibold text-gray-900 dark:text-white">How Grocery Requests Work</span>
-          <div className="hidden sm:block h-5 border-l border-blue-200 dark:border-blue-800" />
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-600 dark:text-gray-300">
-            <span className="inline-flex items-center gap-1.5"><ChefHat className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> <strong>1.</strong> Cook requests items</span>
-            <ArrowRight className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
-            <span className="inline-flex items-center gap-1.5"><ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> <strong>2.</strong> Shows in Pending Requests</span>
-            <ArrowRight className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
-            <span className="inline-flex items-center gap-1.5"><PackagePlus className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> <strong>3.</strong> Tap “Received” when bought to restock automatically</span>
-          </div>
-        </div>
+            How this works?
+          </button>
+        </Popover>
       </div>
       {/* attachedTabsTheme/attachedTabsClearTheme, not an ad-hoc one-off theme
           (2 Sep 2026, user report: "Requisitions page is not following design
@@ -1724,23 +1747,23 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           attached-tabs family still building its own theme object from
           scratch instead of the shared utils/tabsTheme.ts, which is why it
           rendered as a grey segmented pill control instead of the individual
-          bordered/attached tabs every other page uses. Merged in (rather than
-          replaced outright) with only the local layout adjustments below:
-          this page keeps the request-creation tab first and lets both tabs
-          wrap on very narrow screens instead of adding a scrollbar. */}
+          bordered/attached tabs every other page uses.
+          Local tablist override (justify-start, flex-wrap override, and the
+          className="gap-0" prop) removed 11 Sep 2026 (explicit request:
+          "Tabs shouldn't be left aligned rather centred") - it was fighting
+          the shared theme instead of matching it: attachedTabsTheme already
+          centers the tab group and already wraps on narrow screens on its
+          own (both landed there after this page's local copy was written),
+          and the leftover className="gap-0" was overriding the shared
+          theme's own 1px tab-separation gap back to zero. Using the plain
+          shared theme, unmodified like every other attached-tabs page,
+          fixes the centering and matches this page's tab-row look/spacing
+          to the rest of the app. */}
       <Tabs
         ref={requisitionsTabsRef}
         aria-label="Stock Request Tabs"
         variant="default"
-        className="gap-0"
-        theme={{
-          ...attachedTabsTheme,
-          tablist: {
-            ...attachedTabsTheme.tablist,
-            base: 'justify-start gap-px',
-            variant: { default: 'flex-wrap overflow-visible' },
-          },
-        }}
+        theme={attachedTabsTheme}
         clearTheme={attachedTabsClearTheme}
         onActiveTabChange={(tabIndex: number) => {
           const tabs: ('requisitions' | 'fulfill')[] = ['requisitions', 'fulfill'];
@@ -1805,7 +1828,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   },
                   {
                     name: 'Date',
-                    cell: (row: any) => <span>{row.date}</span>,
+                    cell: (row: any) => <span>{formatSheetDate(row.date)}</span>,
                   },
                   {
                     name: 'Requested Items',
@@ -1906,13 +1929,21 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
             {/* Mobile Card Stack View with 10-Item Pagination */}
             <div className="md:hidden space-y-3">
-              <FlowbiteTextInput
-                type="text"
-                placeholder="Search requests by item name, status..."
-                value={fulfillSearch}
-                onChange={(e) => setFulfillSearch(e.target.value)}
-                className="w-full"
-              />
+              {/* Search box wrapped in the same attached-card treatment
+                  (bg/rounded-t-none/border/shadow, flush under the tab
+                  strip) as the desktop table above and as Request
+                  Materials' own sticky search bar - it used to sit bare on
+                  the page background here, the "different style of search
+                  box" mismatch between the two tabs (11 Sep 2026). */}
+              <div className="bg-white dark:bg-slate-800 rounded-lg rounded-t-none border border-t-0 border-slate-200 dark:border-slate-700 shadow-md -mt-px p-3">
+                <FlowbiteTextInput
+                  type="text"
+                  placeholder="Search requests by item name, status..."
+                  value={fulfillSearch}
+                  onChange={(e) => setFulfillSearch(e.target.value)}
+                  className="w-full"
+                />
+              </div>
 
               {(() => {
                 const filtered = filteredFulfillSheets.filter((row) => {
@@ -1945,7 +1976,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                               Request #{row.id}
                             </span>
                             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                              · {row.date}
+                              · {formatSheetDate(row.date)}
                             </span>
                           </div>
                           <Badge
