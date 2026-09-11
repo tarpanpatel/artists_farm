@@ -28,6 +28,21 @@ function ensureChannexRevisionsSchema(PDO $pdo): void {
         } catch (PDOException $e) {}
     }
 
+    // Overbooking conflict marker (11 Sep 2026). An inbound OTA booking that
+    // clashes with an existing stay used to be REJECTED (409, transaction rolled
+    // back, nothing stored) - see handleWebhook()'s conflict branches for the full
+    // reasoning on why that was the wrong call. It now lands anyway, carrying the
+    // id of the stay it clashes with, so the double-booking is a visible fact in
+    // Ground Code instead of an invisible one that only exists on the OTA.
+    // Nullable: NULL is the normal, healthy state for every other booking.
+    if (!isSchemaVerified('schema_guests_overbooking_conflict')) {
+        try {
+            $pdo->exec("ALTER TABLE `guests` ADD COLUMN IF NOT EXISTS `overbooking_conflict_with` INT NULL");
+            $pdo->exec("ALTER TABLE `guests` ADD INDEX IF NOT EXISTS `idx_guests_overbooking` (`overbooking_conflict_with`)");
+            markSchemaVerified('schema_guests_overbooking_conflict');
+        } catch (PDOException $e) {}
+    }
+
     // Each block below guards on its OWN key rather than one early return for
     // the whole function - otherwise a later addition never runs on any
     // installation that already verified the first key, which is exactly how
@@ -392,6 +407,9 @@ class ChannexWebhookReceiver {
             ?? ($payload['system_id'] ?? null)))));
 
         $guestId = null;
+        // Initialised here, not only inside the branches that compute it: the
+        // cancellation branch never sets it, and it is read after commit() below.
+        $conflictWithId = null;
 
         // 3. Transaction with Row Locking
         try {
@@ -435,18 +453,14 @@ class ChannexWebhookReceiver {
                         $conflictStmt->execute(array_merge([$propertyId, $guestId], guestOccupyingStatuses(), [$checkoutDateOnly, $checkinDateOnly]));
                     }
 
-                    if ($conflictStmt->fetchColumn()) {
-                        // Guarded: rollBack() with no active transaction THROWS,
-                        // and that exception is then caught below and reported as
-                        // a generic 500 - masking the real outcome. Seen live: a
-                        // revision that had actually been ingested and ACKed came
-                        // back as "Failed to process booking revision: There is no
-                        // active transaction".
-                        if ($this->pdo->inTransaction()) {
-                            $this->pdo->rollBack();
-                        }
-                        return ['status' => 'error', 'http_code' => 409, 'message' => 'Room/Property is already booked for modified dates'];
-                    }
+                    // Applied even when it now clashes - same reasoning as the new-booking
+                    // branch below (the guest moved their dates ON the OTA; that already
+                    // happened whether or not we record it). Recomputed on every
+                    // modification rather than only set once, so a guest who moves OFF
+                    // the clashing dates clears the flag instead of staying marked
+                    // forever - NULL here is a real "resolved", not just "not checked".
+                    $conflictWithId = $conflictStmt->fetchColumn();
+                    $conflictWithId = $conflictWithId ? (int)$conflictWithId : null;
 
                     $updStmt = $this->pdo->prepare("
                         UPDATE guests
@@ -461,7 +475,8 @@ class ChannexWebhookReceiver {
                             -- every time the guest changed dates on the OTA.
                             notes = CASE WHEN notes IS NULL OR notes = '' THEN COALESCE(?, notes) ELSE notes END,
                             guest_notes = CASE WHEN guest_notes IS NULL OR guest_notes = '' THEN COALESCE(?, guest_notes) ELSE guest_notes END,
-                            ota_reservation_code = COALESCE(?, ota_reservation_code)
+                            ota_reservation_code = COALESCE(?, ota_reservation_code),
+                            overbooking_conflict_with = ?
                         WHERE id = ?
                     ");
                     $updStmt->execute([
@@ -471,7 +486,7 @@ class ChannexWebhookReceiver {
                         $baseRoomRent, $perNightCharges, $totalDays,
                         $isForeignGuest,
                         $notes, $guestNotes,
-                        $otaReservationCode, $guestId
+                        $otaReservationCode, $conflictWithId, $guestId
                     ]);
 
                     // Enqueue both ranges for outbox
@@ -488,13 +503,33 @@ class ChannexWebhookReceiver {
                         $conflictStmt->execute(array_merge([$propertyId], guestOccupyingStatuses(), [$checkoutDateOnly, $checkinDateOnly]));
                     }
 
-                    if ($conflictStmt->fetchColumn()) {
-                        // Guarded for the same reason as the modification branch above.
-                        if ($this->pdo->inTransaction()) {
-                            $this->pdo->rollBack();
-                        }
-                        return ['status' => 'error', 'http_code' => 409, 'message' => 'Room/Property is already booked for requested dates'];
-                    }
+                    // INGEST ANYWAY ON CONFLICT (changed 11 Sep 2026 - this used to
+                    // rollBack() and return 409, storing nothing).
+                    //
+                    // A booking arriving here has ALREADY been sold: the OTA took the
+                    // guest's money and sent them a confirmation. Refusing to write it
+                    // locally does not un-sell the night - it only means Ground Code
+                    // does not know the guest is coming, so nobody is warned and the
+                    // guest turns up at an occupied room with a valid confirmation in
+                    // hand. Worse, a rejected revision is never ACKed, so Channex
+                    // re-serves it for ~30 minutes and then drops it from the feed for
+                    // good: the booking would be gone with no record anywhere.
+                    //
+                    // This is exactly what CLAUDE.md's own no-overlap rule carves out:
+                    // "an Airbnb hold and a Booking.com hold on the same night are
+                    // external facts already sold on someone else's platform, and
+                    // refusing to store one would hide a real double-booking rather
+                    // than fix it. The correct handling is to detect and alert loudly."
+                    // The strict no-overlap rule still governs every path where Ground
+                    // Code is the one CREATING the stay (add_guest/update_guest keep
+                    // their hard 409s) - it cannot govern a fact reported to us.
+                    //
+                    // Most likely trigger is the onboarding window: a freshly imported
+                    // property has offline bookings in Ground Code that were never
+                    // pushed to the OTA (import must never push), so the OTA still
+                    // shows those nights open and can genuinely sell one.
+                    $conflictWithId = $conflictStmt->fetchColumn();
+                    $conflictWithId = $conflictWithId ? (int)$conflictWithId : null;
 
                     // Insert Guest
                     $insStmt = $this->pdo->prepare("
@@ -504,14 +539,16 @@ class ChannexWebhookReceiver {
                             adults, children, base_room_rent, per_night_charges, total_days,
                             is_foreign_guest, notes, guest_notes,
                             status, booking_source,
-                            channex_booking_id, ota_source, ota_source_label, ota_reservation_code
+                            channex_booking_id, ota_source, ota_source_label, ota_reservation_code,
+                            overbooking_conflict_with
                         ) VALUES (
                             ?, ?, ?, ?, ?, ?,
                             ?, ?, ?, ?,
                             ?, ?, ?, ?, ?,
                             ?, ?, ?,
                             'Booked', 'OTA',
-                            ?, ?, ?, ?
+                            ?, ?, ?, ?,
+                            ?
                         )
                     ");
                     $insStmt->execute([
@@ -537,6 +574,7 @@ class ChannexWebhookReceiver {
                         $otaSource,
                         $otaSource,
                         $otaReservationCode,
+                        $conflictWithId,
                     ]);
                     $guestId = (int)$this->pdo->lastInsertId();
 
@@ -628,6 +666,22 @@ class ChannexWebhookReceiver {
                 'ota_source' => $otaSource,
                 'ota_code' => $otaReservationCode,
             ]);
+
+            // 3c. The loud half of "store it AND alert loudly" (11 Sep 2026).
+            // Storing a clashing booking silently would be no better than the
+            // rejection it replaced - this is the part that makes a real
+            // double-booking impossible to miss. Two people are now holding
+            // confirmations for the same room on the same night; somebody has to
+            // move one of them, and only a human can decide which.
+            if ($conflictWithId !== null && $guestId) {
+                $this->alertOverbookingConflict($propertyId, $roomId, (int)$guestId, $conflictWithId, [
+                    'guest_name' => $guestName,
+                    'checkin' => $checkinDateOnly,
+                    'checkout' => $checkoutDateOnly,
+                    'ota_source' => $otaSource,
+                    'ota_code' => $otaReservationCode,
+                ]);
+            }
 
             // 4. ACK AFTER COMMIT. A failure here is recorded rather than
             // swallowed: the revision stays in Channex's queue and will be
@@ -838,6 +892,95 @@ class ChannexWebhookReceiver {
             if (class_exists('TelescopeLogger')) {
                 TelescopeLogger::log('telegram', 'OTA Booking Alert Failed', $e->getMessage(),
                     'ChannexWebhookReceiver::notifyBookingEvent', ['guest_id' => $b['guest_id'] ?? null]);
+            }
+        }
+    }
+
+    /**
+     * Operational emergency alert: an inbound OTA booking was stored even though
+     * it clashes with a stay already on the books (11 Sep 2026).
+     *
+     * Two guests now hold valid confirmations for the same unit on the same
+     * night. Ground Code cannot resolve that - only a human can decide who gets
+     * moved, refunded, or walked - so the entire job here is to make sure nobody
+     * finds out at the front door.
+     *
+     * Sent on BOTH channels on purpose, unlike an ordinary booking alert:
+     *   - Telegram, because that is where staff actually are; and
+     *   - Telescope 'channel_manager', whose severity is outside logger.php's
+     *     $routineNoise denylist, so it also reaches the admin's phone by Web
+     *     Push even if the property's Telegram groups are misrouted or unpaired.
+     *
+     * Best-effort and fully swallowed, like every other notification here: the
+     * booking is already committed and must never be undone by a failed alert.
+     */
+    private function alertOverbookingConflict(int $propertyId, ?int $roomId, int $guestId, int $conflictsWithGuestId, array $b): void {
+        try {
+            $notifyPropertyId = $roomId ?: $propertyId;
+
+            $roomName = '';
+            try {
+                $r = $this->pdo->prepare("SELECT name FROM properties WHERE id = ? LIMIT 1");
+                $r->execute([$notifyPropertyId]);
+                $roomName = (string)$r->fetchColumn();
+            } catch (Throwable $e) {}
+
+            // Name the stay it clashes with - "conflicts with booking #781" is not
+            // actionable at 11pm; a guest name and dates are.
+            $otherName = ''; $otherIn = ''; $otherOut = '';
+            try {
+                $o = $this->pdo->prepare("SELECT guest_name, checkin_date, expected_checkout FROM guests WHERE id = ? LIMIT 1");
+                $o->execute([$conflictsWithGuestId]);
+                if ($row = $o->fetch(PDO::FETCH_ASSOC)) {
+                    $otherName = (string)$row['guest_name'];
+                    $otherIn = substr((string)$row['checkin_date'], 0, 10);
+                    $otherOut = substr((string)$row['expected_checkout'], 0, 10);
+                }
+            } catch (Throwable $e) {}
+
+            $source = $b['ota_source'] ?: 'OTA';
+
+            $msg  = "🚨 <b>DOUBLE BOOKING - ACTION NEEDED</b>\n\n";
+            $msg .= "A new {$source} booking was accepted for dates that are <b>already booked</b>. "
+                  . "It has been saved so it is not lost, but the clash is real and needs a human.\n\n";
+            if ($roomName) $msg .= "🏠 <b>Unit:</b> {$roomName}\n\n";
+            $msg .= "🆕 <b>New ({$source}):</b> {$b['guest_name']}\n";
+            $msg .= "📅 {$b['checkin']} → {$b['checkout']}\n";
+            if (!empty($b['ota_code'])) $msg .= "🔖 {$b['ota_code']}\n";
+            $msg .= "\n⚠️ <b>Clashes with:</b> " . ($otherName ?: "booking #{$conflictsWithGuestId}") . "\n";
+            if ($otherIn) $msg .= "📅 {$otherIn} → {$otherOut}\n";
+            $msg .= "\nOne of these guests must be moved, re-roomed, or relocated. "
+                  . "Neither booking has been cancelled automatically.";
+
+            if (function_exists('enqueueTelegramMessage')) {
+                enqueueTelegramMessage($this->pdo, (int)$notifyPropertyId, 'admin', $msg, null, 'ota_overbooking', (string)$guestId, 'booking');
+            } elseif (function_exists('sendPropertyTelegramMessage')) {
+                sendPropertyTelegramMessage($this->pdo, $notifyPropertyId, 'admin', $msg, null);
+            }
+
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log(
+                    'channel_manager',
+                    'Overbooking Conflict',
+                    "{$source} booking for {$b['guest_name']} ({$b['checkin']} → {$b['checkout']}) was stored despite clashing with an existing stay"
+                        . ($roomName ? " in {$roomName}" : '') . ". Two guests hold confirmations for the same nights.",
+                    'ChannexWebhookReceiver::alertOverbookingConflict',
+                    [
+                        'guest_id' => $guestId,
+                        'conflicts_with_guest_id' => $conflictsWithGuestId,
+                        'property_id' => $propertyId,
+                        'room_id' => $roomId,
+                        'checkin' => $b['checkin'],
+                        'checkout' => $b['checkout'],
+                        'ota_source' => $source,
+                        'ota_code' => $b['ota_code'] ?? null,
+                    ]
+                );
+            }
+        } catch (Throwable $e) {
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('channel_manager', 'Overbooking Alert Failed', $e->getMessage(),
+                    'ChannexWebhookReceiver::alertOverbookingConflict', ['guest_id' => $guestId]);
             }
         }
     }

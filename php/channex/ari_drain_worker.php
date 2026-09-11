@@ -530,20 +530,23 @@ class AriDrainWorker {
             $propStmt = $this->pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
             $propStmt->execute([$scopeId]);
             // No placeholder fallback (matches content_sync.php fix, 11 Sep 2026). A room with
-            // no real tariff must not push ₹3,500 to a live OTA listing. $baseTariff = 0 means
-            // days with no rate rule also send 0 - but the loop below skips those dates when
-            // $baseTariff <= 0, so no fabricated price ever reaches Channex. The content_sync
-            // guard (pending_price state) prevents such a room from even having an active
-            // channel mapping, so this is a belt-and-suspenders backstop.
-            $rawTariff = (float)($propStmt->fetchColumn() ?: 0);
-            if ($rawTariff <= 0 && in_array('rate_per_night', $fields, true)) {
-                // Remove rate from the fields to push - we have nothing real to send.
-                // Restrictions (stop_sell, min_stay, etc.) can still go through.
-                $fields = array_values(array_diff($fields, ['rate_per_night']));
-                $includeRate = false;
-                if (empty($fields)) return []; // nothing left to push
-            }
-            $baseTariff = $rawTariff;
+            // no real tariff must not push ₹3,500 to a live OTA listing.
+            //
+            // CORRECTED 11 Sep 2026 (same day, found in review): the first version of this
+            // guard stripped 'rate_per_night' from $fields for the ENTIRE push whenever the
+            // base tariff was <= 0 - which silently discarded explicitly-priced dates too. A
+            // property with no base rate but a real ₹8,000 rule over Christmas pushed NO rate
+            // for Christmas either, then returned [] -> no_op -> markRowsDone(), so the owner
+            // saw "saved successfully", the outbox row read `done`, and the OTA kept the old
+            // price forever. (The comment here even claimed "the loop below skips those
+            // dates" - it didn't; that is what this correction actually implements.)
+            //
+            // The real rule is per-DATE, not per-push: send a rate for every day that has a
+            // genuine price (an explicit rule, or a floor, or a real base tariff) and omit the
+            // rate key only on days that would otherwise carry a fabricated one. Restrictions
+            // are unaffected either way. See the $dayRate > 0 check in the daily loop below -
+            // that is the single place this is enforced now.
+            $baseTariff = (float)($propStmt->fetchColumn() ?: 0);
         }
 
         // Occupancy pricing (6 Sep 2026). A property that charges per extra guest
@@ -616,7 +619,18 @@ class AriDrainWorker {
                     : $baseTariff;
                 $floor = $floorsByDate[$dStr] ?? 0.0;
                 $dayRate = $floor > 0.0 ? max($baseRate, $floor) : $baseRate;
-                if ($occPricing) {
+                // The per-date half of the no-fabricated-price rule (see $baseTariff above).
+                // A day priced by a real rule or floor still pushes normally even when the
+                // property carries no base tariff; only a day whose ONLY possible price would
+                // be a non-existent base rate omits the key. Omitting it (rather than sending
+                // 0) leaves whatever the OTA already has untouched, which is the honest
+                // outcome when Ground Code genuinely does not know the price.
+                if ($dayRate <= 0) {
+                    $includeRateToday = false;
+                } else {
+                    $includeRateToday = true;
+                }
+                if ($includeRateToday && $occPricing) {
                     // One entry per bookable occupancy, 1..capacity. Same formula
                     // the direct booking engine bills with (see computeStayCharges)
                     // so a guest is quoted the same number whichever way they book.
@@ -628,7 +642,7 @@ class AriDrainWorker {
                             'rate' => round($dayRate + ($extra * $occPricing['charge']), 2),
                         ];
                     }
-                } else {
+                } elseif ($includeRateToday) {
                     $state['rate'] = $dayRate;
                 }
             }
@@ -658,6 +672,14 @@ class AriDrainWorker {
             }
             if (in_array('closed_to_departure', $fields, true)) {
                 $state['closed_to_departure'] = $rule ? (bool)$rule['closed_to_departure'] : false;
+            }
+            // A rate-only push over a day with no real price leaves $state empty - there is
+            // genuinely nothing to say about that date, so it is left out of the payload
+            // rather than sent as a valueless entry. The compression below already handles
+            // gaps (it checks calendar adjacency explicitly), so skipping a date is safe.
+            if (empty($state)) {
+                $cur = strtotime('+1 day', $cur);
+                continue;
             }
             $daily[$dStr] = $state;
             if ($rule && !empty($rule['days_of_week'])) {

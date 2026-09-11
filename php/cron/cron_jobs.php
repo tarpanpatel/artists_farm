@@ -107,6 +107,28 @@ function getCronJobDefinitions(): array {
             'daily_at_time' => null,
         ],
         [
+            // Added 11 Sep 2026. The script has existed since 30 Aug and CHANNEX.md
+            // has described it as running "every 5 min" the whole time - but it was
+            // never in this list, so it was never scheduled. Inbound OTA bookings
+            // therefore depended ENTIRELY on Airbnb's webhook arriving and succeeding
+            // first time: any webhook missed during a deploy, restart or network blip
+            // was unrecoverable, because an un-acked revision leaves Channex's feed
+            // for good after ~30 minutes.
+            //
+            // 5 minutes is deliberate: it fits several retries inside that 30-minute
+            // expiry window rather than racing it. This is the ONLY durable safety
+            // net for inbound bookings - a lost booking is a guest who arrives with a
+            // confirmation nobody can see.
+            'job_key' => 'channex_feed_drain',
+            'name' => 'Channex Booking Feed Drain',
+            'description' => 'Backstop that pulls any OTA booking whose webhook never arrived, before Channex drops it from the feed permanently at 30 minutes. Replays each revision through the normal webhook path, so it can never drift from live delivery.',
+            'script_path' => 'channex_feed_drain.php',
+            'log_file' => 'channex_feed_drain.log',
+            'schedule_type' => 'interval_minutes',
+            'interval_minutes' => 5,
+            'daily_at_time' => null,
+        ],
+        [
             // Added 5 Sep 2026 after a live incident: 23 ARI pushes failed
             // silently for days (one on its 74th identical retry) with nothing
             // anywhere surfacing it. Quiet unless something is actually wrong -
@@ -150,8 +172,11 @@ function getCronJobDefinitions(): array {
 }
 
 function ensureCronJobsSchema(PDO $pdo): void {
-    // Bumped to v6 (5 Sep 2026) to seed channex_outbox_health and
-    // channex_sync_audit. Previously v5 (2 Sep 2026) for drain_worker_outbox.
+    // Bumped to v7 (11 Sep 2026) to seed channex_feed_drain - which had existed as
+    // a script, and as a documented "every 5 min" job in CHANNEX.md, without ever
+    // being in getCronJobDefinitions() at all. Previously v6 (5 Sep 2026) for
+    // channex_outbox_health + channex_sync_audit; v5 (2 Sep 2026) for
+    // drain_worker_outbox.
     //
     // The seed loop below only ever runs while its own version marker is
     // unset, so adding an entry to getCronJobDefinitions() above does NOTHING
@@ -161,7 +186,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
     // been scheduled. If you add a job, bump this line in the same commit.
     // (INSERT IGNORE, so existing jobs' live-edited settings are untouched
     // either way - only a genuinely new job_key actually inserts.)
-    if (!isSchemaVerified('schema_cron_jobs_v6')) {
+    if (!isSchemaVerified('schema_cron_jobs_v7')) {
         $pdo->exec("CREATE TABLE IF NOT EXISTS cron_jobs (
             job_key VARCHAR(64) PRIMARY KEY,
             name VARCHAR(150) NOT NULL,
@@ -185,7 +210,7 @@ function ensureCronJobsSchema(PDO $pdo): void {
                 $job['schedule_type'], $job['interval_minutes'], $job['daily_at_time'],
             ]);
         }
-        markSchemaVerified('schema_cron_jobs_v6');
+        markSchemaVerified('schema_cron_jobs_v7');
     }
 }
 

@@ -235,7 +235,26 @@ function autoProvisionPropertyFromAirbnb(
                 $det = $detailsByListingId[$listingId] ?? null;
                 $L = ($det && !empty($det['success'])) ? ($det['data']['listing'] ?? []) : [];
                 $PS = is_array($L['pricing_settings'] ?? null) ? $L['pricing_settings'] : $L;
-                $defaultTariff = (float)($PS['default_daily_price'] ?? $property['default_tariff'] ?: 2500);
+                // No placeholder fallback (found 11 Sep 2026 - same incident as the removed
+                // `?: 3500`/`?: 2500` in content_sync.php, this sibling call site was missed
+                // then because the fix only touched content_sync.php's OWN fallback, not the
+                // value handed to it). A real Airbnb-reported price wins; otherwise the
+                // property's own already-set default_tariff; otherwise 0 - never a fabricated
+                // number. This value is written straight into the new room's default_tariff
+                // column below, then syncProperty() runs on the same request, so a fabricated
+                // non-zero value here would slip past content_sync.php's own
+                // `default_tariff <= 0` guard (it only catches an UNSET price, not one that was
+                // already faked upstream) and get pushed to the live OTA as a real rate plan.
+                // is_numeric() guard mirrors the same field's handling 146 lines below in this
+                // file. Without it, a non-scalar shape from Channex (e.g. {amount, currency})
+                // casts to 1.0 - a fabricated ₹1 rate that is > 0, so it would sail straight
+                // past every "is there a real price?" guard added today, become a genuine
+                // Channex rate plan, and bind to the live listing. Exactly the incident class
+                // this change set exists to close, just with a different fake number.
+                $airbnbPrice = $PS['default_daily_price'] ?? null;
+                $defaultTariff = (is_numeric($airbnbPrice) && (float)$airbnbPrice > 0)
+                    ? (float)$airbnbPrice
+                    : (float)($property['default_tariff'] ?: 0);
 
                 $roomId = null;
 
@@ -622,7 +641,10 @@ function autoCreateRoomsFromAirbnbListings(PDO $pdo, int $propertyId): array {
                 // of bug as the sibling function above) - a real failure
                 // (10-room cap, slug collision) surfaces as a real error.
                 $roomSlug = $property['slug'] . '-room-' . ($idx + 1) . '-' . substr(md5($listingId), 0, 4);
-                $added = addMultiKeyRoomCore($pdo, $propertyId, $listingTitle, $roomSlug, (float)($property['default_tariff'] ?: 2500));
+                // Same fix as the sibling function above (11 Sep 2026) - no fabricated 2500
+                // placeholder. 0 defers this room's rate-plan creation to
+                // sync_status='pending_price' in content_sync.php instead of pushing a fake price.
+                $added = addMultiKeyRoomCore($pdo, $propertyId, $listingTitle, $roomSlug, (float)($property['default_tariff'] ?: 0));
                 $roomId = (int)$added['room_id'];
                 $claimedRoomIds[$roomId] = true;
                 $createdCount++;

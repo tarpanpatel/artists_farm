@@ -259,6 +259,27 @@ class ChannexAdapter implements ChannelManagerAdapter {
             $stmt->execute([$propertyId, $roomId]);
         }
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ?: null;
+        if (!$row) return null;
+
+        // A `pending_price` row (content_sync.php, 11 Sep 2026) is a real row that
+        // deliberately carries an EMPTY channex_rate_plan_id: the unit has a room type on
+        // Channex but no rate plan yet, because it had no real price to create one with.
+        // Treating that as a live mapping breaks two things at once:
+        //
+        //   1. Both push methods above only call syncContent() when getMapping() returns
+        //      null, so a truthy-but-empty row disables the self-heal permanently - the unit
+        //      would stay unpriced forever even after the owner finally enters a rate,
+        //      because nothing would ever re-run content sync to create the rate plan.
+        //   2. pushRestrictions() would send rate_plan_id: "" to Channex on every attempt,
+        //      failing forever - the same endless-retry shape as the "74th identical
+        //      attempt" incident.
+        //
+        // Reporting it as "no mapping" is therefore the accurate answer: there is no rate
+        // plan to push to yet, and saying so is what lets the self-heal fix it.
+        if (trim((string)($row['channex_rate_plan_id'] ?? '')) === '') {
+            return null;
+        }
+
+        return $row;
     }
 }

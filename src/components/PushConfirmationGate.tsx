@@ -308,9 +308,28 @@ const PushConfirmationGate: React.FC<PushConfirmationGateProps> = ({
                       <div key={String(room.room_id ?? 'self')}>
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                           {room.room_name}
+                          {/* A unit with no base rate reports default_tariff = 0 since the
+                              fabricated-price fallbacks were removed (11 Sep 2026). Rendering
+                              that as "₹0" was wrong twice over: it reads as "about to sell
+                              these nights for nothing", and it is not even what happens -
+                              AriDrainWorker now omits the rate on exactly these dates rather
+                              than sending a number. This whole gate exists to state a
+                              checkable fact about the push, so it has to say the real one. */}
                           <span className="ml-1.5 font-normal text-slate-600 dark:text-slate-400">
-                            — {room.uncovered_nights} {t('push_gate_nights_at', 'nights at')} ₹
-                            {room.default_tariff.toLocaleString('en-IN')}
+                            {room.default_tariff > 0 ? (
+                              <>
+                                — {room.uncovered_nights} {t('push_gate_nights_at', 'nights at')} ₹
+                                {room.default_tariff.toLocaleString('en-IN')}
+                              </>
+                            ) : (
+                              <>
+                                — {room.uncovered_nights}{' '}
+                                {t(
+                                  'push_gate_nights_unpriced',
+                                  'nights have no price set, so no rate will be sent for them',
+                                )}
+                              </>
+                            )}
                           </span>
                         </p>
                         <RangeList ranges={room.uncovered_ranges} />

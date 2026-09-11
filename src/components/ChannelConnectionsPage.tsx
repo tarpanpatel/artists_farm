@@ -382,6 +382,19 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
               <div className="space-y-3">
                 {localRooms.map((room) => {
                   const isSyncingThis = syncingRoomId === room.local_room_id;
+                  // A rate plan id only means "content sync created a rate plan for this
+                  // unit" - it says NOTHING about whether any channel is actually live.
+                  // This badge used to read `channex_rate_plan_id ? 'Mapped & Active'`, so
+                  // every listing showed a green "Active" from the moment of import, while
+                  // the channel above it correctly said "Ready to activate" and was pushing
+                  // absolutely nothing (found 11 Sep 2026 on Patel Colony: 7 green "Mapped &
+                  // Active" listings under a channel that had never been activated).
+                  // An import deliberately never activates (CHANNEX.md 5.4a), so that state
+                  // is the NORMAL post-import one - which is exactly why it must not be
+                  // painted as success. Derived from the connections above, not assumed.
+                  const liveChannelCount = connections.filter((c) => c.status === 'active').length;
+                  const isMapped = !!room.channex_rate_plan_id;
+                  const isLive = isMapped && liveChannelCount > 0;
                   return (
                     <div
                       key={room.local_room_id || room.name}
@@ -394,12 +407,20 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{room.name}</p>
-                            <Badge variant={room.channex_rate_plan_id ? 'success' : 'neutral'}>
-                              {room.channex_rate_plan_id ? 'Mapped & Active' : 'Connected to Property'}
+                            <Badge variant={isLive ? 'success' : isMapped ? 'warning' : 'neutral'}>
+                              {isLive
+                                ? `Live on ${liveChannelCount} channel${liveChannelCount === 1 ? '' : 's'}`
+                                : isMapped
+                                  ? 'Mapped - not live yet'
+                                  : 'Connected to Property'}
                             </Badge>
                           </div>
                           <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {room.channex_rate_plan_id ? `Rate Plan ID: ${room.channex_rate_plan_id}` : 'Sync live rates and availability'}
+                            {!isMapped
+                              ? 'Sync live rates and availability'
+                              : isLive
+                                ? `Rate Plan ID: ${room.channex_rate_plan_id}`
+                                : 'Rates and availability are not being sent yet - activate a channel above to go live.'}
                           </p>
                         </div>
                       </div>

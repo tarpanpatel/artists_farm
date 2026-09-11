@@ -213,8 +213,20 @@ if (!function_exists('performUnifiedLogin')) {
             // real staff username (found during the 29 Aug 2026 de-duplication audit -
             // authenticate.php used to do exactly that; router.php never did).
             if ($staff) {
-                $storedPasscode = $staff['passcode'] ?? '123456';
-                if ($storedPasscode === $passcode) {
+                // SECURITY (11 Sep 2026): a NULL/blank stored passcode must mean "this
+                // account cannot be logged into", never "this account uses the
+                // well-known default". This previously read `?? '123456'`, so any
+                // staff row whose passcode column was NULL was silently signed in by
+                // anyone typing the default PIN - the account least likely to have had
+                // a passcode deliberately chosen for it was the easiest to walk into.
+                //
+                // Same anti-pattern as the fabricated ₹3,500 rate fallback found the
+                // same day (php/channex/content_sync.php): inventing a plausible value
+                // for a missing one, where the honest answer is to refuse. '123456' is
+                // still fine as a column DEFAULT for a newly seeded account - a value
+                // actually stored is a deliberate choice; a NULL is the absence of one.
+                $storedPasscode = $staff['passcode'] ?? '';
+                if ($storedPasscode !== '' && hash_equals($storedPasscode, $passcode)) {
                     if (!empty($staff['access_all_properties'])) {
                         $tenantStmt = $pdo->prepare("
                             SELECT p.tenant_id, t.slug as tenant_slug
