@@ -1757,7 +1757,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           banner "doesn't look nice") instead of a permanently-open info box
           eating vertical space above the tabs on every visit. Same click-
           triggered Popover pattern as PageHeader.tsx's own "Help?" link. */}
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-center mb-2">
         <Popover
           placement="bottom"
           trigger="click"
