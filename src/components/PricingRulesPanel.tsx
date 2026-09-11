@@ -702,7 +702,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
         <div className="space-y-5">
           {!isBasePriceOpen ? (
             /* Collapsed Base Price Summary Card */
-            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 px-0 py-4 sm:p-4 shadow-none sm:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-x-0 sm:border-x border-gray-200 dark:border-gray-700 p-4 sm:p-4 shadow-none sm:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                   <span className="text-base font-bold leading-none select-none">₹</span>
@@ -755,7 +755,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
             </div>
           ) : (
             /* Uncollapsed Base Price Editor */
-            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 px-0 py-4 sm:p-5 shadow-none sm:shadow-xs space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-none sm:rounded-xl border-y sm:border border-x-0 sm:border-x border-gray-200 dark:border-gray-700 p-4 sm:p-5 shadow-none sm:shadow-xs space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -893,7 +893,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
 
           <div className="space-y-6">
             {/* Create / Bulk-Apply Rate & Restriction Rule Form */}
-            <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 px-0 py-4 sm:p-5 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 shadow-none sm:shadow-xs space-y-4">
+            <form ref={formRef} onSubmit={handleSaveRule} className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-none sm:rounded-xl border-y sm:border border-x-0 sm:border-x border-gray-200 dark:border-gray-700 shadow-none sm:shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1595,11 +1595,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
               </div>
 
               {rateRules.length === 0 ? (
-                <div className="pricing-rules-panel__gutter text-center py-6 px-0 sm:px-3 bg-gray-50 dark:bg-gray-800/40 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 text-xs text-gray-400">
+                <div className="pricing-rules-panel__gutter text-center py-6 px-4 sm:px-3 bg-gray-50 dark:bg-gray-800/40 rounded-none sm:rounded-xl border-y sm:border border-x-0 sm:border-x border-gray-200 dark:border-gray-700 text-xs text-gray-400">
                   No custom rate rules set. All dates use standard base tariffs and restrictions.
                 </div>
               ) : (
-                <div className="pricing-rules-panel__gutter text-center py-4 px-0 sm:px-3 bg-gray-50 dark:bg-gray-800/40 rounded-none sm:rounded-xl border-x-0 sm:border border-gray-200 dark:border-gray-700 space-y-2.5">
+                <div className="pricing-rules-panel__gutter text-center py-4 px-4 sm:px-3 bg-gray-50 dark:bg-gray-800/40 rounded-none sm:rounded-xl border-y sm:border border-x-0 sm:border-x border-gray-200 dark:border-gray-700 space-y-2.5">
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {rateRules.length} active rule{rateRules.length === 1 ? '' : 's'} cover your dates. Setting a rate above adds a new one or overrides these for the dates it touches.
                   </p>

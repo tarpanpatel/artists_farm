@@ -39,7 +39,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ rooms }) => {
   }, []);
 
   return (
-    <div className="pricing-page max-w-5xl mx-auto">
+    <div className="pricing-page max-w-5xl mx-auto space-y-3 sm:space-y-4">
       <PageHeader
         title="Pricing"
       />

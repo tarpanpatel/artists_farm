@@ -2627,7 +2627,7 @@ ${itemsStr}
                 matching padding compensation (found 2 Sep 2026: their cards were
                 losing rounded corners/side borders via the old ungated selector
                 while sitting in still-padded containers, a broken half-bled hybrid). */}
-            <main className="app-shell__main flex-1 px-0 py-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+            <main className="app-shell__main flex-1 px-0 pt-3 pb-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
               {/* MultiKey room view - takes priority over everything */}

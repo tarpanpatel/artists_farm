@@ -2152,6 +2152,14 @@ pre,
     padding-right: 1rem !important;
   }
 
+  /* Ensure balanced vertical rhythm below page headers on mobile (12px / 0.75rem),
+     matching the 12px (pt-3) padding above page headers from app-shell__main */
+  .page-header + *,
+  .today-overview__page-header + *,
+  .tenant-dashboard__page-header + * {
+    margin-top: 0.75rem !important;
+  }
+
   /* Pricing page's shared PricingRulesPanel (PricingPage.tsx): the free-floating
      rows between its full-bleed cards (notice banner, "Active Date-Range Rules"
      heading, empty-state/summary boxes, search toolbar) rest directly in the
