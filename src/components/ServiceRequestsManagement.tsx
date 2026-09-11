@@ -570,31 +570,20 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         }
         forceRow
       >
-        <Button
-          variant="edit"
-          size="sm"
-          onClick={() => setIsManageModalOpen(true)}
-          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-          className="hidden sm:inline-flex"
-        >
-          Manage Service Types
-        </Button>
-        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
-          {t('new_request_button', 'New Request')}
-        </PageHeaderButton>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+            {t('new_request_button', 'New Request')}
+          </PageHeaderButton>
+          <Button
+            variant="edit"
+            size="sm"
+            onClick={() => setIsManageModalOpen(true)}
+            leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+          >
+            Manage Service Types
+          </Button>
+        </div>
       </PageHeader>
-
-      {/* Mobile-only secondary Manage Service Types action button (matches DESIGN.md variant="edit") */}
-      <div className="flex sm:hidden justify-start mb-3">
-        <Button
-          variant="edit"
-          size="sm"
-          onClick={() => setIsManageModalOpen(true)}
-          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-        >
-          Manage Service Types
-        </Button>
-      </div>
       <div className="service-requests-management__desk">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <Tabs
