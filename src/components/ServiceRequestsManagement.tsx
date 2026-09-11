@@ -28,7 +28,7 @@ import { Input, FloatingTextarea } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Tabs, TabItem, TabsRef, Card, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { Tabs, TabItem, TabsRef, Card, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer, Modal } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useSwipeTabs } from '../utils/useSwipeTabs';
 
@@ -568,16 +568,33 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </Popover>
           </span>
         }
+        forceRow
       >
-        <div className="flex items-center gap-2 flex-wrap">
-          <PageHeaderButton variant="secondary" onClick={() => setIsManageModalOpen(true)} icon={Settings}>
-            Manage Service Types
-          </PageHeaderButton>
-          <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
-            {t('new_request_button', 'New Request')}
-          </PageHeaderButton>
-        </div>
+        <Button
+          variant="edit"
+          size="sm"
+          onClick={() => setIsManageModalOpen(true)}
+          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+          className="hidden sm:inline-flex"
+        >
+          Manage Service Types
+        </Button>
+        <PageHeaderButton onClick={() => setIsAddModalOpen(true)} icon={Plus}>
+          {t('new_request_button', 'New Request')}
+        </PageHeaderButton>
       </PageHeader>
+
+      {/* Mobile-only secondary Manage Service Types action button (matches DESIGN.md variant="edit") */}
+      <div className="flex sm:hidden justify-start mb-3">
+        <Button
+          variant="edit"
+          size="sm"
+          onClick={() => setIsManageModalOpen(true)}
+          leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+        >
+          Manage Service Types
+        </Button>
+      </div>
       <div className="service-requests-management__desk">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <Tabs
@@ -752,14 +769,16 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
         </Card>
       </div>
 
-      {/* New Service Request Right Drawer */}
-      <Drawer
-        open={isAddModalOpen}
+      {/* New Service Request Modal */}
+      <Modal
+        show={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        position="right"
-        className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        size="md"
+        popup
+        dismissible
+        className="z-58"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
           <span className="flex items-center gap-2 font-bold text-gray-900 dark:text-white text-base">
             <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             {t('new_service_request_heading', 'New Service Request')}
@@ -773,29 +792,23 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </button>
         </div>
 
-        <form onSubmit={handleCreate} className="app-form flex-1 flex flex-col justify-between overflow-y-auto">
-          <div className="p-4 space-y-4">
+        <form onSubmit={handleCreate} className="app-form">
+          <div className="p-4 sm:p-5 space-y-4">
             {isMultiKeyProperty && rooms.length > 0 && (
               <div className="service-requests-management__form-group">
                 <StyledSelect
                   label={t('room_field_label', 'Room')}
                   value={newRoomId}
                   onChange={setNewRoomId}
-                  placeholder={t('select_room_optional_placeholder', '-- Select Room (optional) --')}
-                  options={rooms.map((room) => ({ value: String(room.id), label: room.name }))}
+                  placeholder="Select Room"
+                  options={[
+                    { value: '', label: 'Select Room' },
+                    ...rooms.map((room) => ({ value: String(room.id), label: room.name })),
+                  ]}
                 />
               </div>
             )}
-            <div className="service-requests-management__form-group space-y-1">
-              <div className="flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsManageModalOpen(true)}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-medium cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5" /> Manage Service Types
-                </button>
-              </div>
+            <div className="service-requests-management__form-group">
               <StyledSelect
                 label={t('request_type_label', 'Request Type')}
                 value={newRequestType}
@@ -836,20 +849,23 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             <div className="service-requests-management__form-group">
               <Input
                 id="newChargeAmount"
-                label="Charge Amount (₹) (Optional - added to checkout bill if set)"
+                label="Charge Amount (₹)"
                 type="number"
                 min="0"
                 step="0.01"
                 value={newChargeAmount}
                 onChange={(e) => setNewChargeAmount(e.target.value)}
-                placeholder="0.00 (leave blank for free)"
+                placeholder="0.00"
               />
+              <p className="mt-1 text-2xs text-gray-500 dark:text-gray-400">
+                Optional · Added to guest checkout bill if set
+              </p>
             </div>
 
             <div className="service-requests-management__form-group">
               <FloatingTextarea
                 id="newDescription"
-                label={t('details_label', 'Details')}
+                label="Details (Optional)"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder={t('service_request_details_placeholder', 'Describe the request (optional)...')}
@@ -858,7 +874,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </div>
           </div>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
             <Button variant="secondary" size="md" onClick={() => setIsAddModalOpen(false)}>
               {t('cancel_button', 'Cancel')}
             </Button>
@@ -867,7 +883,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             </Button>
           </div>
         </form>
-      </Drawer>
+      </Modal>
 
       {/* Manage Custom Service Types Right Drawer */}
       <Drawer
