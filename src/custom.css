@@ -2167,7 +2167,23 @@ pre,
     padding-right: 1rem !important;
   }
 
-  /* Full-bleed card standard on mobile screens */
+  /* Full-bleed card standard on mobile screens.
+     :not(.pos-cart-drawer-panel) added 11 Sep 2026 (live report: Kitchen's
+     "Take Order" cart drawer had lost its rounded top corners, its 2px blue
+     top border, and its intended upward box-shadow - "even when cart is
+     open it should have box shadow"). The wildcard's own :not(.fixed):
+     not(.absolute) exists specifically to skip floating/positioned UI like
+     this, but it checks the ELEMENT's own class list - this drawer's
+     `position: fixed` lives on its PARENT wrapper (so the pull-tab button,
+     a sibling, isn't clipped along with it - see that div's own comment),
+     while the shadow/rounded-corner/border classes sit on a plain in-flow
+     child div with neither .fixed nor .absolute on itself. That child still
+     matched every other condition (rounded-, shadow, border, dark:bg-
+     gray-800), so the wildcard silently flattened it to the generic list-
+     card treatment. Marker class added directly on that div in
+     KitchenManagement.tsx rather than editing the .fixed/.absolute
+     exclusions themselves, which stay correct for every other floating
+     element that actually IS fixed/absolute on itself. */
   [data-testid="flowbite-card"],
   .flowbite-card,
   .kpi-card,
@@ -2197,12 +2213,12 @@ pre,
      never part of the full-bleed initiative or its padding removal above).
      Everything else in this list is already scoped by a specific component
      class name, so it's unaffected either way. */
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute) {
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel) {
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
@@ -2241,12 +2257,12 @@ pre,
   html.dark .whatsapp-template-settings,
   html.dark .add-expenses-container,
   html.dark .app-card,
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute) {
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel) {
     border-top-color: #334155 !important;
     border-bottom-color: #334155 !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;

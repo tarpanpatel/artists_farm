@@ -2671,7 +2671,13 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 // and the height animation now live on the INNER wrapper
                 // below instead, so the pull-tab (a sibling of that box, not
                 // a descendant of it) is never clipped by it.
-                className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden"
+                // bottom offset matches MobileBottomNav.tsx's own real height
+                // exactly (h-[calc(4rem+env(safe-area-inset-bottom,0px))]) -
+                // was 4.5rem here, a stray 0.5rem (8px) taller than the nav
+                // it's meant to sit flush against, leaving a visible gap
+                // between the cart and the nav below it (11 Sep 2026, live
+                // report: "the cart's blue line should stick to bottom nav").
+                className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-[55] lg:hidden"
               >
                 {/* Left-Aligned Pull-Tab Attached to Top Edge of Cart (24 Aug
                     2026, reworked from the 20/22 Aug version - reported live
@@ -2703,7 +2709,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       invisible) presence of this button at all. */}
                 <button
                   onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
-                  className="absolute top-0 left-4 -translate-y-full bg-blue-600 hover:bg-blue-700 text-white font-bold pl-3 pr-4 py-2 rounded-t-xl shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 z-20"
+                  // Centered (11 Sep 2026, explicit request - "2 items ₹165
+                  // tab should be centralised") - was left-4, which no longer
+                  // has a ScrollToTopButton-overlap reason to hug the left
+                  // edge now that button is repositioned above this drawer
+                  // (see the mobile scroll-to-top button's own comment below).
+                  className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full bg-blue-600 hover:bg-blue-700 text-white font-bold pl-3 pr-4 py-2 rounded-t-xl shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.25)] flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 z-20"
                   aria-label="Toggle Cart Drawer"
                 >
                   <ShoppingCart className="w-4 h-4 shrink-0" />
@@ -2722,7 +2733,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     never gets clipped along with it. See the outer div's
                     comment above for the full why. */}
                 <div
-                  className={`bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col overflow-hidden ${
+                  // pos-cart-drawer-panel (11 Sep 2026): the mobile full-
+                  // bleed card CSS sweep (custom.css) was silently stripping
+                  // this div's rounded top corners, 2px blue top border, and
+                  // upward box-shadow - it matches that wildcard's rounded-/
+                  // shadow/border/bg-* selector and isn't itself .fixed or
+                  // .absolute (that's on the OUTER wrapper only), so its own
+                  // :not(.fixed):not(.absolute) exclusion never caught it.
+                  // This marker class is now in that wildcard's exclusion
+                  // list too - see custom.css's own comment there.
+                  className={`pos-cart-drawer-panel bg-slate-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-t-2xl shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.25)] dark:shadow-[0_-8px_30px_-6px_rgba(0,0,0,0.6)] border-t-2 border-blue-200 dark:border-blue-900/60 transition-all duration-300 flex flex-col overflow-hidden ${
                     // Collapsed = fully closed (0 height), not a ~260px peek
                     // of items (23 Aug 2026, on request - "drawer should
                     // close completely").
@@ -2851,10 +2871,22 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                   const c = document.querySelector('.take-food-order-container');
                   if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+                // Expanded-state offset re-derived 11 Sep 2026 (live report:
+                // "Go to top button hides under the cart" - confirmed via
+                // Playwright: document.elementFromPoint at this button's own
+                // coordinates returned the drawer's items-list div, not the
+                // button). The old bottom-[calc(50vh+16px)] only accounted
+                // for the drawer's own height - it ignored the nav-height gap
+                // the drawer sits above (4rem+safe-area) AND the pull-tab
+                // that pokes up another ~2rem above the drawer's top edge, so
+                // this button landed ~4-5rem too low, underneath both. Now:
+                // nav height (4rem+safe, matches the drawer's own bottom
+                // offset above) + drawer height (50vh) + pull-tab height
+                // (2rem, its real measured height) + a small margin (0.75rem).
                 className={`fixed right-4 z-50 lg:hidden w-11 h-11 bg-slate-900/90 dark:bg-slate-100/90 text-white dark:text-slate-900 rounded-full shadow-xl flex items-center justify-center cursor-pointer transition-all duration-300 active:scale-90 border border-slate-700 dark:border-slate-200 ${
                   cartItems.length > 0
                     ? isCartDrawerExpanded
-                      ? 'bottom-[calc(50vh+16px)]'
+                      ? 'bottom-[calc(6.75rem+env(safe-area-inset-bottom,0px)+50vh)]'
                       : 'bottom-48 sm:bottom-52'
                     : 'bottom-6'
                 }`}
