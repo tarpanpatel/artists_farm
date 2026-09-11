@@ -1262,14 +1262,9 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                   actual value); every user-facing label reads "Minimum Price"
                   instead (10 Sep 2026, explicit request). */}
               <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 block">
-                    Pricing Rule Type
-                  </span>
-                  <span className="text-2xs font-medium text-gray-500 dark:text-gray-400">
-                    {ruleType === 'floor' ? 'Minimum Price Mode' : 'Fixed Price Mode'}
-                  </span>
-                </div>
+                <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 block">
+                  Pricing Rule Type
+                </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <label
                     className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
@@ -1286,15 +1281,34 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                       onChange={() => setRuleType('fixed')}
                       className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                     />
-                    <div className="text-xs">
-                      <span className="font-semibold block text-gray-900 dark:text-white">
-                        {ratePerNight.trim() !== '' ? `Set Exact Price (₹${ratePerNight})` : 'Set Exact Price'}
-                      </span>
-                      <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
-                        {ratePerNight.trim() !== ''
-                          ? `Overrides all selected dates to exactly ₹${ratePerNight}.`
-                          : 'Overrides all selected dates to the exact price entered above.'}
-                      </span>
+                    <div className="text-xs flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {ratePerNight.trim() !== '' ? `Set Exact Price (₹${ratePerNight})` : 'Set Exact Price'}
+                        </span>
+                        <Popover
+                          placement="top"
+                          trigger="click"
+                          title="Set Exact Price"
+                          content={
+                            <div className="p-3 text-xs text-gray-700 dark:text-gray-200 leading-relaxed max-w-xs">
+                              Overrides all selected dates to the exact price entered above.
+                            </div>
+                          }
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            aria-label="What is Set Exact Price?"
+                            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            Help?
+                          </button>
+                        </Popover>
+                      </div>
                     </div>
                   </label>
 
@@ -1313,15 +1327,34 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                       onChange={() => setRuleType('floor')}
                       className="mt-0.5 w-4 h-4 text-amber-600 focus:ring-amber-500 dark:focus:ring-amber-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                     />
-                    <div className="text-xs">
-                      <span className="font-semibold block text-gray-900 dark:text-white">
-                        Force Minimum Price
-                      </span>
-                      <span className="text-2xs text-gray-500 dark:text-gray-400 block mt-0.5">
-                        {ratePerNight.trim() !== ''
-                          ? `Only raises dates below ₹${ratePerNight}. Dates already higher stay untouched.`
-                          : 'Guarantees price never drops below this rate. Dates already higher (like weekend surges) stay untouched.'}
-                      </span>
+                    <div className="text-xs flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          Force Minimum Price
+                        </span>
+                        <Popover
+                          placement="top"
+                          trigger="click"
+                          title="Force Minimum Price"
+                          content={
+                            <div className="p-3 text-xs text-gray-700 dark:text-gray-200 leading-relaxed max-w-xs">
+                              Guarantees price never drops below this rate. Dates already higher (like weekend surges) stay untouched.
+                            </div>
+                          }
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            aria-label="What is Force Minimum Price?"
+                            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            Help?
+                          </button>
+                        </Popover>
+                      </div>
                     </div>
                   </label>
                 </div>
@@ -1343,13 +1376,32 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     }}
                     className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:focus:ring-blue-600 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                   />
-                  <div>
-                    <span className="text-xs font-semibold text-gray-900 dark:text-white block">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
                       How long guests can stay (Optional)
                     </span>
-                    <span className="text-2xs text-gray-500 dark:text-gray-400 block">
-                      Require a minimum stay or limit the maximum nights a guest can book. Pushed to Airbnb, Booking.com & direct booking.
-                    </span>
+                    <Popover
+                      placement="top"
+                      trigger="click"
+                      title="Stay Restrictions"
+                      content={
+                        <div className="p-3 text-xs text-gray-700 dark:text-gray-200 leading-relaxed max-w-xs">
+                          Require a minimum stay or limit the maximum nights a guest can book. Pushed to Airbnb, Booking.com & direct booking.
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        aria-label="What are stay restrictions?"
+                        className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Help?
+                      </button>
+                    </Popover>
                   </div>
                 </label>
 
