@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Drawer, Modal, Tabs, TabItem, TabsRef } from 'flowbite-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Drawer, Modal, Tabs, TabItem } from 'flowbite-react';
 import { X, Plus, Lock, Check, Tag, UserPlus, Calendar, AlertCircle, AlertTriangle } from './icons/FlowbiteIcons';
 import { Button } from './Button';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -7,7 +7,6 @@ import { DateRangePicker } from './DateRangePicker';
 import { useToast } from './ToastContext';
 import { saveRateRuleDB } from '../services/api';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { useSwipeTabs } from '../utils/useSwipeTabs';
 
 /**
  * Airbnb-Multi-Calendar-style editor panel (6 Sep 2026, explicit request:
@@ -99,11 +98,6 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'rates' | 'booking'>('rates');
-  const tabsRef = useRef<TabsRef>(null);
-  // Swipe left/right on the pane below the tabs to move to the next/
-  // previous one (11 Sep 2026, explicit request - "wherever there are
-  // tabs").
-  const swipeHandlers = useSwipeTabs(tabsRef, activeTab === 'rates' ? 0 : 1, 2);
   const [price, setPrice] = useState('');
   const [minStay, setMinStay] = useState('');
   const [note, setNote] = useState('');
@@ -365,7 +359,6 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
             edge-to-edge from the left to right ends of the drawer view. */}
         <div className="pt-1 shrink-0">
           <Tabs
-            ref={tabsRef}
             aria-label="Calendar editor mode"
             variant="default"
             theme={attachedTabsTheme}
@@ -382,11 +375,7 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
           every other attached-tabs card (see tabsTheme.ts) - no rounded/
           border classes to cancel here since this pane, unlike a bordered
           card, never had its own top border or rounded corner to begin with. */}
-      <div
-        className="flex-1 overflow-y-auto p-4 space-y-5 -mt-px"
-        onTouchStart={swipeHandlers.onTouchStart}
-        onTouchEnd={swipeHandlers.onTouchEnd}
-      >
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 -mt-px">
         {/* Dates, still editable - a one-day nudge is faster typed than
             redrawn. This is the app's standard calendar (flowbite-datepicker
             via DateRangePicker), not a one-off - it used to be a plain

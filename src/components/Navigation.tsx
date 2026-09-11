@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { getIconComponent } from '../utils/iconResolver';
+import { useHorizontalSwipe } from '../utils/useSwipeGesture';
 import { ChevronRight, ChevronDown, LogOut, LinkIcon, UserRound, Share2, CalendarDays } from './icons/FlowbiteIcons';
 import { NavMenuItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -141,6 +142,11 @@ export const Navigation: React.FC<NavigationProps> = ({
     mq.addEventListener('change', handleChange);
     return () => mq.removeEventListener('change', handleChange);
   }, []);
+
+  // Swipe the open mobile sidebar left to dismiss it (11 Sep 2026) - see
+  // where these handlers are attached on the <aside> below for why it's
+  // gated on the mobile-overlay state.
+  const sidebarSwipe = useHorizontalSwipe({ onSwipeLeft: onCloseSidebar });
 
   // Scroll active item into center of sidebar viewport
   useEffect(() => {
@@ -700,6 +706,14 @@ export const Navigation: React.FC<NavigationProps> = ({
       <aside
         id="mainSidebarNavigationContainer"
         aria-label="Sidebar Navigation"
+        // Swipe the open sidebar left to dismiss it (11 Sep 2026, part of
+        // the site-wide swipe pass). Gated on the mobile overlay state -
+        // on desktop this panel is permanently docked, so a stray
+        // leftward flick there must not collapse the app's main
+        // navigation. This is a hand-rolled <aside>, not a flowbite
+        // <Drawer>, so globalSwipeDismiss.ts never sees it.
+        onTouchStart={isSidebarOpen && !isDesktopViewport ? sidebarSwipe.onTouchStart : undefined}
+        onTouchEnd={isSidebarOpen && !isDesktopViewport ? sidebarSwipe.onTouchEnd : undefined}
         // pt-[calc(4rem+env(safe-area-inset-top))] matches Header.tsx's own
         // height (see that file's 25 Aug 2026 comment) - a static pt-16 was
         // too short to clear the header on a notched device once it grew to

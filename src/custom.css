@@ -2213,12 +2213,12 @@ pre,
      never part of the full-bleed initiative or its padding removal above).
      Everything else in this list is already scoped by a specific component
      class name, so it's unaffected either way. */
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel) {
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]) {
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
@@ -2228,6 +2228,8 @@ pre,
     border-bottom-width: 1px !important;
     border-top-style: solid !important;
     border-bottom-style: solid !important;
+    border-top-color: #e5e7eb !important;
+    border-bottom-color: #e5e7eb !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
@@ -2257,12 +2259,12 @@ pre,
   html.dark .whatsapp-template-settings,
   html.dark .add-expenses-container,
   html.dark .app-card,
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel) {
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]) {
     border-top-color: #334155 !important;
     border-bottom-color: #334155 !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;
@@ -2293,8 +2295,12 @@ pre,
      mobile). Placed after that block so it wins the cascade at equal
      specificity; only touches the top edge, leaving the full-bleed radius/
      side-border/shadow treatment above untouched for these panels. */
-  [class*="border-t-0"] {
+  [class*="border-t-0"],
+  .app-shell__main [class*="border-t-0"],
+  .app-shell__main div[class*="border-t-0"],
+  .app-shell__main section[class*="border-t-0"] {
     border-top-width: 0 !important;
+    border-top-style: none !important;
   }
 
   /* In Kitchen, remove outer wrapper box styling on mobile so child tickets shine edge-to-edge */

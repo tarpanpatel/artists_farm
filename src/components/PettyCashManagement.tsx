@@ -21,6 +21,7 @@ import { Input } from './Input';
 import { DatePicker } from './DatePicker';
 import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { useVerticalSwipe } from '../utils/useSwipeGesture';
 import { scanPettyCashReceipt, scanUpiScreenshot, type ReceiptScanResult, type UpiScanResult } from '../utils/ocrScanner';
 
 interface PettyCashManagementProps {
@@ -242,6 +243,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const [newPayeeForm, setNewPayeeForm] = useState({ name: '', upiId: '', qrCodeUrl: '' });
   const [payeeNameTouched, setPayeeNameTouched] = useState(false);
   const [payeeLightboxUrl, setPayeeLightboxUrl] = useState<string | null>(null);
+  const payeeLightboxSwipe = useVerticalSwipe({ onSwipeDown: () => setPayeeLightboxUrl(null) });
   const [isSavingPayee, setIsSavingPayee] = useState(false);
 
   const handleSavePayee = async (e: React.FormEvent) => {
@@ -2605,6 +2607,11 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       {payeeLightboxUrl && (
         <div
           onClick={() => setPayeeLightboxUrl(null)}
+          // Swipe down to dismiss (11 Sep 2026, site-wide swipe pass) -
+          // read-only image viewer, so there's nothing a stray swipe can
+          // cost here, unlike the form-bearing drawers.
+          onTouchStart={payeeLightboxSwipe.onTouchStart}
+          onTouchEnd={payeeLightboxSwipe.onTouchEnd}
           className="fixed inset-0 bg-slate-950/90 backdrop-blur-xs flex items-center justify-center p-4 z-100 animate-in fade-in cursor-zoom-out"
         >
           <div className="relative max-w-sm w-full bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xl">

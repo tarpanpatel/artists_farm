@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FieldHelpModeProvider } from './FieldHelpPopover';
-import { Drawer, Dropdown, DropdownItem, Tabs, TabItem, TabsRef } from 'flowbite-react';
+import { Drawer, Dropdown, DropdownItem, Tabs, TabItem } from 'flowbite-react';
 import {
   Send,
   X,
@@ -32,7 +32,6 @@ import { Textarea } from './Textarea';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -468,11 +467,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [testError, setTestError] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const [activeCategory, setActiveCategory] = useState<'Kitchen' | 'Admin' | 'Finances'>('Kitchen');
-  const categoryTabsRef = useRef<TabsRef>(null);
-  const categoryTabKeys = ['Kitchen', 'Admin', 'Finances'] as const;
-  // Swipe left/right on the template list to move to the next/previous
-  // category (11 Sep 2026, explicit request - "wherever there are tabs").
-  const categorySwipeHandlers = useSwipeTabs(categoryTabsRef, categoryTabKeys.indexOf(activeCategory), categoryTabKeys.length);
 
   const getTemplateGroup = (tpl: TelegramTemplateExtended): 'Kitchen' | 'Admin' | 'Finances' => {
     // A manual "move to group" override always wins over the automatic
@@ -1102,7 +1096,6 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
           DESIGN.md's "Attached Tabs Specification" / utils/tabsTheme.ts). */}
       <div>
         <Tabs
-          ref={categoryTabsRef}
           aria-label="Telegram Notification Category Tabs"
           variant="default"
           theme={attachedTabsTheme}
@@ -1144,11 +1137,7 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
             tablist border-b already spans the full width underneath it - see
             BillingCheckout.tsx's billing-checkout__desk-body Card for the
             fuller writeup of this pattern). */}
-        <div
-          className="bg-white dark:bg-slate-900 rounded-lg rounded-tl-none border border-t-0 border-slate-200 dark:border-slate-800 shadow-xs -mt-px overflow-hidden"
-          onTouchStart={categorySwipeHandlers.onTouchStart}
-          onTouchEnd={categorySwipeHandlers.onTouchEnd}
-        >
+        <div className="bg-white dark:bg-slate-900 rounded-lg rounded-tl-none border border-t-0 border-slate-200 dark:border-slate-800 shadow-xs -mt-px overflow-hidden">
           {/* Keyword Search */}
           <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2 w-full sm:w-80">

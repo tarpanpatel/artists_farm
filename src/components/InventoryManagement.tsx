@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, ClipboardList, ChefHat, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
@@ -81,19 +80,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     </div>
   );
   const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'fulfill' | 'catalog'>('stock_log');
-  // Swipe left/right to move to the next/previous tab (11 Sep 2026,
-  // explicit request - "wherever there are tabs"). This file has two
-  // independent attached-tabs groups (Requisitions/Fulfill below, and
-  // Materials Catalog/Manage Categories further down) - each gets its own
-  // ref/hook instance rather than sharing one, since they're unrelated tab
-  // strips with their own index/count.
-  const requisitionsTabsRef = useRef<TabsRef>(null);
-  const requisitionsTabKeys: ('requisitions' | 'fulfill')[] = ['requisitions', 'fulfill'];
-  const requisitionsSwipeHandlers = useSwipeTabs(
-    requisitionsTabsRef,
-    requisitionsTabKeys.indexOf(activeTab as 'requisitions' | 'fulfill'),
-    requisitionsTabKeys.length
-  );
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
@@ -202,11 +188,13 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
   }, [isAuthenticated, authChecked]);
 
-  // Category filter pills derived from actual catalog items (always in sync with data)
+  // Category filter pills derived from actual catalog items and database categories
   const catalogCategories = React.useMemo(() => {
-    const cats = Array.from(new Set(catalogItems.map((item) => item.category).filter(Boolean)));
-    return ['All', ...cats];
-  }, [catalogItems]);
+    const catsFromCatalog = catalogItems.map((item) => item.category).filter(Boolean);
+    const catsFromDb = dbCategories.map((cat) => cat.name).filter(Boolean);
+    const uniqueCats = Array.from(new Set([...catsFromDb, ...catsFromCatalog])).sort((a, b) => a.localeCompare(b));
+    return ['All', ...uniqueCats];
+  }, [catalogItems, dbCategories]);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -228,60 +216,121 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     return 'items';
   });
 
-  const catalogTabsRef = useRef<TabsRef>(null);
-  const catalogTabKeys: ('items' | 'categories')[] = ['items', 'categories'];
-  const catalogSwipeHandlers = useSwipeTabs(catalogTabsRef, catalogTabKeys.indexOf(catalogView), catalogTabKeys.length);
-
   const setCatalogView = (view: 'items' | 'categories') => {
     setCatalogViewState(view);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('artists_farm_inventory_catalog_view', view);
     }
   };
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editingCategoryKey, setEditingCategoryKey] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  const handleRenameCategory = async (id: number) => {
-    const trimmed = editingCategoryName.trim();
-    if (!trimmed) return;
-    const oldCat = dbCategories.find(c => c.id === id);
-    const ok = await updateMaterialCategoryInDB(id, trimmed);
+  const handleAddCategory = async () => {
+    const catName = newCategoryName.trim();
+    if (!catName) return;
+    const ok = await addMaterialCategoryToDB(catName);
     if (ok) {
-      setDbCategories((prev: any[]) => prev.map(c => c.id === id ? { ...c, name: trimmed } : c));
-      if (onLogAudit && oldCat) {
+      const cats = await fetchMaterialCategoriesFromDB();
+      setDbCategories(cats);
+      if (onLogAudit) {
         const currentUserName = currentUser?.name || 'Admin';
-        onLogAudit(`${currentUserName} renamed material category from '${oldCat.name}' to '${trimmed}'`);
+        onLogAudit(`${currentUserName} created material category '${catName}'`);
       }
+      setNewCategoryName('');
+      showToast(`Category "${catName}" added`, { type: 'success' });
+    } else {
+      showToast('Failed to add category', { type: 'error' });
     }
-    setEditingCategoryId(null);
   };
 
-  const handleDeleteCategory = (id: number, name: string) => {
-    (window as any).showConfirm(`Delete category "${name}"? Items using this category will keep their current value.`, async () => {
-      const ok = await deleteMaterialCategoryFromDB(id);
-      if (ok) {
-        setDbCategories((prev: any[]) => prev.filter(c => c.id !== id));
-        if (selectedCategory === name) setSelectedCategory('All');
-        if (onLogAudit) {
-          const currentUserName = currentUser?.name || 'Admin';
-          onLogAudit(`${currentUserName} deleted material category '${name}'`);
+  const handleRenameCategory = async (originalName: string, id?: number) => {
+    const trimmed = editingCategoryName.trim();
+    if (!trimmed || trimmed === originalName) {
+      setEditingCategoryKey(null);
+      return;
+    }
+
+    let ok = false;
+    if (id) {
+      ok = await updateMaterialCategoryInDB(id, trimmed);
+    } else {
+      ok = await addMaterialCategoryToDB(trimmed);
+    }
+
+    if (ok || !id) {
+      const cats = await fetchMaterialCategoriesFromDB();
+      setDbCategories(cats);
+
+      // Update any catalog items using the old category name
+      const affectedItems = catalogItems.filter(i => i.category === originalName);
+      if (affectedItems.length > 0) {
+        const affectedIds = affectedItems.map(i => i.id);
+        setCatalogItems(prev => prev.map(i => i.category === originalName ? { ...i, category: trimmed } : i));
+        try {
+          await bulkUpdateCatalogCategoryDB({ ids: affectedIds, category: trimmed });
+        } catch (err) {
+          console.error('Failed to bulk update catalog items category:', err);
         }
       }
-    });
+
+      if (selectedCategory === originalName) {
+        setSelectedCategory(trimmed);
+      }
+
+      if (onLogAudit) {
+        const currentUserName = currentUser?.name || 'Admin';
+        onLogAudit(`${currentUserName} renamed material category from '${originalName}' to '${trimmed}'`);
+      }
+      showToast(`Category renamed to "${trimmed}"`, { type: 'success' });
+    } else {
+      showToast('Failed to rename category', { type: 'error' });
+    }
+    setEditingCategoryKey(null);
   };
 
-  const handleDeleteCatalogItem = (id: number, name: string) => {
-    (window as any).showConfirm(`Delete catalog item "${name}"? This cannot be undone.`, async () => {
-      const ok = await deleteCatalogItemDB(id);
-      if (ok) {
-        setCatalogItems((prev: CatalogItem[]) => prev.filter((item: CatalogItem) => item.id !== id));
-        if (onLogAudit) {
-          const currentUserName = currentUser?.name || 'Admin';
-          onLogAudit(`${currentUserName} deleted catalog item '${name}'`);
-        }
-      }
+  const handleDeleteCategory = async (name: string, id?: number) => {
+    const confirmed = await confirm({
+      title: `${t('delete_button', 'Delete')} Category`,
+      message: `Delete category "${name}"? Items using this category will keep their current value.`,
+      confirmText: t('delete_button', 'Delete'),
+      cancelText: t('cancel_button', 'Cancel'),
+      variant: 'danger',
     });
+    if (!confirmed) return;
+
+    if (id) {
+      await deleteMaterialCategoryFromDB(id);
+    }
+    setDbCategories((prev: any[]) => prev.filter(c => c.name !== name));
+    if (selectedCategory === name) setSelectedCategory('All');
+    if (onLogAudit) {
+      const currentUserName = currentUser?.name || 'Admin';
+      onLogAudit(`${currentUserName} deleted material category '${name}'`);
+    }
+    showToast(`Category "${name}" deleted`, { type: 'success' });
+  };
+
+  const handleDeleteCatalogItem = async (id: number, name: string) => {
+    const confirmed = await confirm({
+      title: `${t('delete_button', 'Delete')} Catalog Item`,
+      message: `Delete catalog item "${name}"? This cannot be undone.`,
+      confirmText: t('delete_button', 'Delete'),
+      cancelText: t('cancel_button', 'Cancel'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    const ok = await deleteCatalogItemDB(id);
+    if (ok) {
+      setCatalogItems((prev: CatalogItem[]) => prev.filter((item: CatalogItem) => item.id !== id));
+      if (onLogAudit) {
+        const currentUserName = currentUser?.name || 'Admin';
+        onLogAudit(`${currentUserName} deleted catalog item '${name}'`);
+      }
+      showToast(`Catalog item "${name}" deleted`, { type: 'success' });
+    } else {
+      showToast('Failed to delete catalog item', { type: 'error' });
+    }
   };
 
 
@@ -1103,7 +1152,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <div className="kitchen-stock-tabs-desk">
         <Tabs
-          ref={catalogTabsRef}
           aria-label="Kitchen Stock Tabs"
           variant="default"
           theme={attachedTabsTheme}
@@ -1116,7 +1164,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <TabItem active={catalogView === 'categories'} title={t('manage_categories_button')} icon={Settings} />
         </Tabs>
 
-        <div onTouchStart={catalogSwipeHandlers.onTouchStart} onTouchEnd={catalogSwipeHandlers.onTouchEnd}>
         {catalogView === 'items' && (
             <div className="space-y-4">
               {selectedCatalogItemIds.length > 0 && (
@@ -1510,108 +1557,99 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                   type="text"
                   value={newCategoryName}
                   onChange={e => setNewCategoryName(e.target.value)}
-                  placeholder={t('new_category_name_placeholder')}
+                  placeholder={t('new_category_name_placeholder', 'New category name...')}
                   className="flex-1"
-                  onKeyDown={async (e) => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter' && newCategoryName.trim()) {
-                      const catName = newCategoryName.trim();
-                      const ok = await addMaterialCategoryToDB(catName);
-                      if (ok) {
-                        const cats = await fetchMaterialCategoriesFromDB();
-                        setDbCategories(cats);
-                        if (onLogAudit) {
-                          const currentUserName = currentUser?.name || 'Admin';
-                          onLogAudit(`${currentUserName} created material category '${catName}'`);
-                        }
-                        setNewCategoryName('');
-                      }
+                      handleAddCategory();
                     }
                   }}
                 />
-                <button
-                  onClick={async () => {
-                    if (!newCategoryName.trim()) return;
-                    const catName = newCategoryName.trim();
-                    const ok = await addMaterialCategoryToDB(catName);
-                    if (ok) {
-                      const cats = await fetchMaterialCategoriesFromDB();
-                      setDbCategories(cats);
-                      if (onLogAudit) {
-                        const currentUserName = currentUser?.name || 'Admin';
-                        onLogAudit(`${currentUserName} created material category '${catName}'`);
-                      }
-                      setNewCategoryName('');
-                    }
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer"
+                <Button
+                  variant="primary"
+                  disabled={!newCategoryName.trim()}
+                  onClick={handleAddCategory}
                 >
-                  {t('add_category_button')}
-                </button>
+                  {t('add_category_button', 'Add')}
+                </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {catalogCategories.filter(c => c !== 'All').map(cat => {
-                    const dbCat = dbCategories.find(c => c.name === cat);
+                    const dbCat = dbCategories.find(c => c.name.toLowerCase() === cat.toLowerCase());
+                    const isEditing = editingCategoryKey === cat;
                     return (
-                      <div key={cat} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-2">
-                        {editingCategoryId === dbCat?.id ? (
-                      <>
-                        <Input
-                          type="text"
-                          value={editingCategoryName}
-                          onChange={e => setEditingCategoryName(e.target.value)}
-                          onBlur={() => handleRenameCategory(dbCat!.id)}
-                          onKeyDown={e => e.key === 'Enter' && handleRenameCategory(dbCat!.id)}
-                          autoFocus
-                          className="flex-1"
-                        />
-                        <button onClick={() => handleRenameCategory(dbCat!.id)} className="text-emerald-600 hover:text-emerald-700 cursor-pointer p-1">
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setEditingCategoryId(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-1">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{cat}</span>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => { setEditingCategoryId(dbCat?.id || 0); setEditingCategoryName(cat); }}
-                          title={t('rename_tooltip')}
-                          aria-label={t('rename_tooltip')}
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleDeleteCategory(dbCat?.id || 0, cat)}
-                          title={t('delete_button')}
-                          aria-label={t('delete_button')}
-                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                      <div key={cat} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Input
+                              type="text"
+                              value={editingCategoryName}
+                              onChange={e => setEditingCategoryName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleRenameCategory(cat, dbCat?.id);
+                                if (e.key === 'Escape') setEditingCategoryKey(null);
+                              }}
+                              autoFocus
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleRenameCategory(cat, dbCat?.id)}
+                              leftIcon={<Check className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {t('save_button', 'Save')}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setEditingCategoryKey(null)}
+                              leftIcon={<X className="w-3.5 h-3.5 shrink-0" />}
+                            >
+                              {t('cancel_button', 'Cancel')}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{cat}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Button
+                                variant="edit"
+                                size="sm"
+                                onClick={() => { setEditingCategoryKey(cat); setEditingCategoryName(cat); }}
+                                leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+                              >
+                                {t('edit_button', 'Edit')}
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDeleteCategory(cat, dbCat?.id)}
+                                leftIcon={<Trash2 className="w-3.5 h-3.5 shrink-0" />}
+                              >
+                                {t('delete_button', 'Delete')}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                })}
               </div>
             </div>
         )}
         </div>
-        </div>
 
-        {/* Add/Edit Catalog Drawer */}
-        <FlowbiteDrawer
-          open={isCatalogModalOpen}
+        {/* Add/Edit Catalog Modal */}
+        <Modal
+          show={isCatalogModalOpen}
           onClose={() => setIsCatalogModalOpen(false)}
-          position="right"
-          className="z-58 w-full sm:w-120 p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+          size="md"
+          popup
+          dismissible
+          className="z-58"
         >
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                 <PackagePlus className="w-4 h-4" />
@@ -1628,8 +1666,8 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-          <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item flex-1 flex flex-col justify-between overflow-y-auto">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+          <form onSubmit={handleSaveCatalogItem} className="app-form app-form--save-catalog-item">
+            <div className="p-4 sm:p-5 space-y-4 text-xs">
               <div>
                 <Input label={t('item_name_label')} type="text" required value={catItemName} onChange={e => setCatItemName(e.target.value)} placeholder="e.g. Tomato Puree" />
               </div>
@@ -1664,7 +1702,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
                 </div>
               </div>
             </div>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-850">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 bg-gray-50 dark:bg-gray-800 rounded-b-lg">
               <Button
                 type="button"
                 variant="secondary"
@@ -1678,7 +1716,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               </Button>
             </div>
           </form>
-        </FlowbiteDrawer>
+        </Modal>
       </div>
     );
   }
@@ -1760,7 +1798,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           fixes the centering and matches this page's tab-row look/spacing
           to the rest of the app. */}
       <Tabs
-        ref={requisitionsTabsRef}
         aria-label="Stock Request Tabs"
         variant="default"
         theme={attachedTabsTheme}
@@ -1791,7 +1828,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         />
       </Tabs>
 
-      <div onTouchStart={requisitionsSwipeHandlers.onTouchStart} onTouchEnd={requisitionsSwipeHandlers.onTouchEnd}>
       {activeTab === 'fulfill' && (
         <div className="space-y-4">
           <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg rounded-t-none border border-t-0 border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto -mt-px">
@@ -2160,7 +2196,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
       )}
 
       {activeTab === 'requisitions' && (
-        <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg rounded-t-none border border-t-0 border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 -mt-px lg:p-4 shadow-md">
+        <div className="take-food-order-container space-y-4 pb-48 lg:pb-0 bg-white dark:bg-gray-800 rounded-lg rounded-t-none border border-t-0 border-gray-200 dark:border-gray-700 p-3.5 sm:p-4 -mt-px lg:p-4">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Left Side (Desktop: 3 columns, Mobile: 1 column full width). Card
               chrome (bg/border/rounded/shadow/padding) is lg:-only - the
@@ -2175,7 +2211,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
               (that's what was causing the "block inside a block" nesting). */}
           <div className="lg:col-span-3 space-y-3.5 lg:bg-white lg:rounded-lg lg:border lg:border-slate-200 lg:shadow-md lg:p-4">
             {/* Sticky Search & Category Pills Bar */}
-            <div className="bg-white pt-2 pb-3 space-y-3 -mx-1 px-1 sm:-mx-4 sm:px-4 border-b border-slate-100 shadow-md rounded-t-xl">
+            <div className="pos-category-filter-bar bg-white dark:bg-gray-800 pb-3 space-y-3 border-b border-gray-100 dark:border-gray-700">
               {/* Quick Search Bar + Category Filter Toggle */}
               <div className="flex items-center gap-2">
                 <div className="flex-1">
@@ -2495,7 +2531,6 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
       </div>
     )}
-  </div>
   </div>
 );
 }

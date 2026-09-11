@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Tabs, TabItem, TabsRef } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { CashDrawerManager } from './CashDrawerManager';
 import { PettyCashManagement } from './PettyCashManagement';
 import { ExpenseItemsManagement } from './ExpenseItemsManagement';
@@ -50,10 +49,6 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
       }
     }
   };
-
-  // Swipe left/right on the sub-tab content to move to the next/previous
-  // tab (11 Sep 2026, explicit request - "wherever there are tabs").
-  const swipeHandlers = useSwipeTabs(tabsRef, subTabKeys.indexOf(activeSubTab), subTabKeys.length);
 
   return (
     <div className="finances-hub">
@@ -108,23 +103,21 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
       </div>
 
       {/* Sub-tab view */}
-      <div onTouchStart={swipeHandlers.onTouchStart} onTouchEnd={swipeHandlers.onTouchEnd}>
-        {activeSubTab === 'drawer' && (
-          <CashDrawerManager
-            onLogAudit={onLogAudit}
-            onDispatchTelegram={onDispatchTelegram}
-          />
-        )}
-        {activeSubTab === 'expenses' && (
-          <PettyCashManagement
-            activeRole={activeRole}
-            onDispatchTelegram={onDispatchTelegram}
-          />
-        )}
-        {activeSubTab === 'catalog' && (
-          <ExpenseItemsManagement />
-        )}
-      </div>
+      {activeSubTab === 'drawer' && (
+        <CashDrawerManager
+          onLogAudit={onLogAudit}
+          onDispatchTelegram={onDispatchTelegram}
+        />
+      )}
+      {activeSubTab === 'expenses' && (
+        <PettyCashManagement
+          activeRole={activeRole}
+          onDispatchTelegram={onDispatchTelegram}
+        />
+      )}
+      {activeSubTab === 'catalog' && (
+        <ExpenseItemsManagement />
+      )}
     </div>
   );
 };

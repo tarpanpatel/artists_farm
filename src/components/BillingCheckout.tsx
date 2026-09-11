@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { Card, Drawer, TextInput, Tabs, TabItem, TabsRef } from 'flowbite-react';
+import { Card, Drawer, TextInput, Tabs, TabItem } from 'flowbite-react';
 import { BookingCard } from './BookingCard';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
   Search,
@@ -136,11 +135,6 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>(getInitialBookingsTab);
-  const tabsRef = useRef<TabsRef>(null);
-  const bookingTabKeys: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
-  // Swipe left/right on the desk card below the tabs to move to the next/
-  // previous one (11 Sep 2026, explicit request - "wherever there are tabs").
-  const swipeHandlers = useSwipeTabs(tabsRef, bookingTabKeys.indexOf(activeTab), bookingTabKeys.length);
 
   const handleTabSelect = (tab: 'today' | 'upcoming' | 'past_bookings') => {
     setActiveTab(tab);
@@ -578,13 +572,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       <div className="billing-checkout__desk">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <Tabs
-            ref={tabsRef}
             aria-label="Booking Status Tabs"
             variant="default"
             theme={attachedTabsTheme}
             clearTheme={attachedTabsClearTheme}
             onActiveTabChange={(tabIndex: number) => {
-              if (bookingTabKeys[tabIndex]) handleTabSelect(bookingTabKeys[tabIndex]);
+              const tabs: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
+              if (tabs[tabIndex]) handleTabSelect(tabs[tabIndex]);
             }}
           >
             <TabItem
@@ -649,11 +643,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
             sm: rule from the theme kept winning at >=640px. border-t-0 still
             drops the WHOLE top border (not just the left corner's) since the
             seam under the tabs runs the full width, not just under Today. */}
-        <Card
-          className="billing-checkout__desk-body shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px"
-          onTouchStart={swipeHandlers.onTouchStart}
-          onTouchEnd={swipeHandlers.onTouchEnd}
-        >
+        <Card className="billing-checkout__desk-body shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px">
 
           {/* Search Bar - covers room too (guest name, phone, OR room number) */}
           <div className="billing-checkout__search flex flex-col items-center gap-3 sm:flex-row">

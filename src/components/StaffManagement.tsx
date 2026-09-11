@@ -37,6 +37,7 @@ import { PageHeader } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 import { shareTextContent } from '../utils/shareText';
+import { useVerticalSwipe } from '../utils/useSwipeGesture';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 
 interface StaffManagementProps {
@@ -209,6 +210,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   // (preferring qrCodeUrl as its background if both exist - same precedence
   // as everywhere else this pattern is used).
   const [lightboxTarget, setLightboxTarget] = useState<{ qrCodeUrl?: string; upiId?: string; payeeName?: string } | null>(null);
+  const qrLightboxSwipe = useVerticalSwipe({ onSwipeDown: () => setLightboxTarget(null) });
 
   const roleHelpPopoverContent = (
     <div className="w-80 sm:w-96 p-3.5 text-xs space-y-3.5 max-h-[460px] overflow-y-auto">
@@ -1984,6 +1986,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
       {lightboxTarget && (
         <div
           onClick={() => setLightboxTarget(null)}
+          // Swipe down to dismiss (11 Sep 2026, site-wide swipe pass) -
+          // safe to add here with no conditions because this lightbox is
+          // a read-only image viewer: there's no typed input to lose if a
+          // swipe fires, unlike the form-bearing drawers.
+          onTouchStart={qrLightboxSwipe.onTouchStart}
+          onTouchEnd={qrLightboxSwipe.onTouchEnd}
           className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in cursor-pointer"
         >
           <div

@@ -42,7 +42,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
-import { useSwipeTabs } from '../utils/useSwipeTabs';
+import { useVerticalSwipe } from '../utils/useSwipeGesture';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -277,16 +277,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>(getInitialTab);
   const tabsRef = useRef<TabsRef>(null);
-  // Swipe left/right on the kds/new_order content to move to the next/
-  // previous tab (11 Sep 2026, explicit request - "wherever there are
-  // tabs"). tabCount is 1 (never swipeable) while the tab strip itself is
-  // hidden for the restricted Staff Kitchen role, matching what's actually
-  // on screen.
-  const kdsSwipeHandlers = useSwipeTabs(
-    tabsRef,
-    activeTab === 'kds' ? 0 : 1,
-    isRestrictedStaffKitchenView ? 1 : 2
-  );
 
   useEffect(() => {
     if (isRestrictedStaffKitchenView) { setActiveTab('kds'); return; }
@@ -1282,6 +1272,27 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [posLayoutMode, setPosLayoutMode] = useState<'thumbnail' | 'list'>('list');
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
+  // Swipe the cart open/closed (11 Sep 2026, explicit request: "Swiping
+  // down should close it and swiping the tab up should open it"). Tapping
+  // the tab still toggles exactly as before - this is an extra way in and
+  // out, not a replacement.
+  //
+  // The pull-tab takes BOTH directions and has no scroller inside it, so
+  // it is the one target that always works, every time, in both states -
+  // deliberately, so there is never a "why didn't it open that time".
+  // The panel body additionally closes on a downward swipe, but only when
+  // its item list is already scrolled to the top; otherwise the list
+  // scrolls instead. That's the standard bottom-sheet rule people already
+  // know from every other app, and it gives visible feedback (the list
+  // moves) rather than doing nothing.
+  //
+  // Nothing is lost either way: closing the cart keeps every item in it,
+  // and the tab still shows the running count and total.
+  const cartTabSwipe = useVerticalSwipe({
+    onSwipeUp: () => setIsCartDrawerExpanded(true),
+    onSwipeDown: () => setIsCartDrawerExpanded(false),
+  });
+  const cartPanelSwipe = useVerticalSwipe({ onSwipeDown: () => setIsCartDrawerExpanded(false) });
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
   const [selectedWalkInTabId, setSelectedWalkInTabId] = useState<number | null>(null);
   const [newTabLabel, setNewTabLabel] = useState('');
@@ -1589,7 +1600,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         </Tabs>
         )}
 
-        <div onTouchStart={kdsSwipeHandlers.onTouchStart} onTouchEnd={kdsSwipeHandlers.onTouchEnd}>
         {activeTab === 'kds' && (() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
@@ -2721,6 +2731,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       invisible) presence of this button at all. */}
                 <button
                   onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
+                  onTouchStart={cartTabSwipe.onTouchStart}
+                  onTouchEnd={cartTabSwipe.onTouchEnd}
                   // Centered (11 Sep 2026, explicit request - "2 items ₹165
                   // tab should be centralised") - was left-4, which no longer
                   // has a ScrollToTopButton-overlap reason to hug the left
@@ -2745,6 +2757,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     never gets clipped along with it. See the outer div's
                     comment above for the full why. */}
                 <div
+                  onTouchStart={cartPanelSwipe.onTouchStart}
+                  onTouchEnd={cartPanelSwipe.onTouchEnd}
                   // pos-cart-drawer-panel (11 Sep 2026): the mobile full-
                   // bleed card CSS sweep (custom.css) was silently stripping
                   // this div's rounded top corners, 2px blue top border, and
@@ -2909,7 +2923,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
           );
         })()}
-        </div>
         </div>
       )}
 

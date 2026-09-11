@@ -193,6 +193,20 @@ const flowbiteTheme = {
   },
 };
 
+// A global "swipe an open drawer away" handler was built here 11 Sep 2026
+// and removed the same day, before shipping, on explicit instruction
+// ("don't do things which can lead to loss of work done by user or user
+// gets confused why it works at some places and some times"). Both halves
+// of that applied squarely: 29 of the 33 drawer-bearing components hold
+// form inputs - including the multi-step wizards and PushConfirmationGate,
+// where you type a property name to authorise a live OTA push - so an
+// accidental thumb swipe discarded real typed work with no undo. And its
+// necessary safety back-offs (ignore the gesture on a text field, or in a
+// scroller that can still move) meant the very same swipe on the very
+// same drawer worked or didn't purely by where the thumb landed. Don't
+// re-add it. A drawer is dismissed by its close button, its backdrop, or
+// Escape - all deliberate, none firing by accident mid-scroll.
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider theme={flowbiteTheme}>

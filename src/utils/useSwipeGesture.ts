@@ -1,0 +1,175 @@
+import { useRef, useCallback } from 'react';
+import type { TouchEvent as ReactTouchEvent } from 'react';
+
+/**
+ * Directional swipe hooks for a single element - `useVerticalSwipe` (up/
+ * down) and `useHorizontalSwipe` (left/right). Added 11 Sep 2026 for the
+ * Kitchen POS cart sheet ("Swiping down should close it and swiping the
+ * tab up should open it").
+ *
+ * ── WHERE A SWIPE MAY BE ADDED (read before adding a new one) ──
+ *
+ * Two rules, both set the same day after a swipe pass was built too
+ * broadly and pulled back: "don't do things which can lead to loss of
+ * work done by user or user gets confused why it works at some places
+ * and some times".
+ *
+ *  1. NEVER on a surface that can discard typed input. A swipe is a
+ *     gesture people make by accident mid-scroll; a button press isn't.
+ *     "They could already have lost it by pressing Escape / tapping the
+ *     tab" is NOT a defence - those are deliberate, a thumb drag is not.
+ *     This is why there is no swipe-to-close on `<Drawer>` (29 of the 33
+ *     drawer-bearing components hold form inputs, including the
+ *     multi-step wizards and PushConfirmationGate) and no swipe-between-
+ *     tabs (the attached-tabs pattern renders panels with `&&`, so
+ *     switching UNMOUNTS the outgoing panel and takes its child state
+ *     with it - a half-filled Petty Cash expense, receipt scan and all).
+ *
+ *  2. The same swipe on the same surface must always do the same thing.
+ *     A gesture that needs an "unless your finger happened to land on X"
+ *     exception to be safe is a gesture that shouldn't be there. Note
+ *     the scroll-edge checks below are NOT such an exception - "a list
+ *     with more to scroll scrolls instead of dismissing" is how every
+ *     bottom sheet on both mobile platforms behaves, so it matches what
+ *     people already expect rather than surprising them.
+ *
+ * What's left after those rules: surfaces holding no user input at all -
+ * the POS cart sheet (closing it keeps the cart; the tab still shows the
+ * running total), the nav sidebar, and read-only image lightboxes.
+ *
+ * Non-invasive by design: touchend-only, no touchmove handler and no
+ * preventDefault anywhere, so native scrolling is never interrupted or
+ * fought over mid-gesture - the direction/distance check below simply
+ * decides afterward whether that touch counted as a swipe.
+ *
+ * The scroll-edge rule is what makes this safe to put on a panel that
+ * contains its own scrollable list: a downward swipe only dismisses when
+ * the list under the finger was ALREADY scrolled to the top when the
+ * touch began (and an upward swipe only fires when it was at the bottom).
+ * Without that, flicking a half-scrolled cart list downward would close
+ * the drawer instead of scrolling it - the single most common complaint
+ * about hand-rolled bottom sheets.
+ */
+const SWIPE_MIN_DISTANCE_PX = 50;
+// Vertical movement must exceed horizontal by this multiple - otherwise a
+// mostly-sideways drag could cross the distance threshold and misfire.
+const SWIPE_DIRECTION_RATIO = 1.5;
+
+function findVerticalScroller(from: EventTarget | null, boundary: EventTarget | null): HTMLElement | null {
+  let node = from as HTMLElement | null;
+  while (node && node !== boundary) {
+    const style = window.getComputedStyle(node);
+    if (node.scrollHeight > node.clientHeight + 1 && /(auto|scroll)/.test(style.overflowY)) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
+function findHorizontalScroller(from: EventTarget | null, boundary: EventTarget | null): HTMLElement | null {
+  let node = from as HTMLElement | null;
+  while (node && node !== boundary) {
+    const style = window.getComputedStyle(node);
+    if (node.scrollWidth > node.clientWidth + 1 && /(auto|scroll)/.test(style.overflowX)) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
+export interface VerticalSwipeOptions {
+  onSwipeUp?: () => void;
+  onSwipeDown?: () => void;
+}
+
+export function useVerticalSwipe({ onSwipeUp, onSwipeDown }: VerticalSwipeOptions) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const scroller = useRef<HTMLElement | null>(null);
+
+  const onTouchStart = useCallback((e: ReactTouchEvent<HTMLElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    start.current = { x: touch.clientX, y: touch.clientY };
+    scroller.current = findVerticalScroller(e.target, e.currentTarget);
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (e: ReactTouchEvent<HTMLElement>) => {
+      const begin = start.current;
+      const scrollEl = scroller.current;
+      start.current = null;
+      scroller.current = null;
+      if (!begin) return;
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - begin.x;
+      const dy = touch.clientY - begin.y;
+      if (Math.abs(dy) < SWIPE_MIN_DISTANCE_PX) return;
+      if (Math.abs(dy) < Math.abs(dx) * SWIPE_DIRECTION_RATIO) return;
+      if (dy > 0) {
+        // Swiped down - dismiss, but only if the list under the finger had
+        // nothing left to scroll upward into.
+        if (scrollEl && scrollEl.scrollTop > 0) return;
+        onSwipeDown?.();
+      } else {
+        // Swiped up - only once the list under the finger is at its end.
+        if (scrollEl && scrollEl.scrollTop + scrollEl.clientHeight < scrollEl.scrollHeight - 1) return;
+        onSwipeUp?.();
+      }
+    },
+    [onSwipeUp, onSwipeDown]
+  );
+
+  return { onTouchStart, onTouchEnd };
+}
+
+export interface HorizontalSwipeOptions {
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
+}
+
+/**
+ * Left/right counterpart of useVerticalSwipe, with the same scroll-edge
+ * rule applied sideways: a leftward swipe only fires once whatever is
+ * under the finger has no more room to scroll left, so flicking a wide
+ * table sideways never doubles as a dismiss.
+ */
+export function useHorizontalSwipe({ onSwipeLeft, onSwipeRight }: HorizontalSwipeOptions) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const scroller = useRef<HTMLElement | null>(null);
+
+  const onTouchStart = useCallback((e: ReactTouchEvent<HTMLElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    start.current = { x: touch.clientX, y: touch.clientY };
+    scroller.current = findHorizontalScroller(e.target, e.currentTarget);
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (e: ReactTouchEvent<HTMLElement>) => {
+      const begin = start.current;
+      const scrollEl = scroller.current;
+      start.current = null;
+      scroller.current = null;
+      if (!begin) return;
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - begin.x;
+      const dy = touch.clientY - begin.y;
+      if (Math.abs(dx) < SWIPE_MIN_DISTANCE_PX) return;
+      if (Math.abs(dx) < Math.abs(dy) * SWIPE_DIRECTION_RATIO) return;
+      if (dx < 0) {
+        if (scrollEl && scrollEl.scrollLeft > 0) return;
+        onSwipeLeft?.();
+      } else {
+        if (scrollEl && scrollEl.scrollLeft + scrollEl.clientWidth < scrollEl.scrollWidth - 1) return;
+        onSwipeRight?.();
+      }
+    },
+    [onSwipeLeft, onSwipeRight]
+  );
+
+  return { onTouchStart, onTouchEnd };
+}
