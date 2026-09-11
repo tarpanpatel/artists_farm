@@ -95,7 +95,10 @@ class ChannexContentSyncer {
                 $units[] = [
                     'room_id' => (int)$r['id'],
                     'name' => $r['name'],
-                    'default_tariff' => (float)($r['default_tariff'] ?: $prop['default_tariff'] ?: 2500),
+                    // Deliberately NO placeholder fallback (e.g. the 2500 this used
+                    // to silently substitute) - see the single-unit branch below for
+                    // why a fabricated number here is never safe.
+                    'default_tariff' => (float)($r['default_tariff'] ?: $prop['default_tariff'] ?: 0),
                     // Falls back to the parent property's capacity, then to 2 - a
                     // conservative default, unlike the 6 this used to hardcode.
                     // Under-stating capacity loses a booking; over-stating it
@@ -109,7 +112,24 @@ class ChannexContentSyncer {
             $units[] = [
                 'room_id' => null,
                 'name' => $prop['name'],
-                'default_tariff' => (float)($prop['default_tariff'] ?: 3500),
+                // No placeholder fallback here either (this used to be `?: 3500`) -
+                // found 11 Sep 2026, live: a property imported from Airbnb before
+                // its base price was set got a Channex rate plan created with that
+                // 3500 placeholder, which was then bound directly to the live
+                // Airbnb listing via createChannelMapping() in ota_provisioner.php
+                // - contradicting this integration's own "import must never push"
+                // rule, since that mapping call visibly changed the price shown on
+                // Airbnb despite the channel connection sitting at
+                // 'ready_to_activate' the entire time. "Never push" had only ever
+                // been enforced at the ARI-drain/activate boundary; this specific
+                // one-time content-creation-and-mapping step fell outside that
+                // gate entirely. See the guard right below, which is the actual
+                // fix - it stops a rate plan with a fabricated price from ever
+                // being created (and therefore ever being mappable to a real OTA
+                // listing) in the first place, rather than trying to pick a
+                // "safer" placeholder number - there is no number that's safe to
+                // show a real guest as this property's real price.
+                'default_tariff' => (float)($prop['default_tariff'] ?: 0),
                 'max_capacity' => (int)($prop['max_capacity'] ?: 0),
             ];
         }
@@ -208,6 +228,52 @@ class ChannexContentSyncer {
                     throw new RuntimeException("Failed to create Channex room type for '{$unit['name']}': " . json_encode($roomRes['error'] ?? 'Unknown error'));
                 }
                 $channexRoomTypeId = $roomRes['data']['id'];
+            }
+
+            // Refuse to create (or update) a rate plan with no real price behind
+            // it (found 11 Sep 2026 - see the removed `?: 3500`/`?: 2500`
+            // fallbacks above for the incident this closes). The room type
+            // itself is harmless to create with no price attached, but a rate
+            // plan is not: ota_provisioner.php's createChannelMapping() call
+            // binds whatever rate plan content_sync just created directly to a
+            // live OTA listing, and that binding is what actually changes the
+            // price a guest sees - the channel's own 'ready_to_activate' /
+            // 'active' status never gated this at all. Saving a 'pending_price'
+            // mapping (rate plan id left blank) instead of a fabricated number
+            // means ota_provisioner.php's `if ($ratePlanId)` guard around
+            // createChannelMapping() naturally skips mapping this unit until a
+            // real price exists - no downstream change needed for that part.
+            if ($unit['default_tariff'] <= 0) {
+                $checkStmt = $this->pdo->prepare("
+                    SELECT id FROM channex_mappings
+                    WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL))
+                    LIMIT 1
+                ");
+                $checkStmt->execute([$propertyId, $roomId, $roomId]);
+                $existingMappingId = $checkStmt->fetchColumn();
+
+                if ($existingMappingId) {
+                    $this->pdo->prepare("
+                        UPDATE channex_mappings
+                        SET channex_property_id = ?, channex_room_type_id = ?, sync_status = 'pending_price'
+                        WHERE id = ?
+                    ")->execute([$channexPropertyId, $channexRoomTypeId, $existingMappingId]);
+                } else {
+                    $this->pdo->prepare("
+                        INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id, sell_mode, sync_status, last_synced_at)
+                        VALUES (?, ?, ?, ?, '', 'per_room', 'pending_price', NOW())
+                    ")->execute([$propertyId, $roomId, $channexPropertyId, $channexRoomTypeId]);
+                }
+
+                $results[] = [
+                    'property_id' => $propertyId,
+                    'room_id' => $roomId,
+                    'channex_property_id' => $channexPropertyId,
+                    'channex_room_type_id' => $channexRoomTypeId,
+                    'channex_rate_plan_id' => null,
+                    'pending_price' => true,
+                ];
+                continue;
             }
 
             // 2. Create Rate Plan.

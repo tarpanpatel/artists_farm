@@ -5582,13 +5582,32 @@ switch ($action) {
                 $selectedListings = is_array($input['selected_listing_ids'] ?? null) ? $input['selected_listing_ids'] : [];
                 $customPropName = isset($input['property_name']) ? trim((string)$input['property_name']) : null;
                 // No consent gates here on purpose: this action IMPORTS ONLY - it never
-                // pushes ARI and never activates the channel, so there is no outward-facing
-                // write for the owner to consent to (9 Sep 2026 - see the "Step 5" comment in
-                // autoProvisionPropertyFromAirbnb()). The connection is left at
-                // 'ready_to_activate'; `channex_channel_activate` is the action that actually
-                // pushes, and it is where confirmed_existing_bookings / confirmed_rate_fallback
-                // are enforced. Between 8 and 9 Sep 2026 this path did activate, and required
-                // both gates for that reason.
+                // pushes ARI and never activates the channel. The connection is left at
+                // 'ready_to_activate'; `channex_channel_activate` is the action that
+                // actually pushes, and it is where confirmed_existing_bookings /
+                // confirmed_rate_fallback are enforced. Between 8 and 9 Sep 2026 this
+                // path did activate, and required both gates for that reason.
+                //
+                // CORRECTED 11 Sep 2026: the claim that there is "no outward-facing
+                // write for the owner to consent to" was WRONG and stayed wrong in this
+                // comment for two days - found live when a property imported before its
+                // base price was set showed a fabricated Rs 3500 placeholder price on
+                // the real Airbnb listing, despite the connection sitting at
+                // 'ready_to_activate' the whole time. Root cause:
+                // autoProvisionPropertyFromAirbnb() calls ChannexContentSyncer::
+                // syncProperty(), which used to fall back to a hardcoded placeholder
+                // price (3500/2500) when default_tariff was unset, and then this same
+                // function's own createChannelMapping() call bound that fabricated
+                // rate plan directly to the live Airbnb listing - a real outward-facing
+                // write this "no consent gate needed" reasoning had missed entirely.
+                // "Never push" had only ever been enforced at the ARI-drain/activate
+                // boundary; this one-time content-creation-and-mapping step fell
+                // outside that gate. Fixed at the root in content_sync.php (no fallback
+                // placeholder is ever used any more; a unit with no real price gets a
+                // room type but no rate plan, so createChannelMapping()'s own
+                // `if ($ratePlanId)` guard now naturally skips mapping it) rather than
+                // adding a consent gate here - there was no wrong-but-safe number to
+                // gate consent around, the fabrication itself had to stop happening.
                 $res = autoProvisionPropertyFromAirbnb(
                     $pdo, $targetPropertyId, $selectedListings, $customPropName
                 );
