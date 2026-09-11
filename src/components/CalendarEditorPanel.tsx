@@ -8,6 +8,8 @@ import { useToast } from './ToastContext';
 import { saveRateRuleDB } from '../services/api';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useSwipeTabs } from '../utils/useSwipeTabs';
+import { formatDateOrdinal } from '../utils/dateUtils';
+
 
 /**
  * Airbnb-Multi-Calendar-style editor panel (6 Sep 2026, explicit request:
@@ -77,11 +79,6 @@ const nightsBetween = (start: string, end: string): number => {
   return Math.round((b - a) / 86400000) + 1;
 };
 
-const shortDate = (dateStr: string): string => {
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-};
 
 export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
   selection,
@@ -344,9 +341,9 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
         <div className="flex items-center justify-between gap-3 px-4 pt-3.5 pb-1">
           <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
             <span className="text-base font-bold text-slate-900 dark:text-white">
-              {shortDate(selection.startDate)}
+              {formatDateOrdinal(selection.startDate)}
               {nights > 1 && <span className="text-slate-400 font-normal"> &ndash; </span>}
-              {nights > 1 && shortDate(selection.endDate)}
+              {nights > 1 && formatDateOrdinal(selection.endDate)}
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">
               &middot; {nights} night{nights === 1 ? '' : 's'} &middot; {unitLabel}
@@ -578,11 +575,11 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
                     </div>
                     <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
                       <span className="text-slate-500 dark:text-slate-400">Check-in</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{shortDate(selection.startDate)}</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{formatDateOrdinal(selection.startDate)}</span>
                     </div>
                     <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
                       <span className="text-slate-500 dark:text-slate-400">Check-out</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">{shortDate(checkoutDateStr)}</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{formatDateOrdinal(checkoutDateStr)}</span>
                     </div>
                     <div className="flex justify-between items-center py-1 border-b border-blue-100 dark:border-blue-900/50">
                       <span className="text-slate-500 dark:text-slate-400">Duration</span>
@@ -687,8 +684,8 @@ export const CalendarEditorPanel: React.FC<CalendarEditorPanelProps> = ({
                 Dates
               </span>
               <p className="font-semibold text-gray-900 dark:text-white text-xs mt-0.5 whitespace-nowrap">
-                {shortDate(selection.startDate)}
-                {nights > 1 && <> &ndash; {shortDate(selection.endDate)}</>}
+                {formatDateOrdinal(selection.startDate)}
+                {nights > 1 && <> &ndash; {formatDateOrdinal(selection.endDate)}</>}
                 <span className="text-gray-400 font-normal"> &middot; {nights} night{nights === 1 ? '' : 's'}</span>
               </p>
             </div>
