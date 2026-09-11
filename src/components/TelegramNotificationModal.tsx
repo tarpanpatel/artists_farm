@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FieldHelpModeProvider } from './FieldHelpPopover';
-import { Drawer, Dropdown, DropdownItem, Tabs, TabItem } from 'flowbite-react';
+import { Drawer, Dropdown, DropdownItem, Tabs, TabItem, TabsRef } from 'flowbite-react';
 import {
   Send,
   X,
@@ -32,6 +32,7 @@ import { Textarea } from './Textarea';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
@@ -467,6 +468,14 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
   const [testError, setTestError] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<'wysiwyg' | 'html'>('wysiwyg');
   const [activeCategory, setActiveCategory] = useState<'Kitchen' | 'Admin' | 'Finances'>('Kitchen');
+  const categoryTabsRef = useRef<TabsRef>(null);
+  const categoryTabKeys = ['Kitchen', 'Admin', 'Finances'] as const;
+  // Rendered inside a Drawer, so the gesture binds to this section's own
+  // container rather than the page behind it (11 Sep 2026).
+  const categorySwipeRef = useRef<HTMLDivElement>(null);
+  useSwipeTabs(categoryTabsRef, categoryTabKeys.indexOf(activeCategory), categoryTabKeys.length, {
+    targetRef: categorySwipeRef,
+  });
 
   const getTemplateGroup = (tpl: TelegramTemplateExtended): 'Kitchen' | 'Admin' | 'Finances' => {
     // A manual "move to group" override always wins over the automatic
@@ -1094,8 +1103,9 @@ export const TelegramNotificationModal: React.FC<TelegramNotificationModalProps>
       {/* Category Tabs - attached to the card below, same "sits directly on
           the card" treatment as every other tab bar in the app (see
           DESIGN.md's "Attached Tabs Specification" / utils/tabsTheme.ts). */}
-      <div>
+      <div ref={categorySwipeRef}>
         <Tabs
+          ref={categoryTabsRef}
           aria-label="Telegram Notification Category Tabs"
           variant="default"
           theme={attachedTabsTheme}

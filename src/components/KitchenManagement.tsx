@@ -42,6 +42,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { useVerticalSwipe } from '../utils/useSwipeGesture';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
@@ -1271,6 +1272,11 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   const [showCategoryFilters, setShowCategoryFilters] = useState(false);
   const [posLayoutMode, setPosLayoutMode] = useState<'thumbnail' | 'list'>('list');
   const [recentlyAddedId, setRecentlyAddedId] = useState<number | null>(null);
+  // Swipe anywhere on the page to move between Live Tickets / Take Order
+  // (11 Sep 2026). Disabled for the restricted Staff Kitchen role, whose
+  // tab strip is hidden because 'kds' is the only view it can reach.
+  useSwipeTabs(tabsRef, activeTab === 'kds' ? 0 : 1, 2, { enabled: !isRestrictedStaffKitchenView });
+
   const [isCartDrawerExpanded, setIsCartDrawerExpanded] = useState<boolean>(false);
   // Swipe the cart open/closed (11 Sep 2026, explicit request: "Swiping
   // down should close it and swiping the tab up should open it"). Tapping

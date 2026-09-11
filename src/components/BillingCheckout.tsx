@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { Card, Drawer, TextInput, Tabs, TabItem } from 'flowbite-react';
+import { Card, Drawer, TextInput, Tabs, TabItem, TabsRef } from 'flowbite-react';
 import { BookingCard } from './BookingCard';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
   Search,
@@ -135,6 +136,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'past_bookings'>(getInitialBookingsTab);
+
+  const tabsRef = useRef<TabsRef>(null);
+  const bookingTabKeys: ('today' | 'upcoming' | 'past_bookings')[] = ['today', 'upcoming', 'past_bookings'];
+  // Swipe anywhere on the page to move between these tabs (11 Sep 2026).
+  useSwipeTabs(tabsRef, bookingTabKeys.indexOf(activeTab), bookingTabKeys.length);
 
   const handleTabSelect = (tab: 'today' | 'upcoming' | 'past_bookings') => {
     setActiveTab(tab);
@@ -572,6 +578,7 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       <div className="billing-checkout__desk">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <Tabs
+            ref={tabsRef}
             aria-label="Booking Status Tabs"
             variant="default"
             theme={attachedTabsTheme}

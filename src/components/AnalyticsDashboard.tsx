@@ -39,6 +39,7 @@ import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { centeredTabsTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { getChartColors, CHART_QUALITATIVE_PALETTE, chartBase } from '../utils/chartTheme';
 
 interface AnalyticsRoom {
@@ -207,6 +208,14 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const index = tabOrder.indexOf(activeTab);
     if (index >= 0) tabsRef.current?.setActiveTab(index);
   }, [activeTab, kitchenModuleEnabled]);
+
+  // Swipe anywhere on the page to move between report tabs (11 Sep 2026).
+  // Same conditional order as the effect above, reused rather than
+  // redeclared since kitchenModuleEnabled changes which tabs exist.
+  const analyticsTabOrder = kitchenModuleEnabled
+    ? ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations']
+    : ['overview', 'bookings', 'pace', 'expenses', 'profit_loss', 'fluctuations'];
+  useSwipeTabs(tabsRef, analyticsTabOrder.indexOf(activeTab), analyticsTabOrder.length);
 
   useEffect(() => {
     if (!authChecked || !isAuthenticated) return;

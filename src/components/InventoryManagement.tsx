@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Modal } from 'flowbite-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox, Modal } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, ClipboardList, ChefHat, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
@@ -215,6 +216,25 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     }
     return 'items';
   });
+
+  // Two independent attached-tabs groups live in this file, each with its
+  // own ref/hook (11 Sep 2026). Only one of them is on screen at a time -
+  // they belong to different top-level activeTab branches - so the two
+  // page-level listeners never compete.
+  const catalogTabsRef = useRef<TabsRef>(null);
+  const catalogTabKeys: ('items' | 'categories')[] = ['items', 'categories'];
+  useSwipeTabs(catalogTabsRef, catalogTabKeys.indexOf(catalogView), catalogTabKeys.length, {
+    enabled: activeTab === 'catalog',
+  });
+
+  const requisitionsTabsRef = useRef<TabsRef>(null);
+  const requisitionsTabKeys: ('requisitions' | 'fulfill')[] = ['requisitions', 'fulfill'];
+  useSwipeTabs(
+    requisitionsTabsRef,
+    requisitionsTabKeys.indexOf(activeTab as 'requisitions' | 'fulfill'),
+    requisitionsTabKeys.length,
+    { enabled: activeTab === 'requisitions' || activeTab === 'fulfill' }
+  );
 
   const setCatalogView = (view: 'items' | 'categories') => {
     setCatalogViewState(view);
@@ -1152,6 +1172,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <div className="kitchen-stock-tabs-desk">
         <Tabs
+          ref={catalogTabsRef}
           aria-label="Kitchen Stock Tabs"
           variant="default"
           theme={attachedTabsTheme}
@@ -1798,6 +1819,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           fixes the centering and matches this page's tab-row look/spacing
           to the rest of the app. */}
       <Tabs
+        ref={requisitionsTabsRef}
         aria-label="Stock Request Tabs"
         variant="default"
         theme={attachedTabsTheme}

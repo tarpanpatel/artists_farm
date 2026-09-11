@@ -14,16 +14,22 @@ import type { TouchEvent as ReactTouchEvent } from 'react';
  * work done by user or user gets confused why it works at some places
  * and some times".
  *
- *  1. NEVER on a surface that can discard typed input. A swipe is a
- *     gesture people make by accident mid-scroll; a button press isn't.
- *     "They could already have lost it by pressing Escape / tapping the
- *     tab" is NOT a defence - those are deliberate, a thumb drag is not.
- *     This is why there is no swipe-to-close on `<Drawer>` (29 of the 33
- *     drawer-bearing components hold form inputs, including the
- *     multi-step wizards and PushConfirmationGate) and no swipe-between-
- *     tabs (the attached-tabs pattern renders panels with `&&`, so
- *     switching UNMOUNTS the outgoing panel and takes its child state
- *     with it - a half-filled Petty Cash expense, receipt scan and all).
+ *  1. NEVER put a swipe on a surface that can discard typed input. A
+ *     swipe is a gesture people make by accident mid-scroll; a button
+ *     press isn't. "They could already have lost it by pressing Escape /
+ *     tapping the tab" is NOT a defence - those are deliberate, a thumb
+ *     drag is not. This is why there is no swipe-to-close on `<Drawer>`:
+ *     29 of the 33 drawer-bearing components hold form inputs (the
+ *     multi-step wizards, PushConfirmationGate), and there the swipe
+ *     surface IS the form, so no guard can protect it.
+ *
+ *     Where the hazard is in the app rather than in the gesture, fix the
+ *     app. Tab swiping (useSwipeTabs.ts) was nearly dropped for this -
+ *     FinancesHub rendered its panels with `&&`, so leaving a tab
+ *     unmounted a half-filled Petty Cash expense, OCR receipt and all.
+ *     But TAPPING the tab already did that, so the real defect was the
+ *     unmounting, not the swipe: those panels are now kept mounted and
+ *     hidden once visited, which fixes both.
  *
  *  2. The same swipe on the same surface must always do the same thing.
  *     A gesture that needs an "unless your finger happened to land on X"
@@ -31,11 +37,17 @@ import type { TouchEvent as ReactTouchEvent } from 'react';
  *     the scroll-edge checks below are NOT such an exception - "a list
  *     with more to scroll scrolls instead of dismissing" is how every
  *     bottom sheet on both mobile platforms behaves, so it matches what
- *     people already expect rather than surprising them.
+ *     people already expect rather than surprising them, and the content
+ *     visibly moves instead of the gesture silently doing nothing.
  *
- * What's left after those rules: surfaces holding no user input at all -
- * the POS cart sheet (closing it keeps the cart; the tab still shows the
- * running total), the nav sidebar, and read-only image lightboxes.
+ *     A swipe target must also cover the surface it belongs to, blank
+ *     space included - see useSwipeTabs.ts, where binding to a wrapper
+ *     around the content left every empty area below it dead.
+ *
+ * What's left for THESE hooks after those rules: surfaces holding no
+ * user input at all - the POS cart sheet (closing it keeps the cart; the
+ * tab still shows the running total), the nav sidebar, and read-only
+ * image lightboxes.
  *
  * Non-invasive by design: touchend-only, no touchmove handler and no
  * preventDefault anywhere, so native scrolling is never interrupted or

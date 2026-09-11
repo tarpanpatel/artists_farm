@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Tabs, TabItem, TabsRef } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { CashDrawerManager } from './CashDrawerManager';
 import { PettyCashManagement } from './PettyCashManagement';
 import { ExpenseItemsManagement } from './ExpenseItemsManagement';
@@ -21,6 +22,22 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
   onDispatchTelegram,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'drawer' | 'expenses' | 'catalog'>(initialTab);
+  // Keep a sub-view mounted once it has been opened, and hide it when you
+  // move off, instead of unmounting it (11 Sep 2026). These three panels
+  // hold real inline money-entry work - Cash Drawer's handover form, and
+  // Daily Expenses' full-width Add Expenses card with its OCR-scanned
+  // receipt - none of it autosaved. Rendered with `&&`, leaving the tab
+  // threw every bit of that away, and it did so BEFORE swipe existed:
+  // tapping the tab lost it just the same. Fixed at the source rather
+  // than by avoiding the gesture. Mount-on-first-visit, so nothing is
+  // paid for a tab never opened, and none of the three run timers or
+  // polling (checked), so a hidden one costs nothing while it sits there.
+  const [visitedTabs, setVisitedTabs] = useState<Set<'drawer' | 'expenses' | 'catalog'>>(
+    () => new Set([initialTab])
+  );
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(activeSubTab) ? prev : new Set(prev).add(activeSubTab)));
+  }, [activeSubTab]);
   const tabsRef = useRef<TabsRef>(null);
 
   const subTabKeys: ('drawer' | 'expenses' | 'catalog')[] = ['drawer', 'expenses', 'catalog'];
@@ -37,6 +54,9 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
       tabsRef.current?.setActiveTab(idx);
     }
   }, [activeSubTab]);
+
+  // Swipe anywhere on the page to move between these tabs (11 Sep 2026).
+  useSwipeTabs(tabsRef, subTabKeys.indexOf(activeSubTab), subTabKeys.length);
 
   const handleTabChange = (index: number) => {
     const key = subTabKeys[index];
@@ -102,21 +122,28 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
         </Tabs>
       </div>
 
-      {/* Sub-tab view */}
-      {activeSubTab === 'drawer' && (
-        <CashDrawerManager
-          onLogAudit={onLogAudit}
-          onDispatchTelegram={onDispatchTelegram}
-        />
+      {/* Sub-tab view - hidden, not unmounted, once visited (see
+          visitedTabs above for why). */}
+      {visitedTabs.has('drawer') && (
+        <div hidden={activeSubTab !== 'drawer'}>
+          <CashDrawerManager
+            onLogAudit={onLogAudit}
+            onDispatchTelegram={onDispatchTelegram}
+          />
+        </div>
       )}
-      {activeSubTab === 'expenses' && (
-        <PettyCashManagement
-          activeRole={activeRole}
-          onDispatchTelegram={onDispatchTelegram}
-        />
+      {visitedTabs.has('expenses') && (
+        <div hidden={activeSubTab !== 'expenses'}>
+          <PettyCashManagement
+            activeRole={activeRole}
+            onDispatchTelegram={onDispatchTelegram}
+          />
+        </div>
       )}
-      {activeSubTab === 'catalog' && (
-        <ExpenseItemsManagement />
+      {visitedTabs.has('catalog') && (
+        <div hidden={activeSubTab !== 'catalog'}>
+          <ExpenseItemsManagement />
+        </div>
       )}
     </div>
   );
