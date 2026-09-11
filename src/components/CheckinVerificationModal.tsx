@@ -12,7 +12,7 @@ import {
   resizeImageFile,
   API_ROOT_BASE,
 } from '../services/api';
-import { scanPassportMrz, type PassportMrzResult } from '../utils/ocrScanner';
+import { scanPassportMrz, isOcrDisabledError, type PassportMrzResult } from '../utils/ocrScanner';
 import { t } from '../i18n/en';
 import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
@@ -81,8 +81,12 @@ export const CheckinVerificationModal: React.FC<CheckinVerificationModalProps> =
       } else {
         setErrorMsg("Could not detect passport MRZ lines in this document. Make sure the bottom 2-line code is clear.");
       }
-    } catch {
-      setErrorMsg("Failed to scan document with OCR.");
+    } catch (err) {
+      if (isOcrDisabledError(err)) {
+        setErrorMsg("Document scanning is currently disabled by the administrator.");
+      } else {
+        setErrorMsg("Failed to scan document with OCR.");
+      }
     } finally {
       setScanningDocId(null);
     }

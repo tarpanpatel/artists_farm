@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { Guest } from '../types';
 import { markCFormFiled, checkinGuestInDB, uploadDocumentDB, verifyBookingPaymentDB, API_ROOT_BASE } from '../services/api';
 import { scanApplicantIdFromFile } from '../utils/cFormBarcodeScanner';
-import { scanUpiScreenshot, scanPassportMrz, type UpiScanResult, type PassportMrzResult } from '../utils/ocrScanner';
+import { scanUpiScreenshot, scanPassportMrz, isOcrDisabledError, type UpiScanResult, type PassportMrzResult } from '../utils/ocrScanner';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './ToastContext';
@@ -266,8 +266,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         showToast('OCR scan completed, but no UPI details could be detected.', { type: 'warning' });
       }
     } catch (err: any) {
-      console.error('UPI OCR Scan failed:', err);
-      showToast(t('ocr_scan_failed', 'OCR scan failed. Please try again.'), { type: 'error' });
+      if (isOcrDisabledError(err)) {
+        showToast('Document scanning is currently disabled by the administrator.', { type: 'warning' });
+      } else {
+        console.error('UPI OCR Scan failed:', err);
+        showToast(t('ocr_scan_failed', 'OCR scan failed. Please try again.'), { type: 'error' });
+      }
     } finally {
       setIsScanningUpi(false);
     }
@@ -295,8 +299,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         showToast('OCR completed, but could not detect passport MRZ characters.', { type: 'warning' });
       }
     } catch (err: any) {
-      console.error('Passport OCR Scan failed:', err);
-      showToast(t('ocr_scan_failed', 'OCR scan failed. Please try again.'), { type: 'error' });
+      if (isOcrDisabledError(err)) {
+        showToast('Document scanning is currently disabled by the administrator.', { type: 'warning' });
+      } else {
+        console.error('Passport OCR Scan failed:', err);
+        showToast(t('ocr_scan_failed', 'OCR scan failed. Please try again.'), { type: 'error' });
+      }
     } finally {
       setIsScanningPassport(false);
     }

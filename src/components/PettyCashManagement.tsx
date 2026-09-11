@@ -22,7 +22,7 @@ import { DatePicker } from './DatePicker';
 import { FileInput } from './FileInput';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { useVerticalSwipe } from '../utils/useSwipeGesture';
-import { scanPettyCashReceipt, scanUpiScreenshot, type ReceiptScanResult, type UpiScanResult } from '../utils/ocrScanner';
+import { scanPettyCashReceipt, scanUpiScreenshot, isOcrDisabledError, type ReceiptScanResult, type UpiScanResult } from '../utils/ocrScanner';
 
 interface PettyCashManagementProps {
   activeRole?: string;
@@ -508,8 +508,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         showToast('Scanned bill, but could not detect total amount.', { type: 'warning' });
       }
     } catch (err: any) {
-      console.error('Slip OCR scan error:', err);
-      showToast('OCR scan failed for bill slip.', { type: 'error' });
+      if (isOcrDisabledError(err)) {
+        showToast('Document scanning is currently disabled by the administrator.', { type: 'warning' });
+      } else {
+        console.error('Slip OCR scan error:', err);
+        showToast('OCR scan failed for bill slip.', { type: 'error' });
+      }
     } finally {
       setIsScanningSlip(false);
     }
@@ -537,8 +541,12 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         showToast('Scanned proof, but could not detect payment amount.', { type: 'warning' });
       }
     } catch (err: any) {
-      console.error('UPI OCR scan error:', err);
-      showToast('OCR scan failed for payment proof.', { type: 'error' });
+      if (isOcrDisabledError(err)) {
+        showToast('Document scanning is currently disabled by the administrator.', { type: 'warning' });
+      } else {
+        console.error('UPI OCR scan error:', err);
+        showToast('OCR scan failed for payment proof.', { type: 'error' });
+      }
     } finally {
       setIsScanningPaymentProof(false);
     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server, Sparkles, Tag } from './icons/FlowbiteIcons';
+import { LogOut, BarChart3, Building2, Paintbrush, Menu, Eye, Palette, DollarSign, Send, Mail, Bell, UserCog, Pencil, DatabaseBackup, Loader2, RefreshCw, AlertTriangle, UserRound, Receipt, Package, Bot, Server, Sparkles, Tag, ScanLine } from './icons/FlowbiteIcons';
 import { Card, Sidebar, SidebarItems, SidebarItemGroup, SidebarItem, SidebarCollapse } from 'flowbite-react';
 import { KpiCard } from './KpiCard';
 import { Button } from './Button';
@@ -17,6 +17,7 @@ import { DefaultMiscChargesManager } from './DefaultMiscChargesManager';
 import { ServiceRequestTypesManager } from './ServiceRequestTypesManager';
 import { TelegramNotificationModal } from './TelegramNotificationModal';
 import { TelegramHealthPanel } from './TelegramHealthPanel';
+import { OcrSettingsPanel } from './OcrSettingsPanel';
 import { EmailSettingsPanel } from './EmailSettingsPanel';
 import { AccountSettings } from './AccountSettings';
 import { OnboardingManager } from './OnboardingManager';
@@ -48,9 +49,9 @@ interface RootAdminDashboardProps {
   activeRole: string;
 }
 
-type SectionType = 'dashboard' | 'tenants_properties' | 'onboarding' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'default_misc_charges' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs';
+type SectionType = 'dashboard' | 'tenants_properties' | 'onboarding' | 'appearance' | 'edit_main_menu' | 'default_expenses' | 'default_bills' | 'default_misc_charges' | 'service_request_types' | 'system_stock' | 'telegram_templates' | 'email_settings' | 'account_settings' | 'db_sync' | 'demo_data' | 'ai_services' | 'cron_jobs' | 'ocr_settings';
 
-const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'onboarding', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'default_misc_charges', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs'];
+const VALID_SECTIONS: SectionType[] = ['dashboard', 'tenants_properties', 'onboarding', 'appearance', 'edit_main_menu', 'default_expenses', 'default_bills', 'default_misc_charges', 'service_request_types', 'system_stock', 'telegram_templates', 'email_settings', 'account_settings', 'db_sync', 'demo_data', 'ai_services', 'cron_jobs', 'ocr_settings'];
 
 export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
   username,
@@ -539,6 +540,16 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 Cron Jobs
               </SidebarItem>
 
+              <SidebarItem
+                as="button"
+                icon={ScanLine}
+                active={activeSection === 'ocr_settings'}
+                onClick={() => goToSection('ocr_settings')}
+                className="w-full cursor-pointer text-left"
+              >
+                OCR & Scanning
+              </SidebarItem>
+
               {/* Telescope Monitoring Link */}
               <SidebarItem
                 as="button"
@@ -628,6 +639,7 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
                 {activeSection === 'system_stock' && t('root_system_stock_label', 'System Stock Catalog')}
                 {activeSection === 'ai_services' && 'AI Services & Provider Config'}
                 {activeSection === 'cron_jobs' && 'Cron Jobs'}
+                {activeSection === 'ocr_settings' && 'OCR & Scanning'}
               </h2>
             </div>
             {/* A section-specific header toggle used to also render here,
@@ -714,6 +726,11 @@ export const RootAdminDashboard: React.FC<RootAdminDashboardProps> = ({
           {/* Cron Jobs */}
           {activeSection === 'cron_jobs' && (
             <CronJobsManager />
+          )}
+
+          {/* OCR & Scanning - sitewide kill switch (11 Sep 2026) */}
+          {activeSection === 'ocr_settings' && (
+            <OcrSettingsPanel />
           )}
 
           {/* Service Request Types */}

@@ -12,7 +12,7 @@
  * - Foreign Guest C-Form in 3 Seconds (Passport MRZ TD3 Reader)
  */
 
-import { API_ROOT_BASE } from '../services/api';
+import { API_BASE, API_ROOT_BASE } from '../services/api';
 
 export interface OcrProgressCallback {
   (progress: number, statusMessage: string): void;
@@ -94,6 +94,57 @@ export interface OcrOptions {
   preprocess?: boolean;
   maxDimension?: number;
   enhanceContrast?: boolean;
+}
+
+/**
+ * Sitewide OCR kill switch (11 Sep 2026, explicit request: "I am not sure
+ * if OCR system will work well, so i want to have a toggle in root
+ * dashboard, which can deactivate it sitewide"). Backed by the generic
+ * system_settings key/value store (see php/api/configuration.php's
+ * get_system_settings/save_system_settings) under 'ocr_enabled' - Root
+ * Admin's OcrSettingsPanel.tsx is the only writer. Checked once, in
+ * performClientOcr below, since every real OCR entry point
+ * (scanUpiScreenshot/scanPettyCashReceipt/scanPassportMrz) already funnels
+ * through it - see that function's own note on why this is the one choke
+ * point for the whole feature.
+ *
+ * Cached client-side for OCR_ENABLED_CACHE_TTL_MS so a burst of scans (or a
+ * multi-page receipt) doesn't cost a network round trip per attempt; a
+ * toggle flipped in Root Admin takes effect for the next scan anywhere
+ * within that window, not instantly - deliberately not "instant and
+ * reactive", since nothing about this feature needs to be.
+ */
+const OCR_ENABLED_CACHE_TTL_MS = 60_000;
+export const OCR_DISABLED_ERROR_MESSAGE = 'OCR_DISABLED';
+let ocrEnabledCache: { value: boolean; fetchedAt: number } | null = null;
+
+/** True when `err` is the disabled-by-admin error performClientOcr throws,
+ * so a catch block can show a clear "an admin turned this off" message
+ * instead of a generic "scan failed" one. */
+export function isOcrDisabledError(err: unknown): boolean {
+  return err instanceof Error && err.message === OCR_DISABLED_ERROR_MESSAGE;
+}
+
+export async function isOcrEnabled(): Promise<boolean> {
+  if (ocrEnabledCache && Date.now() - ocrEnabledCache.fetchedAt < OCR_ENABLED_CACHE_TTL_MS) {
+    return ocrEnabledCache.value;
+  }
+  try {
+    const res = await fetch(`${API_BASE}?action=get_system_settings`, { credentials: 'include' });
+    const data = await res.json();
+    // Missing key = never toggled = stays enabled (this predates the
+    // toggle and must keep working until someone deliberately turns it
+    // off) - only an explicit '0' disables it.
+    const value = data?.status === 'success' ? data.data?.ocr_enabled !== '0' : true;
+    ocrEnabledCache = { value, fetchedAt: Date.now() };
+    return value;
+  } catch (err) {
+    console.warn('[OCR] Failed to check ocr_enabled setting, defaulting to enabled:', err);
+    // A network hiccup checking the flag must not itself block scanning -
+    // fail open, same as the "missing key" case above, and don't cache a
+    // failure so the next attempt gets a fresh try at the real value.
+    return ocrEnabledCache?.value ?? true;
+  }
 }
 
 // Module-level worker singleton map so subsequent scans start in < 150ms instead of 3-4s
@@ -294,6 +345,14 @@ export async function performClientOcr(
   onProgress?: OcrProgressCallback,
   options?: OcrOptions
 ): Promise<string> {
+  // Sitewide kill switch - see isOcrEnabled's own comment. Checked before
+  // any preprocessing/worker work starts (not just before recognize) so a
+  // disabled scan fails fast with no wasted canvas work or worker spin-up,
+  // and before the caller's progress UI ever shows "scanning".
+  if (!(await isOcrEnabled())) {
+    throw new Error(OCR_DISABLED_ERROR_MESSAGE);
+  }
+
   onProgress?.(5, 'Optimizing image for scan...');
 
   let processedSource: File | Blob | string = imageSource;
