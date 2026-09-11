@@ -4,12 +4,11 @@ import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { CashDrawerManager } from './CashDrawerManager';
 import { PettyCashManagement } from './PettyCashManagement';
-import { ExpenseItemsManagement } from './ExpenseItemsManagement';
-import { Landmark, FileText, Settings } from './icons/FlowbiteIcons';
+import { Landmark, FileText } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 
 interface FinancesHubProps {
-  initialTab?: 'drawer' | 'expenses' | 'catalog';
+  initialTab?: 'drawer' | 'expenses';
   activeRole?: string;
   onLogAudit?: (action: string, extra?: any) => void;
   onDispatchTelegram?: (eventType: string, message: string, category?: string, replyMarkup?: any, templateKey?: string, mediaUrls?: string[], deepLinkParams?: Record<string, string | number>) => void;
@@ -21,18 +20,18 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
   onLogAudit,
   onDispatchTelegram,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'drawer' | 'expenses' | 'catalog'>(initialTab);
+  const [activeSubTab, setActiveSubTab] = useState<'drawer' | 'expenses'>(initialTab);
   // Keep a sub-view mounted once it has been opened, and hide it when you
-  // move off, instead of unmounting it (11 Sep 2026). These three panels
+  // move off, instead of unmounting it (11 Sep 2026). These panels
   // hold real inline money-entry work - Cash Drawer's handover form, and
   // Daily Expenses' full-width Add Expenses card with its OCR-scanned
   // receipt - none of it autosaved. Rendered with `&&`, leaving the tab
   // threw every bit of that away, and it did so BEFORE swipe existed:
   // tapping the tab lost it just the same. Fixed at the source rather
   // than by avoiding the gesture. Mount-on-first-visit, so nothing is
-  // paid for a tab never opened, and none of the three run timers or
+  // paid for a tab never opened, and neither runs timers or
   // polling (checked), so a hidden one costs nothing while it sits there.
-  const [visitedTabs, setVisitedTabs] = useState<Set<'drawer' | 'expenses' | 'catalog'>>(
+  const [visitedTabs, setVisitedTabs] = useState<Set<'drawer' | 'expenses'>>(
     () => new Set([initialTab])
   );
   useEffect(() => {
@@ -40,7 +39,7 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
   }, [activeSubTab]);
   const tabsRef = useRef<TabsRef>(null);
 
-  const subTabKeys: ('drawer' | 'expenses' | 'catalog')[] = ['drawer', 'expenses', 'catalog'];
+  const subTabKeys: ('drawer' | 'expenses')[] = ['drawer', 'expenses'];
 
   useEffect(() => {
     if (initialTab) {
@@ -65,7 +64,6 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
       if (typeof window !== 'undefined') {
         if (key === 'drawer') window.location.hash = '#finances';
         else if (key === 'expenses') window.location.hash = '#expenses';
-        else if (key === 'catalog') window.location.hash = '#edit_expense_items';
       }
     }
   };
@@ -74,11 +72,11 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
     <div className="finances-hub">
       {/* Attached Tabs Specification (DESIGN.md line 322). Was
           `space-y-6` on this whole wrapper (24px gap) - each sub-view
-          (CashDrawerManager/PettyCashManagement/ExpenseItemsManagement)
+          (CashDrawerManager/PettyCashManagement)
           opens with its own bare PageHeader (no card/border of its own), so
           that much empty grey-background space between the attached tab
           strip and a floating, unbounded title read as "not part of the
-          page" (11 Sep 2026, explicit report + screenshot). None of the 3
+          page" (11 Sep 2026, explicit report + screenshot). None of the
           sub-views' own internal spacing is touched - each still manages
           its own `space-y-*` inside its own returned JSX; this only
           tightens the one gap FinancesHub itself controls, between the
@@ -110,15 +108,6 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
               </span>
             }
           />
-          <TabItem
-            active={activeSubTab === 'catalog'}
-            title={
-              <span className="inline-flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                <span>{t('expense_items', 'Expense Items')}</span>
-              </span>
-            }
-          />
         </Tabs>
       </div>
 
@@ -138,11 +127,6 @@ export const FinancesHub: React.FC<FinancesHubProps> = ({
             activeRole={activeRole}
             onDispatchTelegram={onDispatchTelegram}
           />
-        </div>
-      )}
-      {visitedTabs.has('catalog') && (
-        <div hidden={activeSubTab !== 'catalog'}>
-          <ExpenseItemsManagement />
         </div>
       )}
     </div>

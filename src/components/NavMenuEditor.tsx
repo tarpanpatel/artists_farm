@@ -60,7 +60,6 @@ function getDefaultPageOptions(): PageOption[] {
     { label: 'Telegram Alerts', tabKey: 'telegram', uniqueKey: 'telegram' },
     { label: 'Edit Food Menu', tabKey: 'menu_manager', uniqueKey: 'edit_food_menu' },
     { label: 'Edit Kitchen Stock', tabKey: 'inventory', uniqueKey: 'edit_kitchen_stock' },
-    { label: 'Edit Expense Items', tabKey: 'petty_cash', uniqueKey: 'edit_expense_items' },
     { label: 'Download Data & Excel', tabKey: 'export', uniqueKey: 'data_export_center' },
     { label: 'Dish Recipes (Auto-Stock)', tabKey: 'kitchen', uniqueKey: 'beta_recipe_builder' },
     { label: 'Property Licenses', tabKey: 'licenses', uniqueKey: 'license_management' },

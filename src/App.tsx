@@ -317,7 +317,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         petty_cash: { tab: 'petty_cash', key: 'expenses' },
         cash_drawer: { tab: 'petty_cash', key: 'finances' },
         finances: { tab: 'petty_cash', key: 'finances' },
-        edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
+        edit_expense_items: { tab: 'petty_cash', key: 'misc_charges' },
         misc_charges: { tab: 'petty_cash', key: 'misc_charges' },
         staff_payees_control: { tab: 'staff', key: 'staff_payees_control' },
         attendance_salaries: { tab: 'staff', key: 'attendance_salaries' },
@@ -1664,7 +1664,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         purchase_analytics: { tab: 'analytics', key: 'dashboard_analytics' },
         past_receipts_log: { tab: 'audit_logs', key: 'past_receipts_log' },
         edit_food_menu: { tab: 'menu_manager', key: 'edit_food_menu' },
-        edit_expense_items: { tab: 'petty_cash', key: 'edit_expense_items' },
+        edit_expense_items: { tab: 'petty_cash', key: 'misc_charges' },
         edit_main_menu: { tab: 'menu_manager', key: 'edit_main_menu' },
         admin_control_group: { tab: 'analytics', key: 'admin_control_overview' },
         // See the matching fix/comment on this same key in
@@ -2914,7 +2914,7 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'petty_cash' && activeMenuItemKey !== 'misc_charges' && (
                 <ErrorBoundary section="Finances Hub">
                   <FinancesHub
-                    initialTab={activeMenuItemKey === 'finances' ? 'drawer' : activeMenuItemKey === 'edit_expense_items' ? 'catalog' : 'expenses'}
+                    initialTab={activeMenuItemKey === 'finances' ? 'drawer' : 'expenses'}
                     activeRole={activeRole}
                     onLogAudit={logAudit}
                     onDispatchTelegram={dispatchTelegramAlert}

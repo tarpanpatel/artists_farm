@@ -62,7 +62,7 @@ export const AdminControlOverviewDashboard: React.FC<AdminControlOverviewDashboa
       uniqueKey: 'edit_items_group',
       tabKey: 'menu_manager',
       title: t('edit_items_heading', 'Menu & Pricing'),
-      description: t('edit_items_desc', 'Add new dishes, update food prices, and manage default expense items.'),
+      description: t('edit_items_desc', 'Add new dishes and update food prices.'),
       buttonLabel: t('edit_menu_items_btn', 'Edit Menu & Items'),
       icon: FolderCog,
       color: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/60',
