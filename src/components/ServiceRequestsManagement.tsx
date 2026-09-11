@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, CheckCircle2, Clock, Home, ChevronLeft, ChevronRight, Pencil, Trash2, Settings, X, Bell } from './icons/FlowbiteIcons';
 import { Popover } from './Popover';
 import { EmptyState } from './EmptyState';
@@ -28,8 +28,9 @@ import { Input, FloatingTextarea } from './Input';
 import { formatDateTimeDDMMYYYY } from '../utils/dateUtils';
 
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
-import { Tabs, TabItem, Card, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
+import { Tabs, TabItem, TabsRef, Card, Checkbox as FlowbiteCheckbox, Label as FlowbiteLabel, Drawer } from 'flowbite-react';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 
 interface Room {
   id: number;
@@ -94,6 +95,10 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
 
   const [fulfillingId, setFulfillingId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'fulfilled'>(getInitialServiceRequestsTab);
+  const tabsRef = useRef<TabsRef>(null);
+  // Swipe left/right on the desk card below the tabs to move to the next/
+  // previous one (11 Sep 2026, explicit request - "wherever there are tabs").
+  const swipeHandlers = useSwipeTabs(tabsRef, activeTab === 'pending' ? 0 : 1, 2);
 
   const handleTabSelect = (tab: 'pending' | 'fulfilled') => {
     setActiveTab(tab);
@@ -576,6 +581,7 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
       <div className="service-requests-management__desk">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <Tabs
+            ref={tabsRef}
             aria-label="Service Request Status Tabs"
             variant="default"
             theme={attachedTabsTheme}
@@ -620,7 +626,11 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
             should stay rounded like the bottom two corners; border-t-0 still
             drops the whole top border since the Tabs' own tablist border-b
             already spans the full width underneath it). */}
-        <Card className="shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px service-requests-management__desk-body">
+        <Card
+          className="shadow-md space-y-4 rounded-tl-none border-t-0 sm:rounded-tl-none sm:border-t-0 -mt-px service-requests-management__desk-body"
+          onTouchStart={swipeHandlers.onTouchStart}
+          onTouchEnd={swipeHandlers.onTouchEnd}
+        >
           {loading ? (
             <TableSkeleton rows={3} cols={4} />
           ) : requests.length === 0 ? (

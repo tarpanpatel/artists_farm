@@ -42,6 +42,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 
 import { useKitchenContext } from '../contexts/KitchenContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -276,6 +277,16 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   const [activeTab, setActiveTab] = useState<'kds' | 'new_order' | 'menu_catalog' | 'requisitions' | 'staff_meals' | 'beta_recipe_builder'>(getInitialTab);
   const tabsRef = useRef<TabsRef>(null);
+  // Swipe left/right on the kds/new_order content to move to the next/
+  // previous tab (11 Sep 2026, explicit request - "wherever there are
+  // tabs"). tabCount is 1 (never swipeable) while the tab strip itself is
+  // hidden for the restricted Staff Kitchen role, matching what's actually
+  // on screen.
+  const kdsSwipeHandlers = useSwipeTabs(
+    tabsRef,
+    activeTab === 'kds' ? 0 : 1,
+    isRestrictedStaffKitchenView ? 1 : 2
+  );
 
   useEffect(() => {
     if (isRestrictedStaffKitchenView) { setActiveTab('kds'); return; }
@@ -1578,6 +1589,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         </Tabs>
         )}
 
+        <div onTouchStart={kdsSwipeHandlers.onTouchStart} onTouchEnd={kdsSwipeHandlers.onTouchEnd}>
         {activeTab === 'kds' && (() => {
               const activeOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
 
@@ -2897,6 +2909,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           </div>
           );
         })()}
+        </div>
         </div>
       )}
 

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Tabs, TabItem, TabsRef, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Checkbox } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { Popover } from './Popover';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { Boxes, PackagePlus, AlertTriangle, Plus, CheckCircle2, X, Search, ShoppingCart, Settings, Package, Check, ClipboardEdit, ClipboardList, ChefHat, ArrowRight, Pencil, ChevronDown, ChevronUp, Loader2, Trash2, Filter, Eye } from './icons/FlowbiteIcons';
 import { InventoryItem, CatalogItem } from '../types';
 import { t } from '../i18n/en';
@@ -80,6 +81,19 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     </div>
   );
   const [activeTab, setActiveTab] = React.useState<'stock_log' | 'deficit' | 'requisitions' | 'fulfill' | 'catalog'>('stock_log');
+  // Swipe left/right to move to the next/previous tab (11 Sep 2026,
+  // explicit request - "wherever there are tabs"). This file has two
+  // independent attached-tabs groups (Requisitions/Fulfill below, and
+  // Materials Catalog/Manage Categories further down) - each gets its own
+  // ref/hook instance rather than sharing one, since they're unrelated tab
+  // strips with their own index/count.
+  const requisitionsTabsRef = useRef<TabsRef>(null);
+  const requisitionsTabKeys: ('requisitions' | 'fulfill')[] = ['requisitions', 'fulfill'];
+  const requisitionsSwipeHandlers = useSwipeTabs(
+    requisitionsTabsRef,
+    requisitionsTabKeys.indexOf(activeTab as 'requisitions' | 'fulfill'),
+    requisitionsTabKeys.length
+  );
 
   useEffect(() => {
     if (!activeMenuItemKey) return;
@@ -213,6 +227,10 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     }
     return 'items';
   });
+
+  const catalogTabsRef = useRef<TabsRef>(null);
+  const catalogTabKeys: ('items' | 'categories')[] = ['items', 'categories'];
+  const catalogSwipeHandlers = useSwipeTabs(catalogTabsRef, catalogTabKeys.indexOf(catalogView), catalogTabKeys.length);
 
   const setCatalogView = (view: 'items' | 'categories') => {
     setCatalogViewState(view);
@@ -1085,6 +1103,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
         <div className="kitchen-stock-tabs-desk">
         <Tabs
+          ref={catalogTabsRef}
           aria-label="Kitchen Stock Tabs"
           variant="default"
           theme={attachedTabsTheme}
@@ -1097,6 +1116,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           <TabItem active={catalogView === 'categories'} title={t('manage_categories_button')} icon={Settings} />
         </Tabs>
 
+        <div onTouchStart={catalogSwipeHandlers.onTouchStart} onTouchEnd={catalogSwipeHandlers.onTouchEnd}>
         {catalogView === 'items' && (
             <div className="space-y-4">
               {selectedCatalogItemIds.length > 0 && (
@@ -1582,6 +1602,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
         )}
         </div>
+        </div>
 
         {/* Add/Edit Catalog Drawer */}
         <FlowbiteDrawer
@@ -1708,6 +1729,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
           this page keeps the request-creation tab first and lets both tabs
           wrap on very narrow screens instead of adding a scrollbar. */}
       <Tabs
+        ref={requisitionsTabsRef}
         aria-label="Stock Request Tabs"
         variant="default"
         className="gap-0"
@@ -1746,6 +1768,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         />
       </Tabs>
 
+      <div onTouchStart={requisitionsSwipeHandlers.onTouchStart} onTouchEnd={requisitionsSwipeHandlers.onTouchEnd}>
       {activeTab === 'fulfill' && (
         <div className="space-y-4">
           <div className="hidden md:block bg-white dark:bg-slate-800 rounded-lg rounded-t-none border border-t-0 border-slate-200 dark:border-slate-700 shadow-md overflow-x-auto -mt-px">
@@ -2441,6 +2464,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
         )}
       </div>
     )}
+  </div>
   </div>
 );
 }

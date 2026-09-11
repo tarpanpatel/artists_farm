@@ -26,16 +26,14 @@
  *    `-ml-px`/`first:ml-0` pair that used to overlap one tab's border onto
  *    the next is gone - user requested a visible 1px gap between tabs,
  *    site-wide).
- *  - `variant.default` overrides Flowbite's own base theme value for this
- *    slot ("flex-wrap border-b ...") to swap `flex-wrap` for `flex-nowrap
- *    overflow-x-auto` (found 11 Sep 2026, 3-tab screenshot on a real phone:
- *    Flowbite's default tablist wraps once 3 tabs with icon+label don't
- *    fit one row at ~390-440px, and since `attachedTabsTheme.tablist.base`
- *    already centers the group with `justify-center`, a wrapped 3rd tab
- *    drops to its own centered row below the first two - reading as a
- *    disconnected floating pill, not "one attached strip". Horizontal
- *    scroll keeps every tab count/label-length combination on one row,
- *    which wrapping can never guarantee once labels or a viewport change.
+ *  - A `flex-nowrap overflow-x-auto` override was tried here (11 Sep 2026)
+ *    to stop a 3rd tab wrapping to its own disconnected-looking centered
+ *    row on a narrow phone, then explicitly reverted the same day at the
+ *    user's request ("Remove tabs horizontal scrolling") - so this now
+ *    stays on Flowbite's own default `flex-wrap`, unmodified. A 3-tab page
+ *    (FinancesHub.tsx) can still wrap its 3rd tab to its own row on a very
+ *    narrow phone as a result - known, accepted trade-off, not a bug to
+ *    silently "fix" again the same way if reported.
  *
  * Usage: place `<Tabs variant="default" theme={attachedTabsTheme}
  * clearTheme={attachedTabsClearTheme} .../>` directly above the card/table
@@ -109,16 +107,8 @@ export const attachedTabsTheme = {
     // that one segment of it, while every other segment (inactive tabs'
     // own border-bottom, and the empty trailing space) shows the tablist's
     // border normally.
-    variant: {
-      // Replaces Flowbite's own "flex-wrap border-b border-gray-200
-      // dark:border-gray-700" for this slot - flex-nowrap (twMerge drops
-      // the base's flex-wrap in favor of this) + overflow-x-auto, see this
-      // file's own top comment for why. border-b/border-gray-200 carry
-      // over unchanged since nothing here conflicts with them.
-      default: 'flex-nowrap overflow-x-auto',
-    },
     tabitem: {
-      base: 'relative -mb-px border border-b-0 border-gray-200 dark:border-gray-700 shrink-0 whitespace-nowrap',
+      base: 'relative -mb-px border border-b-0 border-gray-200 dark:border-gray-700',
       variant: {
         default: {
           base: '',

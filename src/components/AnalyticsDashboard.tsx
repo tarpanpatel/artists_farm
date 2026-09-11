@@ -39,6 +39,7 @@ import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { t } from '../i18n/en';
 import { centeredTabsTheme } from '../utils/tabsTheme';
+import { useSwipeTabs } from '../utils/useSwipeTabs';
 import { getChartColors, CHART_QUALITATIVE_PALETTE, chartBase } from '../utils/chartTheme';
 
 interface AnalyticsRoom {
@@ -207,6 +208,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const index = tabOrder.indexOf(activeTab);
     if (index >= 0) tabsRef.current?.setActiveTab(index);
   }, [activeTab, kitchenModuleEnabled]);
+
+  // Swipe left/right on the report content to move to the next/previous
+  // tab (11 Sep 2026, explicit request - "wherever there are tabs"). Same
+  // conditional tab order as the effect above - reused rather than
+  // redeclared, since `kitchenModuleEnabled` can change which tabs exist.
+  const analyticsTabOrder = kitchenModuleEnabled
+    ? ['overview', 'bookings', 'pace', 'kitchen', 'expenses', 'profit_loss', 'fluctuations']
+    : ['overview', 'bookings', 'pace', 'expenses', 'profit_loss', 'fluctuations'];
+  const analyticsSwipeHandlers = useSwipeTabs(tabsRef, analyticsTabOrder.indexOf(activeTab), analyticsTabOrder.length);
 
   useEffect(() => {
     if (!authChecked || !isAuthenticated) return;
@@ -1238,6 +1248,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
           19 Aug 2026, same as InventoryManagement.tsx/KitchenManagement.tsx.
           Tabs auto-renders the tab-list buttons itself from each TabItem's
           title/icon/active props - no separate hand-rolled button row. */}
+      {/* Swipe handlers wrap the whole Tabs element, not just its content -
+          flowbite-react's <Tabs> renders each TabItem's children into its
+          own internal tabpanel div with no prop to reach that specific
+          wrapper, so this is the outer boundary actually available. A
+          swipe that begins on a tab button itself is a low-risk edge case
+          (users tap short labels rather than dragging across them) rather
+          than something worth wrapping all 7 TabItems' content individually
+          to avoid. */}
+      <div onTouchStart={analyticsSwipeHandlers.onTouchStart} onTouchEnd={analyticsSwipeHandlers.onTouchEnd}>
       <Tabs
         ref={tabsRef}
         aria-label="Analytics Report Tabs"
@@ -1838,6 +1857,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         </div>
       </TabItem>
       </Tabs>
+      </div>
     </div>
   );
 };
