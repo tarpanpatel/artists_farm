@@ -1499,6 +1499,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     // Customer" and having to re-pick it for the next round.
     refreshOrders();
     refreshWalkInTabs();
+    showToast(t('order_sent_to_kitchen_toast', `Order #${orderId} sent to kitchen successfully!`), { type: 'success' });
   };
 
   // Submit New Menu Item
