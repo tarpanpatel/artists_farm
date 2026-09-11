@@ -363,7 +363,7 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
           {t('add_new_service_button', 'Add New Service')}
         </PageHeaderButton>
       </PageHeader>
-      <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md overflow-hidden">
+      <div className="misc-charges-management__table-card bg-white dark:bg-slate-800 rounded-none sm:rounded-lg border-y sm:border border-x-0 sm:border-x border-slate-200 dark:border-slate-700 shadow-none sm:shadow-md overflow-hidden">
         {/* Flowbite Datatable Toolbar */}
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800">
           <div className="w-full sm:w-80">
@@ -426,16 +426,6 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
 
         {/* Touch-First Mobile Cards View with 10-Item Pagination */}
         <div className="md:hidden p-4 space-y-3">
-          <div>
-            <Input
-              type="text"
-              placeholder={t('search_misc_charges_placeholder', 'Search by service name or category...')}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="w-full"
-            />
-          </div>
-
           {(() => {
             const paginatedCharges = filteredCharges.slice((mobilePage - 1) * 10, mobilePage * 10);
             return (
@@ -489,30 +479,13 @@ export const MiscChargesManagement: React.FC<MiscChargesManagementProps> = ({ on
                   )}
                 </div>
 
-                {/* 10-Item Mobile Pagination Controls */}
-                {filteredCharges.length > 10 && (
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700">
-                    <button
-                      type="button"
-                      disabled={mobilePage === 1}
-                      onClick={() => setMobilePage((p) => Math.max(1, p - 1))}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      Page {mobilePage} of {Math.ceil(filteredCharges.length / 10)}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={mobilePage >= Math.ceil(filteredCharges.length / 10)}
-                      onClick={() => setMobilePage((p) => Math.min(Math.ceil(filteredCharges.length / 10), p + 1))}
-                      className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 cursor-pointer"
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
+                <TablePagination
+                  page={mobilePage}
+                  totalItems={filteredCharges.length}
+                  pageSize={10}
+                  onPageChange={setMobilePage}
+                  itemLabel="items"
+                />
               </>
             );
           })()}
