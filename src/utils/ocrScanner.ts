@@ -117,7 +117,7 @@ async function getOcrWorker(lang: string = 'eng'): Promise<any> {
 
       if (lang === 'mrz') {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        options.langPath = `${origin}${API_ROOT_BASE}/tessdata`;
+        options.langPath = `${origin}${API_ROOT_BASE}/dist/tessdata`;
         options.gzip = true;
       }
 
