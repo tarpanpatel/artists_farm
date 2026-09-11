@@ -33,7 +33,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({ page, totalIte
         <ChevronLeft className="w-3.5 h-3.5" /> Previous
       </button>
       <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-        Page {page} of {totalPages} <span className="text-gray-300 dark:text-gray-600">|</span> {totalItems} {itemLabel}
+        Page {page} of {totalPages}{itemLabel ? ` ${itemLabel}` : ''}
       </span>
       <button
         type="button"
