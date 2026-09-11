@@ -23,6 +23,7 @@ export interface UpiScanResult {
   date: string | null;
   status: 'success' | 'failed' | 'unknown';
   appHint: 'GPay' | 'PhonePe' | 'Paytm' | 'BHIM' | 'CRED' | 'Other';
+  payee?: string | null;
 }
 
 export interface ReceiptScanResult {
@@ -150,7 +151,7 @@ export async function scanUpiScreenshot(
 
   // Detect Status
   let status: UpiScanResult['status'] = 'unknown';
-  if (/paid\s*successfully|payment\s*successful|completed|successful|transferred\s*successfully/i.test(cleanText)) {
+  if (/paid\s*successfully|payment\s*successful|transaction\s*successful|completed|successful|transferred\s*successfully/i.test(cleanText)) {
     status = 'success';
   } else if (/failed|declined|unsuccessful/i.test(cleanText)) {
     status = 'failed';
@@ -159,7 +160,6 @@ export async function scanUpiScreenshot(
   // 12-digit UPI UTR / Ref No.
   // UPI UTRs are universally 12 numeric digits in India (e.g. 425189201948)
   let utr: string | null = null;
-  // Look for explicit labels first: "UPI Ref No: 4251...", "UTR: 4251...", "Txn ID: 4251..."
   const labeledUtrMatch = cleanText.match(
     /(?:UTR|Ref(?:\s*No\.?|\s*Number)?|UPI\s*(?:Ref|Transaction\s*ID)|Txn\s*ID|Transaction\s*ID|Google\s*Transaction\s*ID)[:\s#]*([0-9]{12})\b/i
   );
@@ -173,14 +173,24 @@ export async function scanUpiScreenshot(
     }
   }
 
+  // Payee / Merchant Name (e.g., "Paid to Blinkit", "Paid to Amul Parlour", "Sent to Ram")
+  let payee: string | null = null;
+  const payeeMatch = cleanText.match(/(?:Paid\s*to|Sent\s*to|Payment\s*to|To)\s*[:\s]*([A-Za-z0-9\s&.'_-]{3,35})/i);
+  if (payeeMatch && payeeMatch[1]) {
+    const rawPayee = payeeMatch[1].trim().replace(/\n.*$/, '').replace(/[<>«»]/g, '').trim();
+    if (!/^(?:account|bank|upi|success|completed|details|statement|reference)/i.test(rawPayee) && rawPayee.length >= 3) {
+      payee = rawPayee;
+    }
+  }
+
   // Amount Extraction
-  // Patterns like "₹1,500", "₹ 1500.00", "Rs. 1,500", "INR 1500", or large numbers near "Paid"
   let amount: number | null = null;
+  const lines = cleanText.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  // 1. Explicit labeled or currency-prefixed patterns (including OCR artifacts like '#', '?', '~')
   const amountPatterns = [
-    /[₹₹]\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
-    /Rs\.?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
-    /INR\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
-    /(?:Paid|Sent|Amount|Total)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
+    /(?:[₹₹#?*~]|Rs\.?|INR)\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
+    /(?:Paid|Sent|Amount|Total|Received)[:\s]*(?:[₹₹#?*~]|Rs\.?|INR)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
   ];
 
   for (const pattern of amountPatterns) {
@@ -194,12 +204,47 @@ export async function scanUpiScreenshot(
     }
   }
 
+  // 2. Standalone line amount (PhonePe / GPay style):
+  // Sits near "Transaction Successful" / "Payment Successful" or right before "Paid to"
+  if (!amount) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (/^(?:[₹₹#?*~F]|\b)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]{1,6}(?:\.[0-9]{1,2})?)$/.test(line)) {
+        // Exclude 12-digit UTRs, dates, phone numbers, times
+        if (line.length >= 10 && !line.includes('.')) continue;
+        if (/^[0-9]{2}:[0-9]{2}/.test(line)) continue;
+
+        const rawVal = line.replace(/[^0-9.]/g, '');
+        let val = parseFloat(rawVal);
+
+        // Handle misread ₹ as leading 7 (e.g. '7403' for ₹403)
+        if (rawVal.startsWith('7') && rawVal.length >= 3 && !line.includes('.')) {
+          const prev = lines[i - 1] || '';
+          const next = lines[i + 1] || '';
+          if (/transaction|payment|successful|paid\s*to|completed/i.test(prev + ' ' + next)) {
+            const stripped = parseFloat(rawVal.slice(1));
+            if (stripped > 0 && stripped < 50000) {
+              val = stripped;
+            }
+          }
+        }
+
+        if (!isNaN(val) && val > 0) {
+          amount = val;
+          break;
+        }
+      }
+    }
+  }
+
   // Date extraction
   let date: string | null = null;
   const dateMatch = cleanText.match(/\b([0-3]?[0-9]\s+[A-Za-z]{3,9}\s+20[2-9][0-9])\b/) ||
     cleanText.match(/\b([0-3]?[0-9][./-][0-1]?[0-9][./-]20[2-9][0-9])\b/);
   if (dateMatch) {
     date = dateMatch[1];
+  } else if (/\btoday\b/i.test(cleanText)) {
+    date = new Date().toISOString().slice(0, 10);
   }
 
   return {
@@ -209,6 +254,7 @@ export async function scanUpiScreenshot(
     date,
     status,
     appHint,
+    payee,
   };
 }
 
@@ -224,32 +270,60 @@ export async function scanPettyCashReceipt(
   const cleanText = text.replace(/\r\n/g, '\n');
   const lines = cleanText.split('\n').map((l) => l.trim()).filter(Boolean);
 
-  // Vendor Name: First non-empty prominent line that is not a date or tax header
+  // 1. Vendor Name
   let vendor: string | null = null;
-  for (const line of lines.slice(0, 5)) {
-    if (
-      line.length >= 3 &&
-      !/tax|invoice|bill|receipt|date|gst|cash|memo|phone|tel/i.test(line) &&
-      !/^[0-9\s:./-]+$/.test(line)
-    ) {
+  const knownApps = [
+    { pattern: /blinkit/i, name: 'Blinkit' },
+    { pattern: /zepto/i, name: 'Zepto' },
+    { pattern: /instamart/i, name: 'Swiggy Instamart' },
+    { pattern: /bigbasket|bbnow/i, name: 'BigBasket' },
+    { pattern: /dmart/i, name: 'DMart' },
+    { pattern: /amazon\s*fresh/i, name: 'Amazon Fresh' },
+    { pattern: /zomato/i, name: 'Zomato' },
+    { pattern: /swiggy/i, name: 'Swiggy' },
+  ];
+
+  for (const app of knownApps) {
+    if (app.pattern.test(cleanText)) {
+      vendor = app.name;
+      break;
+    }
+  }
+
+  if (!vendor) {
+    for (const line of lines.slice(0, 8)) {
+      // Ignore mobile status bar icons, battery, dynamic island, order summary, etc.
+      if (/^[«<>]|[«<>]{2,}|order\s*summary|arriving\s*in|items?\s*in\s*this|bill\s*details/i.test(line)) continue;
+      if (line.length < 3) continue;
+      if (/^[0-9:\sAPMapm./-]+$/.test(line)) continue;
+      if (/^[^\w\s]+$/.test(line)) continue;
+      if (/tax|invoice|bill|receipt|date|gst|cash|memo|phone|tel/i.test(line)) continue;
+      // Skip status bar glyph noise like "D> oF -." or lines with irregular symbols
+      if (/^[a-z0-9]\s*[><=+\-~]\s*[a-z0-9]/i.test(line) || /[><=~]{2,}/.test(line)) continue;
       vendor = line.slice(0, 40);
       break;
     }
   }
 
-  // Amount extraction
+  // 2. Amount extraction
   let amount: number | null = null;
   const totalKeywords = [
-    /(?:Grand\s*Total|Net\s*Total|Total\s*Amount|Total|Net\s*Payable|Amount|Final)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
-    /(?:Cash|Paid)[:\s]*₹?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
-    /[₹₹]\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
-    /Rs\.?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
+    /(?:Bill\s*Total|Order\s*Total|Grand\s*Total|Net\s*Total|Total\s*Amount|Total|Net\s*Payable|To\s*Pay|Amount|Final)[:\s]*(?:[₹₹#?*~]|Rs\.?|INR)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
+    /(?:Cash|Paid)[:\s]*(?:[₹₹#?*~]|Rs\.?|INR)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i,
   ];
 
   for (const regex of totalKeywords) {
     const match = cleanText.match(regex);
     if (match && match[1]) {
-      const parsed = parseFloat(match[1].replace(/,/g, ''));
+      const rawVal = match[1].replace(/,/g, '');
+      let parsed = parseFloat(rawVal);
+      // Handle ₹ misread as 7 before digits (e.g. 'Bill total 7403' -> 403)
+      if (rawVal.startsWith('7') && rawVal.length >= 3) {
+        const without7 = parseFloat(rawVal.slice(1));
+        if (without7 > 0 && without7 < 10000) {
+          parsed = without7;
+        }
+      }
       if (!isNaN(parsed) && parsed > 0) {
         amount = parsed;
         break;
@@ -257,7 +331,30 @@ export async function scanPettyCashReceipt(
     }
   }
 
-  // Date extraction and format to YYYY-MM-DD
+  // Multi-line fallback: line with "Bill total" followed by next line with number
+  if (!amount) {
+    for (let i = 0; i < lines.length; i++) {
+      if (/^(?:Bill\s*total|Order\s*total|Total|Grand\s*total|To\s*pay)$/i.test(lines[i])) {
+        if (i + 1 < lines.length) {
+          const nextMatch = lines[i + 1].match(/(?:[₹₹#?*~]|Rs\.?|INR)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i);
+          if (nextMatch && nextMatch[1]) {
+            const rawVal = nextMatch[1].replace(/,/g, '');
+            let val = parseFloat(rawVal);
+            if (rawVal.startsWith('7') && rawVal.length >= 3) {
+              const without7 = parseFloat(rawVal.slice(1));
+              if (without7 > 0 && without7 < 10000) val = without7;
+            }
+            if (!isNaN(val) && val > 0) {
+              amount = val;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Date extraction and format to YYYY-MM-DD
   let date: string | null = null;
   const dateMatch = cleanText.match(/\b([0-3]?[0-9])[./-]([0-1]?[0-9])[./-](20[2-9][0-9]|[2-9][0-9])\b/);
   if (dateMatch) {
@@ -266,6 +363,12 @@ export async function scanPettyCashReceipt(
     let y = dateMatch[3];
     if (y.length === 2) y = `20${y}`;
     date = `${y}-${m}-${d}`;
+  } else if (/\b(?:placed\s+)?today\b/i.test(cleanText)) {
+    date = new Date().toISOString().slice(0, 10);
+  } else if (/\byesterday\b/i.test(cleanText)) {
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    date = yest.toISOString().slice(0, 10);
   }
 
   return {

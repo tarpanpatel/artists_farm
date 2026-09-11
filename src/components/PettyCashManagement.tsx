@@ -500,6 +500,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
         if (result.date) {
           dispatch({ type: 'SET_FIELD', field: 'expenseDate', value: result.date });
         }
+        if (result.vendor && !formState.description) {
+          dispatch({ type: 'SET_FIELD', field: 'description', value: result.vendor });
+        }
         showToast(`Detected ₹${result.amount.toLocaleString('en-IN')} from bill slip!`, { type: 'success' });
       } else {
         showToast('Scanned bill, but could not detect total amount.', { type: 'warning' });
@@ -525,6 +528,9 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
       if (result.amount) {
         if (!formState.amount) {
           dispatch({ type: 'SET_FIELD', field: 'amount', value: result.amount });
+        }
+        if (result.payee && !formState.description) {
+          dispatch({ type: 'SET_FIELD', field: 'description', value: result.payee });
         }
         showToast(`Detected ₹${result.amount.toLocaleString('en-IN')} (UTR: ${result.utr || 'N/A'})`, { type: 'success' });
       } else {
@@ -1595,7 +1601,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
                     )}
                   </div>
                   <div className="flex items-center justify-between text-2xs text-slate-600 dark:text-slate-400">
-                    <span>UTR: {scannedPaymentProofResult.utr || 'Not detected'}</span>
+                    <span>{scannedPaymentProofResult.payee ? `${scannedPaymentProofResult.payee} • ` : ''}UTR: {scannedPaymentProofResult.utr || 'Not detected'}</span>
                     {scannedPaymentProofResult.amount != null && (
                       <button
                         type="button"
