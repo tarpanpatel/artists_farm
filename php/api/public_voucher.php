@@ -112,7 +112,7 @@ function getOrCreateVoucherToken(PDO $pdo, int $propertyId, int $bookingId): ?st
         if (!empty($row['voucher_token'])) return $row['voucher_token'];
 
         $token = bin2hex(random_bytes(20));
-        $upd = $pdo->prepare("UPDATE guests SET voucher_token = ? WHERE id = ? AND property_id = ?");
+        $upd = $pdo->prepare("UPDATE guests SET voucher_token = ?, updated_at = updated_at WHERE id = ? AND property_id = ?");
         $upd->execute([$token, $bookingId, $propertyId]);
         return $token;
     } catch (Exception $e) {

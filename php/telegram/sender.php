@@ -925,10 +925,10 @@ if (!function_exists('drainTelegramOutbox')) {
                             $msgId = (int)$parsed['result']['message_id'];
                             if ($chatId && $msgId) {
                                 if ($guestField === 'booking') {
-                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ? WHERE id = ?");
+                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_booking_chat_id = ?, telegram_booking_message_id = ?, updated_at = updated_at WHERE id = ?");
                                     $upStmt->execute([$chatId, $msgId, $guestId]);
                                 } elseif ($guestField === 'checkout') {
-                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_checkout_chat_id = ?, telegram_checkout_message_id = ? WHERE id = ?");
+                                    $upStmt = $pdo->prepare("UPDATE guests SET telegram_checkout_chat_id = ?, telegram_checkout_message_id = ?, updated_at = updated_at WHERE id = ?");
                                     $upStmt->execute([$chatId, $msgId, $guestId]);
                                 }
                             }

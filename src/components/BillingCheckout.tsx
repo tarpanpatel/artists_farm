@@ -815,9 +815,13 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           setGuestForReceipt(null);
           showToast(`Checkout completed for ${receipt.guestName}!`, { type: 'success' });
         }}
-        onUpdateGuest={(updatedGuest) => {
-          onUpdateGuest?.(updatedGuest);
-          showToast(`Booking details updated for ${updatedGuest.guestName}!`, { type: 'success' });
+        onUpdateGuest={async (updatedGuest) => {
+          try {
+            await onUpdateGuest?.(updatedGuest);
+            showToast(`Booking details updated for ${updatedGuest.guestName}!`, { type: 'success' });
+          } catch (err: any) {
+            showToast(err?.message || 'Failed to update booking', { type: 'error' });
+          }
         }}
         isProcessing={isProcessing}
         mode={modalMode}
@@ -837,9 +841,9 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
           onClose={() => { setSelectedGuestForDetails(null); setDetailsModalFocusSection(null); }}
           onDelete={onDeleteGuest}
           onSave={async (updatedGuest) => {
-            onUpdateGuest?.(updatedGuest);
-            setSelectedGuestForDetails(null);
-            showToast(`Booking changes saved successfully!`, { type: 'success' });
+            if (!onUpdateGuest) return;
+            await onUpdateGuest(updatedGuest);
+            setSelectedGuestForDetails(updatedGuest);
           }}
           rooms={rooms}
           isMultiKeyProperty={isMultiKeyProperty}

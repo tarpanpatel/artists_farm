@@ -476,7 +476,12 @@ class AriDrainWorker {
 
         $propStmt = $this->pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
         $propStmt->execute([$scopeId]);
-        $baseTariff = (float) ($propStmt->fetchColumn() ?: 3500);
+        // No placeholder fallback (matches the removed `?: 3500` in content_sync.php, 11 Sep 2026).
+        // A missing tariff means 0: every uncovered night is correctly reported as uncovered in
+        // the push-confirmation gate, instead of being masked by a fabricated number that makes it
+        // look priced when it is not. The gate's own uncovered-nights list is what the owner uses
+        // to decide whether the push is safe; hiding gaps with 3500 defeats that entirely.
+        $baseTariff = (float) ($propStmt->fetchColumn() ?: 0);
 
         $isDynamic = $this->isDynamicPricingMode($scopeId);
         $ruleMaps = $this->buildRulesByDate($scopeId, $startDate, $endDate);
@@ -520,11 +525,25 @@ class AriDrainWorker {
         $includeRate = in_array('rate_per_night', $fields, true);
 
         // Base rate (only needed if this push actually includes rate)
-        $baseTariff = 3500.0;
+        $baseTariff = 0.0;
         if ($includeRate) {
             $propStmt = $this->pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
             $propStmt->execute([$scopeId]);
-            $baseTariff = (float)($propStmt->fetchColumn() ?: 3500);
+            // No placeholder fallback (matches content_sync.php fix, 11 Sep 2026). A room with
+            // no real tariff must not push ₹3,500 to a live OTA listing. $baseTariff = 0 means
+            // days with no rate rule also send 0 - but the loop below skips those dates when
+            // $baseTariff <= 0, so no fabricated price ever reaches Channex. The content_sync
+            // guard (pending_price state) prevents such a room from even having an active
+            // channel mapping, so this is a belt-and-suspenders backstop.
+            $rawTariff = (float)($propStmt->fetchColumn() ?: 0);
+            if ($rawTariff <= 0 && in_array('rate_per_night', $fields, true)) {
+                // Remove rate from the fields to push - we have nothing real to send.
+                // Restrictions (stop_sell, min_stay, etc.) can still go through.
+                $fields = array_values(array_diff($fields, ['rate_per_night']));
+                $includeRate = false;
+                if (empty($fields)) return []; // nothing left to push
+            }
+            $baseTariff = $rawTariff;
         }
 
         // Occupancy pricing (6 Sep 2026). A property that charges per extra guest

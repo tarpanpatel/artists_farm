@@ -70,13 +70,13 @@ try {
         $label = "guest #{$guest['id']} ({$guest['guest_name']}, {$guest['room_name']}, property {$guest['property_id']})";
         $decoded = is_string($result) ? json_decode($result, true) : null;
         if (!empty($decoded['ok']) && !empty($decoded['result'])) {
-            $pdo->prepare("UPDATE guests SET telegram_checkout_chat_id = ?, telegram_checkout_message_id = ?, checkout_reminder_last_sent_at = NOW() WHERE id = ?")
+            $pdo->prepare("UPDATE guests SET telegram_checkout_chat_id = ?, telegram_checkout_message_id = ?, checkout_reminder_last_sent_at = NOW(), updated_at = updated_at WHERE id = ?")
                 ->execute([$decoded['result']['chat']['id'], $decoded['result']['message_id'], $guest['id']]);
             logLine($logFile, "$timestamp - REMINDED: $label");
         } elseif (is_array($result) && !empty($result['skipped'])) {
             // Telegram not configured/enabled for this property - still stamp
             // the reminder timestamp so this doesn't retry every single run.
-            $pdo->prepare("UPDATE guests SET checkout_reminder_last_sent_at = NOW() WHERE id = ?")->execute([$guest['id']]);
+            $pdo->prepare("UPDATE guests SET checkout_reminder_last_sent_at = NOW(), updated_at = updated_at WHERE id = ?")->execute([$guest['id']]);
             logLine($logFile, "$timestamp - SKIPPED: $label - " . $result['reason']);
         } else {
             logLine($logFile, "$timestamp - FAILED to send: $label");

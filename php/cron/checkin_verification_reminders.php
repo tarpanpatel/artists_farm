@@ -85,7 +85,7 @@ try {
         // regex-based id scraping there had nothing to find. Passed explicitly instead.
         $result = sendPropertyTelegramMessage($pdo, $guest['property_id'], 'admin', $message, null, 'checkin_verification_reminder', ['booking_id' => $guest['id']]);
 
-        $pdo->prepare("UPDATE guests SET id_verification_last_reminder_at = NOW() WHERE id = ?")->execute([$guest['id']]);
+        $pdo->prepare("UPDATE guests SET id_verification_last_reminder_at = NOW(), updated_at = updated_at WHERE id = ?")->execute([$guest['id']]);
 
         $label = "guest #{$guest['id']} ({$guest['guest_name']}, {$guest['room_name']}, property {$guest['property_id']})";
         if (is_array($result) && !empty($result['skipped'])) {

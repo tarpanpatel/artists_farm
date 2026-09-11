@@ -78,6 +78,8 @@ interface RoomReadiness {
   id: number;
   name: string;
   missing: string[];
+  description?: string;
+  defaultTariff?: number;
 }
 
 /**
@@ -171,6 +173,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [airbnbConnected, setAirbnbConnected] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [freshRooms, setFreshRooms] = useState<any[] | null>(null);
 
   // What the SERVER currently holds - seeded from props, and updated ONLY after a real save.
   // Deliberately not the live editX state above (9 Sep 2026, reported live): the done-flags
@@ -199,10 +202,12 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
     isMultiKey || !!trimmed(savedValues.checkinTime) || trimmed(savedValues.defaultTariff) !== '';
 
   // Rooms readiness for multi-key properties
-  const roomReadiness: RoomReadiness[] = (rooms || []).map((r: any) => ({
+  const roomReadiness: RoomReadiness[] = ((freshRooms ?? rooms) || []).map((r: any) => ({
     id: Number(r?.id),
     name: String(r?.name || 'Room'),
     missing: roomGaps(r),
+    description: String(r?.description || '').trim(),
+    defaultTariff: Number(r?.default_tariff ?? r?.defaultTariff ?? 0),
   }));
   const blockingRooms = roomReadiness.filter(
     (r) => r.missing.includes('rate') || r.missing.includes('times')
@@ -274,6 +279,17 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
       setImportResult(
         `Imported ${json.rooms_count ?? selectedListingIds.length} listing(s). Nothing was sent to Airbnb - the channel is not live yet.`,
       );
+
+      // Refetch rooms from server so the Rooms step has fresh data without needing a full page reload
+      try {
+        const refreshRes = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`);
+        const refreshJson = await refreshRes.json();
+        if (refreshJson?.success && Array.isArray(refreshJson?.data?.rooms)) {
+          setFreshRooms(refreshJson.data.rooms);
+        }
+      } catch (refreshErr) {
+        console.warn('Failed to refresh rooms after import', refreshErr);
+      }
     } catch (err: any) {
       setError(err?.message || 'Import failed');
     } finally {
@@ -733,7 +749,24 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                   <div className="rounded-lg border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
                     {roomReadiness.map((r) => (
                       <div key={r.id} className="flex items-center justify-between gap-3 px-3 py-2">
-                        <span className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">{r.name}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">{r.name}</div>
+                          {(r.description || (r.defaultTariff && r.defaultTariff > 0)) ? (
+                            <div className="mt-0.5 flex items-center gap-1.5 text-2xs text-slate-500 dark:text-slate-400">
+                              {r.defaultTariff && r.defaultTariff > 0 ? (
+                                <span className="shrink-0 font-medium">₹{r.defaultTariff}/night</span>
+                              ) : null}
+                              {r.defaultTariff && r.defaultTariff > 0 && r.description ? (
+                                <span className="shrink-0 opacity-60">·</span>
+                              ) : null}
+                              {r.description ? (
+                                <span className="truncate">
+                                  {r.description.length > 80 ? `${r.description.slice(0, 80)}…` : r.description}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
                         {r.missing.length === 0 ? (
                           <span className="flex shrink-0 items-center gap-1 text-2xs font-semibold text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Ready
