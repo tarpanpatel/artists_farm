@@ -747,25 +747,53 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
                     ))}
                   </div>
 
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
-                    <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
-                      Already listed on Airbnb?
+                  {/* Hidden once Airbnb is already connected/imported (11 Sep 2026,
+                      reported live: this "Already listed on Airbnb?" card kept showing
+                      on the Rooms step immediately after the Listings step had already
+                      connected Airbnb and imported all 7 rooms - it was a static
+                      promotional banner with no check at all for whether that had just
+                      happened). airbnbConnected/importResult are the same two pieces of
+                      state the Listings step above already uses to know this - not a
+                      persisted "was this property ever connected" check, so reopening
+                      the wizard on a LATER visit (a fresh component mount) can still
+                      show this once even for an already-connected property; scoped to
+                      the actual reported case (moving forward within one wizard run)
+                      rather than adding a fetch here for the rarer case. */}
+                  {!airbnbConnected && !importResult && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/30">
+                      <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                        Already listed on Airbnb?
+                      </p>
+                      <p className="mt-0.5 text-2xs text-blue-800 dark:text-blue-300">
+                        Connect it and import - rates, times, capacity, descriptions and amenities come
+                        across for every unit at once.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="xs"
+                        className="mt-2 whitespace-nowrap flex items-center gap-1.5"
+                        onClick={() => window.open(`${window.location.origin}${window.location.pathname}#connect_channels`, '_blank')}
+                      >
+                        <span>Go to Connect Channels</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Description is advisory-only (see blockingRooms above - only
+                      'rate'/'times' actually block Next Step), but "needs
+                      description" read like a blocker with no way to tell otherwise
+                      (same 11 Sep 2026 report). Airbnb's own listing API doesn't
+                      return a description for every room, so this is the expected,
+                      not-broken outcome after an import - not something to chase
+                      trying to fix on the Airbnb side. */}
+                  {roomReadiness.some((r) => r.missing.includes('description')) && (
+                    <p className="text-2xs text-slate-500 dark:text-slate-400">
+                      "needs description" is a nice-to-have, not a blocker - Airbnb doesn't always
+                      provide one per room. Add one later from Edit Property, or just continue.
                     </p>
-                    <p className="mt-0.5 text-2xs text-blue-800 dark:text-blue-300">
-                      Connect it and import - rates, times, capacity, descriptions and amenities come
-                      across for every unit at once.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="xs"
-                      className="mt-2 whitespace-nowrap flex items-center gap-1.5"
-                      onClick={() => window.open(`${window.location.origin}${window.location.pathname}#connect_channels`, '_blank')}
-                    >
-                      <span>Go to Connect Channels</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </Button>
-                  </div>
+                  )}
                 </>
               )}
             </div>
