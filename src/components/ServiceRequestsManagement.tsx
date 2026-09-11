@@ -781,8 +781,17 @@ export const ServiceRequestsManagement: React.FC<ServiceRequestsManagementProps>
           </button>
         </div>
 
-        <form onSubmit={handleCreate} className="app-form">
-          <div className="p-4 sm:p-5 space-y-4">
+        {/* flowbite-react's Modal content.inner is `flex max-h-[90dvh]
+            flex-col` with no overflow of its own - only ModalBody carries
+            overflow-auto, and this form doesn't use one (header/footer need
+            their own borders and to stay put while only the fields scroll).
+            Without its own overflow-y-auto here, a short phone screen could
+            overflow both edges of the 90dvh card once every field renders
+            (custom request name + checkbox, charge amount, details textarea)
+            - found 11 Sep 2026 code review. max-h-[70dvh] leaves headroom
+            for the fixed header/footer above and below it. */}
+        <form onSubmit={handleCreate} className="app-form flex flex-col overflow-hidden">
+          <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[70dvh]">
             {isMultiKeyProperty && rooms.length > 0 && (
               <div className="service-requests-management__form-group">
                 <StyledSelect

@@ -99,6 +99,18 @@ export interface VerticalSwipeOptions {
 export function useVerticalSwipe({ onSwipeUp, onSwipeDown }: VerticalSwipeOptions) {
   const start = useRef<{ x: number; y: number } | null>(null);
   const scroller = useRef<HTMLElement | null>(null);
+  // Set synchronously, right before onSwipeUp/onSwipeDown fires, and left
+  // set afterward (not auto-cleared) so a caller that ALSO has an onClick
+  // on the same element can check it (11 Sep 2026 code review fix). A touch
+  // that ends as a recognized swipe still gets a synthetic `click` from the
+  // browser afterward - always strictly after this touchend has already run
+  // and set this ref, since a single touch interaction dispatches touchend
+  // before any following click - so a click handler that reads `justSwiped
+  // .current` will always see the up-to-date value for the gesture that
+  // just happened. Whoever reads it is responsible for resetting it back to
+  // false afterward (see the pull-tab's onClick in KitchenManagement.tsx),
+  // the same way a native `event.defaultPrevented` check works.
+  const justSwiped = useRef(false);
 
   const onTouchStart = useCallback((e: ReactTouchEvent<HTMLElement>) => {
     const touch = e.touches[0];
@@ -124,17 +136,19 @@ export function useVerticalSwipe({ onSwipeUp, onSwipeDown }: VerticalSwipeOption
         // Swiped down - dismiss, but only if the list under the finger had
         // nothing left to scroll upward into.
         if (scrollEl && scrollEl.scrollTop > 0) return;
+        justSwiped.current = true;
         onSwipeDown?.();
       } else {
         // Swiped up - only once the list under the finger is at its end.
         if (scrollEl && scrollEl.scrollTop + scrollEl.clientHeight < scrollEl.scrollHeight - 1) return;
+        justSwiped.current = true;
         onSwipeUp?.();
       }
     },
     [onSwipeUp, onSwipeDown]
   );
 
-  return { onTouchStart, onTouchEnd };
+  return { onTouchStart, onTouchEnd, justSwiped };
 }
 
 export interface HorizontalSwipeOptions {

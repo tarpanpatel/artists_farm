@@ -205,7 +205,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     moved: boolean;
     isClickSelecting: boolean;
     pointerDownActive: boolean;
-  }>({ armed: false, startX: 0, startY: 0, longPressTimer: null, moved: false, isClickSelecting: false, pointerDownActive: false });
+    // Guards against handleDayPointerUp running twice for one release (found
+    // 11 Sep 2026 code review): a mouse click fires the day cell's own
+    // onPointerUp AND the window 'pointerup' listener below (armed
+    // synchronously on mouse pointerdown) for the exact same native event,
+    // since React's root-level listener runs before the event finishes
+    // bubbling to window and the effect cleanup that would remove the window
+    // listener can't run until after the state update it's waiting on has
+    // flushed. Without this, click 1 was being treated as click 1 AND click
+    // 2 in the same gesture, opening the rate panel immediately and
+    // silently defeating the whole 2-click flow for mouse users (touch was
+    // unaffected - a quick tap never arms the window listener at all). Reset
+    // on every pointerdown, set at the top of handleDayPointerUp.
+    pointerUpHandled: boolean;
+  }>({ armed: false, startX: 0, startY: 0, longPressTimer: null, moved: false, isClickSelecting: false, pointerDownActive: false, pointerUpHandled: false });
   const [addBookingPrefillDates, setAddBookingPrefillDates] = useState<{ checkin: string; checkout: string } | null>(null);
   const [showCleared, setShowCleared] = useState(false);
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false);
@@ -551,6 +564,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
     d.startY = e.clientY;
     d.moved = false;
     d.pointerDownActive = true;
+    d.pointerUpHandled = false;
 
     // 2-click selection (11 Sep 2026 parity pass, ported from TodayOverview's
     // handleGridPointerDown): if click 1 already armed click-select mode and
@@ -611,6 +625,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
 
   const handleDayPointerUp = () => {
     const d = dragRef.current;
+    // See dragRef's pointerUpHandled comment - the cell's own onPointerUp and
+    // the window listener below both fire for one mouse click; only the
+    // first should actually run.
+    if (d.pointerUpHandled) return;
+    d.pointerUpHandled = true;
     if (!selAnchorDate) { endDrag(); return; }
 
     // A real drag opens the panel immediately, same as before.

@@ -100,6 +100,34 @@ export interface OcrOptions {
 const cachedWorkerPromises: Record<string, Promise<any>> = {};
 let currentProgressCallback: OcrProgressCallback | null = null;
 
+// Serializes performClientOcr calls (found 11 Sep 2026 code review): each
+// language has exactly ONE shared, cached Tesseract worker, and a worker's
+// setParameters()/recognize() pair is not reentrant - two scans started
+// close together (e.g. a bill scan then a UPI-proof scan, before the first
+// resolves) would otherwise run interleaved `setParameters(A) ->
+// setParameters(B) -> recognize -> recognize` on the same worker, so the
+// first scan's OCR runs under the second scan's page-segmentation mode, and
+// module-level `currentProgressCallback` drives whichever scan's progress
+// bar last overwrote it rather than the one that owns it. Chaining every
+// call onto this promise guarantees only one scan's setParameters+recognize
+// pair is ever in flight at a time, app-wide.
+let ocrQueue: Promise<void> = Promise.resolve();
+
+/** Runs `fn` only once every earlier-queued scan has finished (success or
+ * failure), so worker acquisition + setParameters + recognize for one scan
+ * never overlaps another's. See ocrQueue's own comment for why this exists. */
+async function withOcrLock<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = ocrQueue;
+  let release: () => void = () => {};
+  ocrQueue = new Promise((resolve) => { release = resolve; });
+  await previous;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
 async function getOcrWorker(lang: string = 'eng'): Promise<any> {
   if (!cachedWorkerPromises[lang]) {
     cachedWorkerPromises[lang] = (async () => {
@@ -117,20 +145,30 @@ async function getOcrWorker(lang: string = 'eng'): Promise<any> {
 
       if (lang === 'mrz') {
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        options.langPath = `${origin}${API_ROOT_BASE}/dist/tessdata`;
+        // The built app is always served under a literal "/dist/" URL prefix
+        // on staging/production (see deploy-staging.ps1/deploy.ps1's
+        // $LiveUrl) - public/tessdata/ is copied verbatim into dist/tessdata/
+        // on build, hence the /dist prefix there. Vite's own dev server has
+        // no such prefix - it serves public/ straight from the site root -
+        // so resolving to /dist/tessdata while running `npm run dev` 404s
+        // (found 11 Sep 2026 code review).
+        const distPrefix = import.meta.env.DEV ? '' : '/dist';
+        options.langPath = `${origin}${API_ROOT_BASE}${distPrefix}/tessdata`;
         options.gzip = true;
       }
 
-      try {
-        const worker = await createWorker(lang, undefined, options);
-        return worker;
-      } catch (err) {
-        if (lang !== 'eng') {
-          console.warn(`[OCR] Failed to load custom ${lang} model, falling back to eng:`, err);
-          return getOcrWorker('eng');
-        }
-        throw err;
-      }
+      // Deliberately no try/catch-and-fall-back-to-eng here (there used to
+      // be one): it resolved this promise - the one cached under the FAILED
+      // language's own key - to the eng worker, so a transient failure (or,
+      // before the fix above, the dev-server 404) meant every future 'mrz'
+      // scan for the rest of the tab's session silently reused eng with no
+      // retry, since cachedWorkerPromises['mrz'] was already "successfully"
+      // resolved. Letting the rejection propagate to the .catch below evicts
+      // the cache entry instead, so the NEXT call gets a fresh attempt at
+      // the real model; performClientOcr below is the one place that falls
+      // back to a plain (uncached-under-the-wrong-key) eng worker for the
+      // scan actually in flight.
+      return createWorker(lang, undefined, options);
     })().catch((err) => {
       delete cachedWorkerPromises[lang];
       throw err;
@@ -256,11 +294,18 @@ export async function performClientOcr(
   onProgress?: OcrProgressCallback,
   options?: OcrOptions
 ): Promise<string> {
-  currentProgressCallback = onProgress || null;
   onProgress?.(5, 'Optimizing image for scan...');
 
   let processedSource: File | Blob | string = imageSource;
   let tempObjectUrl: string | null = null;
+  const targetLang = options?.lang || 'eng';
+  // Tracks whichever language actually ended up loaded for this scan -
+  // starts equal to targetLang, but drops to 'eng' if targetLang's own
+  // model failed to load (see the try/catch around getOcrWorker below).
+  // Read from the outer catch too, so a failure after a fallback evicts the
+  // worker that actually failed rather than re-evicting the target that
+  // already failed and was already dropped from the cache.
+  let effectiveLang = targetLang;
 
   try {
     if (options?.preprocess !== false) {
@@ -274,28 +319,52 @@ export async function performClientOcr(
       tempObjectUrl = URL.createObjectURL(processedSource);
     }
 
-    const targetLang = options?.lang || 'eng';
     onProgress?.(15, `Initializing ${targetLang.toUpperCase()} OCR engine...`);
-    const worker = await getOcrWorker(targetLang);
+    // Worker acquisition through recognize is the section that touches the
+    // shared per-language worker and the module-level progress callback -
+    // see ocrQueue's comment for why this has to be exclusive.
+    const text = await withOcrLock(async () => {
+      // Set AND cleared from inside the lock, not the outer finally below -
+      // clearing it after release() would race the next queued scan, which
+      // can already be running and may have set its own callback the
+      // instant this one releases the lock (found 11 Sep 2026 code review,
+      // same root cause as the worker-sharing race this lock exists for).
+      currentProgressCallback = onProgress || null;
+      try {
+        let worker: any;
+        try {
+          worker = await getOcrWorker(targetLang);
+        } catch (err) {
+          if (targetLang === 'eng') throw err;
+          // Fall back to eng for THIS scan only - see getOcrWorker's comment
+          // on why the fallback must not be cached under the failed
+          // language's key.
+          console.warn(`[OCR] Failed to load ${targetLang} model, falling back to eng for this scan:`, err);
+          effectiveLang = 'eng';
+          worker = await getOcrWorker('eng');
+        }
 
-    // Reset or configure parameters for this specific scan
-    const params: Record<string, string> = {
-      tessedit_char_whitelist: options?.whitelist || '',
-      tessedit_pageseg_mode: String(options?.psm || '3'),
-    };
-    await worker.setParameters(params);
+        // Reset or configure parameters for this specific scan
+        const params: Record<string, string> = {
+          tessedit_char_whitelist: options?.whitelist || '',
+          tessedit_pageseg_mode: String(options?.psm || '3'),
+        };
+        await worker.setParameters(params);
 
-    onProgress?.(25, 'Analyzing image content...');
-    const result = await worker.recognize(tempObjectUrl || processedSource);
-    onProgress?.(100, 'Scan complete.');
+        onProgress?.(25, 'Analyzing image content...');
+        const result = await worker.recognize(tempObjectUrl || processedSource);
+        onProgress?.(100, 'Scan complete.');
+        return result.data?.text || '';
+      } finally {
+        currentProgressCallback = null;
+      }
+    });
 
-    return result.data?.text || '';
+    return text;
   } catch (err) {
-    const targetLang = options?.lang || 'eng';
-    delete cachedWorkerPromises[targetLang];
+    delete cachedWorkerPromises[effectiveLang];
     throw err;
   } finally {
-    currentProgressCallback = null;
     if (tempObjectUrl) {
       URL.revokeObjectURL(tempObjectUrl);
     }

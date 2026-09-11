@@ -319,8 +319,15 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
     });
     if (!confirmed) return;
 
-    if (id) {
-      await deleteMaterialCategoryFromDB(id);
+    // A failed delete (permission, FK constraint, network) must not update
+    // local state or claim success - it used to (found 11 Sep 2026 code
+    // review), so the category vanished from the list with a green toast
+    // and then silently reappeared on the next load, matching
+    // handleRenameCategory's own `if (ok || !id)` gate just above.
+    const ok = id ? await deleteMaterialCategoryFromDB(id) : true;
+    if (!ok) {
+      showToast('Failed to delete category', { type: 'error' });
+      return;
     }
     setDbCategories((prev: any[]) => prev.filter(c => c.name !== name));
     if (selectedCategory === name) setSelectedCategory('All');

@@ -1311,7 +1311,7 @@ export const strings: Record<string, string> = {
   click_add_from_menu_hint: "Click + Add on items from the menu",
   total_label: "TOTAL:",
   send_order_to_kitchen_button: "Send Order to Kitchen",
-  order_sent_to_kitchen_toast: "Order sent to kitchen successfully.",
+  order_sent_to_kitchen_toast: "Order #{order_id} sent to kitchen successfully!",
   order_instructions_checkbox_label: "Instructions",
   tap_to_edit_label: "tap to edit",
   order_instructions_drawer_heading: "Order Instructions",

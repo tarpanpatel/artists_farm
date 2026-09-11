@@ -32,8 +32,19 @@ export const TablePagination: React.FC<TablePaginationProps> = ({ page, totalIte
       >
         <ChevronLeft className="w-3.5 h-3.5" /> Previous
       </button>
-      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-        Page {page} of {totalPages}{itemLabel ? ` ${itemLabel}` : ''}
+      {/* itemLabel used to be appended to the visible text ("Page 1 of 3
+          bookings") from when this also showed a total item count ("3 of 24
+          bookings"); once the count was removed (28b13498, 23 Aug 2026) the
+          label was left dangling onto the page count itself, reading as
+          nonsense like "Page 1 of 3 items" on every paginated table
+          site-wide (found 11 Sep 2026 code review). Kept as an aria-label
+          instead of dropped outright, so screen readers still get the
+          context sighted users lost along with the count. */}
+      <span
+        className="text-xs font-semibold text-gray-500 dark:text-gray-400"
+        aria-label={`Page ${page} of ${totalPages}${itemLabel ? ` ${itemLabel}` : ''}`}
+      >
+        Page {page} of {totalPages}
       </span>
       <button
         type="button"

@@ -1096,10 +1096,6 @@ html.dark .shadow-xs {
    Ground Code CUSTOM SEMANTIC CSS STYLING & ACCENTS
    ========================================================================== */
 
-/* OperationalDashboard.tsx's "jump to month" Datepicker (11 Sep 2026,
-   explicit report + screenshot: "Why ru not making this part just like
-   multi key" - comparing this single-key calendar's toolbar against
-   TodayOverview.tsx's, the one real remaining mismatch was this control
 /* Custom Scrollbar for Matrix Tables & Containers */
 .overflow-x-auto::-webkit-scrollbar {
   height: 6px;
@@ -2221,12 +2217,12 @@ pre,
      never part of the full-bleed initiative or its padding removal above).
      Everything else in this list is already scoped by a specific component
      class name, so it's unaffected either way. */
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]) {
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel) {
     border-radius: 0 !important;
     border-left-width: 0 !important;
     border-right-width: 0 !important;
@@ -2267,12 +2263,12 @@ pre,
   html.dark .whatsapp-template-settings,
   html.dark .add-expenses-container,
   html.dark .app-card,
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]),
-  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel):not([class*="border-t-0"]) {
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel),
+  html.dark .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"]:not([role="dialog"]):not([role="tooltip"]):not([role="menu"]):not([data-testid="flowbite-dropdown"]):not([data-floating-ui-focusable]):not([style*="position: absolute"]):not([style*="position: fixed"]):not(.fixed):not(.absolute):not(.pos-cart-drawer-panel) {
     border-top-color: #334155 !important;
     border-bottom-color: #334155 !important;
     box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25) !important;
@@ -2298,11 +2294,38 @@ pre,
      the signal this full-bleed block above must not fight. It still matches
      them (border-t-0/rounded-t-none coexist with rounded-lg/border/shadow/
      bg-white in the same className, so the wildcard selectors above still
-     apply) and had been forcing a 1px top border back on unconditionally
-     since found 2 Sep 2026 (user report: seam reappearing under the tabs on
-     mobile). Placed after that block so it wins the cascade at equal
-     specificity; only touches the top edge, leaving the full-bleed radius/
-     side-border/shadow treatment above untouched for these panels. */
+     apply) - only the top edge is overridden back to 0 here, leaving the
+     full-bleed radius/side-border/shadow treatment above untouched for
+     these panels.
+
+     This override needs to WIN on specificity, not just source order: the
+     wildcard block above matches on div/section + 4 attribute selectors +
+     several :not() exclusions (each contributing its own argument's
+     specificity), which outweighs a plain "[class*="border-t-0"]" selector
+     regardless of which rule comes later in the file - both sides use
+     !important, and specificity is compared before source order breaks a
+     tie. Placing this after the wildcard block was, on its own, not
+     sufficient (found 2 Sep 2026: the 1px top border kept reappearing under
+     tabs on mobile). The fix tried next (82687da7, 11 Sep 2026) was adding
+     :not([class*="border-t-0"]) to the wildcard block's own selectors
+     instead - that "won" by making these panels not match the wildcard at
+     all, but it also stripped their intended full-bleed radius/side-border/
+     shadow treatment, which is the opposite of what this comment above
+     says should happen (found again in code review the same day - e.g.
+     InventoryManagement.tsx's Categories panel and mobile Stock-Requests
+     search card gained rounded corners and left/right borders pinned to
+     the screen edge on phones). Fixed for real by giving these companion
+     selectors the SAME tag+attribute chain as the wildcard block PLUS
+     [class*="border-t-0"] - a strict superset, so it is always at least as
+     specific and wins on its own merit for border-top-width/style only,
+     without touching (or needing to exclude) anything else the wildcard
+     sets. */
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"][class*="border-t-0"],
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"][class*="border-t-0"],
+  .app-shell__main div[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"][class*="border-t-0"],
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="bg-white"][class*="border-t-0"],
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-slate-800"][class*="border-t-0"],
+  .app-shell__main section[class*="rounded-"][class*="shadow"][class*="border"][class*="dark:bg-gray-800"][class*="border-t-0"],
   [class*="border-t-0"],
   .app-shell__main [class*="border-t-0"],
   .app-shell__main div[class*="border-t-0"],

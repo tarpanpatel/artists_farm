@@ -198,6 +198,19 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     // gesture is over, and until this flag existed nothing distinguished a
     // genuinely fresh not-yet-armed touch from an already-finished one).
     pointerDownActive: boolean;
+    // Guards against handleGridPointerUp running twice for one release (found
+    // 11 Sep 2026 code review): a mouse click fires the cell's own
+    // onPointerUp AND the window 'pointerup' listener below (armed
+    // synchronously on mouse pointerdown) for the exact same native event,
+    // since React's root-level listener runs before the event finishes
+    // bubbling to window and the effect cleanup that would remove the window
+    // listener can't run until after the state update it's waiting on has
+    // flushed. Without this, click 1 was being treated as click 1 AND click
+    // 2 in the same gesture, opening the rate panel immediately and
+    // silently defeating the whole 2-click flow for mouse users (touch was
+    // unaffected - a quick tap never arms the window listener at all). Reset
+    // on every pointerdown, set at the top of handleGridPointerUp.
+    pointerUpHandled: boolean;
   }>({
     armed: false,
     pointerType: 'mouse',
@@ -208,6 +221,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     columnMode: false,
     isClickSelecting: false,
     pointerDownActive: false,
+    pointerUpHandled: false,
   });
   const [isDragArmed, setIsDragArmed] = useState(false);
 
@@ -286,6 +300,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     d.moved = false;
     d.columnMode = false;
     d.pointerDownActive = true;
+    d.pointerUpHandled = false;
 
     // If currently in 2-click selection mode, this click is Click 2!
     if (d.isClickSelecting && selAnchor) {
@@ -360,6 +375,11 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 
   const handleGridPointerUp = () => {
     const d = dragRef.current;
+    // See dragRef's pointerUpHandled comment - the cell's own onPointerUp and
+    // the window listener below both fire for one mouse click; only the
+    // first should actually run.
+    if (d.pointerUpHandled) return;
+    d.pointerUpHandled = true;
     if (!selAnchor) { endDrag(); return; }
 
     // If pointer actually dragged across cells (distance > 5px)
@@ -416,6 +436,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
     d.armed = true;
     d.isClickSelecting = false;
     d.pointerDownActive = true;
+    d.pointerUpHandled = false;
     setIsDragArmed(true);
     setSelAnchor({ roomIdx: 0, dateIdx });
     setSelFocus({ roomIdx: gridRooms.length - 1, dateIdx });

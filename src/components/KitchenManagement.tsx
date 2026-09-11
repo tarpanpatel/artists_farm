@@ -1499,7 +1499,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
     // Customer" and having to re-pick it for the next round.
     refreshOrders();
     refreshWalkInTabs();
-    showToast(t('order_sent_to_kitchen_toast', `Order #${orderId} sent to kitchen successfully!`), { type: 'success' });
+    // t()'s dictionary lookup (strings[key]) always wins over the fallback
+    // string when the key exists, so interpolating orderId straight into the
+    // fallback here silently never showed it (found 11 Sep 2026 code
+    // review) - the {order_id} token above is filled via the params arg
+    // instead, which t() substitutes into whichever string actually wins.
+    showToast(t('order_sent_to_kitchen_toast', `Order #{order_id} sent to kitchen successfully!`, { order_id: orderId }), { type: 'success' });
   };
 
   // Submit New Menu Item
@@ -2737,7 +2742,24 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                       unlabeled chevron), the only difference was the (near-
                       invisible) presence of this button at all. */}
                 <button
-                  onClick={() => setIsCartDrawerExpanded(!isCartDrawerExpanded)}
+                  onClick={() => {
+                    // A swipe that just fired on this same button (it takes
+                    // both directions - see the comment on cartTabSwipe's
+                    // declaration) still gets a synthetic click afterward on
+                    // touch browsers; toggling from `!isCartDrawerExpanded`
+                    // there re-inverts the state the swipe just set on
+                    // purpose (found 11 Sep 2026 code review: swipe up on an
+                    // already-open cart closed it again, and vice versa -
+                    // the same gesture undoing itself depending on state,
+                    // which is exactly the hazard useSwipeGesture.ts's own
+                    // rule 2 warns against). justSwiped.current is only ever
+                    // true for the click immediately following such a swipe.
+                    if (cartTabSwipe.justSwiped.current) {
+                      cartTabSwipe.justSwiped.current = false;
+                      return;
+                    }
+                    setIsCartDrawerExpanded(!isCartDrawerExpanded);
+                  }}
                   onTouchStart={cartTabSwipe.onTouchStart}
                   onTouchEnd={cartTabSwipe.onTouchEnd}
                   // Centered (11 Sep 2026, explicit request - "2 items ₹165
