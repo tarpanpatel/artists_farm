@@ -1374,6 +1374,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             ...Array.from({ length: firstDay }, () => null),
             ...daysInfo,
           ];
+          const totalSlots = Math.ceil(slots.length / 7) * 7;
+          while (slots.length < totalSlots) {
+            slots.push(null);
+          }
           const weeks: (DayInfo | null)[][] = [];
           for (let i = 0; i < slots.length; i += 7) {
             weeks.push(slots.slice(i, i + 7));
@@ -1426,24 +1430,27 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                 let runKey: string | null = null;
                 const flush = (endCol: number) => {
                   if (runStart !== null && runKind !== null) {
-                    const firstInfo = week[runStart]!;
-                    const lastInfo = week[endCol]!;
-                    let isFirstOfStay: boolean;
-                    let isLastOfStay: boolean;
-                    if (runKind === 'booking') {
-                      const b = firstInfo.dayBooking!;
-                      const realCheckin = (b.checkinDate || '').split(' ')[0].split('T')[0];
-                      const realCheckout = (b.checkoutDate || (b.expectedCheckout || '').split(' ')[0].split('T')[0] || '');
-                      isFirstOfStay = firstInfo.dateStr === realCheckin;
-                      isLastOfStay = addOneDayStr(lastInfo.dateStr) === realCheckout.split(' ')[0].split('T')[0];
-                    } else {
-                      const ob = firstInfo.otaBlock!;
-                      const realStart = ob.event_start.split(' ')[0].split('T')[0];
-                      const realEnd = ob.event_end.split(' ')[0].split('T')[0];
-                      isFirstOfStay = firstInfo.dateStr === realStart;
-                      isLastOfStay = addOneDayStr(lastInfo.dateStr) === realEnd;
+                    const actualEndCol = Math.max(runStart, Math.min(endCol, week.length - 1));
+                    const firstInfo = week[runStart];
+                    const lastInfo = week[actualEndCol];
+                    if (firstInfo && lastInfo) {
+                      let isFirstOfStay: boolean;
+                      let isLastOfStay: boolean;
+                      if (runKind === 'booking') {
+                        const b = firstInfo.dayBooking!;
+                        const realCheckin = (b.checkinDate || '').split(' ')[0].split('T')[0];
+                        const realCheckout = (b.checkoutDate || (b.expectedCheckout || '').split(' ')[0].split('T')[0] || '');
+                        isFirstOfStay = firstInfo.dateStr === realCheckin;
+                        isLastOfStay = addOneDayStr(lastInfo.dateStr) === realCheckout.split(' ')[0].split('T')[0];
+                      } else {
+                        const ob = firstInfo.otaBlock!;
+                        const realStart = ob.event_start.split(' ')[0].split('T')[0];
+                        const realEnd = ob.event_end.split(' ')[0].split('T')[0];
+                        isFirstOfStay = firstInfo.dateStr === realStart;
+                        isLastOfStay = addOneDayStr(lastInfo.dateStr) === realEnd;
+                      }
+                      segments.push({ startCol: runStart, endCol: actualEndCol, kind: runKind, info: firstInfo, isFirstOfStay, isLastOfStay });
                     }
-                    segments.push({ startCol: runStart, endCol, kind: runKind, info: firstInfo, isFirstOfStay, isLastOfStay });
                   }
                   runStart = null;
                   runKind = null;
@@ -1461,7 +1468,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                     }
                   }
                 });
-                flush(6);
+                flush(week.length - 1);
 
                 return (
                   <div key={`week-${weekIdx}`} className={`relative grid grid-cols-7 divide-x divide-gray-200 dark:divide-gray-700${isDragArmed ? ' calendar--dragging' : ''}`}>
