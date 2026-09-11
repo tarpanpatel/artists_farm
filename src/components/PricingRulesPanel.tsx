@@ -596,6 +596,11 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
     });
   }, [rateRules, rulesSearchQuery]);
 
+  const paginatedRules = useMemo(() => {
+    const startIndex = (rulesPage - 1) * RULES_PAGE_SIZE;
+    return filteredRules.slice(startIndex, startIndex + RULES_PAGE_SIZE);
+  }, [filteredRules, rulesPage]);
+
   useEffect(() => {
     setRulesPage(1);
   }, [rulesSearchQuery]);
@@ -1590,7 +1595,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
             <div className="space-y-3">
               <div className="pricing-rules-panel__gutter">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                  Active rules ({rateRules.length})
+                  Active rules
                 </h4>
               </div>
 
@@ -1662,7 +1667,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     </div>
                     <div className="flex items-center justify-between sm:justify-end gap-2 text-2xs text-gray-500 dark:text-gray-400 shrink-0 px-1">
                       <span>
-                        Showing <strong className="text-gray-900 dark:text-white">{filteredRules.length}</strong> of {rateRules.length} rules
+                        Showing <strong className="text-gray-900 dark:text-white">{filteredRules.length === 0 ? 0 : `${(rulesPage - 1) * RULES_PAGE_SIZE + 1}–${Math.min(rulesPage * RULES_PAGE_SIZE, filteredRules.length)}`}</strong> of {filteredRules.length} rules
                       </span>
                     </div>
                   </div>
@@ -1675,7 +1680,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     <>
                       {/* Mobile Cards View (md:hidden) */}
                       <div className="md:hidden space-y-3">
-                        {filteredRules.slice(0, rulesPage * RULES_PAGE_SIZE).map((rule) => (
+                        {paginatedRules.map((rule) => (
                           <div
                             key={rule.id}
                             className="p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs space-y-2.5"
@@ -1803,7 +1808,7 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                            {filteredRules.slice(0, rulesPage * RULES_PAGE_SIZE).map((rule) => (
+                            {paginatedRules.map((rule) => (
                               <tr key={rule.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
                                 <td className="px-3 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                                   <div>
@@ -1898,26 +1903,6 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                           </tbody>
                         </table>
                       </div>
-
-                      {/* Load More (10 Sep 2026, explicit request) - grows the
-                          accumulated view by one more page of the newest-first
-                          list instead of jumping straight to a numbered page.
-                          Shares `rulesPage` with the TablePagination below it
-                          (both call setRulesPage), so Next/Previous there just
-                          grows/shrinks the same accumulated view rather than
-                          isolating a single page - "load more" and "jump to a
-                          page" are the same mechanism, not two competing ones. */}
-                      {rulesPage * RULES_PAGE_SIZE < filteredRules.length && (
-                        <div className="pricing-rules-panel__gutter flex justify-center">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setRulesPage((p) => p + 1)}
-                          >
-                            Load more ({filteredRules.length - rulesPage * RULES_PAGE_SIZE} more)
-                          </Button>
-                        </div>
-                      )}
 
                       <TablePagination
                         page={rulesPage}
