@@ -1401,6 +1401,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             // fixes.
             isFirstOfStay: boolean;
             isLastOfStay: boolean;
+            isSundayCheckout?: boolean;
           };
           // One calendar day past `dateStr`, as a bare YYYY-MM-DD string -
           // used only to compare a segment's last night against the
@@ -1469,6 +1470,73 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                   }
                 });
                 flush(week.length - 1);
+
+                // If Sunday (col 0) is a valid date, check if any booking (or OTA block)
+                // checked out on this Sunday morning.
+                // A stay ending on Sunday has its last night on Saturday (col 6 of previous week).
+                // Because Sunday is not a booked night, daysInfo does not include it.
+                // To show the 20% checkout continuation on Sunday morning ("just like other bookings"),
+                // prepend a Sunday checkout stub for this week row.
+                if (week[0]) {
+                  const sundayDateStr = week[0].dateStr;
+                  const sundayCheckoutGuest = guests.find((g) => {
+                    const co = (g.checkoutDate || (g.expectedCheckout || '').split(' ')[0].split('T')[0]);
+                    return co === sundayDateStr;
+                  });
+                  if (sundayCheckoutGuest) {
+                    const isDayBookingCheckedOut = (() => {
+                      const s = String((sundayCheckoutGuest as any)?.status || '').trim().toLowerCase();
+                      return s === 'checkedout' || s === 'checked out';
+                    })();
+                    const isOtaBooking = !!(sundayCheckoutGuest as any)?.otaSource;
+                    const amount = (sundayCheckoutGuest as any)?.totalCharge || (sundayCheckoutGuest as any)?.totalAmount || (sundayCheckoutGuest as any)?.total_charge || 0;
+                    const nightlyRate = Math.round(amount / 1);
+
+                    const sundayInfo: DayInfo = {
+                      ...week[0],
+                      dayBooking: sundayCheckoutGuest,
+                      otaBlock: null,
+                      isDayBookingCheckedOut,
+                      isOtaBooking,
+                      nightlyRate,
+                    };
+
+                    segments.unshift({
+                      startCol: 0,
+                      endCol: 0,
+                      kind: 'booking',
+                      info: sundayInfo,
+                      isFirstOfStay: false,
+                      isLastOfStay: true,
+                      isSundayCheckout: true,
+                    });
+                  } else {
+                    const sundayCheckoutOta = blockedDates.find((bd) => {
+                      const end = bd.event_end.split(' ')[0].split('T')[0];
+                      return end === sundayDateStr;
+                    });
+                    if (sundayCheckoutOta) {
+                      const sundayInfo: DayInfo = {
+                        ...week[0],
+                        dayBooking: null,
+                        otaBlock: sundayCheckoutOta,
+                        isDayBookingCheckedOut: false,
+                        isOtaBooking: false,
+                        nightlyRate: 0,
+                      };
+
+                      segments.unshift({
+                        startCol: 0,
+                        endCol: 0,
+                        kind: 'ota',
+                        info: sundayInfo,
+                        isFirstOfStay: false,
+                        isLastOfStay: true,
+                        isSundayCheckout: true,
+                      });
+                    }
+                  }
+                }
 
                 return (
                   <div key={`week-${weekIdx}`} className={`relative grid grid-cols-7 divide-x divide-gray-200 dark:divide-gray-700${isDragArmed ? ' calendar--dragging' : ''}`}>
@@ -1620,16 +1688,35 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       const CAPSULE_CHECKIN_VISIBLE = 0.7; // v_in
                       const CAPSULE_CHECKOUT_VISIBLE = 0.2; // v_out
                       const nightsInSegment = seg.endCol - seg.startCol + 1;
-                      const extendForCheckout = seg.isLastOfStay && seg.endCol < 6;
+                      const extendForCheckout = seg.isLastOfStay && seg.endCol < 6 && !seg.isSundayCheckout;
                       const gridSpanCols = nightsInSegment + (extendForCheckout ? 1 : 0);
                       const insetPctLeft = ((1 - CAPSULE_CHECKIN_VISIBLE) / gridSpanCols) * 100;
                       const insetPctRight = ((1 - CAPSULE_CHECKOUT_VISIBLE) / gridSpanCols) * 100;
                       const gridColumn = `${seg.startCol + 1} / span ${gridSpanCols}`;
                       const capsuleStyle: React.CSSProperties = {
                         gridColumn,
-                        marginLeft: seg.isFirstOfStay ? `${insetPctLeft}%` : 0,
-                        marginRight: extendForCheckout ? `${insetPctRight}%` : 0,
+                        gridRow: '1',
+                        gridRowStart: 1,
+                        gridRowEnd: 2,
+                        marginLeft: seg.isSundayCheckout ? 0 : seg.isFirstOfStay ? `${insetPctLeft}%` : 0,
+                        marginRight: seg.isSundayCheckout ? `${(1 - CAPSULE_CHECKOUT_VISIBLE) * 100}%` : extendForCheckout ? `${insetPctRight}%` : 0,
                       };
+
+                      const getRoundingClass = (s: Segment, extCheckout: boolean): string => {
+                        if (s.isSundayCheckout) {
+                          return 'rounded-l-none rounded-r-md';
+                        }
+                        if (s.isLastOfStay && s.endCol === 6) {
+                          return s.isFirstOfStay ? 'rounded-l-md rounded-r-none' : 'rounded-none';
+                        }
+                        const isLeftRounded = s.isFirstOfStay;
+                        const isRightRounded = s.isLastOfStay || extCheckout;
+                        if (isLeftRounded && isRightRounded) return 'rounded-md';
+                        if (isLeftRounded && !isRightRounded) return 'rounded-l-md rounded-r-none';
+                        if (!isLeftRounded && isRightRounded) return 'rounded-l-none rounded-r-md';
+                        return 'rounded-none';
+                      };
+                      const roundingClass = getRoundingClass(seg, extendForCheckout);
                       if (seg.kind === 'booking') {
                         const dayBooking = seg.info.dayBooking!;
                         const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
@@ -1722,9 +1809,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               <button
                                 type="button"
                                 data-tour="checkin-open-booking-bar"
-                                className={`w-full rounded-md px-2 py-1 ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left`}
+                                className={`w-full ${roundingClass} ${seg.isSundayCheckout ? 'px-0.5 py-1 justify-center' : 'px-2 py-1'} ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left h-[26px]`}
                               >
-                                {isOtaBooking && (
+                                {!seg.isSundayCheckout && isOtaBooking && (
                                   <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
                                     {OtaIcon ? (
                                       <OtaIcon className="w-3 h-3 shrink-0" />
@@ -1733,7 +1820,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                     )}
                                   </span>
                                 )}
-                                <span className="truncate font-semibold min-w-0">{displayName}</span>
+                                {!seg.isSundayCheckout && (
+                                  <span className="truncate font-semibold min-w-0">{displayName}</span>
+                                )}
                               </button>
                             </Popover>
                           </div>
@@ -1795,16 +1884,20 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           >
                             <button
                               type="button"
-                              className="w-full rounded-md px-2 py-1 bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex items-center gap-1.5 shadow-2xs truncate text-left cursor-pointer transition-colors"
+                              className={`w-full ${roundingClass} ${seg.isSundayCheckout ? 'px-0.5 py-1 justify-center' : 'px-2 py-1'} bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex items-center gap-1.5 shadow-2xs truncate text-left cursor-pointer transition-colors h-[26px]`}
                             >
-                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
-                                {BlockOtaIcon ? (
-                                  <BlockOtaIcon className="w-3 h-3 shrink-0" />
-                                ) : (
-                                  <Globe className="w-2.5 h-2.5 shrink-0 text-slate-700" />
-                                )}
-                              </span>
-                              <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                              {!seg.isSundayCheckout && (
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
+                                  {BlockOtaIcon ? (
+                                    <BlockOtaIcon className="w-3 h-3 shrink-0" />
+                                  ) : (
+                                    <Globe className="w-2.5 h-2.5 shrink-0 text-slate-700" />
+                                  )}
+                                </span>
+                              )}
+                              {!seg.isSundayCheckout && (
+                                <div className="truncate font-semibold">{otaBlock.source_label || otaBlock.source || t('ota_blocked_label', 'Blocked')}</div>
+                              )}
                             </button>
                           </Popover>
                         </div>
