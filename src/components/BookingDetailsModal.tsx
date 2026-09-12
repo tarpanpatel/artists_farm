@@ -1482,19 +1482,18 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <Input
-                  label={isEditing ? t('today_guest_name_label', 'Guest Name *') : 'Guest Name * (1: Top Line Only)'}
+                  label={t('today_guest_name_label', 'Guest Name *')}
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   disabled={!isEditing}
-                  disabledVariant="top-only"
                   placeholder="Enter guest's full name"
                   required
                 />
               </div>
               <div>
                 <Input
-                  label={isEditing ? t('contact_phone_label', 'Phone Number *') : 'Phone * (2: Integrated Tab)'}
+                  label={t('contact_phone_label', 'Phone Number *')}
                   type="tel"
                   value={editPhone}
                   // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): a
@@ -1503,7 +1502,6 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   onChange={(e) => setEditPhone(normalizePhoneNumber(e.target.value))}
                   placeholder="10-digit mobile number"
                   disabled={!isEditing}
-                  disabledVariant="tab-arch"
                   required
                   error={
                     isEditing && editPhone.trim().length > 0 && !isValidPhoneNumber(editPhone, editIsForeignGuest)
@@ -1564,13 +1562,12 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
               <div>
                 <Input
-                  label={isEditing ? t('no_of_guests_label', 'No. of Guests') : 'Guests (3: 4-Sided Badge)'}
+                  label={t('no_of_guests_label', 'No. of Guests')}
                   type="number"
                   min={1}
                   value={editGuests}
                   onChange={(e) => setEditGuests(e.target.value)}
                   disabled={!isEditing}
-                  disabledVariant="badge"
                 />
               </div>
             </div>

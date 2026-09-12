@@ -114,7 +114,6 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     const isTransparent = disabled && disabledVariant === 'transparent';
     const isBadge = disabled && disabledVariant === 'badge';
     const isInset = disabled && disabledVariant === 'inset';
-    const isTopOnly = disabled && disabledVariant === 'top-only';
     const isTabArch = disabled && disabledVariant === 'tab-arch';
 
     let disabledClasses = '';
@@ -137,8 +136,12 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       ? '-translate-y-3 scale-75 top-1'
       : '-translate-y-3 scale-75 top-1 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-1 peer-focus:scale-75 peer-focus:-translate-y-3';
 
-    let labelBgAndBorder = disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken;
-    let labelTypography = disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor;
+    let labelBgAndBorder = disabled
+      ? 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5'
+      : bgToken;
+    let labelTypography = disabled
+      ? 'text-gray-600 dark:text-gray-300 font-semibold text-2xs'
+      : labelColor;
 
     if (disabled) {
       if (isTransparent) {
@@ -146,9 +149,6 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
         labelTypography = 'text-gray-500 dark:text-gray-400 font-medium';
       } else if (isBadge) {
         labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 shadow-2xs';
-        labelTypography = 'text-gray-600 dark:text-gray-300 font-semibold text-2xs';
-      } else if (isTopOnly) {
-        labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5';
         labelTypography = 'text-gray-600 dark:text-gray-300 font-semibold text-2xs';
       } else if (isTabArch) {
         labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border-t border-x border-b-0 border-gray-300 dark:border-gray-600 rounded-t-md px-2 py-0.5';
