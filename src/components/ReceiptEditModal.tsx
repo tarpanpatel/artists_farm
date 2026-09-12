@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, Printer, QrCode, Loader2, CornerDownRight, Share2, X } from './icons/FlowbiteIcons';
+import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, QrCode, Loader2, CornerDownRight, Share2, X } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
@@ -1359,15 +1359,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             outside Button.tsx's canonical palette (cyan isn't a defined variant
             at all). Every other action button in this modal (Insert, Apply
             Adjustment) was migrated in the same pass. */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-gray-50 dark:bg-gray-850">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-white dark:bg-gray-800">
           {internalMode === 'edit-and-checkout' && (
             <Button
               type="button"
-              variant="secondary"
+              variant="primary"
               size="lg"
-              className="flex-1"
+              className="flex-1 font-semibold flex items-center justify-center gap-2"
               onClick={() => setIsPrintModalOpen(true)}
-              leftIcon={<Printer className="w-4 h-4 shrink-0" />}
+              leftIcon={<Share2 className="w-4 h-4 shrink-0" />}
             >
               {t('preview_share_bill_button', 'Preview & Share Bill')}
             </Button>
