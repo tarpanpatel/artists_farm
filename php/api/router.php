@@ -1254,7 +1254,7 @@ if ($action !== 'login_user' && $action !== 'logout' && $action !== 'register_te
 $kitchen_module_actions = [
     'get_orders', 'create_order', 'update_order_status', 'get_served_logs', 'add_served_log',
     'update_order_item_status', 'update_item_reminder_timestamp', 'check_stale_reminders',
-    'get_walk_in_tabs', 'get_walk_in_tab_history', 'open_walk_in_tab', 'bill_walk_in_tab',
+    'get_walk_in_tabs', 'get_walk_in_tab_history', 'open_walk_in_tab', 'bill_walk_in_tab', 'update_walk_in_tab', 'delete_walk_in_tab',
     'get_menu', 'add_menu_item', 'update_menu_item', 'delete_menu_item', 'dedup_menu',
     'get_recipes', 'save_recipe', 'delete_recipe', 'deplete_stock',
     'get_staff_meal_options', 'add_staff_meal_option', 'get_staff_meal_logs', 'add_staff_meal_log',
@@ -4470,6 +4470,8 @@ switch ($action) {
     case 'get_walk_in_tab_history':
     case 'open_walk_in_tab':
     case 'bill_walk_in_tab':
+    case 'update_walk_in_tab':
+    case 'delete_walk_in_tab':
         handleWalkInTabRequests($pdo, $request_method, $action, $propertyId);
         break;
 

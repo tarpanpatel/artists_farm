@@ -20,6 +20,7 @@ interface WalkInTabBillModalProps {
   propertyGstin?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  initialBill?: any;
 }
 
 // Same shape as ReceiptEditModal's bill, minus everything that's actually
@@ -34,6 +35,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
   propertyGstin,
   propertyUpiId,
   propertyUpiQrCodeUrl,
+  initialBill,
 }) => {
   const { showToast } = useToast();
   const [gstEnabled, setGstEnabled] = useState(false);
@@ -41,7 +43,7 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'UPI' | 'Card' | 'Bank Transfer'>('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [billedResult, setBilledResult] = useState<any | null>(null);
+  const [billedResult, setBilledResult] = useState<any | null>(initialBill || null);
   const [isSharing, setIsSharing] = useState(false);
 
   // Same config the guest receipt reads (system_settings key "gst_rates_config")
@@ -258,12 +260,12 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
               <div className="text-center pb-2 border-b border-slate-200">
                 <h3 className="font-extrabold text-base uppercase">{propertyName || 'Ground Code Resort'}</h3>
                 <p className="font-medium">{bill.gstEnabled ? t('tax_invoice_label', 'Tax Invoice') : t('walk_in_bill_title', 'Walk-in Bill')}</p>
-                {bill.gstEnabled && propertyGstin && <p className="text-[10px]">GSTIN: {propertyGstin}</p>}
+                {bill.gstEnabled && propertyGstin && <p className="text-2xs">GSTIN: {propertyGstin}</p>}
               </div>
 
               <div className="flex justify-between border-b border-dashed border-slate-300 pb-2 font-semibold">
                 <span>{bill.label || t('walk_in_badge', 'Walk-in')}</span>
-                <span>{formatDateDDMMYYYY(new Date().toISOString())}</span>
+                <span>{formatDateDDMMYYYY(bill.billed_at || bill.billedAt || new Date().toISOString())}</span>
               </div>
 
               <div className="space-y-1">

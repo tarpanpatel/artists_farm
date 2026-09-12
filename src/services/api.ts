@@ -1585,6 +1585,50 @@ export async function billWalkInTabDB(params: {
   }
 }
 
+export async function updateWalkInTabDB(params: {
+  tabId: number;
+  label?: string;
+  paymentMethod: string;
+  discount: number;
+  gstEnabled: boolean;
+  gstRate: number;
+}): Promise<{ success: boolean; message?: string; bill?: any }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=update_walk_in_tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tab_id: params.tabId,
+        label: params.label,
+        payment_method: params.paymentMethod,
+        discount: params.discount,
+        gst_enabled: params.gstEnabled,
+        gst_rate: params.gstRate,
+      }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message, bill: json.bill };
+  } catch (err) {
+    console.error('Failed to update walk-in tab:', err);
+    return { success: false, message: 'Network error' };
+  }
+}
+
+export async function deleteWalkInTabDB(tabId: number): Promise<{ success: boolean; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=delete_walk_in_tab`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tab_id: tabId }),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', message: json.message };
+  } catch (err) {
+    console.error('Failed to delete walk-in tab:', err);
+    return { success: false, message: 'Network error' };
+  }
+}
+
 export async function updateOrderItemStatus(itemId: number, status: string): Promise<boolean> {
   try {
     const res = await apiFetch(`${API_BASE}?action=update_order_item_status`, {

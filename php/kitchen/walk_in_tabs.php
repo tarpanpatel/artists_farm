@@ -119,9 +119,20 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
 
         case 'get_walk_in_tab_history':
             try {
-                $stmt = $pdo->prepare("SELECT id, label, status, opened_at, billed_at, payment_method, discount, gst_enabled, gst_rate, gst_amount, grand_total FROM walk_in_tabs WHERE property_id = ? AND status = 'billed' ORDER BY billed_at DESC LIMIT 50");
+                $stmt = $pdo->prepare("SELECT id, label, status, opened_at, billed_at, payment_method, discount, gst_enabled, gst_rate, gst_amount, grand_total FROM walk_in_tabs WHERE property_id = ? AND status = 'billed' ORDER BY billed_at DESC LIMIT 100");
                 $stmt->execute([$propertyId]);
-                echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+                $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($history as &$tab) {
+                    $agg = getWalkInTabItems($pdo, $tab['id']);
+                    $tab['items'] = $agg['items'];
+                    $tab['subtotal'] = (float)$agg['subtotal'];
+                    $tab['discount'] = (float)($tab['discount'] ?? 0);
+                    $tab['gst_rate'] = (float)($tab['gst_rate'] ?? 0);
+                    $tab['gst_amount'] = (float)($tab['gst_amount'] ?? 0);
+                    $tab['grand_total'] = (float)($tab['grand_total'] ?? 0);
+                    $tab['gst_enabled'] = !empty($tab['gst_enabled']);
+                }
+                echo json_encode(['status' => 'success', 'data' => $history]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);
             }
@@ -236,6 +247,138 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                         $pdo->rollBack();
                     }
                     echo json_encode(['status' => 'error', 'message' => 'Failed to bill tab']);
+                }
+            }
+            break;
+
+        case 'update_walk_in_tab':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                try {
+                    $input = array_merge($input, validateWalkInTabInput($input));
+                } catch (Exception $eVal) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eVal->getMessage()]);
+                    break;
+                }
+                $tabId = (int)($input['tab_id'] ?? 0);
+                if ($tabId <= 0) {
+                    echo json_encode(['status' => 'error', 'message' => 'tab_id is required']);
+                    break;
+                }
+
+                try {
+                    $tabStmt = $pdo->prepare("SELECT id, label, status FROM walk_in_tabs WHERE id = ? AND property_id = ?");
+                    $tabStmt->execute([$tabId, $propertyId]);
+                    $tab = $tabStmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$tab) {
+                        echo json_encode(['status' => 'error', 'message' => 'Tab not found']);
+                        break;
+                    }
+
+                    $label = isset($input['label']) ? (trim((string)$input['label']) ?: null) : $tab['label'];
+                    $paymentMethod = $input['payment_method'] ?? 'Cash';
+                    $discount = max(0, (float)($input['discount'] ?? 0));
+                    $gstEnabled = !empty($input['gst_enabled']);
+                    $gstRate = $gstEnabled ? (float)($input['gst_rate'] ?? 5) : 0;
+
+                    $agg = getWalkInTabItems($pdo, $tabId);
+                    $subtotal = $agg['subtotal'];
+                    $afterDiscount = max(0, $subtotal - $discount);
+                    $gstAmount = $gstEnabled ? round($afterDiscount * ($gstRate / 100), 2) : 0;
+                    $grandTotal = round($afterDiscount + $gstAmount, 2);
+
+                    $pdo->beginTransaction();
+                    $upd = $pdo->prepare("UPDATE walk_in_tabs SET label = ?, payment_method = ?, discount = ?, gst_enabled = ?, gst_rate = ?, gst_amount = ?, grand_total = ? WHERE id = ? AND property_id = ?");
+                    $upd->execute([$label, $paymentMethod, $discount, $gstEnabled ? 1 : 0, $gstRate, $gstAmount, $grandTotal, $tabId, $propertyId]);
+
+                    // Sync financial_ledger entry if the tab was billed
+                    if ($tab['status'] === 'billed') {
+                        $ledgerKey = 'walk_in_tab_bill:' . $tabId;
+                        $checkLedger = $pdo->prepare("SELECT id FROM financial_ledger WHERE entry_key = ? AND property_id = ?");
+                        $checkLedger->execute([$ledgerKey, $propertyId]);
+                        if ($checkLedger->fetch()) {
+                            $updLedger = $pdo->prepare("UPDATE financial_ledger SET amount = ?, payment_method = ?, party_name = ? WHERE entry_key = ? AND property_id = ?");
+                            $updLedger->execute([$grandTotal, $paymentMethod, $label ?: 'Walk-in', $ledgerKey, $propertyId]);
+                        } else {
+                            postFinancialLedger($pdo, [
+                                'entry_key' => $ledgerKey,
+                                'direction' => 'credit',
+                                'amount' => $grandTotal,
+                                'category' => 'Kitchen POS Sales',
+                                'payment_method' => $paymentMethod,
+                                'party_type' => 'walk_in_tab',
+                                'party_id' => (string)$tabId,
+                                'party_name' => $label ?: 'Walk-in',
+                                'source_type' => 'walk_in_tab',
+                                'source_id' => (string)$tabId,
+                                'description' => 'Walk-in tab billed',
+                            ], $propertyId);
+                        }
+                    }
+                    $pdo->commit();
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Tab updated successfully',
+                        'bill' => [
+                            'tabId' => $tabId,
+                            'label' => $label,
+                            'items' => $agg['items'],
+                            'subtotal' => $subtotal,
+                            'discount' => $discount,
+                            'gstEnabled' => $gstEnabled,
+                            'gstRate' => $gstRate,
+                            'gstAmount' => $gstAmount,
+                            'grandTotal' => $grandTotal,
+                            'paymentMethod' => $paymentMethod,
+                        ],
+                    ]);
+                } catch (PDOException $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to update tab']);
+                }
+            }
+            break;
+
+        case 'delete_walk_in_tab':
+            if ($request_method === 'POST') {
+                $input = json_decode(file_get_contents('php://input'), true) ?? [];
+                $tabId = (int)($input['tab_id'] ?? 0);
+                if ($tabId <= 0) {
+                    echo json_encode(['status' => 'error', 'message' => 'tab_id is required']);
+                    break;
+                }
+
+                try {
+                    $tabStmt = $pdo->prepare("SELECT id, status FROM walk_in_tabs WHERE id = ? AND property_id = ?");
+                    $tabStmt->execute([$tabId, $propertyId]);
+                    $tab = $tabStmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$tab) {
+                        echo json_encode(['status' => 'error', 'message' => 'Tab not found']);
+                        break;
+                    }
+
+                    $pdo->beginTransaction();
+                    // Delete ledger entry if billed
+                    $ledgerKey = 'walk_in_tab_bill:' . $tabId;
+                    $pdo->prepare("DELETE FROM financial_ledger WHERE entry_key = ? AND property_id = ?")->execute([$ledgerKey, $propertyId]);
+
+                    // Unlink any orders connected to this tab
+                    $pdo->prepare("UPDATE orders SET walk_in_tab_id = NULL WHERE walk_in_tab_id = ?")->execute([$tabId]);
+
+                    // Delete the tab record
+                    $pdo->prepare("DELETE FROM walk_in_tabs WHERE id = ? AND property_id = ?")->execute([$tabId, $propertyId]);
+                    $pdo->commit();
+
+                    echo json_encode(['status' => 'success', 'message' => 'Walk-in bill deleted successfully']);
+                } catch (PDOException $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    echo json_encode(['status' => 'error', 'message' => 'Failed to delete walk-in bill']);
                 }
             }
             break;

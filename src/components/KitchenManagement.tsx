@@ -28,7 +28,8 @@ import {
   Filter,
   LayoutGrid,
   List,
-  ClipboardEdit
+  ClipboardEdit,
+  History
 } from './icons/FlowbiteIcons';
 import { Guest, Order, OrderItem, MenuItem, Requisition, InventoryItem, WalkInTab } from '../types';
 import { GUEST_STATUS_CHECKED_IN, GUEST_STATUS_ACTIVE_LEGACY } from '../constants/guestStatus';
@@ -40,6 +41,7 @@ import { Popover } from './Popover';
 import { useToast } from './ToastContext';
 import { useConfirm } from './ConfirmDialogContext';
 import { WalkInTabBillModal } from './WalkInTabBillModal';
+import { PastWalkInBillsDrawer } from './PastWalkInBillsDrawer';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useSwipeTabs } from '../utils/useSwipeTabs';
@@ -418,6 +420,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   }, [isAuthenticated, authChecked]);
 
   const [billingTab, setBillingTab] = useState<WalkInTab | null>(null);
+  const [isPastBillsDrawerOpen, setIsPastBillsDrawerOpen] = useState<boolean>(false);
+  const [viewingPastBill, setViewingPastBill] = useState<any | null>(null);
 
   const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string; readyAt: string | null }>>([]);
 
@@ -2462,6 +2466,14 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                           {t('bill_this_table_button', 'Bill This Table')}
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setIsPastBillsDrawerOpen(true)}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 shadow-xs transition-all cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                      >
+                        <History className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+                        {t('past_bills_button', 'Past Bills')}
+                      </button>
                     </div>
                   </div>
                 );
@@ -3007,10 +3019,34 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       {billingTab && (
         <WalkInTabBillModal
           tab={billingTab}
-          onClose={() => setBillingTab(null)}
+          onClose={() => {
+            setBillingTab(null);
+            setViewingPastBill(null);
+          }}
           onBilled={() => {
             refreshWalkInTabs();
             refreshOrders();
+          }}
+          propertyName={propertyName}
+          propertyGstin={propertyGstin}
+          propertyUpiId={propertyUpiId}
+          propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+          initialBill={viewingPastBill || undefined}
+        />
+      )}
+
+      {isPastBillsDrawerOpen && (
+        <PastWalkInBillsDrawer
+          open={isPastBillsDrawerOpen}
+          onClose={() => setIsPastBillsDrawerOpen(false)}
+          onViewBill={(bill) => {
+            setViewingPastBill(bill);
+            setBillingTab({
+              id: bill.tabId || bill.id,
+              label: bill.label,
+              items: bill.items || [],
+              subtotal: bill.subtotal || bill.grandTotal || 0,
+            } as any);
           }}
           propertyName={propertyName}
           propertyGstin={propertyGstin}

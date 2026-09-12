@@ -79,6 +79,7 @@ export const Activity = wrap(getOutline('Heart'));
 // Calendar & Time
 export const Calendar = wrap(getOutline('CalendarMonth') || getOutline('Calendar'));
 export const Clock = wrap(getOutline('Clock'));
+export const History = wrap(getAny('History') || getAny('Clock') || getOutline('Clock'));
 
 // Communication & Security
 export const Bell = wrap(getOutline('Bell') || getOutline('BellActive'));
