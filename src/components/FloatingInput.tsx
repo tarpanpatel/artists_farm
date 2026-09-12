@@ -39,7 +39,7 @@ export interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputE
   // typing/pasting a minus sign and defaults `min` to 0 so the native
   // spinner/arrow keys can't decrement below zero either.
   allowNegative?: boolean;
-  disabledVariant?: 'transparent' | 'badge' | 'inset';
+  disabledVariant?: 'transparent' | 'badge' | 'inset' | 'top-only' | 'tab-arch';
 }
 
 export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
@@ -114,6 +114,8 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     const isTransparent = disabled && disabledVariant === 'transparent';
     const isBadge = disabled && disabledVariant === 'badge';
     const isInset = disabled && disabledVariant === 'inset';
+    const isTopOnly = disabled && disabledVariant === 'top-only';
+    const isTabArch = disabled && disabledVariant === 'tab-arch';
 
     let disabledClasses = '';
     if (disabled) {
@@ -144,6 +146,12 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
         labelTypography = 'text-gray-500 dark:text-gray-400 font-medium';
       } else if (isBadge) {
         labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 shadow-2xs';
+        labelTypography = 'text-gray-600 dark:text-gray-300 font-semibold text-2xs';
+      } else if (isTopOnly) {
+        labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5';
+        labelTypography = 'text-gray-600 dark:text-gray-300 font-semibold text-2xs';
+      } else if (isTabArch) {
+        labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border-t border-x border-b-0 border-gray-300 dark:border-gray-600 rounded-t-md px-2 py-0.5';
         labelTypography = 'text-gray-600 dark:text-gray-300 font-semibold text-2xs';
       } else if (isInset) {
         effectiveLabelTransform = 'top-1.5 start-3 text-[10px] uppercase font-bold tracking-wider transform-none';

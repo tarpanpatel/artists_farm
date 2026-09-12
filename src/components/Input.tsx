@@ -20,7 +20,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   // unchanged on the floating (default) path, applied directly below on the
   // standard-fallback path since that one renders its own native <input>.
   allowNegative?: boolean;
-  disabledVariant?: 'transparent' | 'badge' | 'inset';
+  disabledVariant?: 'transparent' | 'badge' | 'inset' | 'top-only' | 'tab-arch';
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
