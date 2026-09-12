@@ -16,7 +16,7 @@ import { OtaBadge } from './OtaBadge';
 import { BookingContactActions } from './BookingContactActions';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { cleanGuestNotes } from '../utils/otaNotesCleaner';
-import { formatDateOrdinal } from '../utils/dateUtils';
+import { formatDateOrdinal, getTodayKey } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 export interface BookingCardProps {
@@ -68,7 +68,12 @@ export const calculateNights = (checkin?: string, checkout?: string): number => 
 };
 
 export const getGuestDetailedStatus = (g: Guest, todayStr?: string): 'checkin_today' | 'checkout_today' | 'upcoming' | 'past_bookings' => {
-  const today = todayStr || new Date().toISOString().split('T')[0];
+  // Local date, not toISOString() (fixed 13 Sep 2026 - see getTodayKey's own
+  // note). This default is what the badge below actually runs on: BillingCheckout
+  // passes its own locally-derived todayStr to the TAB filter but the card
+  // renders its badge from getGuestStayStatus() with no argument, so the two
+  // disagreed for 5.5 hours every night.
+  const today = todayStr || getTodayKey();
   const checkin = (g.checkinDate || '').split(' ')[0].split('T')[0];
   const checkout = (g.checkoutDate || g.expectedCheckout || '').split(' ')[0].split('T')[0];
 

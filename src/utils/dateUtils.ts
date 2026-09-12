@@ -142,3 +142,24 @@ const pad = (n: number | string): string => String(n).padStart(2, '0');
 // exactly this before being fixed to call this helper instead).
 export const toDatetimeLocalValue = (date: Date): string =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+/**
+ * Today's date as `YYYY-MM-DD` in the VIEWER'S OWN timezone.
+ *
+ * Use this for every "is this date today / past / upcoming" comparison. Never
+ * use `new Date().toISOString().split('T')[0]` for that - `toISOString()`
+ * converts to UTC first, so for the 5.5 hours between local midnight and
+ * 05:30 IST it returns YESTERDAY's date, and every comparison against it is
+ * off by one day.
+ *
+ * Found live 13 Sep 2026 at 00:45 IST: a booking that checked out on the 12th
+ * was correctly filed under the "Past" tab (that code derived today from the
+ * local clock) while its own badge read "Checkout Today" (that code used
+ * toISOString). Two different definitions of "today" in one card. Every
+ * overnight-shift user in India sits inside that window, which is exactly when
+ * a night manager is looking at which guests leave today.
+ */
+export const getTodayKey = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};

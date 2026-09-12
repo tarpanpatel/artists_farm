@@ -23,6 +23,7 @@ import { TermsAcceptanceModal } from './TermsAcceptanceModal';
 import { DashboardFooter } from './DashboardFooter';
 import { LegalDrawer, LegalTabType } from './LegalDrawer';
 import { t } from '../i18n/en';
+import { getTodayKey } from '../utils/dateUtils';
 
 interface SlotBreakdownItem {
   id: number;
@@ -199,12 +200,14 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   }, [safeServiceRequests, selectedAnalyticsPropId]);
 
   const todaysArrivalsCount = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    // Local date, not toISOString() - see getTodayKey (fixed 13 Sep 2026).
+    const today = getTodayKey();
     return filteredGuestsForAnalytics.filter((g: any) => (g.checkinDate || g.checkin_date || '').startsWith(today)).length;
   }, [filteredGuestsForAnalytics]);
 
   const todaysDeparturesCount = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    // Local date, not toISOString() - see getTodayKey (fixed 13 Sep 2026).
+    const today = getTodayKey();
     return filteredGuestsForAnalytics.filter((g: any) =>
       (g.checkoutDate || g.checkout_date || '').startsWith(today) && (g.status || '').toLowerCase().includes('checkout')
     ).length;

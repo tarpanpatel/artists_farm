@@ -31,7 +31,7 @@ import {
   type BookingPaymentTotals
 } from '../services/api';
 import { shareTextContent } from '../utils/shareText';
-import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
+import { parseDateToYMD, formatDateDDMMYYYY, getTodayKey } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber, getWhatsAppShareUrl } from '../utils/phoneUtils';
 import { cleanGuestNotes } from '../utils/otaNotesCleaner';
 import { OtaBadge } from './OtaBadge';
@@ -173,7 +173,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const checkoutRaw = guest?.expectedCheckout || (guest as any)?.checkoutDate || '';
     const checkout = String(checkoutRaw).split(' ')[0].split('T')[0];
     if (!checkout) return false;
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Local date (fixed 13 Sep 2026, same off-by-one-day bug as the booking-card
+    // badge - see getTodayKey). Here it mattered more than a label: between local
+    // midnight and 05:30 IST this read as yesterday, so a booking that HAD
+    // elapsed was not treated as past and its edit lock stayed open.
+    const todayStr = getTodayKey();
     return checkout < todayStr;
   })();
 
@@ -216,7 +220,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     const checkinRaw = guest?.checkinDate || '';
     const checkin = String(checkinRaw).split(' ')[0].split('T')[0];
     if (!checkin) return false;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayKey();
     return checkin <= todayStr;
   })();
 
@@ -628,7 +632,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('Cash');
   const [payReceivedBy, setPayReceivedBy] = useState('');
-  const [payDate, setPayDate] = useState(() => new Date().toISOString().split('T')[0]);
+  // Local date - a payment taken at 00:45 IST belongs to that day, not to
+  // yesterday, which is what toISOString() was recording it as.
+  const [payDate, setPayDate] = useState(() => getTodayKey());
   const [isSavingPayment, setIsSavingPayment] = useState(false);
   const { miscCharges } = useConfigurationData();
   const [guestExtraCharges, setGuestExtraCharges] = useState<any[]>([]);
