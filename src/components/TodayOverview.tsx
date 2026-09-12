@@ -19,6 +19,19 @@ import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
 import { OtaBadge } from './OtaBadge';
 import { formatDateOrdinal } from '../utils/dateUtils';
+import {
+  CAL_CAPSULE_CHECKED_OUT,
+  CAL_CAPSULE_DIRECT,
+  CAL_CAPSULE_OTA_BLOCK,
+  CAL_CAPSULE_OTA_BOOKING,
+  CAL_DAY_SLASH,
+  CAL_PAST_DAY_SLASH,
+  CAL_PAST_DAY_TITLE,
+  getCapsuleClasses,
+  getOtaBlockCapsuleClasses,
+  getPastDayCellClasses,
+  getPastDayTextClasses,
+} from '../utils/calendarStyles';
 import { t } from '../i18n/en';
 import { GUEST_STATUS_CHECKED_IN } from '../constants/guestStatus';
 
@@ -773,12 +786,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
       .sort((a, b) => new Date(a.checkinDate).getTime() - new Date(b.checkinDate).getTime());
   };
 
-  const getGuestColor = (_guestId: any, status?: any) => {
-    if (isCheckedOutStatus(status)) {
-      return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
-    }
-    return 'bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 text-white border border-blue-700/30';
-  };
+  // getGuestColor() lived here until 12 Sep 2026 - its checked-out/direct
+  // colors moved verbatim into src/utils/calendarStyles.ts so the month grid
+  // could share them, and its only caller now goes through getCapsuleClasses().
 
   const daysArray = useMemo(
     () => Array.from({ length: WINDOW_DAYS }, (_, i) => {
@@ -1473,9 +1483,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       if (inSel) {
                         cellBg = 'bg-slate-900/[0.07] dark:bg-white/10';
                       } else if (isPast) {
-                        cellBg = isBlockedNight
-                          ? 'bg-[#ebeef1] dark:bg-slate-800/90 border-slate-200 dark:border-slate-700'
-                          : 'bg-[#f1f3f5] dark:bg-slate-800/70 border-slate-200 dark:border-slate-700';
+                        // Shared with OperationalDashboard.tsx's month grid -
+                        // see src/utils/calendarStyles.ts (12 Sep 2026).
+                        cellBg = getPastDayCellClasses({ isBlocked: isBlockedNight, withBorder: true });
                       } else if (isBlockedNight) {
                         cellBg = 'bg-[#f8f9fa] dark:bg-slate-800/60 border-slate-200 dark:border-slate-700';
                       } else if (isToday) {
@@ -1493,7 +1503,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           onPointerDown={isPast ? undefined : (e) => handleGridPointerDown(e, roomIdx, dateIdx)}
                           onPointerMove={isPast ? undefined : handleGridPointerMove}
                           onPointerUp={isPast ? undefined : handleGridPointerUp}
-                          title={isPast ? 'This date is in the past and can no longer be priced, blocked, or booked' : 'Drag to select these nights'}
+                          title={isPast ? CAL_PAST_DAY_TITLE : 'Drag to select these nights'}
                           className={`w-16 min-w-16 shrink-0 border-r transition flex flex-col items-center justify-center select-none relative ${
                             isPast ? '' : 'cursor-pointer'
                           } ${cellBg} ${!isPast && !inSel ? 'hover:bg-slate-50 dark:hover:bg-slate-700/30' : ''} ${selEdge}`}
@@ -1514,7 +1524,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 y2="0"
                                 vectorEffect="non-scaling-stroke"
                                 strokeWidth="1"
-                                className={isPast ? 'stroke-slate-300/80 dark:stroke-slate-600/70' : 'stroke-slate-300 dark:stroke-slate-600'}
+                                className={isPast ? CAL_PAST_DAY_SLASH : CAL_DAY_SLASH}
                               />
                             </svg>
                           )}
@@ -1525,10 +1535,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               className={`relative z-10 select-none pointer-events-none text-[11px] leading-none font-normal ${
                                 isBlockedNight
                                   ? isPast
-                                    ? 'text-slate-400/70 dark:text-slate-600 line-through'
+                                    ? `${getPastDayTextClasses({ isBlocked: true })} line-through`
                                     : 'text-slate-400 dark:text-slate-500 line-through'
                                   : isPast
-                                  ? 'text-slate-400 dark:text-slate-500'
+                                  ? getPastDayTextClasses()
                                   : inSel
                                   ? 'text-slate-900 dark:text-white'
                                   : 'text-slate-800 dark:text-slate-100'
@@ -1634,11 +1644,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                               <button
                                 type="button"
                                 data-cal-capsule="1"
-                                className={`px-2.5 rounded-md font-semibold cursor-pointer absolute pointer-events-auto shadow-md flex items-center gap-1.5 z-20 overflow-hidden transition-colors border ${
-                                  isItemPast
-                                    ? 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 border-slate-400/40'
-                                    : 'bg-red-600 dark:bg-red-700 hover:bg-red-500 text-white border-red-700/40'
-                                }`}
+                                className={`px-2.5 rounded-md font-semibold cursor-pointer absolute pointer-events-auto shadow-md flex items-center gap-1.5 z-20 overflow-hidden transition-colors border ${getOtaBlockCapsuleClasses(
+                                  { isPast: isItemPast }
+                                )}`}
                                 style={commonStyle}
                               >
                                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
@@ -1742,18 +1750,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                                 // A stay that has fully elapsed is greyed out on the
                                 // calendar regardless of source/status (9 Sep 2026,
                                 // explicit request) - outranks the OTA/checked-out
-                                // colors below, since "already over" is the more
-                                // important fact once it's true. getGuestColor()
-                                // already renders this same grey for CheckedOut
-                                // status; isItemPast covers the gap it doesn't -
-                                // an OTA/staff booking whose dates have simply
-                                // slipped into the past without status ever being
-                                // flipped to CheckedOut.
-                                isItemPast
-                                  ? 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600'
-                                  : isOtaBooking && !isCheckedOut
-                                  ? 'bg-amber-600 dark:bg-amber-700 hover:bg-amber-700 text-white border border-amber-700/30'
-                                  : getGuestColor(guest.id, guest.status)
+                                // colors, since "already over" is the more important
+                                // fact once it's true. isItemPast covers the gap the
+                                // CheckedOut status doesn't - an OTA/staff booking
+                                // whose dates have simply slipped into the past
+                                // without status ever being flipped.
+                                //
+                                // That precedence now lives in calendarStyles.ts and
+                                // is shared with OperationalDashboard.tsx's month
+                                // grid, which was missing it entirely (12 Sep 2026).
+                                getCapsuleClasses({
+                                  isPast: isItemPast,
+                                  isOtaBooking,
+                                  isCheckedOut,
+                                })
                               } pointer-events-auto shadow-md flex items-center justify-between gap-1.5 z-20 overflow-hidden`}
                               data-cal-capsule="1"
                               style={commonStyle}
@@ -1843,17 +1853,20 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <span>{t('legend_today', 'Today')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-md" />
+            {/* Swatches read the same tokens as the capsules they describe, so
+                changing a colour in calendarStyles.ts updates the legend too
+                rather than leaving it showing the old shade (12 Sep 2026). */}
+            <span className={`w-5 h-3.5 rounded-xs ${CAL_CAPSULE_DIRECT} inline-block shadow-md`} />
             <span>{t('legend_direct_booking', 'Direct Booking')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-md">
+            <span className={`w-5 h-3.5 rounded-xs ${CAL_CAPSULE_OTA_BOOKING} inline-flex items-center justify-center text-[9px] shadow-md`}>
               <Globe className="w-2.5 h-2.5" />
             </span>
             <span>{t('legend_ota_converted', 'Converted OTA Bookings')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md" />
+            <span className={`w-5 h-3.5 rounded-xs border ${CAL_CAPSULE_OTA_BLOCK} inline-block shadow-md`} />
             <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -1865,7 +1878,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <span>{t('legend_blocked_date', 'Blocked')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
+            <span className={`w-5 h-3.5 rounded-xs ${CAL_CAPSULE_CHECKED_OUT} inline-block shadow-md`} />
             <span>{t('legend_checked_out', 'Checked Out / Past')}</span>
           </div>
         </div>

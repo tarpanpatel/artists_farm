@@ -46,6 +46,18 @@ import { formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
+import {
+  CAL_CAPSULE_CHECKED_OUT,
+  CAL_CAPSULE_DIRECT,
+  CAL_CAPSULE_OTA_BLOCK,
+  CAL_CAPSULE_OTA_BOOKING,
+  CAL_PAST_DAY_TITLE,
+  getCapsuleClasses,
+  getOtaBlockCapsuleClasses,
+  getPastDayCellClasses,
+  getPastDayTextClasses,
+  isElapsedStay,
+} from '../utils/calendarStyles';
 import { OtaBadge } from './OtaBadge';
 
 interface OperationalDashboardProps {
@@ -1311,9 +1323,10 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             and wasn't what was asked for - only the already-shown "primary"
             booking becomes a true spanning bar instead of a chip. */}
         {(() => {
-          const checkedOutColor = 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600';
-          const otaBookingColor = 'bg-amber-600 dark:bg-amber-700 text-white border border-amber-700/30';
-          const directBookingColor = 'bg-blue-600 dark:bg-blue-600 text-white border border-blue-700/30';
+          // Capsule colors (and the elapsed-outranks-source/status precedence)
+          // now come from src/utils/calendarStyles.ts, shared with
+          // TodayOverview.tsx's multicalendar - see getCapsuleClasses() at this
+          // file's capsule render below (12 Sep 2026).
 
           // Precompute once per day - reused both for the day cell's own
           // content (date number, "+more" overflow) and for grouping
@@ -1568,11 +1581,24 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           onPointerMove={isPastDay ? undefined : handleDayPointerMove}
                           onPointerUp={isPastDay ? undefined : handleDayPointerUp}
                           aria-label={isPastDay ? undefined : 'Drag to select these nights'}
+                          title={isPastDay ? CAL_PAST_DAY_TITLE : undefined}
                           className={`min-h-[96px] sm:min-h-[110px] p-1.5 sm:p-2 flex flex-col justify-between transition-colors select-none ${
                             !isPastDay ? 'cursor-pointer' : ''
                           } ${
+                            // Past outranks blocked, matching the multicalendar's
+                            // own precedence - both now read the same tokens from
+                            // src/utils/calendarStyles.ts. Before 12 Sep 2026 this
+                            // grid had no past-cell background at all (isPastDay
+                            // only disabled the drag handlers), so elapsed dates
+                            // rendered identical to future ones.
+                            //
+                            // No border token here on purpose: this grid draws its
+                            // lines with `divide-x`/`divide-y` on the week row, not
+                            // a border per cell.
                             inSel
                               ? 'bg-slate-900/[0.07] dark:bg-white/10 ring-2 ring-inset ring-slate-900 dark:ring-white'
+                              : isPastDay
+                              ? getPastDayCellClasses({ isBlocked: isBlockedNight })
                               : isBlockedNight
                               ? 'bg-gray-100 dark:bg-gray-800/70'
                               : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
@@ -1585,7 +1611,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                                 {d}
                               </span>
                             ) : (
-                              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 ml-0.5">
+                              <span
+                                className={`text-xs font-semibold ml-0.5 ${
+                                  isPastDay ? getPastDayTextClasses() : 'text-gray-700 dark:text-gray-300'
+                                }`}
+                              >
                                 {d}
                               </span>
                             )}
@@ -1602,7 +1632,11 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                             {!isRangeUnavailable && (
                               <div
                                 className={`text-2xs font-medium text-right pr-0.5 select-none ${
-                                  isBlockedNight
+                                  isPastDay
+                                    ? `${getPastDayTextClasses({ isBlocked: isBlockedNight })}${
+                                        isBlockedNight ? ' line-through' : ''
+                                      }`
+                                    : isBlockedNight
                                     ? 'text-gray-400 dark:text-gray-500 line-through'
                                     : inSel
                                     ? 'text-gray-900 dark:text-white font-bold'
@@ -1729,6 +1763,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       if (seg.kind === 'booking') {
                         const dayBooking = seg.info.dayBooking!;
                         const { isDayBookingCheckedOut, isOtaBooking, nightlyRate } = seg.info;
+                        // A stay whose checkout has already passed reads as a
+                        // historical record, not a live booking - greyed out
+                        // regardless of source or status. Same rule and same
+                        // exclusive-checkout boundary as the multicalendar; this
+                        // grid was missing it entirely until 12 Sep 2026, so a
+                        // past booking never flipped to CheckedOut stayed blue.
+                        const isStayPast = isElapsedStay(
+                          dayBooking.expectedCheckout || (dayBooking as any).checkoutDate,
+                          todayStr
+                        );
                         const OtaIcon = isOtaBooking ? getOtaIcon((dayBooking as any).otaSourceLabel || (dayBooking as any).otaSource) : null;
                         const dayPendingReasons = getGuestPendingReasons(dayBooking);
                         const hasDayPending = dayPendingReasons.length > 0;
@@ -1818,7 +1862,16 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               <button
                                 type="button"
                                 data-tour="checkin-open-booking-bar"
-                                className={`w-full ${roundingClass} ${seg.isSundayCheckout ? 'px-0.5 py-1 justify-center' : 'px-2 py-1'} ${isDayBookingCheckedOut ? checkedOutColor : isOtaBooking ? otaBookingColor : directBookingColor} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left h-[26px]`}
+                                className={`w-full ${roundingClass} ${seg.isSundayCheckout ? 'px-0.5 py-1 justify-center' : 'px-2 py-1'} ${getCapsuleClasses(
+                                  {
+                                    isPast: isStayPast,
+                                    isOtaBooking,
+                                    isCheckedOut: isDayBookingCheckedOut,
+                                    // This grid dims the whole capsule on hover
+                                    // instead of shifting its background.
+                                    withHover: false,
+                                  }
+                                )} text-xs font-medium flex items-center gap-1.5 shadow-2xs hover:opacity-90 transition-opacity cursor-pointer truncate text-left h-[26px]`}
                               >
                                 {!seg.isSundayCheckout && isOtaBooking && (
                                   <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
@@ -1845,6 +1898,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                       // stuck-open-on-mobile-tap problem documented on
                       // Popover.tsx/CLAUDE.md mistake #15).
                       const otaBlock = seg.info.otaBlock!;
+                      // Same elapsed rule as the guest capsule above; `event_end`
+                      // is the block's exclusive end, matching the multicalendar.
+                      const isBlockPast = isElapsedStay(otaBlock.event_end, todayStr);
                       const otaPopoverKey = `${otaBlock.event_start}-${seg.info.dateStr}`;
                       const BlockOtaIcon = getOtaIcon(otaBlock.source_label || otaBlock.source);
                       const handleConvert = () => {
@@ -1893,7 +1949,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                           >
                             <button
                               type="button"
-                              className={`w-full ${roundingClass} ${seg.isSundayCheckout ? 'px-0.5 py-1 justify-center' : 'px-2 py-1'} bg-red-600 dark:bg-red-700 hover:bg-red-500 border border-red-700/40 text-white text-xs font-medium flex items-center gap-1.5 shadow-2xs truncate text-left cursor-pointer transition-colors h-[26px]`}
+                              className={`w-full ${roundingClass} ${seg.isSundayCheckout ? 'px-0.5 py-1 justify-center' : 'px-2 py-1'} border ${getOtaBlockCapsuleClasses(
+                                { isPast: isBlockPast }
+                              )} text-xs font-medium flex items-center gap-1.5 shadow-2xs truncate text-left cursor-pointer transition-colors h-[26px]`}
                             >
                               {!seg.isSundayCheckout && (
                                 <span className="inline-flex items-center justify-center w-4 h-4 rounded-[4px] bg-white/90 shadow-2xs shrink-0 p-0.5">
@@ -1936,22 +1994,28 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <span>{t('legend_today', 'Today')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-blue-600 inline-block shadow-md" />
+              {/* Swatches read the same tokens as the capsules they describe, so
+                  changing a colour in calendarStyles.ts updates the legend too
+                  rather than leaving it showing the old shade (12 Sep 2026). */}
+              <span className={`w-5 h-3.5 rounded-xs ${CAL_CAPSULE_DIRECT} inline-block shadow-md`} />
               <span>{t('legend_direct_booking', 'Direct Booking')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-amber-600 inline-flex items-center justify-center text-white text-[9px] shadow-md">
+              <span className={`w-5 h-3.5 rounded-xs ${CAL_CAPSULE_OTA_BOOKING} inline-flex items-center justify-center text-[9px] shadow-md`}>
                 <Globe className="w-2.5 h-2.5" />
               </span>
               <span>{t('legend_ota_converted', 'Converted OTA Bookings')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-red-600 dark:bg-red-700 border border-red-700/40 inline-block shadow-md" />
+              <span className={`w-5 h-3.5 rounded-xs border ${CAL_CAPSULE_OTA_BLOCK} inline-block shadow-md`} />
               <span>{t('legend_ota_blocked', 'OTA Blocked Date')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 inline-block shadow-md" />
-              <span>{t('legend_checked_out', 'Checked Out Stay')}</span>
+              <span className={`w-5 h-3.5 rounded-xs ${CAL_CAPSULE_CHECKED_OUT} inline-block shadow-md`} />
+              {/* "/ Past" added 12 Sep 2026: this grid now greys elapsed stays
+                  too, not just CheckedOut ones - matching the multicalendar's
+                  own wording for the same swatch. */}
+              <span>{t('legend_checked_out', 'Checked Out / Past')}</span>
             </div>
           </div>
         </div>

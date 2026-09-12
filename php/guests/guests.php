@@ -1174,6 +1174,61 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         }
                     }
 
+                    // OTA FIELD LOCK (12 Sep 2026, explicit request: "data which is
+                    // generated from OTA shouldn't be editable"). BookingDetailsModal
+                    // already disables these inputs, but that is UX only - this is the
+                    // actual enforcement, same split as the past-booking lock above.
+                    //
+                    // The channel owns the reservation. A local edit to these fields
+                    // diverges from it silently and expensively:
+                    //   - DATES/OCCUPANCY: the Channex outbox push further down sends
+                    //     availability for whatever range lands in the row, so a locally
+                    //     shortened OTA stay reopens a night the OTA has already sold.
+                    //     Nothing corrects it afterwards - inbound OTA modifications are
+                    //     deliberately "log + notify a human", never auto-applied.
+                    //   - ROOM: channex_mappings is per-room for a MULTI_KEY property, so
+                    //     each room is its own listing and the room is decided by which
+                    //     listing the guest booked - it is not ours to reassign. The
+                    //     outbox below pushes availability for BOTH the old and the new
+                    //     room on a change, so moving an OTA booking would advertise the
+                    //     originally-booked listing as free while the channel still holds
+                    //     the reservation on it, and that listing gets sold twice.
+                    //   - MONEY: the guest paid the channel. Rewriting rent/advance here
+                    //     moves no real money, it only desyncs our ledger from the payout.
+                    //
+                    // COERCE rather than 403: an OTA booking still has legitimately
+                    // editable fields (ID verification / C-Form, notes, locally collected
+                    // payments, check-in state), and rejecting the whole request would
+                    // block those too - including over something as trivial as a float
+                    // formatted differently by the client. So the OTA-owned values are
+                    // forced back to what is stored and the rest of the edit proceeds
+                    // normally. This runs BEFORE the overlap check, the UPDATE and the
+                    // outbox push, so all three see the original values.
+                    if (!empty($previousGuest) && !empty($previousGuest['ota_source'])) {
+                        $input['guest_name'] = $previousGuest['guest_name'];
+                        $input['name'] = $previousGuest['guest_name'];
+                        $input['phone_number'] = $previousGuest['phone_number'];
+                        $input['contact'] = $previousGuest['phone_number'];
+                        // Reassign $roomId itself, not just $input - it was resolved
+                        // further up, before $previousGuest was loaded, and it is what
+                        // the overlap check, the UPDATE and the outbox all read.
+                        $roomId = isset($previousGuest['room_id']) && $previousGuest['room_id'] !== null
+                            ? intval($previousGuest['room_id'])
+                            : null;
+                        $input['room_id'] = $previousGuest['room_id'];
+                        $input['checkin_date'] = $previousGuest['checkin_date'];
+                        $input['expected_checkout'] = $previousGuest['expected_checkout'];
+                        $newCheckin = $previousGuest['checkin_date'];
+                        $newCheckout = $previousGuest['expected_checkout'];
+                        $input['no_of_guests'] = $previousGuest['no_of_guests'];
+                        $input['adults'] = $previousGuest['adults'];
+                        $input['children'] = $previousGuest['children'];
+                        $input['base_room_rent'] = $previousGuest['base_room_rent'];
+                        $input['total_charge'] = $previousGuest['total_charge'];
+                        $input['advance_paid'] = $previousGuest['advance_paid'];
+                        $input['booking_source'] = $previousGuest['booking_source'];
+                    }
+
                     // CONCURRENCY (30 Aug 2026): same fix as add_guest's - see the long
                     // comment there for why a plain SELECT could not enforce this. Two
                     // extra wrinkles specific to this path:

@@ -232,6 +232,53 @@ therefore covers check-in through check-out-minus-one, and only for rooms free e
 stay (`getRoomRangeStatus()`; fixed 7 Sep 2026, when asking for 11 → 13 highlighted the 13th and lit
 up rooms that were free on just one day of the range).
 
+## Calendar State Styling Is Shared, Not Per-Calendar (added 12 Sep 2026, explicit request)
+
+**"This date is in the past" and "this stay has already ended" mean the same thing on every
+calendar, so they must LOOK the same on every calendar.** These rules have nothing to do with which
+surface you happen to be viewing, so they live in one file - `src/utils/calendarStyles.ts` - and
+both calendar surfaces import from it:
+
+- `TodayOverview.tsx` - the rooms x days multicalendar
+- `OperationalDashboard.tsx` - the single-property weeks x 7 month grid
+
+**Only the state -> appearance mapping is shared. Layout is not** - the two grids are legitimately
+different shapes, and unifying them was explicitly not the goal. Each also keeps its own
+present/future cell background (the month grid draws its lines with `divide-x`/`divide-y` on the
+week row; the multicalendar draws a border per cell), and its own hover idiom (the multicalendar
+shifts a capsule's background; the month grid dims the whole capsule with `hover:opacity-90` - hence
+`getCapsuleClasses({ withHover: false })` there, so the two don't stack).
+
+**The module exports the DECISION, not just the colours** - `getCapsuleClasses()`,
+`getOtaBlockCapsuleClasses()`, `getPastDayCellClasses()`, `getPastDayTextClasses()`, plus the shared
+`isElapsedStay()`/`isPastDayKey()` predicates. This is the point: the drift found 12 Sep 2026 was
+not a mismatched shade, it was the month grid **missing the rules outright** -
+
+- it computed `isPastDay` but used it only to disable drag handlers, so elapsed day cells rendered
+  identical to future ones (plain white);
+- it greyed a capsule only on `CheckedOut` status, so a booking whose dates had simply elapsed
+  without anyone flipping the status stayed full blue - seen on staging as an 8-9 Sep bar still
+  bright blue on the 12th.
+
+A CSS custom property would have made the grey restyleable in one place but would have fixed
+neither of those, because what was missing was the rule, not the hex.
+
+**Capsule colour precedence, and it must not be reordered:** elapsed > checked-out > OTA > direct.
+An elapsed stay reads as a historical record, which is the more important fact once it is true, so
+it outranks both the source colour and the status colour.
+
+**Rules for anyone adding a calendar surface, or changing a colour:**
+- Changing a shade = edit the token in `calendarStyles.ts` once; both calendars follow. Never
+  re-declare a calendar state colour in a component - that re-declaration is exactly how this drifted.
+- Any new surface that draws date cells or stay capsules imports from this module (and also joins
+  the asymmetric-inset rule above; grep `data-cal-capsule`).
+- Every class string in that file must stay a COMPLETE literal - never build one by interpolation
+  (`bg-${c}-200`), since Tailwind scans it as plain text and will not emit a class it cannot see
+  spelled out.
+- `isElapsedStay()` treats the end date as the EXCLUSIVE checkout boundary, so a guest checking out
+  today has not elapsed. This matches the half-open availability rule in CLAUDE.md and
+  `BookingDetailsModal.tsx`'s own `isPastBooking` lock - don't "simplify" it to `<=`.
+
 ## Date/Time Input Fields (found 21 Aug 2026)
 
 The spec above governs full monthly **calendar views**. It says nothing about single date/time

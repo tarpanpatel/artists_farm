@@ -373,6 +373,62 @@ working throughout, which is exactly why this can sit unnoticed.
 Never deploy or write to production (`ground-code.com`). CLAUDE.md's hard rule governs; only
 the user's own manual edit to that file can lift it. Staging is fine with explicit approval.
 
+### 5.9 OTA-generated fields are read-only to every human, and writable by Channex
+
+Explicit instruction, 12 Sep 2026: *"data which is generated from OTA shouldn't be editable...
+of course OTAs and channex should be able to change"*, and *"no staff no user should be able to
+edit ota generated fields"* — **no role exception, Super Admin included.**
+
+**Locked to staff:** guest name, phone, assigned room, booking source, no. of guests, dates,
+room rent, advance paid. **Still editable:** ID verification / C-Form (it carries its own
+applicant name and contact fields, so compliance never needs the OTA's rewritten), notes,
+service requests, check-in/check-out state, and locally collected money.
+
+Enforced in two places, because the UI half is only UX:
+- `BookingDetailsModal.tsx` — `isOtaLocked` disables the inputs and shows an amber banner saying
+  where to make the change instead.
+- `php/guests/guests.php`, `update_guest` — the actual rail. It **coerces** the OTA-owned values
+  back to what is stored rather than returning 403, because an OTA booking still has legitimately
+  editable fields and a blanket rejection would block those too, including over a float the client
+  formatted differently. It runs before the overlap check, the UPDATE and the outbox push, so all
+  three see the original values.
+
+**Why the room is locked, specifically** — this was initially left editable on the generic
+channel-manager argument that Channex sells room TYPES and the PMS assigns the physical unit. That
+is true of a hotel with 20 identical Deluxe Kings; it is NOT true here. `channex_mappings` is
+per-room for a MULTI_KEY property, so each room IS its own listing and the room is decided by which
+listing the guest booked. And `update_guest` pushes availability for BOTH the old and new room on a
+change — so moving an OTA booking would advertise the originally-booked listing as free while the
+channel still holds the reservation on it, and that listing gets sold twice.
+
+**Channex is unaffected by this lock, by construction:** `webhook_receiver.php` writes straight to
+the `guests` table with its own SQL and never calls the `update_guest` action, so the inbound path
+has nothing to bypass. Keep it that way — routing an inbound apply through `update_guest` would
+silently coerce away the very change it is trying to land.
+
+**Additive local money is NOT an edit and must keep working.** `booking_payments.php` derives
+`advance_paid` from `SUM(booking_payments.amount)` (never from client input, so it cannot rewrite
+the OTA's figure to an arbitrary value), and `add_extra_charge` increments `total_charge` from a new
+`guest_extra_charges` row. Recording food, damage or an extra-guest charge for an OTA guest is new
+local data on top, not a rewrite of what the channel said. Do not "tighten" these into the lock.
+
+### 5.9a Inbound modifications ARE auto-applied here
+
+Worth stating plainly, because the generic Channex integration guidance recommends the opposite
+("on `modified`, log + ack + notify a human") and that default was mistaken for this repo's actual
+behaviour on 12 Sep 2026, producing a wrong claim that an Airbnb-side alteration would not flow
+back.
+
+It does. `webhook_receiver.php` (~line 465) updates guest name, phone, dates, occupancy and amounts
+on a `booking_modification`, then enqueues availability for **both** the old and the new date range.
+It applies the change even when the new dates now clash with another booking — the guest already
+moved them on the OTA, so refusing to record it would hide a real conflict rather than prevent one —
+and it recomputes `overbooking_conflict_with` every time, so moving off the clash clears the flag.
+It fills a blank `notes`/`guest_notes` but never overwrites one staff typed.
+
+This is what makes §5.9 safe rather than obstructive: staff do not need to edit an OTA booking
+locally, because the channel's own change reaches us on its own.
+
 ---
 
 ## 6. Airbnb specifics

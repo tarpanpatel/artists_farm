@@ -830,7 +830,51 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // the unassigned-receiver warning would just be a false alarm on every
   // OTA booking. Same otaSource check already used above to hide Delete.
   const isOtaBooking = Boolean(guest.otaSource || g.ota_source);
-  
+  const otaSourceName = guest.otaSourceLabel || guest.otaSource || (g.ota_source as string) || 'the OTA';
+
+  /**
+   * Fields the OTA generated are read-only here (12 Sep 2026, explicit request:
+   * "data which is generated from OTA shouldn't be editable").
+   *
+   * The OTA is the system of record for the reservation itself, and a local edit
+   * silently diverges from it in two ways that actually cost money:
+   *
+   *  1. AVAILABILITY. `update_guest` enqueues a Channex availability push when
+   *     dates or room change (php/guests/guests.php ~1341). Shortening an OTA
+   *     stay locally therefore tells Airbnb that night is bookable again while
+   *     Airbnb's own reservation still covers it - someone books it, and the
+   *     room is double-sold. Nothing reconciles this back: inbound OTA
+   *     modifications are deliberately "log + ack + notify a human", never
+   *     auto-applied (CLAUDE.md, Channex section).
+   *  2. MONEY. The guest paid the channel, not the front desk. Editing rent or
+   *     advance here moves no actual rupee - it only desyncs our ledger from the
+   *     real OTA payout.
+   *
+   * LOCKED - everything the channel generated: guest name, phone, assigned room,
+   * booking source, no. of guests, dates, room rent, advance paid.
+   *
+   * STILL EDITABLE - purely local operational data the OTA has no record of:
+   * ID verification / C-Form (which carries its own applicant name and contact
+   * fields, so compliance never depends on rewriting the OTA's), notes, service
+   * requests, check-in/check-out status, and locally collected extras.
+   *
+   * ASSIGNED ROOM is locked deliberately, correcting a first pass that left it
+   * editable on the generic channel-manager argument that Channex sells room
+   * TYPES and the PMS picks the physical unit. That is true of a hotel with 20
+   * identical Deluxe Kings; it is NOT true here. `channex_mappings` is per-room
+   * for a MULTI_KEY property, so each room IS its own listing and the room is
+   * decided by which listing the guest booked. Worse, the outbox below pushes
+   * availability for BOTH the old and new room on a change - moving an OTA
+   * booking to another room therefore tells the channel the originally-booked
+   * listing is free while it still holds the reservation, and that listing gets
+   * sold twice. To move an OTA guest between rooms, change it on the channel.
+   *
+   * To change a locked value, change it on the OTA - that is the only edit that
+   * updates both sides.
+   */
+  const isOtaLocked = isOtaBooking;
+
+
   const storedPending = g.pending_amount ?? g.pendingAmount;
   const extrasBaked = typeof storedPending === 'number'
     ? Math.max(0, storedPending - Math.max(0, roomRent - propAdvancePaid))
@@ -1478,6 +1522,24 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
           {/* Unified Booking Form: Clean, Form-Based Layout (Disabled by Default, Editable on Edit) */}
           <div className="booking-details-modal__body space-y-3.5">
+            {/* Why several fields below are greyed out while editing an OTA
+                booking (12 Sep 2026). Without this the lock just reads as a bug
+                - staff click Edit, find half the form dead, and have no idea
+                where they are supposed to make the change instead. */}
+            {isEditing && isOtaLocked && (
+              <div className="px-3.5 py-2.5 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 flex items-start gap-2 shadow-2xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-900 dark:text-amber-200">
+                  <span className="font-semibold">This booking came from {otaSourceName}.</span>{' '}
+                  The reservation details - guest name, phone, room, dates, guest count, rent and
+                  advance - are set there and can't be edited here, because changing them locally
+                  would desync your calendar from {otaSourceName} and risk the room being sold
+                  twice. Make those changes on {otaSourceName} instead. ID verification, C-Form,
+                  notes, payments collected here and check-in/check-out all stay editable.
+                </div>
+              </div>
+            )}
+
             {/* Row 0: Guest Name + Contact Phone */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
@@ -1486,7 +1548,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  disabled={!isEditing}
+                  disabled={!isEditing || isOtaLocked}
                   placeholder="Enter guest's full name"
                   required
                 />
@@ -1501,7 +1563,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   // runs, silently dropping trailing digits from any formatted phone number.
                   onChange={(e) => setEditPhone(normalizePhoneNumber(e.target.value))}
                   placeholder="10-digit mobile number"
-                  disabled={!isEditing}
+                  // Supplied by the channel. A real contact number collected at
+                  // check-in belongs on the C-Form's own applicant fields, which
+                  // is where compliance reads it from anyway.
+                  disabled={!isEditing || isOtaLocked}
                   required
                   error={
                     isEditing && editPhone.trim().length > 0 && !isValidPhoneNumber(editPhone, editIsForeignGuest)
@@ -1516,10 +1581,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             {rooms.length > 0 && (
               <div>
                 <StyledSelect
-                  label={t('assigned_room_label', 'Assigned Place *')}
+                  label={
+                    isOtaLocked
+                      ? `Assigned Place (locked - change on ${otaSourceName})`
+                      : t('assigned_room_label', 'Assigned Place *')
+                  }
                   value={editRoomId}
                   onChange={setEditRoomId}
-                  disabled={!isEditing}
+                  // Each room is its own listing here, so the room is decided by
+                  // which listing was booked - see the isOtaLocked comment above.
+                  disabled={!isEditing || isOtaLocked}
                   placeholder="-- Select Assigned Place --"
                   options={[
                     ...(!editRoomId || !rooms.some(r => String(r.id) === String(editRoomId))
@@ -1550,7 +1621,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   label={t('booking_source_label', 'Booking Source')}
                   value={editBookingSource}
                   onChange={setEditBookingSource}
-                  disabled={!isEditing}
+                  // Also prevents switching an OTA booking to "Offline", which
+                  // would strip its OTA identity and silently re-enable Delete.
+                  disabled={!isEditing || isOtaLocked}
                   options={[
                     { value: 'Offline', label: 'Offline' },
                     { value: 'Online', label: 'Online' },
@@ -1567,7 +1640,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   min={1}
                   value={editGuests}
                   onChange={(e) => setEditGuests(e.target.value)}
-                  disabled={!isEditing}
+                  // Occupancy is what the guest actually paid the channel for,
+                  // and it drives occupancy-based pricing on that side.
+                  disabled={!isEditing || isOtaLocked}
                 />
               </div>
             </div>
@@ -1578,12 +1653,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 Receiver's post-checkout editing should ever be able to touch. */}
             <div>
               <DateRangePicker
-                label={isPastBooking ? 'Booking Dates (locked - past booking)' : 'Booking Dates *'}
+                label={
+                  isPastBooking
+                    ? 'Booking Dates (locked - past booking)'
+                    : isOtaLocked
+                    ? `Booking Dates (locked - change on ${otaSourceName})`
+                    : 'Booking Dates *'
+                }
                 checkinDate={editCheckin}
                 checkoutDate={editCheckout}
                 onCheckinChange={setEditCheckin}
                 onCheckoutChange={setEditCheckout}
-                disabled={!isEditing || isPastBooking}
+                // The availability-divergence case in the isOtaLocked comment
+                // above - this is the field that can actually double-sell a room.
+                disabled={!isEditing || isPastBooking || isOtaLocked}
                 disablePastDates
                 blockedDates={getEditBlockedDateStrings()}
               />
@@ -1598,7 +1681,8 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   min={0}
                   value={editRoomRent}
                   onChange={(e) => setEditRoomRent(e.target.value)}
-                  disabled={!isEditing}
+                  // Set by the channel and already paid to it - see isOtaLocked.
+                  disabled={!isEditing || isOtaLocked}
                 />
               </div>
               <div>
@@ -1622,7 +1706,9 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   min={0}
                   value={editAdvance}
                   onChange={(e) => setEditAdvance(e.target.value)}
-                  disabled={!isEditing}
+                  // Collected by the channel, not the front desk - editing it
+                  // here moves no real money, it only desyncs from the payout.
+                  disabled={!isEditing || isOtaLocked}
                 />
               </div>
               {!isOtaBooking && (

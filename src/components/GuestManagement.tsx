@@ -26,6 +26,7 @@ import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
+import { FileInput } from './FileInput';
 import { BillingCheckout } from './BillingCheckout';
 import { PricingPage } from './PricingPage';
 import { t } from '../i18n/en';
@@ -593,6 +594,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // rule is enforced at submit below and gates the Save button.
   const bookingTotalDue = bookingRoomTariff + calcTotalBookingExtraCharges(bookingExtraChargesList, showBookingExtraCharges);
   const advanceExceedsTotal = bookingAdvance > 0 && bookingTotalDue > 0 && bookingAdvance > bookingTotalDue;
+
+  // "Add more charges" only appears once the current last line actually has
+  // something in it (12 Sep 2026, explicit request) - otherwise the button just
+  // stacks empty rows. Gating on the LAST line rather than literally the first
+  // means a second empty line can't be added either; with a single line (the
+  // common case) the two are the same thing.
+  //
+  // Safe to hide, because this block always has at least one line to fill in:
+  // ticking the Additional Charges checkbox seeds one, and removing the last
+  // line auto-unticks the checkbox - so there is no state where the button is
+  // hidden AND there is no row to type into.
+  const lastExtraChargeLine = bookingExtraChargesList[bookingExtraChargesList.length - 1];
+  const canAddMoreExtraCharges = Boolean(
+    lastExtraChargeLine && lastExtraChargeLine.category && Number(lastExtraChargeLine.amount) > 0
+  );
 
   // Every condition that would make the submit handler below reject this
   // booking, recomputed reactively so the Save button can be greyed until they
@@ -1358,240 +1374,146 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               />
             </div>
 
-            {/* Row 1 & 2: Symmetrical 2-Column Pairing across Multi-Key and Single-Key properties */}
-            {isMultiKeyProperty && rooms && rooms.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Input
-                      label={t('contact_phone_label', 'Phone Number *')}
-                      type="tel"
-                      disabled={!!savedBooking}
-                      value={phoneNumber}
-                      onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
-                      onBlur={() => setPhoneNumberTouched(true)}
-                      placeholder="Enter 10-digit mobile number"
-                      required
-                      error={
-                        phoneNumberTouched && !phoneNumber.trim()
-                          ? 'Phone number is required'
-                          : phoneFormatInvalid
-                          ? (isForeignGuest ? 'Enter a valid international phone number' : 'Enter a valid 10-digit mobile number')
-                          : duplicateBookingLive
-                          ? 'A reservation for this contact on this check-in date already exists'
-                          : undefined
-                      }
-                    />
-                  </div>
+            {/* Rows 1 & 2: one shared 2-column layout for BOTH single-key and
+                multi-key properties (12 Sep 2026, explicit request). Only the
+                Assigned Place cell differs - a real room picker where there are
+                rooms to choose between, a read-only "the whole property" field
+                where there aren't - so the field order and column pairing are
+                identical either way. These were two separately-maintained
+                branches until now, which is exactly how they drifted: Room Rent
+                had ended up paired beside Booking Source on a single-key
+                property and standing alone on a multi-key one. */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <Input
+                  label={t('contact_phone_label', 'Phone Number *')}
+                  type="tel"
+                  disabled={!!savedBooking}
+                  value={phoneNumber}
+                  onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
+                  onBlur={() => setPhoneNumberTouched(true)}
+                  placeholder="Enter 10-digit mobile number"
+                  required
+                  error={
+                    phoneNumberTouched && !phoneNumber.trim()
+                      ? 'Phone number is required'
+                      : phoneFormatInvalid
+                      ? (isForeignGuest ? 'Enter a valid international phone number' : 'Enter a valid 10-digit mobile number')
+                      : duplicateBookingLive
+                      ? 'A reservation for this contact on this check-in date already exists'
+                      : undefined
+                  }
+                />
+              </div>
 
-                  <div>
-                    <StyledSelect
-                      label={t('assigned_room_label', 'Assigned Place *')}
-                      value={roomNumber}
-                      disabled={!!savedBooking}
-                      onChange={(val) => {
-                        handleRoomChange(val);
-                        setRoomTouched(true);
-                      }}
-                      options={rooms.map((room) => ({ value: room.name, label: room.name }))}
-                      error={
-                        isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim())
-                          ? 'An assigned place selection is required'
-                          : roomDateConflictLive
-                          ? 'This place is already booked for the selected dates'
-                          : undefined
-                      }
-                    />
-                  </div>
-                </div>
+              <div>
+                {isMultiKeyProperty && rooms && rooms.length > 0 ? (
+                  <StyledSelect
+                    label={t('assigned_room_label', 'Assigned Place *')}
+                    value={roomNumber}
+                    disabled={!!savedBooking}
+                    onChange={(val) => {
+                      handleRoomChange(val);
+                      setRoomTouched(true);
+                    }}
+                    options={rooms.map((room) => ({ value: room.name, label: room.name }))}
+                    error={
+                      isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim())
+                        ? 'An assigned place selection is required'
+                        : roomDateConflictLive
+                        ? 'This place is already booked for the selected dates'
+                        : undefined
+                    }
+                  />
+                ) : (
+                  /* A single-key property has exactly one sellable unit, so there
+                     is nothing to pick - the field exists to keep the column
+                     pairing identical and to state plainly WHAT is being booked. */
+                  <Input
+                    label={t('assigned_room_label', 'Assigned Place *')}
+                    type="text"
+                    value={propertyName || 'Entire Property'}
+                    disabled
+                    helperText="Entire property reservation"
+                  />
+                )}
+              </div>
+            </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <StyledSelect
-                      label={t('booking_source_label', 'Booking Source')}
-                      value={bookingSourceLocal}
-                      disabled={!!savedBooking}
-                      onChange={setBookingSourceLocal}
-                      options={[
-                        { value: 'Offline', label: 'Offline' },
-                        { value: 'Online', label: 'Online' },
-                      ]}
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      label={t('no_of_guests_label', 'No. of Guests')}
-                      type="number"
-                      min="1"
-                      disabled={!!savedBooking}
-                      value={noOfGuests}
-                      onChange={(e) => {
-                        const next = Math.max(1, Number(e.target.value));
-                        setNoOfGuests(next);
-                        // Children can never exceed the total it is a subset of.
-                        setChildrenCount((prev) => Math.min(prev, next));
-                      }}
-                      helperText={childrenCount > 0
-                        ? `${Math.max(0, noOfGuests - childrenCount)} adult${noOfGuests - childrenCount === 1 ? '' : 's'}, ${childrenCount} child${childrenCount === 1 ? '' : 'ren'}`
-                        : undefined}
-                    />
-                  </div>
-                  {/* Kids are declared only when there are any (7 Sep 2026).
-                      The checkbox sits in the guests grid's second column so it
-                      lands directly under the count it qualifies, and the number
-                      field appears in its place once ticked. */}
-                  <div className="col-start-2 space-y-2">
-                    <div className="flex items-center gap-2 self-center">
-                      <Checkbox
-                        id="booking-has-children-cb"
-                        disabled={!!savedBooking}
-                        checked={hasChildren}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setHasChildren(on);
-                          // Unticking must clear the count, not just hide it -
-                          // otherwise a hidden non-zero silently rides along onto
-                          // the booking and the confirmation claims children the
-                          // staff member can no longer see or correct.
-                          if (!on) setChildrenCount(0);
-                        }}
-                      />
-                      <label
-                        htmlFor="booking-has-children-cb"
-                        className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
-                      >
-                        Travelling with kids
-                      </label>
-                    </div>
-                    {hasChildren && (
-                      <div>
-                        <Input
-                          label={t('children_count_label', 'Number of Kids')}
-                          type="number"
-                          min="0"
-                          max={noOfGuests}
-                          value={childrenCount}
-                          disabled={!!savedBooking}
-                          onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
-                          helperText="Included in the guest count above, not added to it."
-                        />
-                      </div>
-                    )}
-                  </div>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <StyledSelect
+                  label={t('booking_source_label', 'Booking Source')}
+                  value={bookingSourceLocal}
+                  disabled={!!savedBooking}
+                  onChange={setBookingSourceLocal}
+                  options={[
+                    { value: 'Offline', label: 'Offline' },
+                    { value: 'Online', label: 'Online' },
+                  ]}
+                />
+              </div>
+              <div>
+                <Input
+                  label={t('no_of_guests_label', 'No. of Guests')}
+                  type="number"
+                  min="1"
+                  disabled={!!savedBooking}
+                  value={noOfGuests}
+                  onChange={(e) => {
+                    const next = Math.max(1, Number(e.target.value));
+                    setNoOfGuests(next);
+                    // Children can never exceed the total it is a subset of.
+                    setChildrenCount((prev) => Math.min(prev, next));
+                  }}
+                  helperText={childrenCount > 0
+                    ? `${Math.max(0, noOfGuests - childrenCount)} adult${noOfGuests - childrenCount === 1 ? '' : 's'}, ${childrenCount} child${childrenCount === 1 ? '' : 'ren'}`
+                    : undefined}
+                />
+              </div>
+              {/* Kids are declared only when there are any (7 Sep 2026).
+                  The checkbox sits in the guests grid's second column so it
+                  lands directly under the count it qualifies, and the number
+                  field appears in its place once ticked. */}
+              <div className="col-start-2 space-y-2">
+                <div className="flex items-center gap-2 self-center">
+                  <Checkbox
+                    id="booking-has-children-cb"
+                    disabled={!!savedBooking}
+                    checked={hasChildren}
+                    onChange={(e) => {
+                      const on = e.target.checked;
+                      setHasChildren(on);
+                      // Unticking must clear the count, not just hide it -
+                      // otherwise a hidden non-zero silently rides along onto
+                      // the booking and the confirmation claims children the
+                      // staff member can no longer see or correct.
+                      if (!on) setChildrenCount(0);
+                    }}
+                  />
+                  <label
+                    htmlFor="booking-has-children-cb"
+                    className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                  >
+                    Travelling with kids
+                  </label>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {hasChildren && (
                   <div>
                     <Input
-                      label={t('contact_phone_label', 'Phone Number *')}
-                      type="tel"
-                      disabled={!!savedBooking}
-                      value={phoneNumber}
-                      onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
-                      onBlur={() => setPhoneNumberTouched(true)}
-                      placeholder="Enter 10-digit mobile number"
-                      required
-                      error={
-                        phoneNumberTouched && !phoneNumber.trim()
-                          ? 'Phone number is required'
-                          : phoneFormatInvalid
-                          ? (isForeignGuest ? 'Enter a valid international phone number' : 'Enter a valid 10-digit mobile number')
-                          : duplicateBookingLive
-                          ? 'A reservation for this contact on this check-in date already exists'
-                          : undefined
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      label={t('no_of_guests_label', 'No. of Guests')}
+                      label={t('children_count_label', 'Number of Kids')}
                       type="number"
-                      min="1"
+                      min="0"
+                      max={noOfGuests}
+                      value={childrenCount}
                       disabled={!!savedBooking}
-                      value={noOfGuests}
-                      onChange={(e) => {
-                        const next = Math.max(1, Number(e.target.value));
-                        setNoOfGuests(next);
-                        // Children can never exceed the total it is a subset of.
-                        setChildrenCount((prev) => Math.min(prev, next));
-                      }}
-                      helperText={childrenCount > 0
-                        ? `${Math.max(0, noOfGuests - childrenCount)} adult${noOfGuests - childrenCount === 1 ? '' : 's'}, ${childrenCount} child${childrenCount === 1 ? '' : 'ren'}`
-                        : undefined}
+                      onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                      helperText="Included in the guest count above, not added to it."
                     />
                   </div>
-                  {/* Kids are declared only when there are any (7 Sep 2026).
-                      The checkbox sits in the guests grid's second column so it
-                      lands directly under the count it qualifies, and the number
-                      field appears in its place once ticked. */}
-                  <div className="col-start-2 space-y-2">
-                    <div className="flex items-center gap-2 self-center">
-                      <Checkbox
-                        id="booking-has-children-cb"
-                        disabled={!!savedBooking}
-                        checked={hasChildren}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setHasChildren(on);
-                          // Unticking must clear the count, not just hide it -
-                          // otherwise a hidden non-zero silently rides along onto
-                          // the booking and the confirmation claims children the
-                          // staff member can no longer see or correct.
-                          if (!on) setChildrenCount(0);
-                        }}
-                      />
-                      <label
-                        htmlFor="booking-has-children-cb"
-                        className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
-                      >
-                        Travelling with kids
-                      </label>
-                    </div>
-                    {hasChildren && (
-                      <div>
-                        <Input
-                          label={t('children_count_label', 'Number of Kids')}
-                          type="number"
-                          min="0"
-                          max={noOfGuests}
-                          value={childrenCount}
-                          disabled={!!savedBooking}
-                          onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
-                          helperText="Included in the guest count above, not added to it."
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <StyledSelect
-                      label={t('booking_source_label', 'Booking Source')}
-                      value={bookingSourceLocal}
-                      disabled={!!savedBooking}
-                      onChange={setBookingSourceLocal}
-                      options={[
-                        { value: 'Offline', label: 'Offline' },
-                        { value: 'Online', label: 'Online' },
-                      ]}
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      label={t('room_rent', 'Room Rent / Price (₹)')}
-                      type="number"
-                      disabled={!!savedBooking}
-                      value={bookingRoomTariff || ''}
-                      onChange={e => handleTariffChange(Number(e.target.value))}
-                      placeholder="Enter room rent in ₹"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+                )}
+              </div>
+            </div>
 
             {/* Row 3: Checkin & Checkout Date Range */}
             <div>
@@ -1640,19 +1562,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             </div>
 
-            {/* Total Room Tariff (Rendered separately on MultiKey where room selector is present) */}
-            {isMultiKeyProperty && rooms && rooms.length > 0 && (
-              <div>
-                <Input
-                  label={t('room_rent', 'Room Rent / Price (₹)')}
-                  type="number"
-                  disabled={!!savedBooking}
-                  value={bookingRoomTariff || ''}
-                  onChange={e => handleTariffChange(Number(e.target.value))}
-                  placeholder="Enter room rent in ₹"
-                />
-              </div>
-            )}
+            {/* Row 5: Room Rent - full width on BOTH property kinds (12 Sep 2026).
+                It used to render here only for multi-key and get squeezed into a
+                half-width cell beside Booking Source on single-key, which is what
+                made the two forms look unrelated to each other. */}
+            <div>
+              <Input
+                label={t('room_rent', 'Room Rent / Price (₹)')}
+                type="number"
+                disabled={!!savedBooking}
+                value={bookingRoomTariff || ''}
+                onChange={e => handleTariffChange(Number(e.target.value))}
+                placeholder="Enter room rent in ₹"
+              />
+            </div>
 
             {/* Money sits directly under Room Rent (7 Sep 2026, explicit request:
                 "move advance paid below room rent"). Advance and Pending are both
@@ -1662,30 +1585,140 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 calculation. Both rows moved together rather than Advance alone,
                 since splitting a figure from the number it is subtracted from would
                 be worse than the original order. */}
-            {/* Advance Paid + Advance Received By (2 columns on all screens) */}
+            {/* Advance and Pending each sit in their own transparent bordered
+                card (12 Sep 2026, explicit request). The amount, who received
+                it, how it was taken and the proof image are four fields
+                describing ONE payment - as loose full-width rows they read as
+                four unrelated inputs, and the screenshot in particular looked
+                like it belonged to whatever row happened to sit above it.
+                Transparent rather than filled so the grouping reads without
+                competing with the Additional Charges block further down. */}
             {bookingRoomTariff > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Input
-                    label={t('advance_paid', 'Advance Paid (₹)')}
-                    type="number"
-                    disabled={!!savedBooking}
-                    value={bookingAdvance || ''}
-                    onChange={e => handleAdvanceChange(Number(e.target.value))}
-                    placeholder="0.00"
-                    error={advanceExceedsTotal
-                      ? `Can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')})`
-                      : undefined}
-                  />
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
+                <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Advance Payment
+                </span>
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Input
+                      label={t('advance_paid', 'Advance Paid (₹)')}
+                      type="number"
+                      disabled={!!savedBooking}
+                      value={bookingAdvance || ''}
+                      onChange={e => handleAdvanceChange(Number(e.target.value))}
+                      placeholder="0.00"
+                      error={advanceExceedsTotal
+                        ? `Can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')})`
+                        : undefined}
+                    />
+                  </div>
+
+                  {bookingAdvance > 0 ? (
+                    <div>
+                      <StyledSelect
+                        label={t('advance_received_by', 'Advance Received By')}
+                        value={advanceReceivedBy}
+                        disabled={!!savedBooking}
+                        onChange={setAdvanceReceivedBy}
+                        placeholder="-- Select Staff/User --"
+                        options={[
+                          { value: '', label: '- Not Selected -' },
+                          ...(staff.filter(s => s.isFinancialHandler).length > 0
+                            ? staff.filter(s => s.isFinancialHandler)
+                            : staff
+                          ).map(s => ({ value: s.name, label: s.name }))
+                        ]}
+                      />
+                    </div>
+                  ) : <div />}
                 </div>
 
-                {bookingAdvance > 0 ? (
+                {/* Mode and proof appear only once a handler is named (12 Sep
+                    2026, explicit request) - typing an amount alone used to
+                    expand the form by two more controls mid-keystroke. The
+                    handler is also the field that makes the mode meaningful:
+                    "Cash" with nobody recorded as having taken it is not an
+                    answer anyone can follow up on. */}
+                {bookingAdvance > 0 && advanceReceivedBy && (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <StyledSelect
+                        label="Advance Payment Mode"
+                        value={advancePaymentMode}
+                        disabled={!!savedBooking}
+                        onChange={(val) => setAdvancePaymentMode(val as 'Cash' | 'Online')}
+                        options={[
+                          { value: 'Cash', label: 'Cash' },
+                          { value: 'Online', label: 'Online' },
+                        ]}
+                      />
+                    </div>
+                    {advancePaymentMode === 'Online' && (
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-gray-900 dark:text-gray-300">
+                          Payment Screenshot
+                        </label>
+                        {advancePaymentProofBase64 ? (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={advancePaymentProofBase64}
+                              alt="Advance payment proof"
+                              className="w-9 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs"
+                            />
+                            <button
+                              type="button"
+                              disabled={!!savedBooking}
+                              onClick={() => setAdvancePaymentProofBase64('')}
+                              className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <FileInput
+                            id="booking-advance-screenshot"
+                            accept="image/*"
+                            sizing="sm"
+                            disabled={!!savedBooking}
+                            onChange={handleAdvanceProofFileChange}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pending Balance box - same shape as the Advance one above. */}
+            {bookingAdvance > 0 && bookingPending > 0 && (
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
+                <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Pending Balance
+                </span>
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Input
+                      label={t('pending_balance_label', 'Pending Balance (₹)')}
+                      type="number"
+                      disabled={!!savedBooking}
+                      value={bookingPending || ''}
+                      onChange={e => handlePendingChange(Number(e.target.value))}
+                      placeholder="0.00"
+                      error={bookingPending < 0
+                        ? 'Pending balance cannot be negative — lower the advance paid'
+                        : undefined}
+                    />
+                  </div>
+
                   <div>
                     <StyledSelect
-                      label={t('advance_received_by', 'Advance Received By')}
-                      value={advanceReceivedBy}
+                      label={t('pending_received_by_label', 'Pending Received By')}
+                      value={pendingReceivedBy}
                       disabled={!!savedBooking}
-                      onChange={setAdvanceReceivedBy}
+                      onChange={setPendingReceivedBy}
                       placeholder="-- Select Staff/User --"
                       options={[
                         { value: '', label: '- Not Selected -' },
@@ -1696,133 +1729,53 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       ]}
                     />
                   </div>
-                ) : <div />}
-              </div>
-            )}
-
-            {/* Advance Payment Mode (Cash/Online) + screenshot upload when Online
-                (12 Sep 2026, explicit request). Gated the same as Advance Received
-                By just above - a payment mode is meaningless until there's an
-                actual amount recorded. */}
-            {bookingAdvance > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <StyledSelect
-                    label="Advance Payment Mode"
-                    value={advancePaymentMode}
-                    disabled={!!savedBooking}
-                    onChange={(val) => setAdvancePaymentMode(val as 'Cash' | 'Online')}
-                    options={[
-                      { value: 'Cash', label: 'Cash' },
-                      { value: 'Online', label: 'Online' },
-                    ]}
-                  />
                 </div>
-                {advancePaymentMode === 'Online' && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-gray-900 dark:text-gray-300">Payment Screenshot</label>
-                    {advancePaymentProofBase64 ? (
-                      <div className="flex items-center gap-2">
-                        <img src={advancePaymentProofBase64} alt="Advance payment proof" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-                        <button
-                          type="button"
-                          disabled={!!savedBooking}
-                          onClick={() => setAdvancePaymentProofBase64('')}
-                          className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <input
-                        type="file"
-                        accept="image/*"
+
+                {pendingReceivedBy && (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div>
+                      <StyledSelect
+                        label="Pending Payment Mode"
+                        value={pendingPaymentMode}
                         disabled={!!savedBooking}
-                        onChange={handleAdvanceProofFileChange}
-                        className="text-2xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-2xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 cursor-pointer"
+                        onChange={(val) => setPendingPaymentMode(val as 'Cash' | 'Online')}
+                        options={[
+                          { value: 'Cash', label: 'Cash' },
+                          { value: 'Online', label: 'Online' },
+                        ]}
                       />
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Pending Balance + Pending Received By (2 columns on all screens) */}
-            {bookingAdvance > 0 && bookingPending > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <Input
-                    label={t('pending_balance_label', 'Pending Balance (₹)')}
-                    type="number"
-                    disabled={!!savedBooking}
-                    value={bookingPending || ''}
-                    onChange={e => handlePendingChange(Number(e.target.value))}
-                    placeholder="0.00"
-                    error={bookingPending < 0
-                      ? 'Pending balance cannot be negative — lower the advance paid'
-                      : undefined}
-                  />
-                </div>
-
-                <div>
-                  <StyledSelect
-                    label={t('pending_received_by_label', 'Pending Received By')}
-                    value={pendingReceivedBy}
-                    disabled={!!savedBooking}
-                    onChange={setPendingReceivedBy}
-                    placeholder="-- Select Staff/User --"
-                    options={[
-                      { value: '', label: '- Not Selected -' },
-                      ...(staff.filter(s => s.isFinancialHandler).length > 0
-                        ? staff.filter(s => s.isFinancialHandler)
-                        : staff
-                      ).map(s => ({ value: s.name, label: s.name }))
-                    ]}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Pending Payment Mode (Cash/Online) + screenshot upload when Online
-                (12 Sep 2026, explicit request) - same shape as the Advance
-                Payment Mode block above. */}
-            {bookingAdvance > 0 && bookingPending > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <StyledSelect
-                    label="Pending Payment Mode"
-                    value={pendingPaymentMode}
-                    disabled={!!savedBooking}
-                    onChange={(val) => setPendingPaymentMode(val as 'Cash' | 'Online')}
-                    options={[
-                      { value: 'Cash', label: 'Cash' },
-                      { value: 'Online', label: 'Online' },
-                    ]}
-                  />
-                </div>
-                {pendingPaymentMode === 'Online' && (
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-medium text-gray-900 dark:text-gray-300">Payment Screenshot</label>
-                    {pendingPaymentProofBase64 ? (
-                      <div className="flex items-center gap-2">
-                        <img src={pendingPaymentProofBase64} alt="Pending payment proof" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-                        <button
-                          type="button"
-                          disabled={!!savedBooking}
-                          onClick={() => setPendingPaymentProofBase64('')}
-                          className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
-                        >
-                          Remove
-                        </button>
+                    </div>
+                    {pendingPaymentMode === 'Online' && (
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-gray-900 dark:text-gray-300">
+                          Payment Screenshot
+                        </label>
+                        {pendingPaymentProofBase64 ? (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={pendingPaymentProofBase64}
+                              alt="Pending payment proof"
+                              className="w-9 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs"
+                            />
+                            <button
+                              type="button"
+                              disabled={!!savedBooking}
+                              onClick={() => setPendingPaymentProofBase64('')}
+                              className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <FileInput
+                            id="booking-pending-screenshot"
+                            accept="image/*"
+                            sizing="sm"
+                            disabled={!!savedBooking}
+                            onChange={handlePendingProofFileChange}
+                          />
+                        )}
                       </div>
-                    ) : (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={!!savedBooking}
-                        onChange={handlePendingProofFileChange}
-                        className="text-2xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-2xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 cursor-pointer"
-                      />
                     )}
                   </div>
                 )}
@@ -1892,14 +1845,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             {/* Multi-Line Additional Charges Block (if checked) */}
             {showBookingExtraCharges && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3 shadow-md">
-                <div className="flex items-center justify-between">
-                  <Button color="light" size="sm" onClick={handleAddBookingExtraChargeLine}>
-                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Charges
-                  </Button>
-                  <span className="text-2xs text-gray-500 dark:text-gray-400">e.g. Pet Stay, Decoration, Misc</span>
-                </div>
-
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
                 <div className="space-y-2">
                   {bookingExtraChargesList.map((line) => (
                     <div key={line.id} className="p-2.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-2">
@@ -1982,6 +1928,28 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       )}
                     </div>
                   ))}
+                </div>
+
+                {/* Footer row (12 Sep 2026, explicit request): the example hint
+                    sits bottom-left and "Add more charges" bottom-right, under
+                    the Amount column it follows on from - previously both sat
+                    above the rows, which put an "Add" action before there was
+                    anything to add to. items-end keeps the hint aligned with the
+                    button's baseline when it wraps to two lines on a phone. */}
+                <div className="flex items-end justify-between gap-2">
+                  <span className="text-2xs text-gray-500 dark:text-gray-400">
+                    e.g. Pet Stay, Decoration, Misc
+                  </span>
+                  {canAddMoreExtraCharges && (
+                    <Button
+                      color="light"
+                      size="sm"
+                      onClick={handleAddBookingExtraChargeLine}
+                      className="shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1.5" /> Add more charges
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
