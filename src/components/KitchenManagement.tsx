@@ -160,7 +160,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   focusOrderId = null,
   onClearFocusOrder,
 }) => {
-  const { showToast, removeToast } = useToast();
+  const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { orders, addOrder, refreshOrders, updateOrderStatus, pendingOrdersCount } = useKitchenContext();
   const { inventory, requisitions } = useInventoryContext();
@@ -1218,6 +1218,8 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
   // consolidated bill once, from the Walk-in Bills tab, however many orders
   // it accumulates in the meantime.
   const [orderMode, setOrderMode] = useState<'guest' | 'walkin'>('guest');
+  const noCheckedInGuestBlocking = orderMode === 'guest' && checkedInGuests.length === 0;
+  const [showNoGuestModal, setShowNoGuestModal] = useState(false);
   // Each in-house guest keeps their own in-progress cart (keyed by guest id,
   // walk-in orders share one cart under a fixed key) so staff can start
   // building Room 101's order, switch to Room 103 for a second order, and
@@ -2099,19 +2101,37 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
               {/* Flowbite Touch Stepper - Symmetrical Buttons */}
               <div className="pt-1 border-t border-gray-100 dark:border-gray-700/60">
-                <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 w-full border border-gray-200 dark:border-gray-600">
+                <div
+                  onClick={(e) => {
+                    if (noCheckedInGuestBlocking) {
+                      e.stopPropagation();
+                      setShowNoGuestModal(true);
+                    }
+                  }}
+                  className={`flex items-center justify-between rounded-lg p-0.5 w-full border transition-all ${
+                    noCheckedInGuestBlocking
+                      ? 'bg-gray-100 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 cursor-pointer opacity-70 hover:opacity-100'
+                      : 'bg-gray-50 dark:bg-gray-700/60 border-gray-200 dark:border-gray-600'
+                  }`}
+                >
                   <button
                     type="button"
                     aria-label="Decrease quantity"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (noCheckedInGuestBlocking) {
+                        setShowNoGuestModal(true);
+                        return;
+                      }
                       if (inCartQty > 0) {
                         handleUpdateCartQuantity(item.id, -1);
                       }
                     }}
-                    disabled={inCartQty === 0}
+                    disabled={inCartQty === 0 && !noCheckedInGuestBlocking}
                     className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                      inCartQty === 0
+                      noCheckedInGuestBlocking
+                        ? 'bg-transparent text-gray-400 dark:text-gray-500 cursor-pointer'
+                        : inCartQty === 0
                         ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
                         : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
                     }`}
@@ -2119,7 +2139,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <Minus className="w-3.5 h-3.5" />
                   </button>
                   <span className={`font-bold text-xs px-1 ${
-                    inCartQty > 0
+                    noCheckedInGuestBlocking
+                      ? 'text-gray-400 dark:text-gray-500'
+                      : inCartQty > 0
                       ? 'text-gray-900 dark:text-white'
                       : 'text-gray-400 dark:text-gray-500'
                   }`}>
@@ -2130,12 +2152,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     aria-label="Increase quantity"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (noCheckedInGuestBlocking) {
+                        setShowNoGuestModal(true);
+                        return;
+                      }
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
-                      isRecentlyAdded
-                        ? 'bg-blue-600 text-white scale-95 animate-pulse'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                    className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                      noCheckedInGuestBlocking
+                        ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-400 dark:hover:bg-gray-600'
+                        : isRecentlyAdded
+                        ? 'bg-blue-600 text-white scale-95 animate-pulse active:scale-90'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 active:scale-90'
                     }`}
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -2191,17 +2219,35 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                 </span>
 
                 {/* Symmetrical Flowbite Stepper */}
-                <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700/60 rounded-lg p-0.5 border border-gray-200 dark:border-gray-600">
+                <div
+                  onClick={(e) => {
+                    if (noCheckedInGuestBlocking) {
+                      e.stopPropagation();
+                      setShowNoGuestModal(true);
+                    }
+                  }}
+                  className={`flex items-center gap-1 rounded-lg p-0.5 border transition-all ${
+                    noCheckedInGuestBlocking
+                      ? 'bg-gray-100 dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 cursor-pointer opacity-70 hover:opacity-100'
+                      : 'bg-gray-50 dark:bg-gray-700/60 border-gray-200 dark:border-gray-600'
+                  }`}
+                >
                   <button
                     type="button"
                     aria-label="Decrease quantity"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (noCheckedInGuestBlocking) {
+                        setShowNoGuestModal(true);
+                        return;
+                      }
                       if (inCartQty > 0) handleUpdateCartQuantity(item.id, -1);
                     }}
-                    disabled={inCartQty === 0}
+                    disabled={inCartQty === 0 && !noCheckedInGuestBlocking}
                     className={`btn-compact-stepper w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all ${
-                      inCartQty === 0
+                      noCheckedInGuestBlocking
+                        ? 'bg-transparent text-gray-400 dark:text-gray-500 cursor-pointer'
+                        : inCartQty === 0
                         ? 'bg-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40'
                         : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-90 cursor-pointer shadow-xs'
                     }`}
@@ -2209,7 +2255,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     <Minus className="w-3.5 h-3.5" />
                   </button>
                   <span className={`font-bold text-xs w-6 text-center ${
-                    inCartQty > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
+                    noCheckedInGuestBlocking
+                      ? 'text-gray-400 dark:text-gray-500'
+                      : inCartQty > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
                   }`}>
                     {inCartQty}
                   </span>
@@ -2218,12 +2266,18 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
                     aria-label="Increase quantity"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (noCheckedInGuestBlocking) {
+                        setShowNoGuestModal(true);
+                        return;
+                      }
                       handleAddToCartWithFeedback(item);
                     }}
-                    className={`btn-compact-stepper w-7 h-7 rounded-md shrink-0 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-xs ${
-                      isRecentlyAdded
-                        ? 'bg-blue-600 scale-95 animate-pulse'
-                        : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                    className={`btn-compact-stepper w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                      noCheckedInGuestBlocking
+                        ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-400 dark:hover:bg-gray-600'
+                        : isRecentlyAdded
+                        ? 'bg-blue-600 text-white scale-95 animate-pulse active:scale-90'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 active:scale-90'
                     }`}
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -2248,20 +2302,9 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         // but isn't actually given the `disabled` attribute, so a click can
         // show this toast (with a real link to Bookings) instead of silently
         // doing nothing.
-        const noCheckedInGuestBlocking = orderMode === 'guest' && checkedInGuests.length === 0;
         const handleOrderSubmitClick = () => {
           if (noCheckedInGuestBlocking) {
-            const noGuestToastId = showToast(
-              <>No checked-in house guest. <a href="#bookings" className="underline font-semibold cursor-pointer">Go to bookings page</a> to check in a guest, or{' '}
-              <button
-                type="button"
-                onClick={() => { setOrderMode('walkin'); removeToast(noGuestToastId); }}
-                className="underline font-semibold cursor-pointer"
-              >
-                choose Walk-in Guest
-              </button>.</>,
-              { type: 'warning', duration: 6000 }
-            );
+            setShowNoGuestModal(true);
             return;
           }
           handleOrderSubmit();
@@ -3564,6 +3607,98 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             </Button>
           </div>
         </Drawer>
+
+        {/* NO CHECKED-IN GUEST MODAL (shows when clicking greyed out quantity buttons) */}
+        <Modal
+          show={showNoGuestModal}
+          onClose={() => setShowNoGuestModal(false)}
+          dismissible
+          size="md"
+          popup
+          className="z-58"
+        >
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                  <User className="w-4 h-4" />
+                </div>
+                <h2 className="font-semibold text-slate-800 dark:text-slate-200 text-sm m-0">
+                  {t('no_checked_in_guest_modal_title', 'No Checked-in House Guest')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNoGuestModal(false)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3 bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+              <p className="m-0">
+                {t('no_checked_in_guest_modal_desc', 'There are currently no guests checked in to the property. An in-house room order requires an active checked-in guest to bill to.')}
+              </p>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">•</span>
+                  <span>
+                    <a
+                      href="#bookings"
+                      onClick={() => setShowNoGuestModal(false)}
+                      className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer"
+                    >
+                      Go to bookings page
+                    </a>{' '}
+                    to check in a guest,
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">•</span>
+                  <span>
+                    or switch to{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrderMode('walkin');
+                        setShowNoGuestModal(false);
+                      }}
+                      className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer"
+                    >
+                      choose Walk-in Guest
+                    </button>{' '}
+                    instead.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2.5 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowNoGuestModal(false);
+                  if (typeof window !== 'undefined') window.location.hash = '#bookings';
+                }}
+              >
+                Go to Bookings
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setOrderMode('walkin');
+                  setShowNoGuestModal(false);
+                }}
+              >
+                Choose Walk-in Guest
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* ORDER INSTRUCTIONS MODAL (23 Aug 2026, converted from a Drawer 25 Aug 2026 per
             DESIGN.md's "nested dialogs never stack a second Drawer" rule) - kitchen-only
