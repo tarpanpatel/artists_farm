@@ -995,33 +995,20 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
 
             if (!phoneNumber.trim()) {
-              showToast('Phone number is required.', { type: 'error' });
               return;
             }
             if (!isValidPhoneNumber(phoneNumber, isForeignGuest)) {
-              showToast(
-                isForeignGuest
-                  ? 'Enter a valid international phone number.'
-                  : 'Enter a valid 10-digit mobile number.',
-                { type: 'error' }
-              );
               return;
             }
             if (!checkinDate || !expectedCheckout) {
-              showToast('Check-in and check-out dates are required.', { type: 'error' });
               return;
             }
 
             if (isMultiKeyProperty && (!roomNumber || !roomNumber.trim())) {
-              showToast('An assigned place selection is required.', { type: 'error' });
               return;
             }
 
             if (advanceExceedsTotal) {
-              showToast(
-                `Advance paid (₹${bookingAdvance.toLocaleString('en-IN')}) can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')}).`,
-                { type: 'error' }
-              );
               return;
             }
 
@@ -1071,7 +1058,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             });
 
             if (isDuplicate) {
-              showToast('A reservation for this contact on this check-in date already exists.', { type: 'error' });
               return;
             }
 
