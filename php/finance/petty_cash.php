@@ -235,7 +235,18 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 }
                 // Never overwrite accounting history: neutralise the previous
                 // posting, then add the corrected value after the source update.
-                reverseFinancialSource($pdo, 'expense', (string)$input['id'], 'Expense corrected');
+                // $propertyId is REQUIRED here (fixed 13 Sep 2026). It was omitted,
+                // so reverseFinancialSource() fell back to its `int $propertyId = 1`
+                // default and searched property 1's ledger for an expense that had
+                // been posted under the real property - found nothing, reversed
+                // nothing, and returned false unnoticed. The corrected debit below
+                // was then added anyway, so on EVERY property except id=1 each edit
+                // counted the expense a second time and permanently inflated the
+                // P&L. Worse, if property 1 happened to hold an expense with the
+                // same numeric id, the reversal landed on ANOTHER tenant's books.
+                // Note the asymmetry that hid it: the postFinancialLedger() call
+                // below has always passed $propertyId correctly.
+                reverseFinancialSource($pdo, 'expense', (string)$input['id'], 'Expense corrected', $propertyId);
                 try {
                     $stmt = $pdo->prepare("UPDATE farm_utility_expenses SET expense_date = ?, category = ?, description = ?, amount = ?, payment_mode = ?, vendor_name = ? WHERE id = ? AND property_id = ?");
                     $stmt->execute([
@@ -292,7 +303,11 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                     echo json_encode(['status' => 'error', 'message' => 'Expense id is required']);
                     break;
                 }
-                reverseFinancialSource($pdo, 'expense', (string)$id, 'Expense deleted');
+                // $propertyId required - see the note in update_petty_cash above.
+                // On delete the consequence was worse: no reversal was posted, but
+                // the source row WAS deleted, so the debit stayed in the ledger
+                // forever with nothing left in the expense list to explain it.
+                reverseFinancialSource($pdo, 'expense', (string)$id, 'Expense deleted', $propertyId);
                 try {
                     $stmt = $pdo->prepare("DELETE FROM farm_utility_expenses WHERE id = ? AND property_id = ?");
                     $stmt->execute([$id, $propertyId]);

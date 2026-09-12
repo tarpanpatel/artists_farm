@@ -317,10 +317,16 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                             'paymentMethod' => $paymentMethod,
                         ],
                     ]);
-                } catch (PDOException $e) {
+                } catch (Throwable $e) {
+                    // Throwable, not PDOException (13 Sep 2026): postFinancialLedger()
+                    // can raise a plain Exception, which would otherwise escape this
+                    // handler with the transaction still OPEN and never rolled back -
+                    // the same defect found in update_walk_in_tab and
+                    // delete_walk_in_tab. A repo-wide sweep found no third instance.
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
                     }
+                    error_log('bill_walk_in_tab failed: ' . $e->getMessage());
                     echo json_encode(['status' => 'error', 'message' => 'Failed to bill tab']);
                 }
             }

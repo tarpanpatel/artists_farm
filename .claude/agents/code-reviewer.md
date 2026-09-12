@@ -89,6 +89,39 @@ roll back a booking or payment.
 - Inline `style={{ zIndex: N }}` instead of a `z-*` class drifts out of the
   documented z-index scale invisibly.
 
+**Derived values recomputed from live config instead of stored at the
+transaction.** A total, rate, tax or count that is recalculated on every read
+from a *mutable* source silently rewrites history when that source changes.
+Found live 13 Sep 2026: `order_items` never stored the price a dish sold at, so
+every walk-in bill total was recomputed from `menu_items.price` — raising a
+dish's price re-priced every past bill containing it, and a bill's own line
+items stopped adding up to the total the guest actually paid. Ask of any total:
+*if someone edits the source table next month, does this number change?* If it
+represents something already transacted, it must be stored at the time it
+happened (`order_items.unit_price`, `billing_receipts`' frozen columns), not
+re-derived. Highest suspicion on anything joining to `menu_items`,
+`properties.default_tariff`, or `room_rate_rules` to display a past figure.
+
+**Rows of one kind entering a list whose consumers assume another kind.** When
+a query starts returning a new `source_type`, every existing consumer keeps its
+old assumptions — and the damage is silent because the code still runs. Found
+live 13 Sep 2026: `get_receipts` began returning billed walk-in food tabs
+(`nights_count = 0`) into a list whose hospitality reducers all read
+`nightsCount || 1`, so a zero counted as ONE NIGHT — inflating room nights,
+deflating ADR, dragging ALOS toward 1 and inventing occupancy for guests who
+never took a room. When a diff widens what a shared endpoint returns, grep every
+consumer of that data and check each aggregation for an assumption the new rows
+break. Watch specifically for `|| 1` / `|| defaultValue` fallbacks, which turn a
+legitimate 0 into a fabricated value.
+
+**UTC day math.** `new Date().toISOString().split('T')[0]` converts to UTC
+first, so for the 5.5 hours between local midnight and 05:30 IST it returns
+YESTERDAY. Use `getTodayKey()` / `toLocalDateKey()` / `getDateKeyOffsetFromToday()`
+from `src/utils/dateUtils.ts` for anything meaning "today" or a day offset. This
+shipped as a wrong "Checkout Today" badge, an edit lock that stayed open on an
+elapsed booking, and payments filed to the previous day. Flag any `toISOString()`
+used for a calendar date; it is only correct for a UTC timestamp.
+
 **Schema assumptions.** A new column a feature reads/writes needs a self-healing
 `SHOW COLUMNS` + `ALTER TABLE ADD COLUMN` block in `router.php` (gated by
 `isSchemaVerified`), never an assumed manual migration — prod is cPanel with no
