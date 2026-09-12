@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, DEFAULT_MAKE_BOOKING_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Button, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
 import {
@@ -38,6 +38,10 @@ interface Room {
   room_order?: number;
   is_active?: number;
   default_tariff?: number | null;
+  // Per-room, since each room is its own Airbnb listing for a MULTI_KEY property -
+  // already returned by the backend's room fetch (multikey_properties.php's
+  // extendedRoomCols), just not previously read anywhere in this file (12 Sep 2026).
+  cancellation_policy?: string | null;
 }
 
 export interface BookingExtraChargeLine {
@@ -87,6 +91,14 @@ interface GuestManagementProps {
   propertyMapsLink?: string;
   propertyPhone?: string;
   propertyWhatsappTemplate?: string;
+  // "Make Booking" pre-booking invite (12 Sep 2026) - property-level override, no
+  // tenant tier (see PropertyEditForm.tsx's own comment on why this one's simpler
+  // than propertyWhatsappTemplate above).
+  propertyMakeBookingTemplate?: string;
+  /** SINGLE-property cancellation policy fallback. A MULTI_KEY room carries its
+   *  own on the room object (see Room.cancellation_policy above) and takes
+   *  precedence when present - same shape as propertySecurityDeposit below. */
+  propertyCancellationPolicy?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
   /** Refundable deposit for a SINGLE property. A MULTI_KEY room carries its
@@ -237,6 +249,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   propertyMapsLink = '',
   propertyPhone = '',
   propertyWhatsappTemplate = '',
+  propertyMakeBookingTemplate = '',
+  propertyCancellationPolicy = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
   propertySecurityDeposit,
@@ -888,12 +902,42 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       }
 
       const quote = result.data;
+      // A REAL, tracked confirmation link tied to this exact hold's token - better
+      // than a generic #book?checkin=&checkout= link, since it lets the guest
+      // confirm the SPECIFIC reservation just held for them, not just browse.
       const shareUrl = `${window.location.origin}${window.location.pathname}#book?quote=${quote.quote_token}`;
-      const greeting = guestName.trim() ? `Hi ${guestName.trim()}, ` : 'Hi, ';
-      const waText = `${greeting}here's your instant quote for ${quote.room_name}:\n`
-        + `📅 ${quote.checkin_date} to ${quote.checkout_date} (${quote.nights} night${quote.nights > 1 ? 's' : ''})\n`
-        + `💰 Total: ₹${quote.total_tariff.toLocaleString('en-IN')}\n\n`
-        + `Tap to confirm your room (held for the next ${holdLabel}):\n${shareUrl}`;
+
+      // Upgraded 12 Sep 2026 from a hardcoded waText to the customizable "Make
+      // Booking" template (property may override; DEFAULT_MAKE_BOOKING_TEMPLATE
+      // otherwise) - the same render function BookingDetailsModal's confirmation
+      // voucher already uses, so this preview can never drift from what actually
+      // sends. cancellation_policy resolves per-room for a MULTI_KEY property
+      // (each room is its own listing, see Room.cancellation_policy) or from the
+      // property-wide fallback for a SINGLE property - same precedence shape as
+      // propertySecurityDeposit elsewhere in this file.
+      const activeMakeBookingTemplate = propertyMakeBookingTemplate?.trim() || DEFAULT_MAKE_BOOKING_TEMPLATE;
+      const cancellationPolicyValue = isMultiKeyProperty
+        ? (selectedRoomObj?.cancellation_policy || '')
+        : (propertyCancellationPolicy || '');
+      const waText = renderWhatsappVoucherTemplate(activeMakeBookingTemplate, {
+        property_name: propertyName || 'our property',
+        room_name: quote.room_name,
+        room_tariff: (Number(bookingRoomTariff) || (quote.total_tariff / Math.max(1, quote.nights))).toFixed(2),
+        checkin_date: quote.checkin_date,
+        checkin_time: checkinTime,
+        checkout_date: quote.checkout_date,
+        checkout_time: checkoutTime,
+        nights: String(quote.nights),
+        guest_count: String(noOfGuests),
+        cancellation_policy: cancellationPolicyValue,
+        address: propertyAddress || '',
+        maps_link: propertyMapsLink || '',
+        contact_phone: propertyPhone || '',
+        // Held for {holdLabel} isn't a template token - it's specific to THIS
+        // send, not something a property would want to word themselves, so it's
+        // appended after rendering rather than added as another token.
+        booking_link: shareUrl,
+      }) + `\n\n_(Room held for the next ${holdLabel})_`;
 
       window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank');
       showToast(`Quote link created - room held for ${holdLabel}.`, { type: 'success' });

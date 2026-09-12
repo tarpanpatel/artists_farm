@@ -546,21 +546,24 @@ if (!isSchemaVerified('schema_tenants_voucher_template')) {
     markSchemaVerified('schema_tenants_voucher_template');
 }
 
-// Two-message WhatsApp strategy (12 Sep 2026): separate templates for "Make Booking"
-// (sent when property owner creates a booking) and "Booking Confirmation Voucher"
-// (sent after booking is confirmed). Properties can customize both independently;
-// empty/NULL falls back to the built-in defaults.
-if (!isSchemaVerified('schema_properties_whatsapp_templates_v1')) {
+// "Make Booking" pre-booking invite template (12 Sep 2026) - the confirmation side of
+// this already had its own column (`whatsapp_voucher_template`, self-healed above); this
+// is the pre-booking-invite counterpart, same "property may customize, default if not"
+// shape. History worth knowing if this is touched again: a same-day EARLIER version of
+// this feature paired it with `whatsapp_booking_confirmation_template` (redundant with
+// `whatsapp_voucher_template`, removed) and wired both to an automated backend API send
+// (`sendWhatsAppDirectTextMessage()`, removed - it only delivers within 24h of the
+// CUSTOMER messaging first, and a booking-creation event is business-initiated, so it
+// would have failed for nearly every real guest). This column is sent MANUALLY, via a
+// wa.me link a human presses - see whatsappVoucherTemplate.ts's DEFAULT_MAKE_BOOKING_TEMPLATE.
+if (!isSchemaVerified('schema_properties_make_booking_template_v1')) {
     try {
-        $propsWhatsappCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
-        if (!in_array('whatsapp_make_booking_template', $propsWhatsappCols)) {
+        $propsCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('whatsapp_make_booking_template', $propsCols)) {
             $pdo->exec("ALTER TABLE properties ADD COLUMN `whatsapp_make_booking_template` TEXT DEFAULT NULL AFTER `whatsapp_voucher_template`");
         }
-        if (!in_array('whatsapp_booking_confirmation_template', $propsWhatsappCols)) {
-            $pdo->exec("ALTER TABLE properties ADD COLUMN `whatsapp_booking_confirmation_template` TEXT DEFAULT NULL AFTER `whatsapp_make_booking_template`");
-        }
     } catch (Exception $e) {}
-    markSchemaVerified('schema_properties_whatsapp_templates_v1');
+    markSchemaVerified('schema_properties_make_booking_template_v1');
 }
 
 // Per-tenant WhatsApp Business API opt-in (12 Sep 2026). The Meta sender is ONE
@@ -3846,16 +3849,10 @@ switch ($action) {
                 $sets[] = 'whatsapp_voucher_template = ?';
                 $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
             }
-
-            // Two-message WhatsApp strategy (12 Sep 2026)
             if (array_key_exists('whatsapp_make_booking_template', $input)) {
+                // Same reset-to-default semantics as whatsapp_voucher_template above.
                 $trimmedTemplate = trim($input['whatsapp_make_booking_template']);
                 $sets[] = 'whatsapp_make_booking_template = ?';
-                $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
-            }
-            if (array_key_exists('whatsapp_booking_confirmation_template', $input)) {
-                $trimmedTemplate = trim($input['whatsapp_booking_confirmation_template']);
-                $sets[] = 'whatsapp_booking_confirmation_template = ?';
                 $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
             }
 
@@ -3912,7 +3909,6 @@ switch ($action) {
                         'checkout_time' => 'Check-out Time', 'default_tariff' => 'Default Tariff',
                         'whatsapp_voucher_template' => 'WhatsApp Voucher Template',
                         'whatsapp_make_booking_template' => 'WhatsApp Make Booking Template',
-                        'whatsapp_booking_confirmation_template' => 'WhatsApp Booking Confirmation Template',
                     ];
                     $changedLabels = array_map(function ($c) use ($fieldLabels) {
                         return $fieldLabels[$c] ?? $c;

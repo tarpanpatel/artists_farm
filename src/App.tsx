@@ -2874,6 +2874,8 @@ ${itemsStr}
                     propertyPhone={preloadedData.currentProperty?.phone || ''}
                     propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
                           || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
+                    propertyMakeBookingTemplate={(preloadedData.currentProperty as any)?.whatsapp_make_booking_template || ''}
+                    propertyCancellationPolicy={(preloadedData.currentProperty as any)?.cancellation_policy || ''}
                     propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                     propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
                     propertyAddress={preloadedData.currentProperty?.address || ''}
@@ -3186,6 +3188,8 @@ ${itemsStr}
               propertyPhone={preloadedData.currentProperty?.phone || ''}
               propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
                           || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
+              propertyMakeBookingTemplate={(preloadedData.currentProperty as any)?.whatsapp_make_booking_template || ''}
+              propertyCancellationPolicy={(preloadedData.currentProperty as any)?.cancellation_policy || ''}
               propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
               propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
             />

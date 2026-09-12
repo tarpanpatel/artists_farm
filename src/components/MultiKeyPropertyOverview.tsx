@@ -364,6 +364,8 @@ export const MultiKeyPropertyOverview: React.FC<MultiKeyPropertyOverviewProps> =
                   propertyPhone={property.phone || ''}
                   propertyWhatsappTemplate={property.whatsapp_voucher_template
                     || (property as any).tenant_whatsapp_voucher_template || ''}
+                  propertyMakeBookingTemplate={(property as any).whatsapp_make_booking_template || ''}
+                  propertyCancellationPolicy={(property as any).cancellation_policy || ''}
                   propertyUpiId={property.upi_id || ''}
                   propertyUpiQrCodeUrl={property.upi_qr_code_url || ''}
                   propertyAddress={property.address || ''}

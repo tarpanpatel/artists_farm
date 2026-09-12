@@ -13,11 +13,9 @@ import { getAmenityIcon, normalizeAmenityList } from '../utils/amenityCatalog';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import {
   DEFAULT_WHATSAPP_VOUCHER_TEMPLATE,
-  DEFAULT_MAKE_BOOKING_TEMPLATE,
-  DEFAULT_BOOKING_CONFIRMATION_TEMPLATE,
   VOUCHER_TOKENS,
+  DEFAULT_MAKE_BOOKING_TEMPLATE,
   MAKE_BOOKING_TOKENS,
-  BOOKING_CONFIRMATION_TOKENS,
   renderWhatsappVoucherTemplate
 } from '../utils/whatsappVoucherTemplate';
 import { MessageQrPreview } from './MessageQrPreview';
@@ -30,15 +28,31 @@ import { humanizeKey } from '../utils/humanizeKey';
  * lives in WhatsAppTemplateSettings.tsx (the Telegram/messaging settings
  * tab) instead - unrelated to property details.
  *
- * The guest-facing WhatsApp booking-confirmation message itself is NOT
- * customizable (26 Aug 2026, explicit request - was previously a free-text
- * template editor on the Telegram tab, removed) - every property sends the
- * one shared DEFAULT_WHATSAPP_VOUCHER_TEMPLATE. Since that template only
- * ever pulls from fields edited right here (phone/address/UPI/instructions/
- * check-in-out times), a live read-only preview of it is rendered at the
- * bottom of this form instead, built from this component's own in-progress
- * field state - not the last-saved `property` prop - so it updates as you
- * type, before you've even hit Save.
+ * CORRECTED 12 Sep 2026 - this docblock used to say the guest-facing WhatsApp
+ * message was NOT customizable (true as of 26 Aug 2026, when a free-text
+ * editor was removed in favor of one shared default). That stopped being true
+ * on 7 Sep 2026, five days before this correction, when per-property override
+ * wording came back via `whatsapp_voucher_template` - see this file's
+ * `voucherTemplate` state below, and CLAUDE.md's WhatsApp section for the
+ * full inheritance chain (property -> tenant -> Root Dashboard -> shipped
+ * default). A second, independent override (`whatsapp_make_booking_template`,
+ * the pre-booking invite) was added 12 Sep 2026 the same way. Both editors
+ * render a LIVE preview built from this component's own in-progress field
+ * state - not the last-saved `property` prop - so what you see updates as you
+ * type, before you've even hit Save; the preview is trustworthy precisely
+ * because it shares the same render function (`renderWhatsappVoucherTemplate`)
+ * the real sends use, not a second copy that could drift.
+ *
+ * Both are sent MANUALLY via a wa.me link a human presses - never an
+ * automated backend API call (see src/utils/whatsappVoucherTemplate.ts's own
+ * header for why that was tried and reverted the same day it was added). The
+ * confirmation voucher already has two such senders (GuestManagement's
+ * "Share Quote", BookingDetailsModal's "Share Preview"). The Make Booking
+ * template's own send action does NOT exist yet as of 12 Sep 2026 - this form
+ * lets a property customize and preview the wording, but nothing in the app
+ * sends it yet. Building that (a "Share Booking Invite" action mirroring
+ * Share Quote, plus a real {booking_link} pointing at the public booking
+ * engine) is the next step, not done here.
  */
 interface PropertyEditFormProps {
   property: {
@@ -62,14 +76,12 @@ interface PropertyEditFormProps {
     security_deposit?: number | null;
     checkin_time?: string | null;
     checkout_time?: string | null;
-    /** Legacy: This property's own booking confirmation voucher wording. Empty/absent = inherit the account's. */
+    /** This property's own booking confirmation voucher wording. Empty/absent = inherit the account's. */
     whatsapp_voucher_template?: string | null;
     /** The account-wide default this property falls back to. Read-only here. */
     tenant_whatsapp_voucher_template?: string | null;
-    /** Make Booking message - sent when owner creates/invites for a booking */
+    /** This property's own pre-booking invite wording. Empty/absent = use the built-in default (no tenant tier, unlike the voucher above). */
     whatsapp_make_booking_template?: string | null;
-    /** Booking Confirmation Voucher - sent after booking is confirmed */
-    whatsapp_booking_confirmation_template?: string | null;
   };
   onCancel?: () => void;
   onSaved?: () => void;
@@ -122,16 +134,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [modalTemplate, setModalTemplate] = useState('');
   const voucherTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Two-message WhatsApp strategy (12 Sep 2026)
-  const [makeBookingTemplate, setMakeBookingTemplate] = useState(property.whatsapp_make_booking_template || '');
-  const [bookingConfirmationTemplate, setBookingConfirmationTemplate] = useState(property.whatsapp_booking_confirmation_template || '');
-  const [showMakeBookingModal, setShowMakeBookingModal] = useState(false);
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [modalMakeBookingTemplate, setModalMakeBookingTemplate] = useState('');
-  const [modalConfirmationTemplate, setModalConfirmationTemplate] = useState('');
-  const makeBookingTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const confirmationTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const rootDefaultTemplate =
     ((property as any).system_whatsapp_voucher_template && (property as any).system_whatsapp_voucher_template.trim()) ||
@@ -190,7 +192,17 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     setShowVoucherModal(false);
   };
 
-  // Make Booking template handlers (12 Sep 2026)
+  // "Make Booking" pre-booking invite template (12 Sep 2026) - property-level
+  // override only, no tenant/root inheritance tier like the voucher one above
+  // (this is a newer, simpler field; nothing yet needs an account-wide default
+  // for it). Empty means "use the built-in default", same semantics as voucherTemplate.
+  const [makeBookingTemplate, setMakeBookingTemplate] = useState((property as any).whatsapp_make_booking_template || '');
+  const [showMakeBookingModal, setShowMakeBookingModal] = useState(false);
+  const [modalMakeBookingTemplate, setModalMakeBookingTemplate] = useState('');
+  const makeBookingTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const effectiveMakeBookingTemplate = makeBookingTemplate.trim() || DEFAULT_MAKE_BOOKING_TEMPLATE;
+
   const handleOpenMakeBookingModal = () => {
     setModalMakeBookingTemplate(makeBookingTemplate.trim() || DEFAULT_MAKE_BOOKING_TEMPLATE);
     setShowMakeBookingModal(true);
@@ -226,44 +238,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     e.preventDefault();
     const token = e.dataTransfer.getData('text/plain');
     if (token) insertMakeBookingToken(token);
-  };
-
-  // Booking Confirmation template handlers (12 Sep 2026)
-  const handleOpenConfirmationModal = () => {
-    setModalConfirmationTemplate(bookingConfirmationTemplate.trim() || DEFAULT_BOOKING_CONFIRMATION_TEMPLATE);
-    setShowConfirmationModal(true);
-  };
-
-  const handleSaveConfirmationModal = () => {
-    if (modalConfirmationTemplate.trim() === DEFAULT_BOOKING_CONFIRMATION_TEMPLATE.trim()) {
-      setBookingConfirmationTemplate('');
-    } else {
-      setBookingConfirmationTemplate(modalConfirmationTemplate.trim());
-    }
-    setShowConfirmationModal(false);
-  };
-
-  const insertConfirmationToken = (token: string) => {
-    const ta = confirmationTextareaRef.current;
-    if (!ta) {
-      setModalConfirmationTemplate((prev) => (prev ? prev + ' ' + token : token));
-      return;
-    }
-    const start = ta.selectionStart ?? ta.value.length;
-    const end = ta.selectionEnd ?? ta.value.length;
-    const before = ta.value.substring(0, start);
-    const after = ta.value.substring(end);
-    setModalConfirmationTemplate(before + token + after);
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(start + token.length, start + token.length);
-    }, 0);
-  };
-
-  const handleDropConfirmationToken = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    const token = e.dataTransfer.getData('text/plain');
-    if (token) insertConfirmationToken(token);
   };
 
   // Guest-facing arrival info (6 Sep 2026). NOT gated on !isRoom like the
@@ -428,6 +402,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
     balance_due: '2,500.00',
     payments_list: '\n  • ₹1,000 on 15/07/2026 (UPI)\n  • ₹1,000 on 25/07/2026 (Cash)',
     voucher_link: 'https://your-property.example/#voucher?token=...',
+    // Sample only - harmless for the voucher preview above (voucher_link is its
+    // real CTA, not this token), used by the Make Booking preview below.
+    booking_link: 'https://your-property.example/#book?checkin=2026-08-08&checkout=2026-08-11',
   };
 
   // Same template + substitution logic BookingDetailsModal.tsx's real "Share
@@ -462,6 +439,29 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       // what is actually typed in it. Empty or zero and the line vanishes,
       // which is exactly what a real voucher would do.
       security_deposit: Number(securityDeposit) > 0 ? Number(securityDeposit).toFixed(2) : '',
+    });
+  };
+
+  // Same shape as getPreviewText() above, for the Make Booking template - shares
+  // previewSampleValues so both previews stay consistent, differs only in which
+  // template it renders and that cancellation_policy comes from this form's own
+  // field (there is no sample for it; an empty policy shows as an empty line
+  // here on purpose, same "make a gap visible, don't hide it" reasoning as
+  // {booking_link} not being in renderWhatsappVoucherTemplate's optionalTokens).
+  const getMakeBookingPreviewText = () => {
+    return renderWhatsappVoucherTemplate(effectiveMakeBookingTemplate, {
+      ...previewSampleValues,
+      property_name: name.trim() || 'Your Property',
+      address: address.trim(),
+      property_address: address.trim(),
+      contact_phone: phone.trim(),
+      property_phone: phone.trim(),
+      phone: phone.trim(),
+      maps_link: mapsLink.trim(),
+      google_maps_link: mapsLink.trim(),
+      checkin_time: checkinTime,
+      checkout_time: checkoutTime,
+      cancellation_policy: cancellationPolicy.trim(),
     });
   };
 
@@ -517,7 +517,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
         // template - the backend stores empty as NULL, so this round-trips.
         payload.whatsapp_voucher_template = voucherTemplate.trim();
         payload.whatsapp_make_booking_template = makeBookingTemplate.trim();
-        payload.whatsapp_booking_confirmation_template = bookingConfirmationTemplate.trim();
         payload.email = email.trim();
         payload.phone = phone.trim();
         payload.gstin = gstin.trim().toUpperCase();
@@ -1203,91 +1202,58 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           </div>
         )}
 
-        {/* Two-message WhatsApp strategy (12 Sep 2026) */}
+        {/* Make Booking pre-booking invite preview (12 Sep 2026) - same shape as the
+            voucher preview above: property-level override only (no tenant tier),
+            live preview built from this form's own in-progress state. */}
         {!isRoom && (
-          <>
-            {/* Make Booking Template */}
-            <div className="property-edit-form__whatsapp-preview mt-6 border border-blue-200 dark:border-blue-700/80 rounded-lg overflow-hidden bg-blue-50/50 dark:bg-blue-900/20 p-4">
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200/80 dark:border-blue-800">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
-                  <MessageCircle className="w-3.5 h-3.5" />
-                </span>
-                <div>
-                  <h4 className="text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-                    {t('whatsapp_make_booking_heading', 'Make Booking Message')}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {t('whatsapp_make_booking_subtitle', 'Sent when you invite a guest to book')}
-                  </p>
-                </div>
-                <div className="ms-auto flex items-center gap-2">
-                  {makeBookingTemplate.trim() && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => setMakeBookingTemplate('')}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
-                    >
-                      <RotateCcw className="w-3 h-3 mr-1" />
-                      <span>{t('reset_to_default_button', 'Reset')}</span>
-                    </Button>
-                  )}
+          <div className="property-edit-form__whatsapp-preview mt-4 border border-blue-200 dark:border-blue-700/80 rounded-lg overflow-hidden bg-blue-50/50 dark:bg-blue-900/20 p-4">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200/80 dark:border-blue-800">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
+                <MessageCircle className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <h4 className="text-2xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
+                  {t('whatsapp_make_booking_heading', 'Make Booking Message')}
+                </h4>
+                <p className="text-2xs text-slate-500 dark:text-slate-400">
+                  {t('whatsapp_make_booking_subtitle', 'The pre-booking invite - sent manually, before a booking is confirmed')}
+                </p>
+              </div>
+              <div className="ms-auto flex items-center gap-2">
+                {makeBookingTemplate.trim() && (
                   <Button
                     type="button"
-                    variant="secondary"
+                    variant="ghost"
                     size="xs"
-                    onClick={handleOpenMakeBookingModal}
-                    className="flex items-center gap-1.5"
+                    onClick={() => setMakeBookingTemplate('')}
+                    className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
                   >
-                    <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>{t('whatsapp_template_edit', 'Edit wording')}</span>
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    <span>{t('reset_to_default_button', 'Reset')}</span>
                   </Button>
-                </div>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={handleOpenMakeBookingModal}
+                  className="flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>{t('whatsapp_template_edit', 'Edit wording')}</span>
+                </Button>
               </div>
             </div>
-
-            {/* Booking Confirmation Template */}
-            <div className="property-edit-form__whatsapp-preview mt-4 border border-emerald-200 dark:border-emerald-700/80 rounded-lg overflow-hidden bg-emerald-50/50 dark:bg-emerald-900/20 p-4">
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-200/80 dark:border-emerald-800">
-                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <MessageCircle className="w-3.5 h-3.5" />
-                </span>
-                <div>
-                  <h4 className="text-[10px] font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-                    {t('whatsapp_booking_confirmation_heading', 'Booking Confirmation Message')}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    {t('whatsapp_booking_confirmation_subtitle', 'Sent after booking is confirmed')}
-                  </p>
-                </div>
-                <div className="ms-auto flex items-center gap-2">
-                  {bookingConfirmationTemplate.trim() && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => setBookingConfirmationTemplate('')}
-                      className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
-                    >
-                      <RotateCcw className="w-3 h-3 mr-1" />
-                      <span>{t('reset_to_default_button', 'Reset')}</span>
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    onClick={handleOpenConfirmationModal}
-                    className="flex items-center gap-1.5"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>{t('whatsapp_template_edit', 'Edit wording')}</span>
-                  </Button>
-                </div>
+            <div className="bg-[#e5ddd5] dark:bg-[#111b21] p-3 rounded-lg max-w-md mx-auto shadow-inner border border-slate-300/40 dark:border-slate-800">
+              <div className="bg-white dark:bg-[#202c33] p-3.5 rounded-lg shadow-md text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap leading-relaxed border-l-4 border-blue-500">
+                <MessageQrPreview
+                  text={getMakeBookingPreviewText()}
+                  cardClassName="my-2.5 p-2 bg-slate-50 dark:bg-[#111b21] rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col items-start gap-1.5 shadow-2xs"
+                  captionClassName="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"
+                />
               </div>
             </div>
-          </>
+          </div>
         )}
 
         <div className="flex justify-end gap-3 pt-2">
@@ -1425,7 +1391,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           </div>
         </Modal>
 
-        {/* Make Booking Template Modal */}
+        {/* Edit Make Booking Message Modal */}
         <Modal
           show={showMakeBookingModal}
           onClose={() => setShowMakeBookingModal(false)}
@@ -1443,7 +1409,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                   {t('edit_make_booking_modal_title', 'Edit Make Booking Message')}
                 </h3>
                 <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5 m-0">
-                  {t('edit_make_booking_modal_subtitle', 'Sent when you create or invite a guest to book')}
+                  {t('edit_make_booking_modal_subtitle', 'Customise the invite you send a guest before their booking is confirmed.')}
                 </p>
               </div>
             </div>
@@ -1458,6 +1424,14 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
           </div>
 
           <div className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs">
+              <span className="text-slate-600 dark:text-slate-300">
+                {modalMakeBookingTemplate.trim() && modalMakeBookingTemplate.trim() !== DEFAULT_MAKE_BOOKING_TEMPLATE.trim()
+                  ? t('whatsapp_template_overridden', 'Custom wording active for this property.')
+                  : t('whatsapp_make_booking_template_default_note', 'Currently matching the Ground Code default.')}
+              </span>
+            </div>
+
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
                 {t('make_booking_template_text_label', 'Make Booking Template Text')}
@@ -1500,6 +1474,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                   </span>
                 ))}
               </div>
+              <p className="text-2xs text-slate-500 dark:text-slate-400">
+                {t('whatsapp_booking_link_note', '{booking_link} always renders, even if empty, so a missing link stays visible rather than silently disappearing - unlike the other tokens above.')}
+              </p>
             </div>
           </div>
 
@@ -1517,104 +1494,6 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
               variant="primary"
               size="sm"
               onClick={handleSaveMakeBookingModal}
-            >
-              {t('apply_changes_button', 'Apply Changes')}
-            </Button>
-          </div>
-        </Modal>
-
-        {/* Booking Confirmation Template Modal */}
-        <Modal
-          show={showConfirmationModal}
-          onClose={() => setShowConfirmationModal(false)}
-          size="2xl"
-          dismissible
-          className="z-50"
-        >
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                <MessageCircle className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white m-0 leading-tight">
-                  {t('edit_booking_confirmation_modal_title', 'Edit Booking Confirmation Message')}
-                </h3>
-                <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5 m-0">
-                  {t('edit_booking_confirmation_modal_subtitle', 'Sent after a booking is confirmed with all check-in details')}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowConfirmationModal(false)}
-              aria-label={t('close_button', 'Close')}
-              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200">
-                {t('booking_confirmation_template_text_label', 'Booking Confirmation Template Text')}
-              </label>
-              <textarea
-                ref={confirmationTextareaRef}
-                value={modalConfirmationTemplate}
-                onChange={(e) => setModalConfirmationTemplate(e.target.value)}
-                placeholder={DEFAULT_BOOKING_CONFIRMATION_TEMPLATE}
-                rows={13}
-                spellCheck={false}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'copy';
-                }}
-                onDrop={handleDropConfirmationToken}
-                className="w-full px-3 py-2 text-xs font-mono leading-relaxed rounded-lg border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-2xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  {t('available_tokens_label', 'Available Tokens (Click to insert or drag & drop):')}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200 dark:border-slate-700/80">
-                {BOOKING_CONFIRMATION_TOKENS.map((token) => (
-                  <span
-                    key={token}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('text/plain', token);
-                      e.dataTransfer.effectAllowed = 'copy';
-                    }}
-                    onClick={() => insertConfirmationToken(token)}
-                    className="text-2xs font-mono px-2 py-1 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-grab active:cursor-grabbing select-none transition-colors"
-                  >
-                    + {token}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-lg flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowConfirmationModal(false)}
-            >
-              {t('cancel_button', 'Cancel')}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleSaveConfirmationModal}
             >
               {t('apply_changes_button', 'Apply Changes')}
             </Button>

@@ -1032,22 +1032,25 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
                     }
 
-                    // Send WhatsApp "Make Booking" message when a booking is created
-                    // (staff-facing Telegram notification above is separate from this).
-                    // Phased rollout - only fires for the tenant currently enabled.
-                    require_once __DIR__ . '/../whatsapp/sender.php';
-                    if (isWhatsAppEnabledForProperty($pdo, $propertyId)) {
-                        $roomLabel = $input['room_number'] ?? $input['roomNumber'] ?? 'your assigned room';
-                        $bookingDataForWhatsApp = [
-                            'checkin_date' => $checkinDate,
-                            'expected_checkout' => $checkoutDate,
-                            'no_of_guests' => $noOfGuests,
-                            'base_room_rent' => floatval($input['base_room_rent'] ?? 0),
-                            'cancellation_policy' => $input['cancellation_policy'] ?? 'Standard cancellation terms apply',
-                            'maps_link' => $input['maps_link'] ?? '',
-                        ];
-                        sendMakeBookingWhatsApp($pdo, $phone, $propertyId, $roomId, $bookingDataForWhatsApp);
-                    }
+                    // Automated "Make Booking" WhatsApp send REMOVED 12 Sep 2026, same day it
+                    // was added - the host sends this manually, and the mechanism for that
+                    // already exists and already works: "Share Quote" (GuestManagement.tsx,
+                    // built well before today) opens a wa.me link with the offer pre-filled,
+                    // reviewed and sent by a human. This automated version duplicated that
+                    // AND would have failed for almost every real guest regardless -
+                    // sendMakeBookingWhatsApp() called sendWhatsAppDirectTextMessage(), the
+                    // free-form-text channel, which Meta only delivers within 24h of the
+                    // CUSTOMER messaging first. A booking-creation event is business-initiated;
+                    // a guest who just booked has essentially never messaged first. The send
+                    // would have been silently rejected by Meta's API for nearly every guest,
+                    // logged only to Telescope, with the booking itself succeeding regardless -
+                    // exactly the "asserts a capability the code doesn't have" pattern this
+                    // codebase keeps getting bitten by (see LAUNCH_CHECKLIST.md §0).
+                    // sendMakeBookingWhatsApp() itself (php/whatsapp/sender.php) and its
+                    // template renderer (php/whatsapp/template_renderer.php) are left in place,
+                    // unused - not deleted, in case a genuine manual "Share Booking Invite"
+                    // button is ever built from this rendering logic, matching Share Quote's
+                    // own wa.me-link pattern instead of a live API call.
 
                     // Channel Manager Outbox (31 Aug 2026): a booking here enqueued an
                     // availability change above, but nothing ever drained it - it just
@@ -1563,47 +1566,17 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Guest checked in successfully']);
 
-                    // Send Booking Confirmation WhatsApp after guest is checked in
-                    // (this is when they've been confirmed and are ready to check in)
-                    if (function_exists('fastcgi_finish_request')) {
-                        fastcgi_finish_request();
-                    } else {
-                        ignore_user_abort(true);
-                        if (ob_get_level() > 0) { @ob_end_flush(); }
-                        @flush();
-                    }
-
-                    // Get guest details for WhatsApp send
-                    $guestStmt = $pdo->prepare("SELECT id, guest_name, phone_number, checkin_date, expected_checkout,
-                                                      no_of_guests, base_room_rent, pending_amount, advance_paid,
-                                                      property_id
-                                               FROM guests WHERE id = ? LIMIT 1");
-                    $guestStmt->execute([$guestId]);
-                    $guest = $guestStmt->fetch(PDO::FETCH_ASSOC);
-
-                    if ($guest) {
-                        require_once __DIR__ . '/../whatsapp/sender.php';
-                        if (isWhatsAppEnabledForProperty($pdo, $guest['property_id'])) {
-                            $guestDataForWhatsApp = [
-                                'guest_name' => $guest['guest_name'],
-                                'phone_number' => $guest['phone_number'],
-                                'checkin_date' => $guest['checkin_date'],
-                                'expected_checkout' => $guest['expected_checkout'],
-                                'no_of_guests' => $guest['no_of_guests'],
-                                'base_room_rent' => $guest['base_room_rent'],
-                                'pending_amount' => $guest['pending_amount'],
-                                'advance_paid' => $guest['advance_paid'],
-                                'room_name' => 'your room',
-                                'maps_link' => '',
-                                'security_deposit' => 0,
-                                'guest_breakdown' => '',
-                                'payments_list' => '',
-                                'upi_qr_code_url' => '',
-                                'voucher_link' => '',
-                            ];
-                            sendBookingConfirmationWhatsApp($pdo, $guest['phone_number'], $guest['property_id'], $guestId, $guestDataForWhatsApp);
-                        }
-                    }
+                    // Automated "Booking Confirmation Voucher" WhatsApp send REMOVED 12 Sep
+                    // 2026, same day it was added - same reasoning as the "Make Booking" removal
+                    // above in add_guest. The host sends this manually via BookingDetailsModal's
+                    // pre-existing "Share Preview" flow (28 Aug 2026, predates today's work
+                    // entirely) - a review-then-send modal built on the SAME
+                    // whatsapp_voucher_template chain documented in CLAUDE.md, opening a wa.me
+                    // link a human presses. sendBookingConfirmationWhatsApp() called
+                    // sendWhatsAppDirectTextMessage() (free-form text, 24h-customer-initiated-
+                    // window only) - it would have silently failed for nearly every real guest,
+                    // AND duplicated a mechanism that already worked. Left in place unused in
+                    // php/whatsapp/sender.php, same as sendMakeBookingWhatsApp() above.
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to check in guest: ' . $e->getMessage()]);

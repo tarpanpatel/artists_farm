@@ -1,37 +1,77 @@
 /**
- * Two-message WhatsApp strategy:
- * 1. "Make Booking" - sent when property owner creates/invites for a booking
- *    Property owner decides to book a guest for specific dates. Contains:
- *    cancellation policy, location, pricing, dates - NOT guest-specific details
- *    like WiFi or house manual.
- *
- * 2. "Booking Confirmation Voucher" - sent after booking is confirmed
- *    All practical check-in information: WiFi, house manual, notes, full booking details.
- *
- * Each property's `whatsapp_make_booking_template` and
- * `whatsapp_booking_confirmation_template` columns override these defaults;
- * NULL/empty falls back to the defaults below - same "tenant may customize,
+ * WhatsApp booking-confirmation voucher message: one shared default template +
+ * substitution logic, used by both the tenant-facing editor (TenantDashboard)
+ * and the actual "Share via WhatsApp" send (GuestManagement). A property's
+ * `whatsapp_voucher_template` column overrides this; NULL/empty falls back to
+ * DEFAULT_WHATSAPP_VOUCHER_TEMPLATE below - same "tenant may customize,
  * sensible default if they don't" shape as Telegram templates.
+ *
+ * RESTORED 12 Sep 2026 - a same-day "two-message WhatsApp strategy" change had
+ * overwritten this file's actual default template (not added alongside it),
+ * silently dropping the {nights} line in the process, and rewired the whole
+ * flow onto an automated backend send that would have failed for nearly every
+ * real guest (sendWhatsAppDirectTextMessage() only works within 24h of the
+ * CUSTOMER messaging first - a booking/check-in event is business-initiated).
+ * The host sends this manually, and the mechanism for that already existed and
+ * already worked (this file, GuestManagement's "Share Quote", and
+ * BookingDetailsModal's "Share Preview") - restored verbatim from the commit
+ * before that change (73057ac0^) rather than reconstructed from memory.
  */
 
+/**
+ * Pre-booking invite ("Make Booking" message), added 12 Sep 2026, this time built
+ * on the manual send pattern that already works: a property-level
+ * `whatsapp_make_booking_template` override falls back to this default, rendered
+ * client-side, sent via a wa.me link a human presses - the same shape as
+ * DEFAULT_WHATSAPP_VOUCHER_TEMPLATE below, never an automated backend API call
+ * (see this file's own header comment for why that was tried and reverted the
+ * same day).
+ *
+ * Deliberately tenant-agnostic - {address}/{maps_link}/{contact_phone} are real
+ * tokens here, not hardcoded text. A property with specific hand-picked
+ * directions (multiple map links, a named drop-off spot) writes that into its
+ * OWN `whatsapp_make_booking_template` override, the same way one property's
+ * confirmation voucher can carry that detail without putting it in the shipped
+ * default every tenant inherits.
+ *
+ * {booking_link} is the one token every send of this message must supply a real
+ * value for - it is NOT in renderWhatsappVoucherTemplate()'s optionalTokens list
+ * on purpose. This message's entire point is the "confirm your booking" call to
+ * action; a template that can silently render without it would violate
+ * CLAUDE.md's "every WhatsApp message must carry an action link" rule invisibly,
+ * exactly the class of bug that rule exists to prevent.
+ */
 export const DEFAULT_MAKE_BOOKING_TEMPLATE =
-  `🏨 *BOOKING INVITATION*
+  `🏨 *MAKE YOUR BOOKING*
 ━━━━━━━━━━━━━━━━━
-📍 *Location:* {property_name}
-🏠 *Unit / Room:* {room_name}
-📅 *Check-In:* {checkin_date}
-📅 *Check-Out:* {checkout_date}
-👥 *Guests:* {guest_count}
+🏠 *Property:* {property_name}
+🏡 *Unit / Room:* {room_name}
 💰 *Room Tariff:* ₹{room_tariff} per night
-📋 *Cancellation Policy:*
-{cancellation_policy}
-🗺️ *Location:* {address}
-📞 *Contact:* {contact_phone}
-🧭 *Google Maps:* {maps_link}
 ━━━━━━━━━━━━━━━━━
-Please confirm your booking or let us know if you have any questions!`;
 
-export const DEFAULT_BOOKING_CONFIRMATION_TEMPLATE =
+📅 *CHECK-IN & CHECK-OUT*
+• Check-in: {checkin_date} from {checkin_time}
+• Check-out: {checkout_date} until {checkout_time}
+• Nights: {nights}
+👥 *Guests:* {guest_count}
+
+📍 *Location:* {address}
+🧭 *Google Maps:* {maps_link}
+
+🚫 *CANCELLATION POLICY*
+{cancellation_policy}
+
+📞 *Questions? Call us:* {contact_phone}
+
+━━━━━━━━━━━━━━━━━
+Ready to book? Reply "YES" or click below to confirm your booking.
+🔗 *Book Now:* {booking_link}`;
+
+export const MAKE_BOOKING_TOKENS: string[] = Array.from(
+  new Set(DEFAULT_MAKE_BOOKING_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
+);
+
+export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
   `🏨 *BOOKING CONFIRMATION VOUCHER*
 ━━━━━━━━━━━━━━━━━
 🔖 *Booking ID:* {booking_id}
@@ -40,6 +80,7 @@ export const DEFAULT_BOOKING_CONFIRMATION_TEMPLATE =
 🏠 *Unit / Room:* {room_name}
 📅 *Check-In:* {checkin_date} from {checkin_time}
 📅 *Check-Out:* {checkout_date} until {checkout_time}
+🌙 *Nights:* {nights}
 👥 *Number of Guests:* {guest_count}
 👨‍👩‍👧 *Party:* {guest_breakdown}
 💰 *Room Tariff:* ₹{room_tariff}
@@ -61,30 +102,13 @@ export const DEFAULT_BOOKING_CONFIRMATION_TEMPLATE =
 We look forward to welcoming you to {property_name}!`;
 
 /**
- * For backwards compatibility: the original single template name
- */
-export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE = DEFAULT_BOOKING_CONFIRMATION_TEMPLATE;
-
-/**
- * Every token either template uses, in the order they appear - shown as
+ * Every token the default template uses, in the order it uses them - shown as
  * the help text under the wording editor in PropertyEditForm. Derived from the
- * templates themselves rather than hand-listed, so the help can never drift from
- * what actually substitutes.
+ * template itself rather than hand-listed, so the help can never drift from
+ * what actually substitutes (7 Sep 2026).
  */
 export const VOUCHER_TOKENS: string[] = Array.from(
-  new Set(
-    (DEFAULT_MAKE_BOOKING_TEMPLATE.match(/\{[a-z_]+\}/g) || []).concat(
-      DEFAULT_BOOKING_CONFIRMATION_TEMPLATE.match(/\{[a-z_]+\}/g) || []
-    )
-  )
-);
-
-export const MAKE_BOOKING_TOKENS: string[] = Array.from(
-  new Set(DEFAULT_MAKE_BOOKING_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
-);
-
-export const BOOKING_CONFIRMATION_TOKENS: string[] = Array.from(
-  new Set(DEFAULT_BOOKING_CONFIRMATION_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
+  new Set(DEFAULT_WHATSAPP_VOUCHER_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
 );
 
 /**
