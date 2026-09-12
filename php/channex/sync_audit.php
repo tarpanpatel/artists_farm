@@ -43,6 +43,66 @@ if (!function_exists('channexExpandAvailabilityRanges')) {
     }
 }
 
+if (!function_exists('auditChannexRateCoverage')) {
+    /**
+     * Which live units' rate rules run out before $edgeDate.
+     *
+     * Past that edge a push falls back to the flat `default_tariff` and overwrites whatever
+     * real pricing exists on the OTA, so a rule set quietly expiring is a genuine warning.
+     *
+     * EXTRACTED AND FIXED 12 Sep 2026. The version inline in channex_sync_audit.php joined
+     * rules to mappings with a bare:
+     *
+     *     LEFT JOIN room_rate_rules rr ON rr.room_id = m.room_id
+     *
+     * For a SINGLE-unit property both sides are NULL, and in SQL `NULL = NULL` is NULL, not
+     * true - so the join matched nothing, MAX(end_date) came back NULL, and the check reported
+     * "covered_to: never" for a property that in fact had full day-of-week pricing running to
+     * March 2027. It was structurally incapable of seeing rate rules for ANY single-unit
+     * property, and had been filing that false alarm every morning. Reported to the owner as
+     * fact before they corrected it - which is how it was found.
+     *
+     * The join is now NULL-safe AND property-scoped. Property-scoped matters independently:
+     * the old condition matched on room_id alone, so rules belonging to a different property's
+     * room could satisfy it wherever room ids collide across properties.
+     *
+     * Read-only. No network.
+     */
+    function auditChannexRateCoverage(PDO $pdo, array $livePropertyIds, string $edgeDate): array {
+        if (empty($livePropertyIds)) return [];
+
+        $inList = implode(',', array_fill(0, count($livePropertyIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT m.room_id, COALESCE(r.name, p.name) AS name, MAX(rr.end_date) AS covered_to
+            FROM channex_mappings m
+            LEFT JOIN properties r ON r.id = m.room_id
+            JOIN properties p ON p.id = m.property_id
+            LEFT JOIN room_rate_rules rr
+                   ON rr.property_id = m.property_id
+                  AND (rr.room_id = m.room_id OR (rr.room_id IS NULL AND m.room_id IS NULL))
+            WHERE m.property_id IN ($inList)
+            -- Group on the EXPRESSION, not the `name` alias: MySQL resolves a bare `name`
+            -- to the SELECT alias, but SQLite (which the invariant suite's fixture uses)
+            -- rejects it as ambiguous, since both r.name and p.name are in scope. Spelling
+            -- it out works identically on both and is clearer regardless.
+            GROUP BY m.room_id, COALESCE(r.name, p.name)
+            HAVING covered_to IS NULL OR covered_to < ?
+        ");
+        $stmt->execute(array_merge($livePropertyIds, [$edgeDate]));
+
+        $problems = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $problems[] = [
+                'type' => 'rate_coverage_expiring',
+                'room' => $r['name'],
+                'covered_to' => $r['covered_to'] ?? 'never',
+                'note' => 'Past this date a push publishes the flat default_tariff, overwriting real OTA pricing.',
+            ];
+        }
+        return $problems;
+    }
+}
+
 if (!function_exists('auditChannexPublishedAvailability')) {
     /**
      * Compares what Channex publishes against what Ground Code believes, per room, per night.

@@ -128,28 +128,14 @@ try {
     // ---- 4. Rate coverage running out ------------------------------------
     // Live properties only, same reasoning as the availability audit above: a
     // dormant property having no rate rules yet is a normal state, not a fault.
+    //
+    // The query moved to php/channex/sync_audit.php on 12 Sep 2026 together with a real fix:
+    // its join was `rr.room_id = m.room_id`, and for a SINGLE-unit property both sides are
+    // NULL, which in SQL never matches. It could not see the rate rules of ANY single-unit
+    // property and filed a false "covered_to: never" every morning for each one.
     $edge = date('Y-m-d', strtotime('+' . RATE_COVERAGE_DAYS . ' days'));
-    if (!empty($livePropertyIds)) {
-        $inList = implode(',', array_fill(0, count($livePropertyIds), '?'));
-        $stmt = $pdo->prepare("
-            SELECT m.room_id, COALESCE(r.name, p.name) AS name, MAX(rr.end_date) AS covered_to
-            FROM channex_mappings m
-            LEFT JOIN properties r ON r.id = m.room_id
-            JOIN properties p ON p.id = m.property_id
-            LEFT JOIN room_rate_rules rr ON rr.room_id = m.room_id
-            WHERE m.property_id IN ($inList)
-            GROUP BY m.room_id, name
-            HAVING covered_to IS NULL OR covered_to < ?
-        ");
-        $stmt->execute(array_merge($livePropertyIds, [$edge]));
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            $problems[] = [
-                'type' => 'rate_coverage_expiring',
-                'room' => $r['name'],
-                'covered_to' => $r['covered_to'] ?? 'never',
-                'note' => 'Past this date a push publishes the flat default_tariff, overwriting real OTA pricing.',
-            ];
-        }
+    foreach (auditChannexRateCoverage($pdo, $livePropertyIds, $edge) as $p) {
+        $problems[] = $p;
     }
 
     // ---- 5. Overlapping bookings -----------------------------------------

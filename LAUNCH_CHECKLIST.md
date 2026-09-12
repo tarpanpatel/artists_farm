@@ -170,6 +170,33 @@ self-heal (§1.6 above) creates the real rate plan automatically. Verified by co
 **deliberately NOT live-tested against a real active channel**, to avoid triggering an
 actual push to The Artists' Farm's live Airbnb connection as a side effect of testing.
 
+### 1.10 CLOSED 12 Sep 2026 — The daily audit was structurally blind to single-unit properties
+`channex_sync_audit.php`'s rate-coverage check joined rules to mappings with a bare
+`LEFT JOIN room_rate_rules rr ON rr.room_id = m.room_id`. For a **single-unit property both
+sides are NULL**, and in SQL `NULL = NULL` is NULL, not true — so the join matched nothing,
+`MAX(end_date)` came back NULL, and it reported `covered_to: never`.
+
+It could not see the rate rules of **any** single-unit property, and had been filing that
+false alarm every morning. The MULTI_KEY half (real integer `room_id`) always worked, which
+is exactly why nobody noticed.
+
+**How it was found: the owner said "you're wrong, I always had dynamic pricing."** The
+alert had been repeated back to them as established fact — The Artists' Farm has three
+day-of-week rules (₹14,000 weekdays / ₹16,000 Fri+Sun / ₹21,000 Sat) running to 30 Mar 2027.
+This is the §0 pattern in its most embarrassing form: not a comment claiming something the
+code didn't do, but a *check* claiming to verify something it was incapable of seeing — and
+a human trusting its output over their own knowledge of their business.
+
+**Fixed:** the join is now NULL-safe *and* property-scoped (the old one matched on `room_id`
+alone, so rules from another property's room could satisfy it wherever ids collide).
+Extracted to `auditChannexRateCoverage()` in `php/channex/sync_audit.php` so it is testable,
+and covered by invariant **B4**, mutation-tested. Verified against real staging data: the old
+join flags The Artists' Farm, the new one correctly finds the coverage.
+
+*Also fixed in passing:* `GROUP BY … name` resolved to the SELECT alias on MySQL but is
+ambiguous on SQLite, so the query could not be tested at all. Now groups on the expression —
+works on both, and is clearer regardless.
+
 ---
 
 ## 2. Open — ranked

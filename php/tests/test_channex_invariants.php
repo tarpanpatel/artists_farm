@@ -272,7 +272,7 @@ echo "\nBEHAVIOUR invariants (in-memory SQLite, no MySQL/network)\n";
 function makeFixtureDb(): PDO {
     $db = new PDO('sqlite::memory:');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $db->exec("CREATE TABLE properties (id INTEGER PRIMARY KEY, default_tariff REAL, pricing_mode TEXT,
+    $db->exec("CREATE TABLE properties (id INTEGER PRIMARY KEY, name TEXT, default_tariff REAL, pricing_mode TEXT,
         included_occupancy INTEGER DEFAULT 2, extra_guest_charge REAL DEFAULT 0, max_capacity INTEGER DEFAULT 2)");
     $db->exec("CREATE TABLE room_rate_rules (id INTEGER PRIMARY KEY, property_id INT, room_id INT NULL,
         start_date TEXT, end_date TEXT, rate_per_night REAL NULL, rule_name TEXT NULL,
@@ -386,6 +386,48 @@ check(
     'B3b getMapping() still returns a genuine mapping unchanged',
     is_array($getMapping->invoke($adapter, 301, null)),
     'A real, fully-mapped row was reported as missing - this would trigger pointless content re-syncs on every push.'
+);
+
+/**
+ * B4. A SINGLE-unit property's rate rules must actually be found.
+ *
+ * Both `channex_mappings.room_id` and `room_rate_rules.room_id` are NULL for a single-unit
+ * property, and the audit joined them with a bare `rr.room_id = m.room_id`. In SQL
+ * `NULL = NULL` is NULL, not true - so the join matched nothing, MAX(end_date) came back
+ * NULL, and the daily audit reported "rate coverage: never" for a property that had full
+ * day-of-week pricing running to March 2027. It was structurally incapable of seeing the rate
+ * rules of ANY single-unit property.
+ *
+ * Found 12 Sep 2026 only because the owner said "you're wrong, I always had dynamic pricing"
+ * - the alert had been firing every morning and had been repeated back to them as fact. The
+ * control below (a MULTI_KEY room, where room_id is a real integer) is what made the bug
+ * invisible: that half always worked.
+ */
+require_once $channexDir . '/sync_audit.php';
+$db3 = makeFixtureDb();
+// 400: SINGLE unit - mapping and rules both carry room_id NULL
+$db3->exec("INSERT INTO properties (id, name, default_tariff, pricing_mode) VALUES (400, 'Single Unit Property', 20000, 'variable')");
+$db3->exec("INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id)
+            VALUES (400, NULL, 'cp-400', 'rt-400', 'rp-400')");
+$db3->exec("INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, days_of_week, rule_type, created_at)
+            VALUES (400, NULL, '2026-09-11', '2027-03-30', 14000, 'mo,tu,we,th', 'fixed', '2026-09-11')");
+// 401: MULTI_KEY room - the control. This half always worked, which is why the bug hid.
+$db3->exec("INSERT INTO properties (id, name, default_tariff, pricing_mode) VALUES (401, 'Multi Key Parent', 5000, 'variable')");
+$db3->exec("INSERT INTO properties (id, name, default_tariff, pricing_mode) VALUES (4011, 'Room One', 5000, 'variable')");
+$db3->exec("INSERT INTO channex_mappings (property_id, room_id, channex_property_id, channex_room_type_id, channex_rate_plan_id)
+            VALUES (401, 4011, 'cp-401', 'rt-401', 'rp-401')");
+$db3->exec("INSERT INTO room_rate_rules (property_id, room_id, start_date, end_date, rate_per_night, rule_type, created_at)
+            VALUES (401, 4011, '2026-09-11', '2027-03-30', 6000, 'fixed', '2026-09-11')");
+
+$coverageProblems = auditChannexRateCoverage($db3, [400, 401], '2026-12-01');
+$flaggedNames = array_map(fn($p) => $p['room'], $coverageProblems);
+
+check(
+    'B4  a SINGLE-unit property\'s own rate rules are found (NULL room_id joins correctly)',
+    empty($coverageProblems),
+    'Reported rate coverage missing for: ' . implode(', ', $flaggedNames)
+    . "\n          Both sides of the join are NULL for a single-unit property, and NULL = NULL is not true in SQL."
+    . "\n          This exact false alarm was filed every morning against a property with full day-of-week pricing."
 );
 
 // ---------------------------------------------------------------------------
