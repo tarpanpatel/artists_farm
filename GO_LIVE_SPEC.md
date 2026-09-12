@@ -1,7 +1,7 @@
 # Go Live — Spec
 
 **Status:** draft for review, no code written
-**Date:** 12 Sep 2026
+**Date:** 12 Sep 2026 (revised same day after checking industry practice — §1a)
 **Companion to:** [PRE_LAUNCH_CHECK.md](PRE_LAUNCH_CHECK.md) — that file lists the bugs; this
 proposes the structural fix for why they kept happening.
 
@@ -27,6 +27,42 @@ The pattern is **invisible state**, not missing controls. After 11 Sep's fixes t
 dangerous boundaries are guarded — a mapping can't be created without a real price, and
 activation sits behind the Push Confirmation Gate. What's missing is the owner being able
 to see where they stand and finish deliberately.
+
+## 1a. What established channel managers actually do
+
+Checked rather than assumed (12 Sep 2026) — Guesty, Hostaway, and industry writeups on
+channel-manager/PMS onboarding. Three things they do that this spec did not originally
+account for:
+
+1. **They import the OTA's existing rate on connection, and treat it as required, not
+   optional.** There is never a state where a listing is mapped but priced at nothing —
+   which is the exact gap the ₹3,500 fallback was invented to paper over. Ground Code
+   already reversed its own "never import a price" stance on 6 Sep 2026 (`router.php`
+   `default_daily_price`), for the same reason — but it is offered as a proposal the
+   owner can decline, which is how the gap still opened. **Revision: make accepting a
+   base price mandatory at the moment a listing is mapped to a unit that has none** — not
+   a global mandatory field, only a hard requirement on the specific action that would
+   otherwise create the gap.
+
+2. **They tell the host, explicitly and loudly, "we are now in charge of your calendar."**
+   Guesty's own documentation: connecting a listing sets it to Full Sync, "rates and
+   availability... should be managed in Guesty," and anything changed directly on Airbnb
+   "will be overridden... the next time syncing occurs." That is the same `sync_all` lock
+   that greyed out The Artists' Farm's Airbnb calendar — except the host is told in
+   advance, as the point of the product, instead of discovering it as a locked screen.
+   **Revision: Stage 4 gets an explicit "Airbnb hands control to Ground Code" screen**,
+   separate from the price/date confirmation already there.
+
+3. **Nobody treats channel activation as fire-and-forget self-service.** Standard practice
+   before calling a connection live is a full round-trip test — a real inbound booking, a
+   real cancellation — not just a successful activate call. Channex supports this
+   directly: add the "Booking CRS" test app in their dashboard, create a booking by hand,
+   confirm it arrives via the feed within a minute, then cancel it and confirm that flows
+   too. This is also consistent with this product's own White-Glove Telegram onboarding
+   decision (CLAUDE.md) — channel connection is a moment worth the same care, not a
+   feature to ship as pure self-service and hope nobody needs help.
+   **Revision: Stage 5 gains a test-booking step**, exercised before the property is
+   marked fully live, not only a passive readback after the fact.
 
 ## 2. Principles
 
@@ -66,7 +102,16 @@ explicit price (from `computeRateCoverage()`, which already exists).
 A unit with no price is the headline item, because this is the exact state that used to
 silently drop a listing out of the channel mapping with a success message.
 
-*Phase 1: shows the gaps. Phase 2: lets you fill them inline.*
+**Mandatory price at mapping (revised, §1a.1):** when Stage 3 maps a listing onto a unit
+that has no price yet, Airbnb's own `default_daily_price` (already fetched by
+`proposeAirbnbRoomConfig()`) is shown and **must be accepted or overridden before the
+mapping completes** — not skippable to "fill in later." This does not make price a
+globally required field (a unit created directly in Ground Code, never mapped to an OTA,
+is unaffected); it closes only the specific action that used to create a mapped-but-priced-
+at-nothing unit. If Airbnb has no price either, the owner must type one — the mapping
+simply cannot proceed with a real gap underneath it.
+
+*Phase 1: shows the gaps read-only. Phase 2: the mandatory-accept flow above.*
 
 ### Stage 3 — Connect & map
 Per listing: which Ground Code unit it maps to, its rate plan id, and whether mapping is
@@ -74,18 +119,43 @@ complete. Units blocked by a missing price from Stage 2 are shown as blocked **h
 with a link back — rather than being quietly absent.
 
 ### Stage 4 — Review & go live
-The existing `PushConfirmationGate` component and `channex_push_preflight` endpoint, moved
-into this flow rather than reached from a separate page. Unchanged behaviour: the real
-unpriced nights and the rate that would be sent; the real dates about to be opened; the
-property name typed out; enforced server-side.
+Two distinct screens, not one, because they are different questions and conflating them is
+part of how the `sync_all` lock came as a surprise:
+
+**4a. What's about to change** — the existing `PushConfirmationGate` component and
+`channex_push_preflight` endpoint, moved into this flow rather than reached from a separate
+page. Unchanged behaviour: the real unpriced nights and the rate that would be sent; the
+real dates about to be opened; the property name typed out; enforced server-side.
+
+**4b. Airbnb hands control to Ground Code (new, §1a.2).** A plain-language screen shown
+once per channel, before that channel's first activation:
+
+> *"Once live, Airbnb's own calendar becomes read-only for these dates. Any price or
+> block you set directly on Airbnb will be overwritten the next time Ground Code syncs.
+> From today, manage this listing's prices and availability here — not on Airbnb."*
+
+This is not new enforcement — `sync_all` already does this the moment a channel goes
+live. It is telling the owner the true, current behaviour *before* they find a greyed-out
+calendar and assume something is broken, exactly as happened on The Artists' Farm. Shown
+once per channel (a flag on the connection row), not on every visit to the page.
 
 ### Stage 5 — Verify
 The step that has never existed, and the one that would have caught the 3 Sep AVL=0
 incident on the day it happened.
 
-After activation, read back from Channex what it actually holds for a sample window
-(default: next 30 days) and compare against what Ground Code computes. Show matches and
-discrepancies concretely — "12 Oct: Channex says 0 available, Ground Code says 1".
+**5a. Test booking (new, §1a.3).** Before a channel is marked fully live, prompt the owner
+(or support, during white-glove onboarding) to run Channex's own round-trip test: add the
+Booking CRS test app in the Channex dashboard, create a test booking by hand, confirm it
+lands in Ground Code within a minute via the feed, then cancel it and confirm the
+cancellation also lands. This exercises the entire inbound path — including the conflict/
+overbooking handling fixed 11 Sep — against a channel that has zero real guests on it yet.
+Recorded as done/skipped on the connection row; skippable (some properties won't have
+someone free to do this immediately) but visibly not-yet-done rather than silently assumed.
+
+**5b. Readback verification.** After activation, read back from Channex what it actually
+holds for a sample window (default: next 30 days) and compare against what Ground Code
+computes. Show matches and discrepancies concretely — "12 Oct: Channex says 0 available,
+Ground Code says 1".
 
 **On demand, not on page load** — it's real API calls. A "Verify now" button, with the
 timestamp of the last check shown.
@@ -134,7 +204,13 @@ Response shape (sketch):
   "blockers": [
     { "code": "unit_no_price", "unit": "Photographer's Studio",
       "message": "Needs a base price before this unit can go live." }
-  ]
+  ],
+  "sync_control_ack": {                // §1a.2 - per channel, once ever
+    "airbnb": { "acknowledged_at": null }
+  },
+  "test_booking": {                    // §1a.3 - per channel
+    "airbnb": { "status": "not_started" }   // not_started | done | skipped
+  }
 }
 ```
 
@@ -153,25 +229,34 @@ than something a person has to notice.
 
 **Reused as-is:** `PushConfirmationGate.tsx`, `channex_push_preflight`,
 `channex_channel_activate` (and its server-side enforcement), `computeRateCoverage()`,
-`checkReadiness()`, the existing setup-banner pattern.
+`checkReadiness()`, `proposeAirbnbRoomConfig()` (already fetches Airbnb's
+`default_daily_price` — Stage 2's mandatory-accept flow reads from this, doesn't refetch),
+the existing setup-banner pattern.
 
 **New:** the `#go_live` page, the `channex_go_live_status` endpoint, the readback
-comparison, and (Phase 2) inline price editing.
+comparison, the mandatory-price-at-mapping flow, the sync-control acknowledgment screen
+(4b), the test-booking tracker (5a), and (Phase 2) inline price editing.
 
 **Explicit non-goals:** no change to how incremental pushes work; no new gate in the drain
 worker (the real boundaries are mapping and activation, both already guarded); no change
-to the existing setup wizard's steps beyond the hand-off link.
+to the existing setup wizard's steps beyond the hand-off link; the test booking (5a) is a
+tracked prompt, not an automated test Ground Code runs itself — Channex has no API to
+inject one (per the channex-pms-integration skill), only the dashboard's Booking CRS app.
 
 ## 6. Phasing
 
 | Phase | Scope | Risk |
 |---|---|---|
 | **1** | Read-only page + `channex_go_live_status`. Shows stage, units, prices, mapping, live channel state, drift flag, blockers. | Very low — no writes |
-| **2** | Inline pricing in Stage 2, so a blocker can be cleared without leaving the page. Re-runs content sync for `pending_price` units once a real price exists. | Medium — writes prices, triggers sync |
-| **3** | Stage 4 + 5 wired in: gate reached from here, activation, then readback verification. | Higher — this is the live push |
+| **2** | Mandatory price-at-mapping (§1a.1) and inline pricing in Stage 2, so a blocker can be cleared without leaving the page. Re-runs content sync for `pending_price` units once a real price exists. | Medium — writes prices, triggers sync |
+| **3** | Stage 4a+4b wired in: preflight gate + sync-control acknowledgment, then activation. | Higher — this is the live push |
+| **4** | Stage 5: test-booking tracker (5a) and readback verification (5b). | Low — tracking + read-only API calls |
 
 Phase 1 is worth shipping alone. Nearly every incident was invisible state, and Phase 1
-makes the state visible without being able to cause a new one.
+makes the state visible without being able to cause a new one. Phase 2's mandatory-price
+step is the single highest-leverage addition from §1a — it closes the exact gap that
+produced the ₹3,500 incident, structurally, rather than relying on a guard further
+downstream to catch it.
 
 ## 7. Decisions needed before building
 
@@ -182,3 +267,12 @@ makes the state visible without being able to cause a new one.
    view ("live on 2 channels, last verified 3 hrs ago"). Confirms it isn't throwaway UI.
 4. **Verify window** — 30 days proposed. Longer is a better check and a slower page.
 5. **Phase 2 scope** — prices only, or also check-in/out times and capacity?
+6. **(new, §1a.1) Mandatory price at mapping — hard block or strong default?** Proposed as
+   a hard block (mapping cannot complete without an accepted price). Confirm this is
+   acceptable UX for the case where the owner genuinely wants to map now and price later —
+   if that's a real workflow, this needs a named "map without pricing yet" override rather
+   than silently being impossible.
+7. **(new, §1a.3) Who performs the test booking?** The owner, self-service, or support as
+   part of white-glove onboarding (consistent with the Telegram pairing model)? Changes
+   whether 5a needs owner-facing instructions or is purely an internal/support checklist
+   item recorded against the connection.
