@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { StaffMember } from '../types';
 import { getPropertySlug, apiFetch, API_ROOT_BASE } from '../services/api';
+import { SessionEndedOverlay } from '../components/SessionEndedOverlay';
 
 // Normalize role string from backend (e.g., 'super_admin' -> 'Super Admin')
 function normalizeRole(role: string): string {
@@ -22,6 +23,11 @@ interface AuthContextValue {
   authChecked: boolean;
   sessionMismatchNotice: string | null;
   clearSessionMismatchNotice: () => void;
+  /** True once a session that WAS confirmed logged-in has ended without this
+   *  tab asking for it - signing out in another tab, or the session expiring
+   *  server-side. Drives the blocking overlay below; a tab that has simply
+   *  never been logged in stays false and gets the normal login screen. */
+  sessionEndedElsewhere: boolean;
   setActiveRole: (role: string) => void;
   login: (staff: StaffMember) => void;
   logout: () => void;
@@ -111,6 +117,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const authEpochRef = useRef(0);
   const lastLoginTimeRef = useRef(0);
 
+  const [sessionEndedElsewhere, setSessionEndedElsewhere] = useState(false);
+  // Tracks whether this tab has ever held a session the BACKEND confirmed.
+  // Without it, "not authenticated" on a fresh visit is indistinguishable
+  // from "you were signed out while working", and the overlay would greet
+  // first-time visitors sitting on the login screen.
+  const hadConfirmedSessionRef = useRef(false);
+
   // Sync auth state on mount and whenever it changes. The optimistic
   // useState initializers above read localStorage for a fast first paint,
   // but this effect is what actually decides isAuthenticated - always by
@@ -162,6 +175,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             isPlatformAdmin: !!data.user.is_platform_admin,
           };
           localStorage.setItem(userKey(), JSON.stringify(user));
+          hadConfirmedSessionRef.current = true;
+          setSessionEndedElsewhere(false);
           setIsAuthenticated(true);
           setCurrentUser(user);
           setActiveRole(normalizeRole(user.role));
@@ -226,6 +241,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               isPlatformAdmin: !!loginData.user.is_platform_admin,
             };
             localStorage.setItem(userKey(), JSON.stringify(user));
+            hadConfirmedSessionRef.current = true;
+            setSessionEndedElsewhere(false);
             setIsAuthenticated(true);
             setCurrentUser(user);
             setActiveRole(normalizeRole(user.role));
@@ -244,6 +261,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // No real backend session, and not a public demo property either.
+      // If this tab previously HAD a confirmed session, it didn't simply
+      // arrive logged-out - someone signed out in another tab (the 'storage'
+      // listener below re-runs this check) or the session expired underneath
+      // it. Raise the blocking overlay rather than silently swapping in a
+      // login screen under whatever the user was in the middle of.
+      if (hadConfirmedSessionRef.current) {
+        hadConfirmedSessionRef.current = false;
+        setSessionEndedElsewhere(true);
+      }
       localStorage.removeItem(authKey());
       localStorage.removeItem(userKey());
       setIsAuthenticated(false);
@@ -299,6 +325,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(staff);
     setActiveRole(normalizeRole(staff.role || 'Staff'));
     setSessionMismatchNotice(null);
+    hadConfirmedSessionRef.current = true;
+    setSessionEndedElsewhere(false);
     localStorage.setItem(authKey(), 'true');
     localStorage.setItem(userKey(), JSON.stringify(staff));
   }, []);
@@ -313,14 +341,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
     setCurrentUser(null);
     setSessionMismatchNotice(null);
+    // This tab asked to sign out, so it gets the ordinary login screen, not
+    // the "you were signed out elsewhere" overlay. Other tabs learn about it
+    // through the 'storage' event and raise the overlay themselves.
+    hadConfirmedSessionRef.current = false;
+    setSessionEndedElsewhere(false);
     localStorage.removeItem(authKey());
     localStorage.removeItem(userKey());
     localStorage.removeItem('artists_farm_user_session');
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, authChecked, sessionMismatchNotice, clearSessionMismatchNotice, setActiveRole, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, activeRole, isAuthenticated, authChecked, sessionMismatchNotice, clearSessionMismatchNotice, sessionEndedElsewhere, setActiveRole, login, logout }}>
       {children}
+      {sessionEndedElsewhere && <SessionEndedOverlay />}
     </AuthContext.Provider>
   );
 };

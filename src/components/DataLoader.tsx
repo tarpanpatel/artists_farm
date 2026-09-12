@@ -55,6 +55,17 @@ interface DataLoaderProps {
   children: (data: PreloadedData) => React.ReactNode;
 }
 
+const fetchMultiKeyRooms = (propertyId: number) =>
+  apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`)
+    .then(response => response.json())
+    .then(json => {
+      if (!json.success) throw new Error('get_multikey_property returned success:false');
+      return json.data;
+    });
+
+const hasRealRooms = (property: any) =>
+  Array.isArray(property?.rooms) && property.rooms.length > 0;
+
 export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const [data, setData] = useState<PreloadedData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +97,12 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   // App.tsx - applied here the same way: only the LATEST invocation's
   // results are ever committed to state.
   const loadTokenRef = useRef(0);
+  // True only while the in-load rooms retry loop below is actually running.
+  // The auth-arrival recovery effect further down reads it so the two never
+  // fetch rooms concurrently, and so recovery still fires if that loop gave
+  // up (it resets this to false on exhaustion).
+  const roomsRetryRunningRef = useRef(false);
+  const roomsRecoveredForRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadTokenRef.current += 1;
@@ -142,14 +159,6 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
           sessionCheckPromise,
         ]);
         let property = rawProperty;
-
-        const fetchMultiKeyRooms = (propertyId: number) =>
-          apiFetch(`/php/api/router.php?action=get_multikey_property&property_id=${propertyId}`)
-            .then(response => response.json())
-            .then(json => {
-              if (!json.success) throw new Error('get_multikey_property returned success:false');
-              return json.data;
-            });
 
         let roomsFetchFailed = false;
         if (property && property.property_type === 'MULTI_KEY') {
@@ -303,6 +312,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // state again. A genuine fetch failure (transient network/cold-start error)
         // recovers fine within the same loop too.
         if (roomsFetchFailed && property?.id && (isAuthenticated || property.is_public_demo)) {
+          roomsRetryRunningRef.current = true;
           (async () => {
             // Widened 10 Sep 2026 from 4 attempts/~7s total to 7/~16s - the
             // exact same "empty rooms" symptom recurred live the very next
@@ -329,18 +339,21 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
                 // actually done, it just hit the same race again. Fall
                 // through to the next attempt instead of accepting it and
                 // stopping.
-                if (!Array.isArray(fullProperty?.rooms) || fullProperty.rooms.length === 0) {
+                if (!hasRealRooms(fullProperty)) {
                   if (attempt === maxAttempts) {
                     console.error('Retry for MultiKey property details exhausted all attempts: rooms still empty');
+                    roomsRetryRunningRef.current = false;
                     setData((prev) => prev ? { ...prev, roomsFetchPending: false } : prev);
                   }
                   continue;
                 }
+                roomsRetryRunningRef.current = false;
                 setData((prev) => prev ? { ...prev, currentProperty: fullProperty, roomsFetchPending: false } : prev);
                 return;
               } catch (err) {
                 if (attempt === maxAttempts) {
                   console.error('Retry for MultiKey property details exhausted all attempts:', err);
+                  roomsRetryRunningRef.current = false;
                   setData((prev) => prev ? { ...prev, roomsFetchPending: false } : prev);
                 }
               }
@@ -416,6 +429,51 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
 
     loadAllData();
   }, []);
+
+  // loadAllData() above runs exactly once, on mount, and decides whether to
+  // fetch a MULTI_KEY property's rooms from a single check_session snapshot
+  // taken at that instant. On a PWA cold start that snapshot can come back
+  // false while login is still settling - which skips the rooms fetch AND
+  // fails the `isAuthenticated` guard on its own retry loop, so nothing ever
+  // fetched rooms again and roomsFetchPending stayed true until a manual
+  // reload (reported 12 Sep 2026: "just logged in pwa and same old problem,
+  // calendar is empty... it gets resolved if I exit or refresh"). The
+  // mount-time snapshot is a starting point, not the final word - this picks
+  // the fetch back up when a session is actually confirmed.
+  const isAuthed = !!authCtx?.isAuthenticated;
+  const propertyId = data?.currentProperty?.id;
+  const roomsMissing = !!data?.isMultiKeyProperty && !hasRealRooms(data?.currentProperty);
+
+  useEffect(() => {
+    if (!authChecked || !isAuthed || !propertyId || !roomsMissing) return;
+    if (roomsRetryRunningRef.current) return;
+    if (roomsRecoveredForRef.current === propertyId) return;
+    roomsRecoveredForRef.current = propertyId;
+
+    let cancelled = false;
+    (async () => {
+      setData((prev) => prev ? { ...prev, roomsFetchPending: true } : prev);
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          const fullProperty = await fetchMultiKeyRooms(propertyId);
+          if (cancelled) return;
+          if (hasRealRooms(fullProperty)) {
+            setData((prev) => prev ? { ...prev, currentProperty: fullProperty, roomsFetchPending: false } : prev);
+            return;
+          }
+        } catch (err) {
+          if (cancelled) return;
+          console.error('Rooms recovery attempt failed:', err);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        if (cancelled) return;
+      }
+      console.error('Rooms recovery exhausted every attempt: rooms still empty');
+      setData((prev) => prev ? { ...prev, roomsFetchPending: false } : prev);
+    })();
+
+    return () => { cancelled = true; };
+  }, [authChecked, isAuthed, propertyId, roomsMissing]);
 
   if (invalidProperty !== null) {
     return <InvalidPropertyPage propertySlug={invalidProperty} />;

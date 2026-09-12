@@ -1686,6 +1686,9 @@ export const strings: Record<string, string> = {
   invalid_property_help_text: "If you believe this is an error, please contact your administrator.",
 
   loading_screen_default_message: "Loading application...",
+  session_ended_title: "You have been logged out",
+  session_ended_message: "This account was signed out in another tab or window, or the session expired. Sign in again to continue.",
+  session_ended_action: "Sign in again",
   artists_farm_brand: "Ground Code",
   loading_timeout_message: "Loading is taking longer than expected. Click below to go home.",
   go_home_button: "Go Home",

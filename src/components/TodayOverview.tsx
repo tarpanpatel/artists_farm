@@ -1277,7 +1277,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           </div>
 
           {/* Room Rows */}
-          {rooms && rooms.length > 0 ? (
+          {rooms && rooms.length > 0 && (
             gridRooms.map((room, roomIdx) => {
               const roomGuests = getGuestsForRoom(room.id, room.name);
 
@@ -1423,8 +1423,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                   style={{ height: `${dynamicHeight}px` }}
                 >
                   {/* Room Name */}
-                  <div className="w-24 min-w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-[10px] sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center z-30 shrink-0">
-                    {room.name}
+                  {/* overflow-hidden + line-clamp (12 Sep 2026): the row has a
+                      fixed pixel height computed from its booking lanes, and
+                      this column is only 96px wide - an unclamped long name
+                      (OTA-imported listing titles run 40+ chars) wrapped to
+                      three or four lines and spilled straight out of the row,
+                      overlapping the room names above and below it. */}
+                  <div
+                    title={room.name}
+                    className="w-24 min-w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-[10px] leading-tight sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center overflow-hidden z-30 shrink-0"
+                  >
+                    <span className="line-clamp-2 break-words">{room.name}</span>
                   </div>
 
                   {/* Days Grid - Background with diagonal stripes */}
@@ -1763,36 +1772,51 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                 </div>
               );
             })
-          ) : roomsLoading ? (
-            // Background retry still in flight (see roomsLoading's own doc
-            // comment) - a real spinner here, not blank space or a
-            // misleading "no rooms" message, so this doesn't read as broken
-            // while it's just still loading.
-            <div className="flex flex-col items-center justify-center gap-3 py-10">
-              <div className="w-8 h-8 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t('today_rooms_loading_message', 'Loading rooms...')}</p>
-            </div>
-          ) : (
-            // Reached only once the background retry has exhausted every
-            // attempt (roomsLoading is now false) and `rooms` is STILL
-            // empty. A MULTI_KEY property always has at least one real
-            // child room, so this is a genuine fetch failure, not "no
-            // rooms" - the old wording here was misleading and gave the
-            // user nothing to do about it except a blind full reload.
-            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {t('today_rooms_load_failed_message', "Couldn't load rooms. Check your connection and try again.")}
-              </p>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="mt-1 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                {t('today_rooms_load_failed_retry', 'Tap to retry')}
-              </button>
-            </div>
           )}
         </div>
+
+        {/* Empty states live OUTSIDE the min-w-max grid and are stuck to the
+            scrollport's left edge (12 Sep 2026). As children of min-w-max
+            they were centred across the FULL grid width - hundreds of pixels
+            wide - so on a phone, with the grid auto-scrolled to today near
+            the left, both the spinner and the retry link rendered far
+            off-screen to the right and the user saw nothing but an empty
+            bordered box. That is why the 9/10 Sep fixes that added these two
+            states appeared to do nothing at all: they were rendering
+            correctly, just never in view. */}
+        {!(rooms && rooms.length > 0) && (
+          <div className="sticky left-0">
+            {roomsLoading ? (
+              // Background retry still in flight (see roomsLoading's own doc
+              // comment) - a real spinner here, not blank space or a
+              // misleading "no rooms" message, so this doesn't read as broken
+              // while it's just still loading.
+              <div className="flex flex-col items-center justify-center gap-3 py-10">
+                <div className="w-8 h-8 rounded-full border-[3px] border-blue-100 border-t-blue-500 dark:border-slate-800 dark:border-t-blue-400 loading-screen-spinner-spin" />
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t('today_rooms_loading_message', 'Loading rooms...')}</p>
+              </div>
+            ) : (
+              // Reached only once the background retry has exhausted every
+              // attempt (roomsLoading is now false) and `rooms` is STILL
+              // empty. A MULTI_KEY property always has at least one real
+              // child room, so this is a genuine fetch failure, not "no
+              // rooms" - the old wording here was misleading and gave the
+              // user nothing to do about it except a blind full reload.
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {t('today_rooms_load_failed_message', "Couldn't load rooms. Check your connection and try again.")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-1 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {t('today_rooms_load_failed_retry', 'Tap to retry')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Multi-Calendar Legend Footer */}

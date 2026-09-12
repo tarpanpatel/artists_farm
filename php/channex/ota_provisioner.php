@@ -32,6 +32,36 @@ if (!function_exists('airbnbNormalizeHour')) {
     }
 }
 
+if (!function_exists('normalizeOtaListingTitle')) {
+    /**
+     * Channex's listing `title` is composed, not the raw Airbnb listing name:
+     * it joins the listing's parent title and the unit's own title with a
+     * middle dot. On this account every unit's title already begins with the
+     * parent's, so rooms imported verbatim came out doubled - "The Designer's
+     * Studio · The Designer's Studio ★Central Area★" (found live 12 Sep 2026,
+     * reported as "room names are repeating"; all 5 multi-segment titles on
+     * Patel Colony had the same shape).
+     *
+     * Drops a leading segment only when it is genuinely redundant - a
+     * case-insensitive prefix of what follows - so a listing legitimately
+     * named "A · B" keeps both halves. The remainder is the full listing name
+     * as it reads on Airbnb, which is what Ground Code shows and uses.
+     */
+    function normalizeOtaListingTitle(string $title): string {
+        $title = trim($title);
+        $parts = explode("\u{00B7}", $title);
+        if (count($parts) < 2) return $title;
+
+        $result = trim(array_shift($parts));
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if ($part === '') continue;
+            $result = stripos($part, $result) === 0 ? $part : $result . ' ' . "\u{00B7}" . ' ' . $part;
+        }
+        return $result;
+    }
+}
+
 /**
  * Auto-provision property and rooms from connected Airbnb account.
  *
@@ -231,7 +261,7 @@ function autoProvisionPropertyFromAirbnb(
 
             foreach ($rawListings as $idx => $listing) {
                 $listingId = (string)$listing['id'];
-                $listingTitle = trim((string)($listing['title'] ?? "Room " . ($idx + 1)));
+                $listingTitle = normalizeOtaListingTitle((string)($listing["title"] ?? "Room " . ($idx + 1)));
                 $det = $detailsByListingId[$listingId] ?? null;
                 $L = ($det && !empty($det['success'])) ? ($det['data']['listing'] ?? []) : [];
                 $PS = is_array($L['pricing_settings'] ?? null) ? $L['pricing_settings'] : $L;
@@ -637,7 +667,7 @@ function autoCreateRoomsFromAirbnbListings(PDO $pdo, int $propertyId): array {
 
         foreach ($rawListings as $idx => $listing) {
             $listingId = (string)$listing['id'];
-            $listingTitle = trim((string)($listing['title'] ?? "Room " . ($idx + 1)));
+            $listingTitle = normalizeOtaListingTitle((string)($listing["title"] ?? "Room " . ($idx + 1)));
 
             $roomId = null;
             if (isset($existingMappingByListingId[$listingId])) {
