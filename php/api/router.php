@@ -546,6 +546,23 @@ if (!isSchemaVerified('schema_tenants_voucher_template')) {
     markSchemaVerified('schema_tenants_voucher_template');
 }
 
+// Two-message WhatsApp strategy (12 Sep 2026): separate templates for "Make Booking"
+// (sent when property owner creates a booking) and "Booking Confirmation Voucher"
+// (sent after booking is confirmed). Properties can customize both independently;
+// empty/NULL falls back to the built-in defaults.
+if (!isSchemaVerified('schema_properties_whatsapp_templates_v1')) {
+    try {
+        $propsWhatsappCols = $pdo->query("SHOW COLUMNS FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('whatsapp_make_booking_template', $propsWhatsappCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `whatsapp_make_booking_template` TEXT DEFAULT NULL AFTER `whatsapp_voucher_template`");
+        }
+        if (!in_array('whatsapp_booking_confirmation_template', $propsWhatsappCols)) {
+            $pdo->exec("ALTER TABLE properties ADD COLUMN `whatsapp_booking_confirmation_template` TEXT DEFAULT NULL AFTER `whatsapp_make_booking_template`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_properties_whatsapp_templates_v1');
+}
+
 // Per-tenant WhatsApp Business API opt-in (12 Sep 2026). The Meta sender is ONE
 // number registered to Artists Farm, billed to one Meta account, and every message
 // it sends reads as coming from "Artists Farm" - so it must only ever send on behalf
@@ -3830,6 +3847,18 @@ switch ($action) {
                 $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
             }
 
+            // Two-message WhatsApp strategy (12 Sep 2026)
+            if (array_key_exists('whatsapp_make_booking_template', $input)) {
+                $trimmedTemplate = trim($input['whatsapp_make_booking_template']);
+                $sets[] = 'whatsapp_make_booking_template = ?';
+                $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
+            }
+            if (array_key_exists('whatsapp_booking_confirmation_template', $input)) {
+                $trimmedTemplate = trim($input['whatsapp_booking_confirmation_template']);
+                $sets[] = 'whatsapp_booking_confirmation_template = ?';
+                $params[] = $trimmedTemplate !== '' ? $trimmedTemplate : null;
+            }
+
             if (empty($sets)) {
                 echo json_encode(['success' => false, 'message' => 'No fields to update']);
                 exit;
@@ -3882,6 +3911,8 @@ switch ($action) {
                         'instructions' => 'Instructions', 'checkin_time' => 'Check-in Time',
                         'checkout_time' => 'Check-out Time', 'default_tariff' => 'Default Tariff',
                         'whatsapp_voucher_template' => 'WhatsApp Voucher Template',
+                        'whatsapp_make_booking_template' => 'WhatsApp Make Booking Template',
+                        'whatsapp_booking_confirmation_template' => 'WhatsApp Booking Confirmation Template',
                     ];
                     $changedLabels = array_map(function ($c) use ($fieldLabels) {
                         return $fieldLabels[$c] ?? $c;
