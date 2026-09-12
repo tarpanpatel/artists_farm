@@ -1578,7 +1578,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 Transparent rather than filled so the grouping reads without
                 competing with the Additional Charges block further down. */}
             {bookingRoomTariff > 0 && (
-              <div className="space-y-3">
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Input
@@ -1680,7 +1680,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             {/* Pending Balance - clean rows matching Advance above */}
             {bookingAdvance > 0 && bookingPending > 0 && (
-              <div className="space-y-3">
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Input
