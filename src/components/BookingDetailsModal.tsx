@@ -18,7 +18,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { DatePicker } from './DatePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
-import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, DEFAULT_PAYMENT_REQUEST_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import {
   fetchBookingPaymentsDB,
@@ -225,6 +225,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [highlightReceiverFields, setHighlightReceiverFields] = useState(false);
   const [isIdModalOpen, setIsIdModalOpen] = useState(false);
+  // 12 Sep 2026, explicit request: Share now offers a choice before opening
+  // the preview - a Booking Confirmation voucher (the only thing it ever
+  // sent before) or a Payment Request for the outstanding balance.
+  const [isShareChoiceOpen, setIsShareChoiceOpen] = useState(false);
   const [isSharePreviewOpen, setIsSharePreviewOpen] = useState(false);
   const [sharePreviewMessage, setSharePreviewMessage] = useState('');
   const [isEditingSharePreview, setIsEditingSharePreview] = useState(false);
@@ -1136,14 +1140,64 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     });
   };
 
+  // Payment Request (12 Sep 2026) - the Share button's second option, for
+  // nudging a guest to pay their outstanding balance rather than resending
+  // the full booking voucher. Recomputes its own small set of values rather
+  // than sharing buildShareMessage()'s locals (upiVal/qrVal/etc are scoped
+  // inside that function) - a cheap duplication given how few tokens this
+  // message actually needs, versus a larger refactor to share them.
+  const buildPaymentRequestMessage = (): string => {
+    const g = guest as any;
+    const matchedRoom = rooms.find((r) => String(r.id) === String(g.roomId ?? g.room_id));
+    const unitName = guest.roomNumber || matchedRoom?.name || propertyName || 'N/A';
+    const isMultiKey = isMultiKeyProperty ?? (rooms && rooms.length > 1);
+    const upiVal = (propertyUpiId || g.upi_id || '').trim();
+    const upiPaymentDeepLink = upiVal
+      ? `upi://pay?pa=${encodeURIComponent(upiVal)}&pn=${encodeURIComponent(propertyName || 'Resort')}&cu=INR&am=${encodeURIComponent(pendingDisplay > 0 ? pendingDisplay.toFixed(2) : '')}`
+      : '';
+    const qrVal = propertyUpiQrCodeUrl || g.upi_qr_code_url
+      || (upiPaymentDeepLink ? `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiPaymentDeepLink)}` : '');
+    const phoneVal = propertyPhone || g.phone || '';
+
+    return renderWhatsappVoucherTemplate(DEFAULT_PAYMENT_REQUEST_TEMPLATE, {
+      guest_name: guest.guestName || 'Guest',
+      property_name: propertyName || 'our property',
+      room_name: isMultiKey ? unitName : '',
+      checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),
+      balance_due: pendingDisplay > 0 ? pendingDisplay.toFixed(2) : '0.00',
+      upi_id: upiVal,
+      upi_qr_code_url: qrVal,
+      contact_phone: phoneVal,
+      voucher_link: voucherToken
+        ? `${window.location.origin}${window.location.pathname}#voucher?token=${voucherToken}`
+        : '',
+    });
+  };
+
   // 28 Aug 2026, explicit request: Share used to fire navigator.share()/clipboard-copy
   // immediately with no way to see the actual message first. Now Share just opens a
   // preview of the exact text that will go out; the preview's own Send button is what
   // actually triggers shareTextContent() below. This is a Modal, not a second Drawer,
   // per DESIGN.md's "nested dialogs never stack a second Drawer" rule - it opens from
   // inside the already-open Booking Details Drawer.
+  //
+  // 12 Sep 2026: Share now opens a small choice modal first (Booking
+  // Confirmation vs Payment Request) instead of jumping straight to the
+  // confirmation voucher - see isShareChoiceOpen below.
   const handleShareBooking = () => {
+    setIsShareChoiceOpen(true);
+  };
+
+  const handleChooseBookingConfirmation = () => {
+    setIsShareChoiceOpen(false);
     setSharePreviewMessage(buildShareMessage());
+    setIsEditingSharePreview(false);
+    setIsSharePreviewOpen(true);
+  };
+
+  const handleChoosePaymentRequest = () => {
+    setIsShareChoiceOpen(false);
+    setSharePreviewMessage(buildPaymentRequestMessage());
     setIsEditingSharePreview(false);
     setIsSharePreviewOpen(true);
   };
@@ -2305,6 +2359,63 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             onIdVerified?.(guestId);
           }}
         />
+      )}
+
+      {/* Share Choice (12 Sep 2026, explicit request: "when i click on share
+          button, it should show a modal with two options, send booking
+          confirmation or booking payment request") - a small picker in front
+          of the Share Preview modal, same Modal-not-Drawer reasoning as that
+          one below. Payment Request is hidden when nothing is actually owed -
+          there's nothing to ask for. */}
+      {isShareChoiceOpen && (
+        <Modal show onClose={() => setIsShareChoiceOpen(false)} dismissible size="sm" popup className="z-70">
+          <div className="flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">
+                {t('share_choice_heading', 'Share with Guest')}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsShareChoiceOpen(false)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2.5">
+              <button
+                type="button"
+                onClick={handleChooseBookingConfirmation}
+                className="w-full text-left p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer flex items-center gap-3"
+              >
+                <div className="w-9 h-9 shrink-0 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <Share2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white m-0">{t('share_choice_confirmation_title', 'Booking Confirmation')}</p>
+                  <p className="text-2xs text-slate-500 dark:text-slate-400 m-0">{t('share_choice_confirmation_subtitle', 'Full booking details voucher')}</p>
+                </div>
+              </button>
+
+              {pendingDisplay > 0 && (
+                <button
+                  type="button"
+                  onClick={handleChoosePaymentRequest}
+                  className="w-full text-left p-3.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors cursor-pointer flex items-center gap-3"
+                >
+                  <div className="w-9 h-9 shrink-0 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white m-0">{t('share_choice_payment_title', 'Payment Request')}</p>
+                    <p className="text-2xs text-slate-500 dark:text-slate-400 m-0">{t('share_choice_payment_subtitle', `Ask for the ₹${pendingDisplay.toLocaleString('en-IN')} outstanding balance`)}</p>
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Share Preview (28 Aug 2026) - centered Modal, not a Drawer, since this opens
