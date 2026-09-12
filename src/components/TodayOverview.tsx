@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LogIn, LogOut, Bell, User, Globe, ArrowRight } from './icons/FlowbiteIcons';
-import { Dropdown, DropdownItem } from 'flowbite-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LogIn, LogOut, Bell, User, Globe, ArrowRight, DoorOpen, Pencil, Calendar, Tag, X } from './icons/FlowbiteIcons';
+import { Dropdown, DropdownItem, Modal } from 'flowbite-react';
 import { Popover } from './Popover';
 import { Guest } from '../types';
 import { BookingDetailsModal } from './BookingDetailsModal';
@@ -44,7 +44,7 @@ interface TodayOverviewProps {
   roomsLoading?: boolean;
   isMultiKeyProperty?: boolean;
   kitchenModuleEnabled?: boolean;
-  onNavigateToRoom?: (roomSlug: string) => void;
+  onNavigateToRoom?: (roomSlug: string, initialTab?: any) => void;
   onNavigate?: (tab: any, menuItemKey?: string) => void;
   // Optional prefill (added 3 Sep 2026, click-to-select-a-range on the
   // calendar) - the header "+ Add Booking" button still calls this with no
@@ -87,7 +87,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   isMultiKeyProperty = false,
   // kitchenModuleEnabled: still in the props interface (App.tsx passes it) but
   // no longer read here since "Share Food Menu" moved to the sidebar.
-  onNavigateToRoom: _onNavigateToRoom,
+  onNavigateToRoom,
   onNavigate: _onNavigate,
   onAddBooking,
   // Only ever called from the OTA-conversion modal, removed 3 Sep 2026 (iCal
@@ -170,6 +170,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   // Room scope for the "See all pricing rules" escape hatch into RateRuleModal.
   const [rateModalRoomIds, setRateModalRoomIds] = useState<number[] | undefined>(undefined);
+  // Room chosen from the left sticky room column to view/edit details, bookings, or pricing
+  const [selectedActionRoom, setSelectedActionRoom] = useState<{ id: number; name: string; slug?: string; default_tariff?: number } | null>(null);
 
   /**
    * Drag bookkeeping, in a ref rather than state: a pointer drag fires on every
@@ -1429,12 +1431,17 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                       (OTA-imported listing titles run 40+ chars) wrapped to
                       three or four lines and spilled straight out of the row,
                       overlapping the room names above and below it. */}
-                  <div
-                    title={room.name}
-                    className="w-24 min-w-24 px-2 py-0 font-semibold text-slate-900 dark:text-white text-[10px] leading-tight sticky left-0 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50 flex items-center overflow-hidden z-30 shrink-0"
+                  {/* Room Name - Clickable action trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedActionRoom(room)}
+                    title={`Manage ${room.name}`}
+                    className="w-24 min-w-24 px-2 py-0 text-left font-semibold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 text-[10px] leading-tight sticky left-0 bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50/60 dark:hover:bg-blue-950/40 border-r border-slate-100 dark:border-slate-700/50 flex items-center overflow-hidden z-30 shrink-0 cursor-pointer group transition-colors focus:outline-hidden"
                   >
-                    <span className="line-clamp-2 break-words">{room.name}</span>
-                  </div>
+                    <span className="line-clamp-2 break-words group-hover:underline underline-offset-2">
+                      {room.name}
+                    </span>
+                  </button>
 
                   {/* Days Grid - Background with diagonal stripes */}
                   <div className="flex relative flex-1 overflow-hidden" style={{ width: `${daysArray.length * columnWidth}px`, minWidth: `${daysArray.length * columnWidth}px` }}>
@@ -1967,6 +1974,140 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
           initialEndDate={rateRuleEndDate}
           initialRoomIds={rateModalRoomIds}
         />
+      )}
+
+      {/* Room Action Modal - Edit Property Details, View All Bookings, or Edit Pricing */}
+      {selectedActionRoom && (
+        <Modal
+          show={!!selectedActionRoom}
+          onClose={() => setSelectedActionRoom(null)}
+          size="md"
+          className="z-70"
+        >
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                <DoorOpen className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate m-0">
+                  {selectedActionRoom.name}
+                </h3>
+                <p className="text-2xs text-gray-500 dark:text-gray-400 m-0">
+                  Choose an action for this room
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedActionRoom(null)}
+              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-4 bg-white dark:bg-gray-850 space-y-2.5">
+            {/* Action 1: Edit Property Details */}
+            <button
+              type="button"
+              onClick={() => {
+                const room = selectedActionRoom;
+                setSelectedActionRoom(null);
+                const roomSlug = room.slug || room.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || String(room.id);
+                if (onNavigateToRoom) {
+                  onNavigateToRoom(roomSlug, 'edit_property');
+                } else {
+                  window.location.hash = `#${roomSlug}/edit_property`;
+                }
+              }}
+              className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 bg-white dark:bg-slate-800/80 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all text-left cursor-pointer group shadow-xs"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    Edit Property Details
+                  </div>
+                  <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+                    Update room name, check-in/out times, and amenities
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* Action 2: View All Bookings */}
+            <button
+              type="button"
+              onClick={() => {
+                const room = selectedActionRoom;
+                setSelectedActionRoom(null);
+                const roomSlug = room.slug || room.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || String(room.id);
+                if (onNavigateToRoom) {
+                  onNavigateToRoom(roomSlug, 'guests');
+                } else {
+                  window.location.hash = `#${roomSlug}/guests`;
+                }
+              }}
+              className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 bg-white dark:bg-slate-800/80 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-all text-left cursor-pointer group shadow-xs"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    View All Bookings
+                  </div>
+                  <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+                    View all active, upcoming, and past stays for this room
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+
+            {/* Action 3: Edit Pricing */}
+            <button
+              type="button"
+              onClick={() => {
+                const room = selectedActionRoom;
+                setSelectedActionRoom(null);
+                setRateModalRoomIds([room.id]);
+                setShowRateRuleModal(true);
+              }}
+              className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 bg-white dark:bg-slate-800/80 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-all text-left cursor-pointer group shadow-xs"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                    Edit Pricing
+                  </div>
+                  <div className="text-2xs text-slate-500 dark:text-slate-400 truncate">
+                    Adjust base rate, seasonal dates, and active rate rules
+                  </div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </button>
+          </div>
+
+          <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-end rounded-b-lg">
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => setSelectedActionRoom(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </Modal>
       )}
     </div>
   );
