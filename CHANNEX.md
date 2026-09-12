@@ -348,6 +348,26 @@ After any activate or push, check Channex's Inventory tab or do a real `GET avai
 `GET tasks/:id`. A push can fail server-side without the caller surfacing it — that is
 exactly how 5.1 stayed invisible.
 
+### 5.7a Never write a connection status without checking what it already is
+
+**Found live 12 Sep 2026.** Patel Colony's Airbnb connection showed "Ready to activate" in the
+UI while `GET /channels/:id` reported `is_active: true` for the same channel. Three paths wrote
+`status = 'ready_to_activate'` unconditionally — `autoProvisionPropertyFromAirbnb()`, the
+`channex_save_room_mappings` action, and the rate-plan update branch for an existing channel —
+so an owner who went live and later re-imported, remapped rooms, or updated rate plans silently
+demoted their own live channel.
+
+Parking a connection is correct (5.4a); *demoting* one is not. Always go through
+`parkChannexConnectionForActivation()` (`php/channex/channel_connections.php`), which preserves
+`active` and otherwise behaves like the plain upsert. Creating a brand-new channel is the one
+place that may write the status directly — there is no prior row to preserve.
+
+Why it matters beyond the badge: `sync_audit.php` joins on `status = 'active'`, so a demoted row
+drops out of the audit meant to catch sync problems on a live channel, and the UI then points the
+owner at Go Live — a wide push — on a channel that is already syncing. The push path itself never
+reads this status (neither `outbox.php` nor `ari_drain_worker.php`), so outbound sync keeps
+working throughout, which is exactly why this can sit unnoticed.
+
 ### 5.8 Production is off limits
 
 Never deploy or write to production (`ground-code.com`). CLAUDE.md's hard rule governs; only
