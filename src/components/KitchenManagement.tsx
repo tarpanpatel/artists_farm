@@ -3637,47 +3637,15 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               </button>
             </div>
 
-            <div className="p-5 space-y-3 bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+            <div className="p-5 bg-white dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
               <p className="m-0">
-                {t('no_checked_in_guest_modal_desc', 'There are currently no guests checked in to the property. An in-house room order requires an active checked-in guest to bill to.')}
+                {t('no_checked_in_guest_modal_desc', 'To take orders you need either a checked in guest or walk in guest. Go to bookings page to check in /create one, or switch to choose Walk-in Guest instead.')}
               </p>
-              <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">•</span>
-                  <span>
-                    <a
-                      href="#bookings"
-                      onClick={() => setShowNoGuestModal(false)}
-                      className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer"
-                    >
-                      Go to bookings page
-                    </a>{' '}
-                    to check in a guest,
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">•</span>
-                  <span>
-                    or switch to{' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOrderMode('walkin');
-                        setShowNoGuestModal(false);
-                      }}
-                      className="text-blue-600 dark:text-blue-400 font-semibold underline cursor-pointer"
-                    >
-                      choose Walk-in Guest
-                    </button>{' '}
-                    instead.
-                  </span>
-                </div>
-              </div>
             </div>
 
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2.5 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2.5 bg-gray-50 dark:bg-gray-850 rounded-b-lg shrink-0">
               <Button
-                variant="secondary"
+                variant="primary"
                 size="sm"
                 onClick={() => {
                   setShowNoGuestModal(false);
@@ -3686,6 +3654,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
               >
                 Go to Bookings
               </Button>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">or</span>
               <Button
                 variant="primary"
                 size="sm"
