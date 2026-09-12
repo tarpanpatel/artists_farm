@@ -937,6 +937,10 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
+  // Drives the Global Add Booking Drawer's own header text below - same
+  // "GuestManagement reports its internal saved state up" pattern as
+  // OperationalDashboard.tsx's own Add Guest Drawer (12 Sep 2026).
+  const [addBookingDrawerSaved, setAddBookingDrawerSaved] = useState(false);
   // Calendar click-to-select-a-range prefill (added 3 Sep 2026) - only
   // TodayOverview's multi-room calendar routes through this global drawer;
   // OperationalDashboard's own month-grid calendar has its own local drawer
@@ -3132,17 +3136,17 @@ ${itemsStr}
             WalkInTabBillModal.tsx already use rather than a one-off). */}
         <FlowbiteDrawer
           open={isAddBookingModalOpen}
-          onClose={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); }}
+          onClose={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); setAddBookingDrawerSaved(false); }}
           position="right"
           className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
         >
           <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
             <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
-              Add Booking
+              {addBookingDrawerSaved ? 'Booking Created' : 'Add Booking'}
             </h2>
             <button
               type="button"
-              onClick={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); }}
+              onClick={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); setAddBookingDrawerSaved(false); }}
               className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
               aria-label="Close drawer"
             >
@@ -3160,6 +3164,7 @@ ${itemsStr}
               preSelectRoom={addBookingPrefill?.roomName}
               preSelectCheckinDate={addBookingPrefill?.checkin}
               preSelectCheckoutDate={addBookingPrefill?.checkout}
+              onSavedStateChange={setAddBookingDrawerSaved}
               onAddGuest={async (guest) => {
                 await handleAddGuest(guest);
                 // Does NOT close here (31 Aug 2026, second pass). Closing

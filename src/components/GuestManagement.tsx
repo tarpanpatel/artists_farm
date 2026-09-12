@@ -83,6 +83,12 @@ interface GuestManagementProps {
   preSelectCheckinDate?: string;
   preSelectCheckoutDate?: string;
   onClose?: () => void;
+  // Lets a wrapping drawer's own header (rendered outside this component -
+  // OperationalDashboard.tsx's "Add Guest Drawer" and App.tsx's Global Add
+  // Booking Drawer both hardcode a static title) react to the internal
+  // savedBooking state below. Added 12 Sep 2026, explicit report: "why does
+  // the header say Add Guest" once a booking had already been created.
+  onSavedStateChange?: (saved: boolean) => void;
   focusGuestId?: string | null;
   onClearFocusGuest?: () => void;
   kitchenModuleEnabled?: boolean;
@@ -234,6 +240,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   preSelectCheckinDate,
   preSelectCheckoutDate,
   onClose,
+  onSavedStateChange,
   focusGuestId = null,
   onClearFocusGuest,
   // Not used by this component directly - forwarded to BillingCheckout, whose
@@ -281,6 +288,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // further below is unaffected: it runs before the optimistic add happens.
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedBooking, setSavedBooking] = useState<Guest | null>(null);
+  // Tell a wrapping drawer's own (externally-rendered) header when a booking
+  // has just been created, so it can stop calling itself "Add Guest"/"Add
+  // Booking" once there's nothing left to add. Fires on every change, not
+  // just true - the drawer needs to know when it flips back to false too
+  // (e.g. "Add Another Booking" resets savedBooking to null mid-session).
+  useEffect(() => {
+    onSavedStateChange?.(!!savedBooking);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedBooking]);
   const [isSharingBooking, setIsSharingBooking] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
   const [, setGuestNameTouched] = useState(false);
@@ -1236,6 +1252,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               setIsSubmitting(false);
             }
           }}>
+            {/* Once a booking has been saved, every field below is inert - editing
+                them does nothing until "Add Another Booking" resets the form, so
+                leaving them fully interactive was misleading (reported live, 12 Sep
+                2026: "if the booking is created, saved booking button and other
+                fields should be greyed out"). A real <fieldset disabled> is used
+                rather than adding a `disabled` prop to every Input/Select/
+                DateRangePicker individually - the browser cascades `disabled` (and
+                therefore each field's own `disabled:opacity-*` Tailwind styling) to
+                every native form control inside automatically, so nothing else in
+                this file needs to change. `contents` keeps the fieldset out of the
+                grid/spacing layout - a real <fieldset> defaults to a bordered block
+                box that would otherwise visually nest all these rows one level in. */}
+            <fieldset disabled={!!savedBooking} className="contents">
             {/* Row 0: Guest Name (Full width) */}
             <div>
               <Input
@@ -1756,6 +1785,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
               </div>
             )}
+            </fieldset>
 
             <Button
               type="submit"
@@ -1766,12 +1796,12 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                  <span>{t('saving_booking_button', 'Saving Booking...')}</span>
+                  <span>{t('saving_booking_button', 'Creating Booking...')}</span>
                 </>
               ) : savedBooking ? (
                 <span>Saved Booking ✓</span>
               ) : (
-                <span>{t('save_guest_booking_button', 'Save Booking')}</span>
+                <span>{t('save_guest_booking_button', 'Create Booking')}</span>
               )}
             </Button>
 

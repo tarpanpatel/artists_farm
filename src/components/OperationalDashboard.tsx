@@ -174,6 +174,14 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
+  // Drives the Add Guest Drawer's own header text below - GuestManagement.tsx
+  // reports its internal "a booking was just created" state up via this
+  // callback (12 Sep 2026, explicit report: "why does the header say Add
+  // Guest" after a save). Reset alongside the drawer's own close handlers so
+  // reopening at least starts the header fresh, even though GuestManagement
+  // itself stays mounted (no remount key on this instance) and so keeps its
+  // own savedBooking/fieldset-disabled state until "Add Another Booking".
+  const [addGuestDrawerSaved, setAddGuestDrawerSaved] = useState(false);
   /**
    * Airbnb-style drag selection on the month calendar (6 Sep 2026, explicit
    * request: "make sure everything we do is also being done for single
@@ -2340,7 +2348,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
       {/* Add Guest Drawer */}
       <Drawer
         open={showAddGuestModal}
-        onClose={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); }}
+        onClose={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); setAddGuestDrawerSaved(false); }}
         position="right"
         className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
@@ -2350,12 +2358,12 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               <User className="w-4 h-4" />
             </div>
             <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-              {t('add_guest_heading', 'Add Guest')}
+              {addGuestDrawerSaved ? t('booking_created_heading', 'Booking Created') : t('add_guest_heading', 'Add Guest')}
             </h2>
           </div>
           <button
             type="button"
-            onClick={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); }}
+            onClick={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); setAddGuestDrawerSaved(false); }}
             className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -2368,6 +2376,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
             receipts={receipts}
             menu={menu}
             rooms={rooms}
+            onSavedStateChange={setAddGuestDrawerSaved}
             onAddGuest={async (guest) => {
               // await + only close on success (23 Aug 2026, ROADMAP.md verification pass) -
               // onAddGuest now throws on a real backend rejection; closing unconditionally would
