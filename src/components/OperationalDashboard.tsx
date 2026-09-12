@@ -1567,15 +1567,13 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
                               ? 'bg-slate-900/[0.07] dark:bg-white/10 ring-2 ring-inset ring-slate-900 dark:ring-white'
                               : isBlockedNight
                               ? 'bg-gray-100 dark:bg-gray-800/70'
-                              : isToday
-                              ? 'bg-blue-50/40 dark:bg-blue-900/10'
                               : 'bg-white dark:bg-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-700/30'
                           }`}
                           style={inSel ? { touchAction: 'none' } : undefined}
                         >
                           <div className="flex items-center justify-between">
                             {isToday ? (
-                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shadow-xs">
+                              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full border-2 border-blue-600 text-blue-600 dark:text-blue-400 text-xs font-bold">
                                 {d}
                               </span>
                             ) : (
@@ -1926,7 +1924,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         <div className="pt-4 p-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-start gap-3 text-xs font-medium text-gray-600 dark:text-gray-300">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-3.5 rounded-xs bg-blue-50 dark:bg-blue-900/50 border border-blue-400 inline-block shadow-md" />
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-blue-600 inline-block" />
               <span>{t('legend_today', 'Today')}</span>
             </div>
             <div className="flex items-center gap-2">

@@ -739,8 +739,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             <div className="lg:col-span-7 space-y-6">
               
               {/* Accommodation & Booking Dates */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                <div className="flex items-center gap-2 text-2xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
                   <Home className="w-4 h-4 text-blue-600" />
                   <span>{t('accommodation_breakdown_heading', 'Accommodation Invoice Breakdown')}</span>
                 </div>
@@ -784,7 +784,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   />
                 </div>
 
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-lg p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
+                <div className="rounded-lg p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
                   <div className="flex justify-between items-center font-semibold gap-2">
                     <span className="text-slate-700 dark:text-slate-300 shrink-0">{t('advance_paid_label', 'Advance Paid:')}</span>
                     <div className="flex items-center gap-1">
@@ -811,7 +811,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   )}
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-950/40 rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
+                <div className="rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
                   <div className="flex justify-between items-center font-semibold">
                     <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
                     <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
@@ -832,7 +832,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Food Orders & Incidentals Log (Interactive Dish Insertion if Kitchen Enabled) */}
               {kitchenModuleEnabled && (
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
                     <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-cyan-600" />
@@ -938,7 +938,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             {/* RIGHT COLUMN: Strategy Adjustments + Final Split Settlement (LG: 5 cols) */}
             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-0 self-start">
               {/* Strategy Type Custom Adjustments */}
-              <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
                 <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
                   {t('add_custom_adjustments_heading', 'Add Custom Adjustments')}
                 </span>
@@ -1013,7 +1013,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                 {/* Applied Adjustments List */}
                 {adjustments.length > 0 && (
-                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs mt-2">
+                  <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs mt-2">
                     <span className="font-semibold text-slate-500 uppercase text-[10px] block">{t('applied_adjustments_label', 'Applied Adjustments')}</span>
                     {adjustments.map((adj) => (
                       <div key={adj.id} className="flex items-center justify-between font-semibold">
@@ -1039,7 +1039,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               </div>
 
               {/* Final Checkout Split Settlement Box */}
-              <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
+              <div className="rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
                 <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
                   <IndianRupee className="w-4 h-4 text-emerald-600" />
                   <span>{t('final_checkout_split_heading', 'Final Checkout Bill')}</span>
@@ -1095,7 +1095,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
                   {/* Itemized GST Breakdown */}
                   {gstEnabled && (
-                    <div className="bg-white/80 dark:bg-slate-800/80 p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2 text-[11px] text-blue-900 dark:text-blue-200">
+                    <div className="p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2 text-[11px] text-blue-900 dark:text-blue-200">
                       <div className="flex justify-between">
                         <span>Accommodation GST @ {gstAccommodationRate}%:</span>
                         <span className="font-semibold">₹{gstAccommodationAmount.toFixed(2)}</span>
