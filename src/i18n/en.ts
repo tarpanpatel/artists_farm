@@ -825,7 +825,7 @@ export const strings: Record<string, string> = {
   telegram_template_permissions_subtitle: "Control whether this property's own Admin/Super Admin can edit Telegram message wording and routing, or only view Root Admin's shared versions.",
   whatsapp_preview_heading: "Guest booking confirmation message/email",
   whatsapp_preview_subtitle: "Updates live as you edit the fields above - this is exactly what guests receive.",
-  whatsapp_template_edit: "Edit wording",
+  whatsapp_template_edit: "Override Message",
   whatsapp_template_hide: "Done editing",
   whatsapp_template_overridden: "Using custom wording for this property.",
   whatsapp_template_inherited: "Currently matching",

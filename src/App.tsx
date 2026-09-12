@@ -1191,7 +1191,25 @@ function AppBody({ preloadedData }: AppBodyProps) {
     }
   }, [preloadedData.currentProperty?.name]);
 
+  // Redirect to new tenant slug if it was renamed (12 Sep 2026: 'artists-farm' → 'artistic-sthan').
+  // The old slug still works via backward-compatible fallback matching in property_resolver.php,
+  // but navigating within the app should update the URL to reflect the current slug.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !authChecked || !isAuthenticated) return;
+    if (!preloadedData.currentProperty?.tenant_slug) return;
 
+    const { tenantSlug: urlTenantSlug } = getPropertyAndRoomSlugs();
+    const dbTenantSlug = preloadedData.currentProperty.tenant_slug;
+
+    // Only redirect if the URL has a tenant slug that differs from the database value
+    if (urlTenantSlug && urlTenantSlug !== dbTenantSlug) {
+      const currentPath = window.location.pathname;
+      const newPath = currentPath.replace(`/${urlTenantSlug}/`, `/${dbTenantSlug}/`);
+      if (newPath !== currentPath) {
+        window.history.replaceState(null, '', newPath + window.location.search + window.location.hash);
+      }
+    }
+  }, [authChecked, isAuthenticated, preloadedData.currentProperty?.tenant_slug]);
 
   // Hydrate nav menu from DB on startup.
   //
