@@ -474,32 +474,35 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               </>
             );
           })()}
-          {/* MODIFY BILL & AUDIT DRAWER */}
-          <Drawer
-            open={!!editingReceipt}
-            onClose={() => setEditingReceipt(null)}
-            position="right"
-            className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between audit-logs__modal"
-          >
-            {editingReceipt && (
-              <>
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <div>
-                    <h3 className="audit-logs-view__subtitle font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
-                      <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({formatDateDDMMYYYY(editingReceipt.checkoutDate) || 'Stay'})</span>
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5 font-normal">
-                      {t('modify_bill_audit_subtitle', 'Modify stay contract terms, adjust food logs, and audit checkout behavior perfectly mirroring the live billing desk.')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditingReceipt(null)}
-                    className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+        </div>
+      </div>
+
+      {/* MODIFY BILL & AUDIT DRAWER — outside md:hidden so it works on all screen sizes */}
+      <Drawer
+        open={!!editingReceipt}
+        onClose={() => setEditingReceipt(null)}
+        position="right"
+        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between audit-logs__modal"
+      >
+        {editingReceipt && (
+          <>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <div>
+                <h3 className="audit-logs-view__subtitle font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
+                  <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({formatDateDDMMYYYY(editingReceipt.checkoutDate) || 'Stay'})</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-normal">
+                  {t('modify_bill_audit_subtitle', 'Modify stay contract terms, adjust food logs, and audit checkout behavior perfectly mirroring the live billing desk.')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingReceipt(null)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
                   <form onSubmit={handleSaveReceiptEdit} className="app-form app-form--edit-receipt space-y-6 text-xs">
@@ -778,8 +781,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
               </>
             )}
           </Drawer>
-        </div>
-      </div>
     </div>
   );
 };
