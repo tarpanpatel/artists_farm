@@ -699,74 +699,44 @@ function registerTenantTrial($pdo) {
             : '';
         $loginUrl = "{$__scheme}://{$__host}{$__port}/{$propertySlug}";
 
-        // Send the welcome WhatsApp.
+        // NO WhatsApp send here, deliberately (12 Sep 2026, explicit decision:
+        // "whatsapp api will be used to send messages to artistic-sthan guests only").
         //
-        // The require_once is NOT optional and must stay directly above the call (12 Sep
-        // 2026). Without it this whole block was dead: php/whatsapp/sender.php is loaded
-        // nowhere during a register_tenant_trial request - its only other require sites
-        // are inside sendTestCadenceNudge() below, guests.php's booking path, and
-        // webhook_receiver.php, none of which run here, and there is no autoloader. So
-        // function_exists() was simply false, the block was skipped, and because the skip
-        // is silent (no log, no error, no response field) the welcome message had never
-        // once been sent while the code read as though it was sending it. Same shape as
-        // every other incident in LAUNCH_CHECKLIST.md §0: a guard asserting a capability
-        // the request never actually had. guests.php:984 already does it correctly -
-        // require immediately before use - which is why guest booking confirmations work
-        // and this did not.
-        if (is_file(__DIR__ . '/../whatsapp/sender.php')) {
-            require_once __DIR__ . '/../whatsapp/sender.php';
-        }
-        // Gated to tenants explicitly switched on (12 Sep 2026). This send had NO gate
-        // at all while the booking-confirmation path next door had one, so every brand-new
-        // tenant - not just the account that owns the Meta number - got a WhatsApp from
-        // "Artists Farm", billed to that one Meta account. A tenant outside the gate still
-        // gets the welcome EMAIL, which already carries the login URL, username and
-        // temporary passcode, so nobody is left without their credentials.
-        if (function_exists('sendWhatsAppTemplateMessage')
-            && function_exists('isWhatsAppEnabledForTenant')
-            && isWhatsAppEnabledForTenant($pdo, $tenantId)) {
-            try {
-                // {{1}} name, {{2}} FULL login URL, {{3}} username. Positional - the template
-                // on Meta must use numbered variables ({{1}}), not named ones
-                // ({{owner_name}}), because sendWhatsAppTemplateMessage() emits {type:text,
-                // text:...} without the parameter_name field a named template requires.
-                // Every other template on this account is numbered too.
-                //
-                // FINAL as of 12 Sep 2026, after this flipped twice in one day - not a wording
-                // problem, a platform constraint. $passcode was first dropped (Meta rejected a
-                // credential+greeting body as Marketing), then explicitly restored on the
-                // theory that a neutral, factual body would let a passcode through Utility.
-                // Meta's own PRE-SUBMIT classifier settled it: any passcode-shaped value in the
-                // body forces Authentication category, no matter the tone - "Category does not
-                // match" fires live in the template editor before the body wording is even a
-                // factor. Authentication templates allow exactly ONE variable (the code itself)
-                // with Meta's fixed wording and a mandatory copy-code button - no room for a
-                // login link or username alongside it, which would silently break the
-                // "every WhatsApp message needs an action link" rule (CLAUDE.md). So this
-                // message carries the link+username only; the passcode stays in the welcome
-                // email, which already delivers it with no such constraint. See CLAUDE.md's
-                // WhatsApp rule section for the two-message alternative (a second, Authentication
-                // -category template just for the code) if that's ever revisited.
-                sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $loginUrl, $phone]);
-            } catch (Exception $waErr) {
-                if (class_exists('TelescopeLogger')) {
-                    TelescopeLogger::log('whatsapp', 'WARNING', 'Onboarding welcome WhatsApp send threw: ' . $waErr->getMessage(), 'registerTenantTrial');
-                }
-            }
-        }
+        // A `welcome_onboarding` template send lived here for most of 12 Sep 2026 and has
+        // been removed. Two independent reasons, either one sufficient:
+        //
+        //   1. AUDIENCE. This message goes to a tenant OWNER at signup, not to a guest.
+        //      The WhatsApp Business API is scoped to guest-facing messages for the
+        //      Artistic Sthan account only. That also matches the standing "WhatsApp is
+        //      permanently booking-confirmation-only" decision, which predates this and
+        //      was confirmed twice - food-order and checkout-bill templates were ruled
+        //      out on the same grounds.
+        //   2. SENDER IDENTITY. There is one Meta number, registered to and billed to
+        //      one account, and every message it sends reads as coming from that account
+        //      regardless of which tenant signed up. Messaging another tenant's owner
+        //      from it was never agreed to by them.
+        //
+        // The welcome EMAIL below is unaffected and remains the onboarding channel - it
+        // already carries the login URL, username and temporary passcode, so a new tenant
+        // still receives everything needed to sign in. $loginUrl above is built for it.
+        //
+        // If this is ever revisited, see git history for the full write-up of Meta's
+        // template-category constraint (a passcode in the body forces the Authentication
+        // category, which allows exactly one variable and so cannot carry a login link).
 
         // Send welcome email - reuses the SAME root-admin-editable
         // tenant_welcome_template (Root Admin > Email Settings) that the manual
         // "Create Tenant" flow already sends via sendSmtpEmail(), rather than a
         // second hardcoded template, so there's only ever one welcome message an
-        // admin needs to customize. Best-effort like the WhatsApp send above - a
-        // missing/misconfigured SMTP setup must never fail an already-committed
-        // trial signup.
+        // admin needs to customize. Best-effort - a missing/misconfigured SMTP setup
+        // must never fail an already-committed trial signup. This is now the ONLY
+        // onboarding message; see the note above for why the WhatsApp one was removed.
         if ($email && function_exists('sendSmtpEmail') && function_exists('getTenantWelcomeTemplate')) {
             try {
-                // $loginUrl is built above, shared with the WhatsApp send - deliberately
-                // not recomputed here. The copy that used to live at this spot trusted
-                // HTTP_HOST unvalidated and kept the port, which the hoisted version fixes.
+                // $loginUrl is built above and deliberately not recomputed here. The copy
+                // that used to live at this spot trusted HTTP_HOST unvalidated and kept the
+                // port, which the hoisted version fixes. It stays hoisted now that it has
+                // only one consumer - the validated-host build is the point, not the sharing.
                 $renderedMessage = renderTenantWelcomeTemplate(getTenantWelcomeTemplate($pdo), [
                     'tenant_name' => $fullName,
                     'login_url' => $loginUrl,

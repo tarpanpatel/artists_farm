@@ -249,17 +249,45 @@ makes them go hunting for the right screen, and most simply won't.
   now defaults to **Name** - it has to be switched to **Number** every time, or the template is
   unusable from this codebase regardless of approval.
 
-**Compliance as of 12 Sep 2026** - the account has 7 approved templates but code calls only two;
-the other five (`requisition_alert`, `expense_alert`, `checkout_alert`, `pos_alert`, `kitchen_alert`,
-plus Meta's sample `hello_world`) are referenced nowhere in the repo and have never been sent:
+### Scope: guest-facing messages, for ONE enabled account only (12 Sep 2026, explicit)
+
+**The WhatsApp Business API sends to GUESTS, and only for the Artistic Sthan account.** Direct
+instruction: *"whatsapp api will be used to send messages to artistic-sthan guests only"* - which
+also restates the older, twice-confirmed "booking-confirmation-only" scope (food-order and
+checkout-bill templates were ruled out on the same grounds, not deferred).
+
+Two things follow, and both are enforced in code rather than left to convention:
+
+- **Owner/tenant-facing messages do not belong on this channel at all.** A `welcome_onboarding`
+  send lived in `registerTenantTrial()` for most of 12 Sep 2026 and was **removed** the same day -
+  it messaged a tenant owner at signup, not a guest. Onboarding is email-only now; that email
+  already carries the login URL, username and temporary passcode, so nothing was lost. Do not
+  re-add a WhatsApp send there. The template may still exist on Meta; the repo no longer calls it.
+- **The gate is `tenants.whatsapp_enabled`** (TINYINT, defaults 0, self-heals in `router.php`),
+  read via `isWhatsAppEnabledForTenant()` / `isWhatsAppEnabledForProperty()` in
+  `php/whatsapp/sender.php`. Both fail closed. It replaced a `WHATSAPP_ENABLED_TENANT_PHONE`
+  constant compared against `tenants.phone`, which had **silently drifted to matching no tenant at
+  all** on staging - so booking confirmations were sending to nobody, with no error to notice it
+  by. Never key this gate on a phone number or a slug again: both are mutable identity the owner
+  can edit (a tenant slug rename was in flight the same day), and when they change, WhatsApp dies
+  silently. There is ONE Meta number, billed to ONE account, and every message it sends reads as
+  coming from that account no matter whose guest receives it - which is the whole reason the gate
+  exists. Per-tenant credentials remain the eventual target architecture.
+
+**Compliance as of 12 Sep 2026** - the account has 7 approved templates but code calls only ONE
+(`welcome_onboarding` was removed this date, see above; `requisition_alert`, `expense_alert`,
+`checkout_alert`, `pos_alert`, `kitchen_alert`, plus Meta's sample `hello_world` are referenced
+nowhere in the repo and have never been sent):
 
 | Template | Called from | Link? |
 |---|---|---|
-| `welcome_onboarding` | `configuration.php` `registerTenantTrial()` | ✅ `{{2}}` = full login URL - 3 params: name, URL, username (NO passcode - see below) |
-| `new_booking_cofirmation` | `guests.php` booking path | ❌ **OPEN** - 3 params (name/date/room), no link |
+| `new_booking_cofirmation` | `guests.php` booking path, gated by `isWhatsAppEnabledForProperty()` | ❌ **OPEN** - 3 params (name/date/room), no link |
 
 **Never put a passcode/OTP-shaped value in a Utility-category WhatsApp template body, in ANY
-wording.** `welcome_onboarding` went through three attempts in one day before this was settled, and
+wording.** The finding below still stands and applies to any future template, even though the
+message it was learned on (`welcome_onboarding`) has since been removed from the codebase - the
+constraint is Meta's, not specific to that template. `welcome_onboarding` went through three
+attempts in one day before this was settled, and
 the final answer is a Meta platform constraint, not a copywriting one - worth recording all three so
 nobody re-litigates the first two:
 
