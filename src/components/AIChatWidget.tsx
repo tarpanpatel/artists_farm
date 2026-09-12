@@ -5,6 +5,7 @@ import { TelegramIcon } from './icons/TelegramIcon';
 import { Guest, StaffMember } from '../types';
 import { t } from '../i18n/en';
 import { getPropertySlug } from '../services/api';
+import { getTodayKey } from '../utils/dateUtils';
 
 // Support contact links (added 27 Aug 2026, human-escalation feature) - Ground Code's own
 // support contact, not a per-property/tenant value, so fixed constants rather than threaded
@@ -192,7 +193,7 @@ export const AIChatWidget: React.FC<AIChatWidgetProps> = ({
   };
 
   const getLiveContext = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayKey();
     let todayCount = 0;
     let upcomingCount = 0;
     let pastCount = 0;

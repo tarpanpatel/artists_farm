@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plug, Loader2, RefreshCw, Plus, Trash2, Send, Sparkles } from './icons/FlowbiteIcons';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
+import { getTodayKey, getDateKeyOffsetFromToday } from '../utils/dateUtils';
 import { PageHeader } from './PageHeader';
 import { Button } from './Button';
 import { Badge } from './Badge';
@@ -113,10 +114,8 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
 
     setIsSyncingAri(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const future = new Date();
-      future.setDate(future.getDate() + 500);
-      const dateTo = future.toISOString().split('T')[0];
+      const today = getTodayKey();
+      const dateTo = getDateKeyOffsetFromToday(500);
 
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_push_ari`, {
         method: 'POST',
@@ -157,10 +156,8 @@ export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ 
     if (!room.local_room_id) return;
     setSyncingRoomId(room.local_room_id);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const future = new Date();
-      future.setDate(future.getDate() + 500);
-      const dateTo = future.toISOString().split('T')[0];
+      const today = getTodayKey();
+      const dateTo = getDateKeyOffsetFromToday(500);
 
       const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_push_ari`, {
         method: 'POST',

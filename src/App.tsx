@@ -20,7 +20,7 @@ import { KitchenProvider } from './contexts/KitchenContext';
 import { ServiceRequestProvider } from './contexts/ServiceRequestContext';
 import { recordTelescopeLog } from './utils/telescopeLogger';
 import { lazyWithRetry } from './utils/lazyWithRetry';
-import { formatDateDDMMYYYY } from './utils/dateUtils';
+import { formatDateDDMMYYYY, getTodayKey } from './utils/dateUtils';
 import { detectClientInfo } from './utils/clientInfo';
 import { normalizeNavItems } from './utils/navItems';
 import { isKitchenModuleNavItem } from './data/appConfig';
@@ -1153,7 +1153,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
     const daysRemaining = Math.ceil((new Date(`${expiresAt}T00:00:00`).getTime() - Date.now()) / msPerDay);
     if (daysRemaining > 3) return; // Not in the reminder window yet.
 
-    const guardKey = `trial_expiry_toast_shown_${preloadedData.currentProperty?.id}_${new Date().toISOString().split('T')[0]}`;
+    const guardKey = `trial_expiry_toast_shown_${preloadedData.currentProperty?.id}_${getTodayKey()}`;
     try {
       if (sessionStorage.getItem(guardKey)) return;
       sessionStorage.setItem(guardKey, '1');

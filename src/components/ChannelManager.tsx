@@ -25,7 +25,7 @@ import { EmptyState } from './EmptyState';
 import { TableSkeleton } from './TableSkeleton';
 import { TablePagination } from './TablePagination';
 import { DateRangePicker } from './DateRangePicker';
-import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY, getTodayKey, getDateKeyOffsetFromToday } from '../utils/dateUtils';
 import { t } from '../i18n/en';
 
 interface ChannexMapping {
@@ -81,9 +81,7 @@ interface ChannelManagerProps {
 }
 
 function computeFutureDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return getDateKeyOffsetFromToday(days);
 }
 
 export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) => {
@@ -102,7 +100,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
   const [importOpen, setImportOpen] = useState(false);
 
   // Date range for ARI push (Defaults to 500 days for Scenario 1 compliance)
-  const [dateFrom, setDateFrom] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [dateFrom, setDateFrom] = useState<string>(() => getTodayKey());
   const [dateTo, setDateTo] = useState<string>(() => computeFutureDate(500));
 
   // Push results feedback
@@ -572,7 +570,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
             <button
               type="button"
               onClick={() => {
-                setDateFrom(new Date().toISOString().split('T')[0]);
+                setDateFrom(getTodayKey());
                 setDateTo(computeFutureDate(500));
               }}
               className="text-xs px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-medium hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
@@ -582,7 +580,7 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({ onLogAudit }) =>
             <button
               type="button"
               onClick={() => {
-                setDateFrom(new Date().toISOString().split('T')[0]);
+                setDateFrom(getTodayKey());
                 setDateTo(computeFutureDate(90));
               }}
               className="text-xs px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"

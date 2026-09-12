@@ -16,6 +16,7 @@ import {
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, AuditLog, MenuItem } from '../types';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
+import { getTodayKey } from '../utils/dateUtils';
 import { useStaff } from '../contexts/StaffContext';
 import { useFinance } from '../contexts/FinanceContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
@@ -65,8 +66,8 @@ export const DataExportCenter: React.FC<DataExportCenterProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonthNum);
   const [selectedYear, setSelectedYear] = useState<number>(currentYearNum);
   const [exportRangeType, setExportRangeType] = useState<'month' | 'year' | 'custom'>('month');
-  const [customStartDate, setCustomStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [customEndDate, setCustomEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [customStartDate, setCustomStartDate] = useState<string>(getTodayKey());
+  const [customEndDate, setCustomEndDate] = useState<string>(getTodayKey());
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null);
 
   const monthsList = [

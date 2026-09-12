@@ -20,7 +20,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useInventoryContext } from '../contexts/InventoryContext';
-import { formatDateDDMMYYYY, parseDateToYMD, formatDateOrdinal } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, parseDateToYMD, formatDateOrdinal, getTodayKey } from '../utils/dateUtils';
 
 // Units that are physically divisible (weight/volume, or a dozen - which
 // still resolves to a whole number of pieces, e.g. 0.5 Doz = 6 bananas).
@@ -866,7 +866,7 @@ export const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
     const newLog = {
       id: `wst-${Date.now().toString().slice(-4)}`,
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayKey(),
       itemName: wastedItem,
       wastedQty: Number(wastedQty),
       unit: wastedUnit,

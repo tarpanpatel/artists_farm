@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
 import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { t } from '../i18n/en';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, getTodayKey } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
 import { shareTextContent } from '../utils/shareText';
 import { Drawer as FlowbiteDrawer, DrawerItems, Modal } from 'flowbite-react';
@@ -403,7 +403,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // stale registration-time roomRate (which may be 0 or long out of date).
   const nightsForGst = (() => {
     const inD = new Date(checkinDate || guest.checkinDate);
-    const outD = new Date(checkoutDate || new Date().toISOString().split('T')[0]);
+    const outD = new Date(checkoutDate || getTodayKey());
     const diff = Math.round((outD.getTime() - inD.getTime()) / 86400000);
     return Math.max(1, diff);
   })();
@@ -662,7 +662,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         guestName: guest.guestName,
         roomNumber: guest.roomNumber,
         checkinDate: checkinDate || guest.checkinDate,
-        checkoutDate: checkoutDate || new Date().toISOString().split('T')[0],
+        checkoutDate: checkoutDate || getTodayKey(),
         roomTotal: roomCharges,
         kitchenTotal: foodTotal,
         miscTotal: extraCharges,

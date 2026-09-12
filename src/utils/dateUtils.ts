@@ -159,7 +159,19 @@ export const toDatetimeLocalValue = (date: Date): string =>
  * overnight-shift user in India sits inside that window, which is exactly when
  * a night manager is looking at which guests leave today.
  */
-export const getTodayKey = (): string => {
+export const getTodayKey = (): string => toLocalDateKey(new Date());
+
+/**
+ * Any Date as `YYYY-MM-DD` in the viewer's own timezone. Same reasoning as
+ * getTodayKey - use this instead of `someDate.toISOString().split('T')[0]`,
+ * which shifts the date for anyone east of UTC.
+ */
+export const toLocalDateKey = (date: Date): string =>
+  `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+/** `YYYY-MM-DD`, local, N days from now. Negative N goes backwards. */
+export const getDateKeyOffsetFromToday = (days: number): string => {
   const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  d.setDate(d.getDate() + days);
+  return toLocalDateKey(d);
 };

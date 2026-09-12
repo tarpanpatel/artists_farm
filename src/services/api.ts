@@ -3,6 +3,7 @@
  */
 
 import { PropertyTelegramConfig } from '../types';
+import { getTodayKey } from '../utils/dateUtils';
 
 // This site has never actually been deployed under an /artists_farm/
 // subfolder (see .htaccess RewriteBase, index.php, and every other place
@@ -480,7 +481,7 @@ export async function fetchExpensesFromDB(): Promise<any[]> {
     if (json.status === 'success' && Array.isArray(json.data)) {
       return json.data.map(item => ({
         id: item.id || `pc-${Date.now().toString().slice(-4)}`,
-        date: item.date || item.expense_date || new Date().toISOString().split('T')[0],
+        date: item.date || item.expense_date || getTodayKey(),
         costCategory: item.category || 'Other',
         category: item.category || 'Other',
         description: item.description || item.category || 'Operational Outflow',

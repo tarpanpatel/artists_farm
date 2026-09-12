@@ -8,7 +8,7 @@ import { TablePagination } from './TablePagination';
 import { FloatingInput } from './FloatingInput';
 import { FloatingSelect } from './FloatingSelect';
 import { DateRangePicker } from './DateRangePicker';
-import { formatDateOrdinal, formatDateDDMMYY } from '../utils/dateUtils';
+import { formatDateOrdinal, formatDateDDMMYY, getTodayKey } from '../utils/dateUtils';
 import { HolidaysGuideModal } from './HolidaysGuideModal';
 import { Popover } from './Popover';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -118,8 +118,8 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
   hideSelectedUnitBadge = false,
 }) => {
   const { showToast } = useToast();
-  const [startDate, setStartDate] = useState(initialStartDate || new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(initialEndDate || new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(initialStartDate || getTodayKey());
+  const [endDate, setEndDate] = useState(initialEndDate || getTodayKey());
   const [ratePerNight, setRatePerNight] = useState<string>('');
   const [ruleName, setRuleName] = useState<string>('');
   const [selectedRoomIds, setSelectedRoomIds] = useState<number[]>([]);

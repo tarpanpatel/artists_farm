@@ -20,7 +20,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { Input } from './Input';
 import { DatePicker } from './DatePicker';
 import { FileInput } from './FileInput';
-import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { formatDateDDMMYYYY, getTodayKey } from '../utils/dateUtils';
 import { useVerticalSwipe } from '../utils/useSwipeGesture';
 import { scanPettyCashReceipt, scanUpiScreenshot, isOcrDisabledError, type ReceiptScanResult, type UpiScanResult } from '../utils/ocrScanner';
 
@@ -94,7 +94,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case 'RESET_FORM':
       return {
         ...state,
-        expenseDate: new Date().toISOString().split('T')[0],
+        expenseDate: getTodayKey(),
         expenseTime: new Date().toTimeString().slice(0, 5),
         description: '',
         moreInfoNotes: '',
@@ -135,7 +135,7 @@ export const PettyCashManagement: React.FC<PettyCashManagementProps> = ({
   const effectiveRole = (activeRole || authRole || '').toLowerCase().trim();
   const canManageExpense = effectiveRole.includes('admin') || effectiveRole.includes('root');
   const [formState, dispatch] = useReducer(formReducer, undefined, (): FormState => ({
-    expenseDate: new Date().toISOString().split('T')[0],
+    expenseDate: getTodayKey(),
     expenseTime: new Date().toTimeString().slice(0, 5),
     category: 'Other',
     description: initialDescription || '',
