@@ -718,30 +718,34 @@ function registerTenantTrial($pdo) {
         }
         if (function_exists('sendWhatsAppTemplateMessage')) {
             try {
-                // {{1}} name, {{2}} FULL login URL, {{3}} username. Positional - the template
-                // on Meta must use numbered variables ({{1}}), not named ones
+                // {{1}} name, {{2}} FULL login URL, {{3}} username, {{4}} passcode. Positional
+                // - the template on Meta must use numbered variables ({{1}}), not named ones
                 // ({{owner_name}}), because sendWhatsAppTemplateMessage() emits {type:text,
                 // text:...} without the parameter_name field a named template requires.
                 // Every other template on this account is numbered too.
                 //
-                // DELIBERATELY 3 params, not 4 - $passcode dropped 12 Sep 2026. This is
-                // registerTenantTrial(): $passcode here is the 6-digit PIN the owner just
-                // typed into the signup form themselves (SelfOnboardingWizard.tsx), not a
-                // system-generated temp code - so texting it back adds a plaintext copy of
-                // their own credential to WhatsApp's message history for zero benefit; they
-                // already know it. Removing it was also what got this template past Meta
-                // review: with no credential and no "Welcome!" framing to read as marketing,
-                // a bare "your account is ready, here is your link" message is unambiguously
-                // Utility - the earlier 4-variable draft was rejected as the wrong category
-                // for exactly that reason.
+                // $passcode WAS dropped, then explicitly restored (both 12 Sep 2026, same
+                // day) - worth recording why the flip is deliberate rather than a bug:
                 //
-                // Contrast with create_tenant/create_tenant_login/reset_tenant_login
-                // (router.php) - those DO generate a real random temp passcode for someone
-                // else's account and hand it to Root Admin to relay by hand. That is a
-                // genuine "nobody chose this secret" exposure and a good candidate for a
-                // future single-use setup-link replacement; it is a separate, manual,
-                // non-templated flow untouched by this change.
-                sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $loginUrl, $phone]);
+                //   - registerTenantTrial()'s $passcode is the 6-digit PIN the owner just
+                //     typed into the signup form themselves (SelfOnboardingWizard.tsx), not a
+                //     system-generated temp code. Sending it back over WhatsApp is confirming
+                //     a receipt, not disclosing a secret they never saw - a materially
+                //     different risk than create_tenant/create_tenant_login/reset_tenant_login
+                //     (router.php), which DO generate a real random temp passcode for SOMEONE
+                //     ELSE's account and hand it to Root Admin to relay by hand. That remains
+                //     the genuine "nobody chose this secret" exposure and a good candidate for
+                //     a future single-use setup-link replacement - untouched by this file.
+                //   - The Meta rejection was about CATEGORY (read as Marketing), not the
+                //     presence of a passcode. The actual trigger was almost certainly the
+                //     "🎉 Welcome to Ground Code!" framing - a credential plus celebratory
+                //     tone is exactly what a promotional onboarding message looks like. The
+                //     fix is a neutral, factual account-details body (no exclamation, no
+                //     emoji, no "Welcome"), which is what Meta's own Utility category
+                //     description asks for - not removing information the user asked to
+                //     receive. See the template body on file in the Meta WhatsApp Manager for
+                //     the current wording; CLAUDE.md's WhatsApp rule section has the history.
+                sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $loginUrl, $phone, $passcode]);
             } catch (Exception $waErr) {
                 if (class_exists('TelescopeLogger')) {
                     TelescopeLogger::log('whatsapp', 'WARNING', 'Onboarding welcome WhatsApp send threw: ' . $waErr->getMessage(), 'registerTenantTrial');
