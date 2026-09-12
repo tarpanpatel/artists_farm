@@ -114,6 +114,9 @@ $rateLimiter->checkAndBlock($rateLimitClientId, 'login_user');
 // now call the one shared function and just relay its result, so a future
 // fix here can never again land in one copy and not the other.
 $loginResult = performUnifiedLogin($pdo, $rawIdentifier, $passcode, $rateLimiter, $rateLimitClientId);
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 http_response_code($loginResult['status_code']);
 echo json_encode($loginResult['body']);
 exit;

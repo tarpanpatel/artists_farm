@@ -667,10 +667,63 @@ function registerTenantTrial($pdo) {
             appSetSessionCookie(session_id());
         }
 
-        // Send WhatsAPI notification if configured
+        // The new owner's login URL, built ONCE here and used by BOTH the WhatsApp
+        // template and the email below (12 Sep 2026).
+        //
+        // It previously existed only inside the email block, while the WhatsApp side
+        // passed the bare slug and the Meta-side template text carried a hardcoded
+        // "ground-code.com/" prefix around it. So a trial registered on staging was told
+        // to log in on PRODUCTION, where its account does not exist - and nobody could see
+        // that from the PHP alone, because half the URL lived in a template on Meta's
+        // servers. One fact, one place: the template now takes the whole URL as {{2}}.
+        //
+        // HTTP_HOST is just a request header and is attacker-controllable, so it is
+        // checked against the hosts this app actually runs on before being echoed back
+        // into a message that carries a temporary passcode. Anything unrecognised falls
+        // back to production rather than being trusted.
+        $__host = strtolower(explode(':', (string)($_SERVER['HTTP_HOST'] ?? ''))[0]);
+        $__isLocalHost = in_array($__host, ['localhost', '127.0.0.1'], true) || strpos($__host, '192.168.') === 0;
+        if (!in_array($__host, ['ground-code.com', 'www.ground-code.com', 'staging.ground-code.com'], true) && !$__isLocalHost) {
+            $__host = 'ground-code.com';
+        }
+        // Only local dev is ever plain HTTP. Deriving the scheme from $_SERVER['HTTPS']
+        // alone emitted "http://ground-code.com/..." whenever that was unset - a CLI
+        // context, or a request arriving with no Host header at all - putting an
+        // unencrypted link carrying a passcode into the message. Real staging/production
+        // are HTTPS-only, so say so rather than inferring it per-request.
+        $__scheme = $__isLocalHost && (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') ? 'http' : 'https';
+        // Keep the port only for local dev (localhost:3010) - it is never part of a real
+        // staging/production URL, and appending one there would break the link.
+        $__port = ($__isLocalHost && strpos((string)($_SERVER['HTTP_HOST'] ?? ''), ':') !== false)
+            ? ':' . explode(':', (string)$_SERVER['HTTP_HOST'])[1]
+            : '';
+        $loginUrl = "{$__scheme}://{$__host}{$__port}/{$propertySlug}";
+
+        // Send the welcome WhatsApp.
+        //
+        // The require_once is NOT optional and must stay directly above the call (12 Sep
+        // 2026). Without it this whole block was dead: php/whatsapp/sender.php is loaded
+        // nowhere during a register_tenant_trial request - its only other require sites
+        // are inside sendTestCadenceNudge() below, guests.php's booking path, and
+        // webhook_receiver.php, none of which run here, and there is no autoloader. So
+        // function_exists() was simply false, the block was skipped, and because the skip
+        // is silent (no log, no error, no response field) the welcome message had never
+        // once been sent while the code read as though it was sending it. Same shape as
+        // every other incident in LAUNCH_CHECKLIST.md §0: a guard asserting a capability
+        // the request never actually had. guests.php:984 already does it correctly -
+        // require immediately before use - which is why guest booking confirmations work
+        // and this did not.
+        if (is_file(__DIR__ . '/../whatsapp/sender.php')) {
+            require_once __DIR__ . '/../whatsapp/sender.php';
+        }
         if (function_exists('sendWhatsAppTemplateMessage')) {
             try {
-                sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $propertySlug, $phone, $passcode]);
+                // {{1}} name, {{2}} FULL login URL, {{3}} username, {{4}} temp passcode.
+                // Positional - the template on Meta must use numbered variables ({{1}}),
+                // not named ones ({{owner_name}}), because sendWhatsAppTemplateMessage()
+                // emits {type:text, text:...} without the parameter_name field a named
+                // template requires. Every other template on this account is numbered too.
+                sendWhatsAppTemplateMessage($phone, 'welcome_onboarding', [$fullName, $loginUrl, $phone, $passcode]);
             } catch (Exception $waErr) {
                 if (class_exists('TelescopeLogger')) {
                     TelescopeLogger::log('whatsapp', 'WARNING', 'Onboarding welcome WhatsApp send threw: ' . $waErr->getMessage(), 'registerTenantTrial');
@@ -687,10 +740,9 @@ function registerTenantTrial($pdo) {
         // trial signup.
         if ($email && function_exists('sendSmtpEmail') && function_exists('getTenantWelcomeTemplate')) {
             try {
-                $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-                $host = $_SERVER['HTTP_HOST'] ?? 'ground-code.com';
-                $loginUrl = "{$scheme}://{$host}/{$propertySlug}";
-
+                // $loginUrl is built above, shared with the WhatsApp send - deliberately
+                // not recomputed here. The copy that used to live at this spot trusted
+                // HTTP_HOST unvalidated and kept the port, which the hoisted version fixes.
                 $renderedMessage = renderTenantWelcomeTemplate(getTenantWelcomeTemplate($pdo), [
                     'tenant_name' => $fullName,
                     'login_url' => $loginUrl,
@@ -718,6 +770,10 @@ function registerTenantTrial($pdo) {
                 "Onboarding Wizard [Tenant: #{$tenantId}]",
                 ['tenant_id' => $tenantId, 'property_id' => $propertyId, 'owner' => $fullName, 'phone' => $phone]
             );
+        }
+
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
         }
 
         echo json_encode([

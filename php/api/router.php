@@ -1986,6 +1986,9 @@ switch ($action) {
         // this was extracted (29 Aug 2026, real behavioral drift found between
         // the two previously-independent copies).
         $loginResult = performUnifiedLogin($pdo, $rawIdentifier, $passcode, $rateLimiter, $rateLimitClientId);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
         http_response_code($loginResult['status_code']);
         echo json_encode($loginResult['body']);
         exit;

@@ -23,6 +23,7 @@ import { CalendarEditorPanel, CalendarSelection } from './CalendarEditorPanel';
 import { Guest } from '../types';
 import { useInventoryContext } from '../contexts/InventoryContext';
 import { useKitchenContext } from '../contexts/KitchenContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   GUEST_STATUS_CHECKED_IN,
   GUEST_STATUS_CHECKED_OUT,
@@ -158,6 +159,7 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   minimalMode = false,
 }) => {
   const { orders } = useKitchenContext();
+  const { authChecked, isAuthenticated } = useAuth();
   const pendingOrders = orders.filter((o) => o.status === 'Pending' || o.status === 'Preparing');
   const recentOrders = orders.slice(0, 5);
   const { stockRequests, pendingStockRequestsCount } = useInventoryContext();
@@ -320,8 +322,9 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   };
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     loadRateRules();
-  }, [roomId]);
+  }, [roomId, authChecked, isAuthenticated]);
 
   // Channex's own 2-letter day codes - matches room_rate_rules.days_of_week
   // (rate_rules.php) and the push side (AriDrainWorker::

@@ -13,6 +13,7 @@ import { fetchRateRulesDB, RateRule } from '../services/api';
 import { Button } from './Button';
 import { SyncBookingsButton } from './SyncBookingsButton';
 import { useToast } from './ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { isCFormGenuinelyFiled } from '../utils/cFormStatus';
 import { getFirstName } from '../utils/nameUtils';
 import { getOtaIcon } from '../utils/otaIcons';
@@ -115,6 +116,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   serviceRequestsAccessAllowed = true,
 }) => {
   const { showToast } = useToast();
+  const { authChecked, isAuthenticated } = useAuth();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -491,8 +493,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   };
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) return;
     loadRateRules();
-  }, []);
+  }, [authChecked, isAuthenticated]);
 
   // Small per-day price shown on unbooked cells (4 Sep 2026, explicit
   // request). Day-of-week matching follows Channex's own 2-letter codes - a

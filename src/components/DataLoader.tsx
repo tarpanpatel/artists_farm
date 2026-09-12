@@ -302,7 +302,7 @@ export const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
         // finish - retrying instantly would just hit the exact same not-yet-authenticated
         // state again. A genuine fetch failure (transient network/cold-start error)
         // recovers fine within the same loop too.
-        if (roomsFetchFailed && property?.id) {
+        if (roomsFetchFailed && property?.id && (isAuthenticated || property.is_public_demo)) {
           (async () => {
             // Widened 10 Sep 2026 from 4 attempts/~7s total to 7/~16s - the
             // exact same "empty rooms" symptom recurred live the very next

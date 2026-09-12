@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { StaffMember } from '../types';
 import { getPropertySlug, apiFetch, API_ROOT_BASE } from '../services/api';
 
@@ -103,6 +103,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'Super Admin';
   });
 
+  // Epoch counter incremented on every explicit login() or logout().
+  // checkAuthState captures the epoch before starting check_session, and discards
+  // any result if the epoch has moved on before it finishes. This prevents an
+  // in-flight check_session (started before or during login) from completing after
+  // login() and resetting isAuthenticated back to false.
+  const authEpochRef = useRef(0);
+  const lastLoginTimeRef = useRef(0);
+
   // Sync auth state on mount and whenever it changes. The optimistic
   // useState initializers above read localStorage for a fast first paint,
   // but this effect is what actually decides isAuthenticated - always by
@@ -126,9 +134,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let rerunQueued = false;
 
     const checkAuthState = async () => {
+      const epochAtStart = authEpochRef.current;
       try {
         const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=check_session`);
         const data = await res.json();
+
+        // If an explicit login() or logout() happened while check_session was in-flight,
+        // ignore this stale response completely.
+        if (epochAtStart !== authEpochRef.current) {
+          return;
+        }
+
         if (data?.authenticated && data?.user) {
           localStorage.setItem(authKey(), 'true');
 
@@ -175,6 +191,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           `${API_ROOT_BASE}/php/api/router.php?action=get_demo_login_credentials&property_slug=${encodeURIComponent(propertySlug)}`
         );
         const creds = await credsRes.json();
+
+        if (epochAtStart !== authEpochRef.current) {
+          return;
+        }
+
         if (creds?.success && creds?.username && creds?.passcode) {
           const loginRes = await fetch(`${API_ROOT_BASE}/php/api/router.php?action=login_user`, {
             method: 'POST',
@@ -183,6 +204,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             body: JSON.stringify({ mobile_number: creds.username, passcode: creds.passcode }),
           });
           const loginData = await loginRes.json();
+
+          if (epochAtStart !== authEpochRef.current) {
+            return;
+          }
+
           if (loginData?.success && loginData?.user) {
             localStorage.setItem(authKey(), 'true');
 
@@ -212,6 +238,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('check_session/demo login failed:', e);
       }
 
+      // If login occurred while check_session was running, do NOT wipe the session
+      if (epochAtStart !== authEpochRef.current) {
+        return;
+      }
+
       // No real backend session, and not a public demo property either.
       localStorage.removeItem(authKey());
       localStorage.removeItem(userKey());
@@ -230,25 +261,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         inFlight = false;
         if (rerunQueued) {
           rerunQueued = false;
-          runCheckAuthState();
+          // Only rerun if user hasn't recently logged in within the last 8 seconds
+          if (Date.now() - lastLoginTimeRef.current >= 8000) {
+            runCheckAuthState();
+          }
         }
       });
     };
 
     runCheckAuthState();
 
+    const handleSessionExpired = () => {
+      // If a login occurred within the last 8 seconds, ignore 401 events that originate
+      // from pre-login in-flight requests that completed after login landed.
+      if (Date.now() - lastLoginTimeRef.current < 8000) {
+        return;
+      }
+      runCheckAuthState();
+    };
+
     window.addEventListener('storage', runCheckAuthState);
     // Same-tab equivalent: 'storage' only fires in OTHER tabs, never the one
     // that made the change. apiFetch() dispatches this event on any 401 that
     // isn't login_user/check_session itself.
-    window.addEventListener('artists_farm_session_expired', runCheckAuthState);
+    window.addEventListener('artists_farm_session_expired', handleSessionExpired);
     return () => {
       window.removeEventListener('storage', runCheckAuthState);
-      window.removeEventListener('artists_farm_session_expired', runCheckAuthState);
+      window.removeEventListener('artists_farm_session_expired', handleSessionExpired);
     };
   }, []);
 
   const login = useCallback((staff: StaffMember) => {
+    authEpochRef.current += 1;
+    lastLoginTimeRef.current = Date.now();
     setIsAuthenticated(true);
     setAuthChecked(true);
     setCurrentUser(staff);
@@ -259,6 +304,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
+    authEpochRef.current += 1;
+    lastLoginTimeRef.current = 0;
     // Best-effort server-side invalidation. Fire-and-forget: client-side
     // state below still clears either way, so a failed request here doesn't
     // block the sign-out UX.
