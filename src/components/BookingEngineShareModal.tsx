@@ -22,11 +22,24 @@ export const BookingEngineShareModal: React.FC<BookingEngineShareModalProps> = (
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
 
-  const slug = propertySlug || getPropertySlug() || 'patel-colony';
-  const directUrl = `${window.location.origin}/${slug}/#book`;
-  const embedCode = `<iframe src="${directUrl}" width="100%" height="850" style="border:none;border-radius:12px;" allowfullscreen></iframe>`;
+  // getPropertySlug() returns the string 'default' when it cannot resolve one, so
+  // it is never falsy - which made the old `|| 'patel-colony'` tail unreachable,
+  // but left the real failure producing a /default/#book link that silently goes
+  // nowhere. Treat both as "unresolved" and refuse to hand out a link at all
+  // (12 Sep 2026): a wrong or dead booking link is given to real guests, and the
+  // owner has no way to tell it is wrong by looking at it.
+  const resolvedSlug = propertySlug || getPropertySlug();
+  const slug = !resolvedSlug || resolvedSlug === 'default' ? null : resolvedSlug;
+  const directUrl = slug ? `${window.location.origin}/${slug}/#book` : '';
+  const embedCode = slug
+    ? `<iframe src="${directUrl}" width="100%" height="850" style="border:none;border-radius:12px;" allowfullscreen></iframe>`
+    : '';
 
   const handleCopyLink = () => {
+    if (!slug) {
+      showToast("Couldn't work out which property this link is for. Reopen this from the property's own dashboard.", { type: 'error' });
+      return;
+    }
     navigator.clipboard.writeText(directUrl);
     setCopiedLink(true);
     showToast('Direct booking link copied to clipboard!', { type: 'success' });
@@ -34,6 +47,10 @@ export const BookingEngineShareModal: React.FC<BookingEngineShareModalProps> = (
   };
 
   const handleCopyEmbed = () => {
+    if (!slug) {
+      showToast("Couldn't work out which property this link is for. Reopen this from the property's own dashboard.", { type: 'error' });
+      return;
+    }
     navigator.clipboard.writeText(embedCode);
     setCopiedEmbed(true);
     showToast('Iframe embed code copied to clipboard!', { type: 'success' });

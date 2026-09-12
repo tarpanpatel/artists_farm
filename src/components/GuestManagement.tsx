@@ -995,31 +995,31 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             const newCheckoutStr = checkoutTime ? `${expectedCheckout} ${checkoutTime}:00` : expectedCheckout;
 
             if (!phoneNumber.trim()) {
-              showToast('Booking Rejected: Phone number is required.', { type: 'error' });
+              showToast('Phone number is required.', { type: 'error' });
               return;
             }
             if (!isValidPhoneNumber(phoneNumber, isForeignGuest)) {
               showToast(
                 isForeignGuest
-                  ? 'Booking Rejected: Enter a valid international phone number.'
-                  : 'Booking Rejected: Enter a valid 10-digit mobile number.',
+                  ? 'Enter a valid international phone number.'
+                  : 'Enter a valid 10-digit mobile number.',
                 { type: 'error' }
               );
               return;
             }
             if (!checkinDate || !expectedCheckout) {
-              showToast('Booking Rejected: Check-in and check-out dates are required.', { type: 'error' });
+              showToast('Check-in and check-out dates are required.', { type: 'error' });
               return;
             }
 
             if (isMultiKeyProperty && (!roomNumber || !roomNumber.trim())) {
-              showToast('Booking Rejected: An assigned place selection is required.', { type: 'error' });
+              showToast('An assigned place selection is required.', { type: 'error' });
               return;
             }
 
             if (advanceExceedsTotal) {
               showToast(
-                `Booking Rejected: Advance paid (₹${bookingAdvance.toLocaleString('en-IN')}) can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')}).`,
+                `Advance paid (₹${bookingAdvance.toLocaleString('en-IN')}) can't be more than the total booking amount (₹${bookingTotalDue.toLocaleString('en-IN')}).`,
                 { type: 'error' }
               );
               return;
@@ -1058,7 +1058,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             });
 
             if (hasRoomConflict) {
-              showToast(`Booking Rejected! ${roomNumber} is ALREADY booked for these dates.`, { type: 'error' });
+              showToast(`${roomNumber} is already booked for these dates.`, { type: 'error' });
               return;
             }
 
@@ -1071,7 +1071,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             });
 
             if (isDuplicate) {
-              showToast('Booking Rejected! A reservation for this contact on this check-in date already exists.', { type: 'error' });
+              showToast('A reservation for this contact on this check-in date already exists.', { type: 'error' });
               return;
             }
 

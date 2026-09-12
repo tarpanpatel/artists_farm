@@ -36,7 +36,7 @@ import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuper
 import { PageHeader } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { t } from '../i18n/en';
-import { shareTextContent } from '../utils/shareText';
+
 import { useVerticalSwipe } from '../utils/useSwipeGesture';
 import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 
@@ -581,15 +581,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     return `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nUsername: ${user.username}\nPassword: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this password private. Didn't request this? You can ignore this message.`;
   };
 
-  const handleShareLogin = async (user: { fullName: string; username: string; passcodePin?: string }) => {
+  const handleShareLogin = (user: { fullName: string; username: string; passcodePin?: string; phone?: string }) => {
     const message = buildStaffLoginShareMessage(user);
-    await shareTextContent(
-      'Ground Code Login Details',
-      message,
-      showToast,
-      "Login details copied - paste them wherever you'd like to send them.",
-      'Could not share or copy login details.',
-    );
+    const rawPhone = (user.phone || user.username || '').replace(/\D/g, '');
+    // Send directly to the user's own WhatsApp number
+    const waUrl = `https://wa.me/${rawPhone.startsWith('91') ? rawPhone : rawPhone ? `91${rawPhone}` : ''}?text=${encodeURIComponent(message)}`;
+    if (rawPhone) {
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      // Fallback: no phone known — copy to clipboard
+      navigator.clipboard?.writeText(message).then(() => {
+        showToast("Login details copied — paste them to send manually.", { type: 'success' });
+      }).catch(() => {
+        showToast("Could not send or copy login details.", { type: 'error' });
+      });
+    }
   };
 
   const handleUpdateUserSubmit = async (e: React.FormEvent) => {
@@ -842,6 +848,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             ? t('attendance_page_subtitle', 'Track staff attendance and manage salary details.')
             : t('staff_payee_subtitle', 'Manage login staff credentials, core operational suppliers, and pass-through third parties.')
         }
+        forceRow={!isAttendancePage}
+        inlineActions={!isAttendancePage && (!isAttendancePage || activeSubTab === 'control_center')}
       >
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {(!isAttendancePage || activeSubTab === 'control_center') && (
@@ -1079,25 +1087,16 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       return (
                         <div className="flex items-center gap-1.5 justify-end">
                           {canShareLogins && !!row.username && (
-                            <Popover
-                              trigger="hover"
-                              content={
-                                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                  Share login details
-                                </div>
-                              }
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => handleShareLogin({ fullName: row.fullName, username: row.username, passcodePin: row.passcodePin, phone: row.username })}
+                              leftIcon={<Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                              className="text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 hover:bg-emerald-100/60 dark:bg-emerald-950/30 font-semibold text-xs h-8 cursor-pointer shrink-0"
                             >
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleShareLogin(row)}
-                                leftIcon={<Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-                                className="text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 hover:bg-emerald-100/60 dark:bg-emerald-950/30 font-semibold text-xs h-8 cursor-pointer shrink-0"
-                              >
-                                <span className="whitespace-nowrap">Share</span>
-                              </Button>
-                            </Popover>
+                              <span className="whitespace-nowrap">Send Login Details</span>
+                            </Button>
                           )}
                           {canEdit && (
                             <Button variant="edit" size="sm" onClick={() => handleEditUser(row)} leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}>
@@ -1181,15 +1180,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   const phoneVal = rawPhone.replace(/\D/g, '');
 
                   return (
-                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-md p-4 sm:p-6 space-y-2.5">
+                    <div key={row.id} className="bg-white dark:bg-slate-800 rounded-none sm:rounded-lg border-x-0 sm:border-x border-y border-slate-200 dark:border-slate-700 shadow-sm p-4 sm:p-6 space-y-3">
+                      {/* Header row: name + role badge + You + phone */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1 flex items-center flex-wrap gap-1.5">
-                          <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{row.fullName}</h4>
-                          {isCurrentUser && (
-                            <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
-                              You
-                            </span>
-                          )}
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center flex-wrap gap-1.5">
+                            <h4 className="font-bold text-slate-900 dark:text-white text-sm m-0">{row.fullName}</h4>
+                            {isCurrentUser && (
+                              <span className="text-2xs font-semibold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 shrink-0">
+                                You
+                              </span>
+                            )}
+                            <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-semibold text-[10px] shrink-0">{row.role}</span>
+                          </div>
                           {phoneVal ? (
                             <a
                               href={`tel:${phoneVal}`}
@@ -1205,21 +1208,12 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                           )}
                         </div>
 
+                        {/* Action buttons */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 px-2 py-0.5 rounded font-semibold text-[10px] shrink-0">{row.role}</span>
                           {canShareLogins && !!row.username && (
-                            <Popover
-                              trigger="hover"
-                              content={
-                                <div className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                  Share login details
-                                </div>
-                              }
-                            >
-                              <Button onClick={() => handleShareLogin(row)} variant="secondary" size="xs" aria-label="Share login details" className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer px-2 shrink-0">
-                                <Share2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </Popover>
+                            <Button onClick={() => handleShareLogin({ fullName: row.fullName, username: row.username, passcodePin: row.passcodePin, phone: row.username })} variant="secondary" size="xs" leftIcon={<Share2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />} aria-label="Send login details" className="cursor-pointer shrink-0 whitespace-nowrap">
+                              Send Login Details
+                            </Button>
                           )}
                           {canEdit && (
                             <Button onClick={() => handleEditUser(row)} variant="edit" size="xs" leftIcon={<Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />} className="cursor-pointer px-2 shrink-0">{t('edit_button', 'Edit')}</Button>
@@ -1230,7 +1224,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 flex-wrap gap-2">
+                      {/* Stats row — flat, no nested card */}
+                      <div className="flex items-start flex-wrap gap-x-4 gap-y-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-700">
                         <div>
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">Status</span>
                           <span className={`font-semibold ${row.status === 'Disabled' || row.status === 'Inactive' ? 'text-red-600' : 'text-emerald-600'}`}>
@@ -1265,7 +1260,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                             <span className="text-slate-400 font-medium">Current Only</span>
                           )}
                         </div>
-                        <div className="text-right">
+                        <div>
                           <span className="text-[10px] text-slate-400 uppercase font-semibold block">UPI QR Code</span>
                           {(row.qrCodeUrl || row.upiId) ? (
                             <Button onClick={() => setLightboxTarget({ qrCodeUrl: row.qrCodeUrl, upiId: row.upiId, payeeName: row.fullName || row.name })} variant="link" size="sm" leftIcon={<QrCode className="w-3.5 h-3.5" />} className="text-emerald-600 hover:text-emerald-700 font-semibold text-[11px] p-0 h-auto">View QR</Button>
@@ -2535,13 +2530,14 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                       fullName: updateFullName || updateTargetUser?.fullName || '',
                       username: updateUsername || updateTargetUser?.username || '',
                       passcodePin: updatePasscode || updateTargetUser?.passcodePin,
+                      phone: updateTargetUser?.username,
                     })}
                     variant="secondary"
                     size="sm"
                     className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-semibold cursor-pointer flex items-center gap-1.5 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40"
                   >
                     <Share2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>{t('share_login_details_button', 'Share Login Details')}</span>
+                    <span>Send Login Details</span>
                   </Button>
                 ) : <div />}
 

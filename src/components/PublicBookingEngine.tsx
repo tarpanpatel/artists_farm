@@ -324,8 +324,16 @@ const MONTH_NAMES = [
 ];
 
 export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ propertySlug: initialSlugProp }) => {
+  // Empty string, never a fallback property (12 Sep 2026). This used to end in
+  // `|| 'patel-colony'` - a REAL property slug - so any URL whose first path
+  // segment is empty (the bare site root, an <iframe> embed with a truncated
+  // src) silently rendered one specific tenant's rooms, rates and availability
+  // to a guest who never asked for that property. A guest could complete a
+  // real, paid booking at the wrong property and nothing in the UI would say
+  // so. An unresolvable slug is a broken link and must be shown as one - see
+  // the "Property Unavailable" state below, which this now falls into.
   const currentSlug = useMemo(() => {
-    return initialSlugProp || (typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '') || 'patel-colony';
+    return initialSlugProp || (typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '') || '';
   }, [initialSlugProp]);
 
   const [property, setProperty] = useState<PublicProperty | null>(null);
@@ -641,6 +649,13 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
   // Fetch Public Property Data - skipped entirely in quote mode (above),
   // which needs none of the room/calendar browsing data this loads.
   const fetchPublicData = async () => {
+    // No slug in the URL at all - say so plainly rather than asking the backend
+    // to resolve an empty string, which it could only answer with a guess.
+    if (!currentSlug) {
+      setFetchError("This booking link doesn't say which property it's for. Please use the full link the property shared with you.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setFetchError(null);
     try {

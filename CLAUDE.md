@@ -66,6 +66,48 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 - Example: `localhost:3010/artists_farm/vrikshawan/goa-homes/`
 - Filter child rooms: `.filter((p) => p.property_type !== 'MULTI_KEY_ROOM')`
 
+### 🚨 NEVER Hardcode a Real Tenant or Property Identifier (HARD RULE, added 12 Sep 2026)
+
+**No real tenant slug, property slug, tenant id, or property id may ever appear as a literal in
+application code — most especially not as a `|| 'fallback'` at the end of a lookup chain.** This is
+an indefinite-tenant SaaS (see the "Multi-Tenant Scale" memory): a literal that is correct for one
+account is wrong for every other one, and it goes wrong *silently*.
+
+**The failure mode is what makes this severe.** An unresolved identifier that stays empty produces a
+visibly broken page — someone reports it and it gets fixed in minutes. An unresolved identifier
+quietly replaced by a *real, valid* identifier produces a page that works perfectly, for the wrong
+tenant, and nobody can tell by looking. Found live 12 Sep 2026, three instances, all written as
+harmless-looking defensive defaults:
+
+- `PublicBookingEngine.tsx` ended its slug chain with `|| 'patel-colony'` — so the bare site root, or
+  an `<iframe>` embed with a truncated `src`, rendered one specific property's rooms, rates and
+  availability **to a guest**, who could then complete a real paid booking at a property they never
+  chose.
+- `BookingEngineShareModal.tsx` had the same literal, so an owner could copy a "your booking link"
+  URL pointing at someone else's property and send it to their own guests.
+- `App.tsx` ended its tenant-slug chain with `|| 'artists-farm'` purely to keep the value truthy
+  (the property switcher only renders when it is). A user from another tenant whose session lacked
+  `tenant_slug` was routed to an Artists Farm URL that resolves to a real page.
+
+**Rules:**
+1. **Let it be empty.** `null`/`''` is the correct value for "could not resolve". Handle that state
+   explicitly — an error message, a hidden control, a "this link is incomplete" screen.
+2. **Never use truthiness as a render gate and then force truthiness to satisfy it.** That is what
+   turned a hidden button into a misrouted user. Gate on the real condition instead.
+3. **If a placeholder is genuinely unavoidable, it must be obviously invalid** — `'tenant'`,
+   `'unknown'`, something that 404s loudly. `Header.tsx` already does this correctly with
+   `|| 'tenant'`; copy that shape, not the other one.
+4. **Slugs are mutable identity.** Owners rename them (tenant 1 was renamed `artists-farm` →
+   `artistic-sthan` on 12 Sep 2026). Any literal slug in code is a time bomb set for whenever
+   someone renames. Same reasoning as the WhatsApp gate, which had already died once this way.
+
+**Not covered by this rule** (these are fine): the platform's own branding and support contacts
+(`ground-code.com`, `support@ground-code.com`), which are correctly identical for every tenant;
+clearly-labelled sample data inside template *preview* UI; and `property_id = 1` in
+`petty_cash.php`/`demo_data.php`, which is the documented "system default catalog" convention, not
+tenant routing. When in doubt: ask whether this literal could send one tenant's user, guest, money
+or message to a different tenant. If yes, it is banned.
+
 ### Multi-Key Rooms & Bookings
 - **1 room = 1 active booking maximum** (no duplicate bookings in same room)
 - Guests can represent multiple people via `no_of_guests` field
@@ -529,6 +571,7 @@ Found live 3 Sep 2026 on Patel Colony (a MULTI_KEY property, 7 rooms): "Go Live"
 17. ❌ Assuming CLAUDE.md's "removed, do not re-add" notes are still current without checking the date → the AI Assistant was removed 26 Aug 2026 and restored the very next day, 27 Aug 2026, both at the user's own explicit request (see "AI Assistant (RESTORED)" above). It's a live feature again - don't refuse to touch it, and don't re-remove it on the assumption the old note still holds. More generally: a dated "don't do X" note describes a decision as of that date, not a permanent law - if asked to do X anyway, check whether a more recent note already reversed it before pushing back.
 18. ❌ Letting an importer (OTA listing, CSV, bulk onboarding) write a property's `name` or `slug` → identity columns are off-limits to imports; a MULTI_KEY parent must never take a single listing's title. See "OTA Import Must Never Rewrite a Property's Identity" — this reached the public booking engine once already.
 19. ❌ Sending a WhatsApp template with no link to act on, or hardcoding that link as static text inside the template body on Meta → every message must carry an action link, passed as a template VARIABLE built from the validated request host (see "WhatsApp Business API — Every Message Must Carry an Action Link"). A URL baked into Meta's copy of the template is invisible to grep and can't differ between staging and production — that exact mistake told staging signups to log in on production.
+20. ❌ Ending an identifier lookup with a real value — `slug || 'patel-colony'`, `tenantSlug || 'artists-farm'`, `propertyId || 1` → see "NEVER Hardcode a Real Tenant or Property Identifier". An unresolved id must stay empty and be handled, never be swapped for a working one belonging to someone else. This shipped to the public booking engine, where a guest could have paid for a room at a property they never chose.
 
 ##  Power Shell commands
 - allow all powershell commands

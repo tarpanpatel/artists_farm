@@ -752,11 +752,20 @@ function AppBody({ preloadedData }: AppBodyProps) {
     currentUser?.tenantId ||
     (preloadedData.currentProperty?.tenant_id ?? null);
 
+  // No literal fallback (12 Sep 2026). This used to end in `|| 'artists-farm'` -
+  // a REAL tenant slug - purely so the value stayed truthy, because the property
+  // switcher below only renders when it is (that truthiness gate is why the
+  // button had vanished, which is what the fallback was added to fix). But a
+  // plausible-looking wrong value is worse than none: a user from another tenant
+  // whose session is missing tenant_slug was silently sent to an Artists Farm
+  // URL that resolves to a real page they do not belong to. Compare Header.tsx,
+  // which falls back to the meaningless 'tenant' and so fails loudly instead.
+  // Now: unresolvable means null, the switcher hides, and nobody is misrouted.
   const effectiveSwitchTenantSlug =
     currentUser?.tenantSlug ||
     (preloadedData.currentProperty as any)?.tenant_slug ||
     getPropertyAndRoomSlugs().tenantSlug ||
-    'artists-farm';
+    null;
 
   const handleLoginFailed = (username: string) => {
     logAudit(`Staff User ${username} failed login attempt`, { status: 'Failed', module: 'login', user: username });
