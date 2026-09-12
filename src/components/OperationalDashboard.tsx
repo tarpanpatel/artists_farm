@@ -2375,7 +2375,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
               // onAddGuest now throws on a real backend rejection; closing unconditionally would
               // hide that error instead of leaving the form open to see and correct it.
               await onAddGuest?.(guest);
-              setShowAddGuestModal(false);
             }}
             onCheckoutGuest={onCheckoutGuest || (() => {})}
             onDispatchTelegram={onDispatchTelegram}

@@ -595,18 +595,56 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
         case 'get_guest_extra_charges':
             ensureGuestExtraChargesSchema($pdo);
             try {
-                $stmt = $pdo->prepare("
+                $guestIdParam = isset($_GET['guest_id']) ? intval($_GET['guest_id']) : 0;
+                $sql = "
                     SELECT gec.id, gec.guest_id, gec.category, gec.amount, gec.note, gec.created_at, g.checkin_date, g.guest_name, g.room_id
                     FROM guest_extra_charges gec
                     JOIN guests g ON gec.guest_id = g.id
                     WHERE gec.property_id = ?
-                    ORDER BY g.checkin_date DESC
-                ");
-                $stmt->execute([$propertyId]);
+                ";
+                $params = [$propertyId];
+                if ($guestIdParam > 0) {
+                    $sql .= " AND gec.guest_id = ?";
+                    $params[] = $guestIdParam;
+                }
+                $sql .= " ORDER BY g.checkin_date DESC, gec.id DESC";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
                 $charges = array_map('convertSnakeToCamel', $stmt->fetchAll(PDO::FETCH_ASSOC));
                 echo json_encode(['status' => 'success', 'data' => $charges]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);
+            }
+            break;
+
+        case 'add_guest_extra_charge':
+            if ($request_method === 'POST') {
+                ensureGuestExtraChargesSchema($pdo);
+                $input = json_decode(file_get_contents('php://input'), true);
+                if (!is_array($input)) $input = [];
+                $guestId = intval($input['guest_id'] ?? $input['guestId'] ?? 0);
+                $category = trim((string)($input['category'] ?? 'Misc')) ?: 'Misc';
+                $amount = floatval($input['amount'] ?? 0);
+                $note = trim((string)($input['note'] ?? ''));
+                if ($guestId <= 0 || $amount <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'Invalid guest ID or charge amount']);
+                    break;
+                }
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO guest_extra_charges (property_id, guest_id, category, amount, note) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$propertyId, $guestId, $category, $amount, $note ?: null]);
+                    $chargeId = (int)$pdo->lastInsertId();
+
+                    // Increment guest total_charge and pending_amount
+                    $upd = $pdo->prepare("UPDATE guests SET total_charge = total_charge + ?, pending_amount = pending_amount + ? WHERE id = ? AND property_id = ?");
+                    $upd->execute([$amount, $amount, $guestId, $propertyId]);
+
+                    echo json_encode(['status' => 'success', 'id' => $chargeId, 'message' => 'Extra charge added successfully']);
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
             }
             break;
 
@@ -649,13 +687,30 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // the room's NAME (room_number/roomNumber), so resolve it against
                     // this property's actual MULTI_KEY_ROOM children here.
                     $roomId = null;
-                    $roomName = trim($input['room_number'] ?? $input['roomNumber'] ?? '');
-                    if ($roomName !== '') {
-                        $roomLookup = $pdo->prepare("SELECT id FROM properties WHERE parent_property_id = ? AND property_type = 'MULTI_KEY_ROOM' AND name = ? AND is_deleted = 0 LIMIT 1");
-                        $roomLookup->execute([$propertyId, $roomName]);
-                        $foundRoomId = $roomLookup->fetchColumn();
-                        if ($foundRoomId) {
-                            $roomId = intval($foundRoomId);
+                    if (!empty($input['room_id']) || !empty($input['roomId'])) {
+                        $candId = intval($input['room_id'] ?? $input['roomId']);
+                        $rCheck = $pdo->prepare("SELECT id FROM properties WHERE id = ? AND is_deleted = 0 LIMIT 1");
+                        $rCheck->execute([$candId]);
+                        if ($rCheck->fetchColumn()) {
+                            $roomId = $candId;
+                        }
+                    }
+                    if (!$roomId) {
+                        $roomName = trim((string)($input['room_number'] ?? $input['roomNumber'] ?? ''));
+                        if ($roomName !== '') {
+                            $roomLookup = $pdo->prepare("SELECT id FROM properties WHERE (parent_property_id = ? OR id = ?) AND (name = ? OR slug = ?) AND is_deleted = 0 LIMIT 1");
+                            $roomLookup->execute([$propertyId, $propertyId, $roomName, $roomName]);
+                            $foundRoomId = $roomLookup->fetchColumn();
+                            if ($foundRoomId) {
+                                $roomId = intval($foundRoomId);
+                            } else {
+                                $broadLookup = $pdo->prepare("SELECT id FROM properties WHERE (name = ? OR slug = ?) AND (parent_property_id = ? OR id = ? OR parent_property_id IN (SELECT id FROM properties WHERE parent_property_id = ?)) AND is_deleted = 0 LIMIT 1");
+                                $broadLookup->execute([$roomName, $roomName, $propertyId, $propertyId, $propertyId]);
+                                $broadId = $broadLookup->fetchColumn();
+                                if ($broadId) {
+                                    $roomId = intval($broadId);
+                                }
+                            }
                         }
                     }
 

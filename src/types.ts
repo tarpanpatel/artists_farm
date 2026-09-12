@@ -9,6 +9,8 @@ export interface Guest {
   expectedCheckout: string;
   checkoutDate?: string;
   roomNumber: string;
+  roomId?: number | string | null;
+  room_id?: number | string | null;
   status: 'Active' | 'CheckedOut' | 'Booked' | 'Checked In' | 'CheckedIn' | 'checked-in';
   notes?: string;
   bookingSource?: string;

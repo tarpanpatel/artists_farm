@@ -5,10 +5,11 @@ import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
 import { Input } from './Input';
 import { Button } from './Button';
-import { fetchMenuFromDB, fetchPayeesFromDB, fetchServiceRequestsFromDB } from '../services/api';
+import { fetchMenuFromDB, fetchPayeesFromDB, fetchServiceRequestsFromDB, fetchGuestExtraChargesFromDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useStaff } from '../contexts/StaffContext';
+import { useConfigurationData } from '../contexts/ConfigurationDataContext';
 import { t } from '../i18n/en';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
@@ -97,6 +98,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
   const { showToast } = useToast();
   const { staff } = useStaff();
+  const { miscCharges } = useConfigurationData();
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   // Only staff marked as a cash handler can be attributed as having
   // received money - a free-text field let anyone type any name, which
@@ -136,6 +138,35 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [adjReasonDiscount, setAdjReasonDiscount] = useState('');
   const [adjAmount, setAdjAmount] = useState<number | ''>('');
   const [adjustments, setAdjustments] = useState<ManualAdjustment[]>([]);
+
+  const extraChargeOptions = useMemo(() => {
+    const list = miscCharges && Array.isArray(miscCharges) ? miscCharges : [];
+    if (list.length === 0) {
+      return [
+        { value: 'Decoration Fees', label: 'Decoration Fees' },
+        { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
+        { value: 'Misc', label: 'Misc' },
+        { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
+      ];
+    }
+    return list.map((m: any) => {
+      const label = m.label || m.name || 'Misc';
+      const price = m.default_amount ?? m.defaultPrice ?? 0;
+      return {
+        value: label,
+        label: price > 0 ? `${label} (₹${price})` : label,
+      };
+    });
+  }, [miscCharges]);
+
+  const handleChargeCategoryChange = (val: string) => {
+    setAdjReasonCharge(val);
+    const matched = miscCharges?.find((m: any) => (m.label || m.name) === val);
+    const price = matched ? (matched.default_amount ?? (matched as any).defaultPrice ?? 0) : 0;
+    if (price > 0) {
+      setAdjAmount(price);
+    }
+  };
 
   // GST State
   const [gstEnabled, setGstEnabled] = useState(false);
@@ -237,15 +268,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setEditPhoneNumber(guest.phoneNumber || '');
       setCheckinDate(toInputDateFormat(guest.checkinDate));
       setCheckoutDate(toInputDateFormat(guest.expectedCheckout || guest.checkoutDate));
-      // "Base Lodging Charges" is the TOTAL charge for the stay (it's what the
-      // GST calc below divides by nights to derive a per-night rate for slab
-      // lookup, and what gets multiplied by the GST% directly) - was
-      // roomRate-first, but roomRate is the PER-NIGHT tariff. For any guest
-      // with a roomRate set (the normal case), that silently pre-filled the
-      // form with 1 night's worth of charge instead of the full stay,
-      // understating both the base invoice and the GST collected on
-      // multi-night stays unless staff happened to notice and correct it.
-      setRoomCharges(guest.totalAmount ?? guest.roomRate ?? 0);
+      const baseRent = Number((guest as any).base_room_rent ?? (guest as any).baseRoomRent ?? 0);
+      const initialLodging = baseRent > 0 ? baseRent : (guest.totalAmount ?? guest.roomRate ?? 0);
+      setRoomCharges(initialLodging);
       setAdvancePaid(guest.advanceAmount || 0);
       setIncidentals([]);
       setAdjustments([]);
@@ -260,7 +285,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       setAdvanceReceivedBy((guest as any).advance_received_by || guest.advanceReceivedBy || '');
       setPendingReceivedBy((guest as any).pending_received_by || guest.pendingReceivedBy || '');
 
-      const lodgingDue = (guest.totalAmount ?? guest.roomRate ?? 0) - (guest.advanceAmount || 0);
+      const lodgingDue = initialLodging - (guest.advanceAmount || 0);
       setSplitRows([{ id: '1', mode: 'Cash', amount: Math.max(0, lodgingDue) }]);
 
       // Auto-load charged service requests for this guest / room
@@ -296,6 +321,31 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           setAdjustments((prev) => {
             const existingIds = new Set(prev.map((a) => a.id));
             const newItems = serviceReqAdjustments.filter((a) => !existingIds.has(a.id));
+            return [...prev, ...newItems];
+          });
+        }
+      });
+
+      // Auto-load extra charges for this guest
+      fetchGuestExtraChargesFromDB().then((allCharges) => {
+        if (!allCharges || !Array.isArray(allCharges)) return;
+        const guestCharges = allCharges.filter(
+          (c) => String(c.guestId || c.guest_id) === String(guest.id)
+        );
+        if (guestCharges.length > 0) {
+          const extraChargeAdjustments: ManualAdjustment[] = guestCharges.map((c) => {
+            const cat = c.category || 'Misc';
+            const noteSuffix = c.note ? ` (${c.note})` : '';
+            return {
+              id: `extra-charge-${c.id}`,
+              type: 'charge',
+              reason: `[Extra Charge] ${cat}${noteSuffix}`,
+              amount: Number(c.amount || 0),
+            };
+          });
+          setAdjustments((prev) => {
+            const existingIds = new Set(prev.map((a) => a.id));
+            const newItems = extraChargeAdjustments.filter((a) => !existingIds.has(a.id));
             return [...prev, ...newItems];
           });
         }
@@ -487,8 +537,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
       // original, unedited value, so correcting who received the advance at
       // checkout was silently discarded on save. Same bug class as
       // pendingReceivedBy below, which already had this fix.
-      advanceReceivedBy: advanceReceivedBy || guest.advanceReceivedBy,
-      pendingReceivedBy: effectivePendingReceivedBy || guest.pendingReceivedBy,
+      advanceReceivedBy: advanceReceivedBy !== undefined ? advanceReceivedBy : (guest.advanceReceivedBy || ''),
+      pendingReceivedBy: effectivePendingReceivedBy !== undefined ? effectivePendingReceivedBy : (guest.pendingReceivedBy || ''),
     });
     return true;
   };
@@ -737,7 +787,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         value={advanceReceivedBy}
                         onChange={setAdvanceReceivedBy}
                         placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                        options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
+                        options={[
+                          { value: '', label: '- Not Selected -' },
+                          ...cashHandlers.map((s) => ({ value: s.name, label: s.name }))
+                        ]}
                       />
                     </div>
                   )}
@@ -755,7 +808,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         value={pendingReceivedBy}
                         onChange={handlePendingReceivedByChange}
                         placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                        options={cashHandlers.map((s) => ({ value: s.name, label: s.name }))}
+                        options={[
+                          { value: '', label: '- Not Selected -' },
+                          ...cashHandlers.map((s) => ({ value: s.name, label: s.name }))
+                        ]}
                       />
                     </div>
                   )}
@@ -894,13 +950,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                       <StyledSelect
                         label={t('charge_category_label', 'Charge Category')}
                         value={adjReasonCharge}
-                        onChange={setAdjReasonCharge}
-                        options={[
-                          { value: 'Decoration Fees', label: 'Decoration Fees' },
-                          { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
-                          { value: 'Misc', label: 'Misc' },
-                          { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
-                        ]}
+                        onChange={handleChargeCategoryChange}
+                        options={extraChargeOptions}
                       />
                     </div>
                   )}

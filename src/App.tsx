@@ -1963,6 +1963,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         checkin_date: newGuest.checkinDate,
         expected_checkout: newGuest.expectedCheckout,
         room_number: newGuest.roomNumber,
+        room_id: newGuest.roomId || newGuest.room_id || undefined,
         status: newGuest.status || 'Active',
         notes: newGuest.notes || '',
         booking_source: newGuest.bookingSource || '',

@@ -1180,6 +1180,7 @@ export async function addGuestToDB(guest: {
   expected_checkout?: string;
   checkout_date?: string;
   room_number?: string;
+  room_id?: number | string;
   status?: string;
   notes?: string;
   booking_source?: string;
@@ -3127,15 +3128,35 @@ export async function fetchRecipesFromDB(): Promise<any[]> {
   return [];
 }
 
-export async function fetchGuestExtraChargesFromDB(): Promise<any[]> {
+export async function fetchGuestExtraChargesFromDB(guestId?: number | string): Promise<any[]> {
   try {
-    const res = await apiFetch(`${API_BASE}?action=get_guest_extra_charges`);
+    const url = guestId ? `${API_BASE}?action=get_guest_extra_charges&guest_id=${encodeURIComponent(guestId)}` : `${API_BASE}?action=get_guest_extra_charges`;
+    const res = await apiFetch(url);
     const json = await res.json();
     if (json.status === 'success' && Array.isArray(json.data)) return json.data;
   } catch (err) {
     console.error('Failed to fetch guest extra charges:', err);
   }
   return [];
+}
+
+export async function addGuestExtraChargeDB(charge: {
+  guest_id: number | string;
+  category: string;
+  amount: number;
+  note?: string;
+}): Promise<{ success: boolean; id?: number; message?: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE}?action=add_guest_extra_charge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(charge),
+    });
+    const json = await res.json();
+    return { success: json.status === 'success', id: json.id, message: json.message };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Failed to add extra charge' };
+  }
 }
 
 export async function saveRecipeToDB(recipe: {

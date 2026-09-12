@@ -19,7 +19,17 @@ import { DatePicker } from './DatePicker';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { MessageQrPreview } from './MessageQrPreview';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { fetchBookingPaymentsDB, addBookingPaymentDB, deleteBookingPaymentDB, fetchBookingVoucherTokenDB, type BookingPayment, type BookingPaymentTotals } from '../services/api';
+import { useConfigurationData } from '../contexts/ConfigurationDataContext';
+import {
+  fetchBookingPaymentsDB,
+  addBookingPaymentDB,
+  deleteBookingPaymentDB,
+  fetchBookingVoucherTokenDB,
+  fetchGuestExtraChargesFromDB,
+  addGuestExtraChargeDB,
+  type BookingPayment,
+  type BookingPaymentTotals
+} from '../services/api';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
@@ -435,7 +445,21 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
     setEditName(source.guestName || '');
     setEditPhone(source.phoneNumber || '');
-    setEditRoomId(String(g.roomId ?? g.room_id ?? ''));
+    let resolvedRoomId = String(g.roomId ?? g.room_id ?? '');
+    if ((!resolvedRoomId || resolvedRoomId === 'null' || resolvedRoomId === 'undefined') && source.roomNumber) {
+      const matched = rooms.find(
+        (r) =>
+          r.name.toLowerCase().trim() === source.roomNumber.toLowerCase().trim() ||
+          r.slug.toLowerCase().trim() === source.roomNumber.toLowerCase().trim()
+      );
+      if (matched) {
+        resolvedRoomId = String(matched.id);
+      }
+    }
+    if (!resolvedRoomId && rooms.length === 1) {
+      resolvedRoomId = String(rooms[0].id);
+    }
+    setEditRoomId(resolvedRoomId);
     setEditGuests(String(noGuests));
     setEditCheckin(source.checkinDate?.split(' ')[0] || '');
     setEditCheckout(source.expectedCheckout?.split(' ')[0] || source.checkoutDate?.split(' ')[0] || '');
@@ -602,6 +626,45 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const [payReceivedBy, setPayReceivedBy] = useState('');
   const [payDate, setPayDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [isSavingPayment, setIsSavingPayment] = useState(false);
+  const { miscCharges } = useConfigurationData();
+  const [guestExtraCharges, setGuestExtraCharges] = useState<any[]>([]);
+  const [selectedExtraChargeCategory, setSelectedExtraChargeCategory] = useState<string>('');
+  const [extraChargeNote, setExtraChargeNote] = useState<string>('');
+  const [isAddingExtraChargeOnly, setIsAddingExtraChargeOnly] = useState(false);
+
+  const loadGuestExtraCharges = React.useCallback(async () => {
+    if (!guest?.id) return;
+    const all = await fetchGuestExtraChargesFromDB(guest.id);
+    setGuestExtraCharges(all.filter((c: any) => String(c.guestId || c.guest_id) === String(guest.id)));
+  }, [guest?.id]);
+
+  useEffect(() => { loadGuestExtraCharges(); }, [loadGuestExtraCharges]);
+
+  const extraChargeCatalogOptions = useMemo(() => {
+    const list = miscCharges && Array.isArray(miscCharges) ? miscCharges : [];
+    const base = [
+      { value: '', label: '-- Standard Payment (No Extra Charge) --' },
+    ];
+    list.forEach((m: any) => {
+      const label = m.label || m.name || 'Misc';
+      const price = m.default_amount ?? m.defaultPrice ?? 0;
+      base.push({
+        value: label,
+        label: price > 0 ? `${label} (₹${price.toLocaleString('en-IN')})` : label,
+      });
+    });
+    return base;
+  }, [miscCharges]);
+
+  const handleSelectExtraChargeInPayment = (val: string) => {
+    setSelectedExtraChargeCategory(val);
+    if (!val) return;
+    const matched = miscCharges?.find((m: any) => (m.label || m.name) === val);
+    const price = matched ? (matched.default_amount ?? (matched as any).defaultPrice ?? 0) : 0;
+    if (price > 0) {
+      setPayAmount(String(price));
+    }
+  };
 
   const loadPayments = React.useCallback(async () => {
     if (!guest?.id) return;
@@ -630,6 +693,20 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     }
     setIsSavingPayment(true);
     try {
+      if (selectedExtraChargeCategory) {
+        await addGuestExtraChargeDB({
+          guest_id: guest.id,
+          category: selectedExtraChargeCategory,
+          amount: amt,
+          note: extraChargeNote.trim() || undefined,
+        });
+        await loadGuestExtraCharges();
+      }
+
+      const noteText = selectedExtraChargeCategory
+        ? `Extra Charge: ${selectedExtraChargeCategory}${extraChargeNote ? ` (${extraChargeNote})` : ''}`
+        : undefined;
+
       const res = await addBookingPaymentDB({
         booking_id: guest.id,
         amount: amt,
@@ -637,6 +714,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
         received_by_name: payReceivedBy,
         received_at: payDate,
         kind: 'payment',
+        note: noteText,
       });
       if (!res.success) {
         showToast(res.message || 'Could not record the payment.', { type: 'error' });
@@ -654,16 +732,52 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       );
       setPayAmount('');
       setPayReceivedBy('');
+      setSelectedExtraChargeCategory('');
+      setExtraChargeNote('');
       setShowAddPayment(false);
-      showToast(`Recorded ₹${amt.toLocaleString('en-IN')}.`, { type: 'success' });
-      // Deliberately NOT calling onSave here: onSave is the real update_guest
-      // write path, so using it as a "please re-read" hook would push this
-      // modal's stale local copy back over the totals the server just
-      // recomputed. The payments list is the source of truth for what is paid
-      // (see advancePaid below), so this screen is already correct; the rest of
-      // the app picks the new totals up on its next guests fetch.
+      showToast(`Recorded ₹${amt.toLocaleString('en-IN')}${selectedExtraChargeCategory ? ` for ${selectedExtraChargeCategory}` : ''}.`, { type: 'success' });
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to record payment.', { type: 'error' });
     } finally {
       setIsSavingPayment(false);
+    }
+  };
+
+  const handleAddExtraChargeOnly = async () => {
+    const amt = parseFloat(payAmount);
+    if (isNaN(amt) || amt <= 0) {
+      showToast('Enter a valid charge amount.', { type: 'error' });
+      return;
+    }
+    if (!selectedExtraChargeCategory) {
+      showToast('Please select an extra charge category.', { type: 'error' });
+      return;
+    }
+    setIsAddingExtraChargeOnly(true);
+    try {
+      const res = await addGuestExtraChargeDB({
+        guest_id: guest.id,
+        category: selectedExtraChargeCategory,
+        amount: amt,
+        note: extraChargeNote.trim() || undefined,
+      });
+      if (!res.success) {
+        showToast(res.message || 'Could not add extra charge.', { type: 'error' });
+        return;
+      }
+      await loadGuestExtraCharges();
+      if (serverTotals) {
+        setServerTotals({ ...serverTotals, pending: serverTotals.pending + amt });
+      }
+      setPayAmount('');
+      setSelectedExtraChargeCategory('');
+      setExtraChargeNote('');
+      setShowAddPayment(false);
+      showToast(`Added ${selectedExtraChargeCategory} (₹${amt.toLocaleString('en-IN')}) to bill.`, { type: 'success' });
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to add charge.', { type: 'error' });
+    } finally {
+      setIsAddingExtraChargeOnly(false);
     }
   };
 
@@ -1054,7 +1168,17 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   };
 
   const financialHandlers = staff.filter((s) => s.isFinancialHandler).map((s) => ({ value: s.name, label: s.name }));
-  const availableHandlers = financialHandlers.length > 0 ? financialHandlers : staff.map((s) => ({ value: s.name, label: s.name }));
+  const baseHandlers = financialHandlers.length > 0 ? financialHandlers : staff.map((s) => ({ value: s.name, label: s.name }));
+  const availableHandlers = [
+    { value: '', label: '- Not Selected -' },
+    ...baseHandlers,
+    ...(editAdvanceReceivedBy && editAdvanceReceivedBy !== '- Not Selected -' && !baseHandlers.some((h) => h.value === editAdvanceReceivedBy)
+      ? [{ value: editAdvanceReceivedBy, label: editAdvanceReceivedBy }]
+      : []),
+    ...(editPendingReceivedBy && editPendingReceivedBy !== '- Not Selected -' && editPendingReceivedBy !== editAdvanceReceivedBy && !baseHandlers.some((h) => h.value === editPendingReceivedBy)
+      ? [{ value: editPendingReceivedBy, label: editPendingReceivedBy }]
+      : []),
+  ];
 
   return (
     <>
@@ -1235,30 +1359,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             </div>
           )}
 
-          {/* Action Banner 2: Unsettled Bill / Missing Payment Receiver */}
+          {/* Action Banner 2: Unsettled Bill at Checkout */}
           {(() => {
-            const advanceReceiver = g.advance_received_by || guest.advanceReceivedBy || '';
-            const pendingReceiver = g.pending_received_by || guest.pendingReceivedBy || '';
             const isCheckedOut = ((guest.status as string) === 'Checked Out' || (g.status as string) === 'Checked Out');
-            
-            // OTA bookings never need a receiver assigned (see isOtaBooking above) -
-            // only the actual-money-owed check still applies to them.
-            const isAdvanceUnassigned = !isOtaBooking && advancePaid > 0 && !advanceReceiver;
-            const isPendingUnassigned = !isOtaBooking && isCheckedOut && pendingDisplay === 0 && !pendingReceiver && (roomRent - advancePaid) > 0;
             const isCheckedOutUnsettled = isCheckedOut && pendingDisplay > 0;
-            
-            const showBanner = !isEditing && (isAdvanceUnassigned || isPendingUnassigned || isCheckedOutUnsettled);
 
-            if (!showBanner) return null;
+            if (isEditing || !isCheckedOutUnsettled) return null;
 
             return (
               <div className="w-full mb-3 px-3.5 py-2.5 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2 text-xs font-semibold text-red-900 dark:text-red-200">
                   <CreditCard className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
                   <span>
-                    {isCheckedOutUnsettled
-                      ? `Unsettled Bill: Owes ₹${pendingDisplay.toLocaleString('en-IN')}`
-                      : `Payment Receiver Unassigned (${isAdvanceUnassigned ? 'Advance' : ''}${isAdvanceUnassigned && isPendingUnassigned ? ' & ' : ''}${isPendingUnassigned ? 'Pending' : ''})`}
+                    Unsettled Bill: Owes ₹{pendingDisplay.toLocaleString('en-IN')}
                   </span>
                 </div>
                 <button
@@ -1267,7 +1380,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0 flex items-center gap-1"
                 >
                   <Pencil className="w-3.5 h-3.5" />
-                  {isCheckedOutUnsettled ? 'Settle Bill' : 'Assign Receiver'}
+                  Settle Bill
                 </button>
               </div>
             );
@@ -1317,19 +1430,25 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   value={editRoomId}
                   onChange={setEditRoomId}
                   disabled={!isEditing}
-                  options={rooms.map((room) => {
-                    const newCheckin = new Date(editCheckin || guest.checkinDate);
-                    const newCheckout = new Date(editCheckout || guest.expectedCheckout);
-                    const occupiedByOther = checkedInGuests.some((other) => {
-                      if (other.id === guest.id) return false;
-                      const otherRoomId = (other as any).roomId ?? (other as any).room_id;
-                      if (Number(otherRoomId) !== Number(room.id)) return false;
-                      const otherCheckin = new Date(other.checkinDate);
-                      const otherCheckout = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
-                      return newCheckin < otherCheckout && otherCheckin < newCheckout;
-                    });
-                    return { value: String(room.id), label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`, disabled: occupiedByOther };
-                  })}
+                  placeholder="-- Select Assigned Place --"
+                  options={[
+                    ...(!editRoomId || !rooms.some(r => String(r.id) === String(editRoomId))
+                      ? [{ value: '', label: guest.roomNumber && guest.roomNumber !== 'Unassigned' ? guest.roomNumber : '-- Unassigned / Select Place --' }]
+                      : []),
+                    ...rooms.map((room) => {
+                      const newCheckin = new Date(editCheckin || guest.checkinDate);
+                      const newCheckout = new Date(editCheckout || guest.expectedCheckout);
+                      const occupiedByOther = checkedInGuests.some((other) => {
+                        if (other.id === guest.id) return false;
+                        const otherRoomId = (other as any).roomId ?? (other as any).room_id;
+                        if (Number(otherRoomId) !== Number(room.id)) return false;
+                        const otherCheckin = new Date(other.checkinDate);
+                        const otherCheckout = new Date(other.expectedCheckout || other.checkoutDate || other.checkinDate);
+                        return newCheckin < otherCheckout && otherCheckin < newCheckout;
+                      });
+                      return { value: String(room.id), label: `${room.name}${occupiedByOther ? ' (occupied these dates)' : ''}`, disabled: occupiedByOther };
+                    }),
+                  ]}
                 />
               </div>
             )}
@@ -1537,8 +1656,36 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                 </ul>
               )}
 
+              {/* Extra Charges already on folio */}
+              {guestExtraCharges.length > 0 && (
+                <div className="px-3 py-2 border-t border-slate-200 dark:border-slate-700 bg-amber-50/40 dark:bg-amber-950/20">
+                  <div className="text-2xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 mb-1 flex items-center justify-between">
+                    <span>Attached Extra Charges ({guestExtraCharges.length})</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      ₹{guestExtraCharges.reduce((s, c) => s + Number(c.amount || 0), 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <ul className="space-y-1">
+                    {guestExtraCharges.map((ec, idx) => (
+                      <li key={ec.id || idx} className="flex items-center justify-between text-2xs text-slate-700 dark:text-slate-300">
+                        <span className="font-medium">{ec.category || ec.name || 'Extra Charge'}{ec.note ? ` (${ec.note})` : ''}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">₹{Number(ec.amount || 0).toLocaleString('en-IN')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {showAddPayment && (
                 <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 space-y-2">
+                  <div>
+                    <StyledSelect
+                      label="Extra Charge / Fee Category (Optional)"
+                      value={selectedExtraChargeCategory}
+                      onChange={handleSelectExtraChargeInPayment}
+                      options={extraChargeCatalogOptions}
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Input
                       label={t('amount_label', 'Amount (₹)')}
@@ -1573,15 +1720,46 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                       options={availableHandlers}
                     />
                   </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    block
-                    onClick={handleAddPayment}
-                    disabled={isSavingPayment}
-                  >
-                    {isSavingPayment ? t('saving_label', 'Saving...') : t('record_payment_button_confirm', 'Record payment')}
-                  </Button>
+                  {selectedExtraChargeCategory && (
+                    <div>
+                      <Input
+                        label="Charge Note (Optional)"
+                        placeholder="e.g. Late checkout 2pm, extra mattress"
+                        value={extraChargeNote}
+                        onChange={(e) => setExtraChargeNote(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  {selectedExtraChargeCategory ? (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleAddPayment}
+                        disabled={isSavingPayment || isAddingExtraChargeOnly}
+                      >
+                        {isSavingPayment ? 'Saving...' : 'Charge & Record Paid'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleAddExtraChargeOnly}
+                        disabled={isSavingPayment || isAddingExtraChargeOnly}
+                      >
+                        {isAddingExtraChargeOnly ? 'Adding...' : 'Add to Bill Only (Pay Later)'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      block
+                      onClick={handleAddPayment}
+                      disabled={isSavingPayment}
+                    >
+                      {isSavingPayment ? t('saving_label', 'Saving...') : t('record_payment_button_confirm', 'Record payment')}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

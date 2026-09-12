@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
+import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate, type PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
 import { Button, Checkbox } from 'flowbite-react';
 import { Badge } from './Badge';
 import {
@@ -7,6 +7,7 @@ import {
   Plus,
   Loader2,
   MessageCircle,
+  Share2,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, MiscChargeTemplate, MenuItem } from '../types';
 import { Popover } from './Popover';
@@ -20,7 +21,7 @@ import {
   GUEST_STATUS_ACTIVE_LEGACY,
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
-import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
+import { parseDateToYMD, formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
 import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
@@ -28,7 +29,7 @@ import { Input, FloatingTextarea } from './Input';
 import { BillingCheckout } from './BillingCheckout';
 import { PricingPage } from './PricingPage';
 import { t } from '../i18n/en';
-import { createBookingHoldDB, fetchRateRulesDB } from '../services/api';
+import { createBookingHoldDB, fetchRateRulesDB, fetchBookingVoucherTokenDB } from '../services/api';
 
 interface Room {
   id: number;
@@ -265,6 +266,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // positive without this guard. The actual submit-time duplicate guard
   // further below is unaffected: it runs before the optimistic add happens.
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedBooking, setSavedBooking] = useState<Guest | null>(null);
+  const [isSharingBooking, setIsSharingBooking] = useState(false);
   const [roomNumber, setRoomNumber] = useState('');
   const [, setGuestNameTouched] = useState(false);
   const [phoneNumberTouched, setPhoneNumberTouched] = useState(false);
@@ -718,6 +721,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     // otherwise the field returns to empty rather than silently arming the next
     // booking with whichever room sorts first. The mount effect cannot cover this
     // (its deps have not changed), so the rule has to be stated in both places.
+    setSavedBooking(null);
     if (isMultiKeyProperty && rooms && rooms.length > 0) {
       const contextRoom =
         (preSelectRoom && rooms.find((r) => r.name === preSelectRoom)?.name) ||
@@ -726,6 +730,93 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       setRoomNumber(contextRoom);
     } else {
       setRoomNumber('');
+    }
+  };
+
+  const handleShareSavedBooking = async () => {
+    if (!savedBooking) return;
+    setIsSharingBooking(true);
+    try {
+      let voucherToken = '';
+      try {
+        if (savedBooking.id) {
+          voucherToken = await fetchBookingVoucherTokenDB(savedBooking.id);
+        }
+      } catch (err) {
+        console.warn('Could not fetch voucher token:', err);
+      }
+
+      const activeTemplate = propertyWhatsappTemplate?.trim() || DEFAULT_WHATSAPP_VOUCHER_TEMPLATE;
+      const cIn = (savedBooking.checkinDate || '').split(' ')[0];
+      const cOut = ((savedBooking.expectedCheckout || savedBooking.checkinDate) || '').split(' ')[0];
+      const stayNights = nightsOfStay(cIn, cOut).length || 1;
+      const totalCharge = Number(savedBooking.roomRate || 0);
+      const advPaid = Number(savedBooking.advanceAmount || 0);
+      const balDue = Number(savedBooking.pendingAmount || 0);
+      const depositVal = propertySecurityDeposit && Number(propertySecurityDeposit) > 0 ? Number(propertySecurityDeposit) : 0;
+
+      const waText = renderWhatsappVoucherTemplate(activeTemplate, {
+        booking_id: String(savedBooking.id ?? ''),
+        voucher_link: voucherToken
+          ? `${window.location.origin}${window.location.pathname}#voucher?token=${voucherToken}`
+          : '',
+        payments_list: '',
+        guest_breakdown: (() => {
+          const kids = Number(savedBooking.children ?? 0);
+          if (kids <= 0) return '';
+          const grown = Math.max(0, Number(savedBooking.numberOfGuests || 0) - kids);
+          return `${grown} adult${grown === 1 ? '' : 's'}, ${kids} child${kids === 1 ? '' : 'ren'}`;
+        })(),
+        guest_name: savedBooking.guestName || 'Guest',
+        guest_phone: savedBooking.phoneNumber || '',
+        nights: String(stayNights),
+        balance_due: balDue > 0 ? balDue.toFixed(2) : '',
+        security_deposit: depositVal > 0 ? depositVal.toFixed(2) : '',
+        room_name: savedBooking.roomNumber || '',
+        room_number: savedBooking.roomNumber || '',
+        property_name: propertyName || 'our property',
+        checkin_date: formatDateOrdinal(cIn),
+        checkin_time: checkinTime || propertyCheckinTime || '2:00 PM',
+        checkout_date: formatDateOrdinal(cOut),
+        checkout_time: checkoutTime || propertyCheckoutTime || '11:00 AM',
+        guest_count: String(savedBooking.numberOfGuests || 2),
+        room_tariff: totalCharge.toFixed(2),
+        total_amount: totalCharge.toFixed(2),
+        advance_paid: advPaid.toFixed(2),
+        address: propertyAddress || '',
+        property_address: propertyAddress || '',
+        contact_phone: propertyPhone || '',
+        property_phone: propertyPhone || '',
+        phone: propertyPhone || '',
+        maps_link: propertyMapsLink || '',
+        google_maps_link: propertyMapsLink || '',
+        upi_id: propertyUpiId || '',
+        upi_qr_code_url: propertyUpiQrCodeUrl || '',
+        qr_code: propertyUpiQrCodeUrl || '',
+        other_notes: savedBooking.notes || '',
+        instructions: propertyInstructions || '',
+        wifi_network: propertyGuestInfo?.wifiNetwork || '',
+        wifi_password: propertyGuestInfo?.wifiPassword || '',
+        house_manual: propertyGuestInfo?.houseManual || '',
+      });
+
+      const cleanPhone = (savedBooking.phoneNumber || '').replace(/\D/g, '');
+      const waUrl = cleanPhone.length === 10
+        ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
+        : cleanPhone.length > 10
+        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
+        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(waText).catch(() => {});
+      }
+
+      window.open(waUrl, '_blank');
+      showToast('Booking voucher ready to send on WhatsApp!', { type: 'success' });
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to share booking', { type: 'error' });
+    } finally {
+      setIsSharingBooking(false);
     }
   };
 
@@ -1004,7 +1095,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               id: Math.random().toString(36).substr(2, 9),
               guestName: guestName.trim(),
               phoneNumber: phoneNumber.trim(),
-              roomNumber,
+              roomNumber: selectedRoomObj ? selectedRoomObj.name : roomNumber,
+              roomId: selectedRoomId,
+              room_id: selectedRoomId,
               checkinDate: newCheckinStr,
               expectedCheckout: newCheckoutStr,
               status: 'Booked',
@@ -1025,17 +1118,8 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             setIsSubmitting(true);
             try {
               await onAddGuest(guestObj);
-              resetBookingForm();
+              setSavedBooking(guestObj);
               showToast('Guest booked successfully!', { type: 'success' });
-              // Closes right here, not inside App.tsx's onAddGuest wrapper
-              // (31 Aug 2026, second pass at this) - closing there ran BEFORE
-              // this line, since it sits earlier in the same awaited call,
-              // making the drawer disappear before this toast had even been
-              // created. onClose is only wired for the drawer-hosted render
-              // (guarded, since the inline/non-drawer usages of this
-              // component pass none) - closing after the toast, same tick,
-              // no artificial delay in either place.
-              onClose?.();
             } catch (err) {
               const message = err instanceof Error && err.message ? err.message : 'Failed to save booking. Please try again.';
               showToast(message, { type: 'error' });
@@ -1347,11 +1431,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 {bookingAdvance > 0 ? (
                   <div>
                     <StyledSelect
-                      label={t('advance_received_by', 'Advance Received By *')}
+                      label={t('advance_received_by', 'Advance Received By')}
                       value={advanceReceivedBy}
                       onChange={setAdvanceReceivedBy}
                       placeholder="-- Select Staff/User --"
-                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
+                      options={[
+                        { value: '', label: '- Not Selected -' },
+                        ...(staff.filter(s => s.isFinancialHandler).length > 0
+                          ? staff.filter(s => s.isFinancialHandler)
+                          : staff
+                        ).map(s => ({ value: s.name, label: s.name }))
+                      ]}
                     />
                   </div>
                 ) : <div />}
@@ -1359,7 +1449,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             )}
 
             {/* Pending Balance + Pending Received By (2 columns on all screens) */}
-            {bookingAdvance > 0 && (
+            {bookingAdvance > 0 && bookingPending > 0 && (
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Input
@@ -1374,17 +1464,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   />
                 </div>
 
-                {bookingPending > 0 ? (
-                  <div>
-                    <StyledSelect
-                      label={t('pending_received_by_label', 'Pending Received By')}
-                      value={pendingReceivedBy}
-                      onChange={setPendingReceivedBy}
-                      placeholder="-- Select Staff/User --"
-                      options={staff.filter(s => s.isFinancialHandler).map(s => ({ value: s.name, label: s.name }))}
-                    />
-                  </div>
-                ) : <div />}
+                <div>
+                  <StyledSelect
+                    label={t('pending_received_by_label', 'Pending Received By')}
+                    value={pendingReceivedBy}
+                    onChange={setPendingReceivedBy}
+                    placeholder="-- Select Staff/User --"
+                    options={[
+                      { value: '', label: '- Not Selected -' },
+                      ...(staff.filter(s => s.isFinancialHandler).length > 0
+                        ? staff.filter(s => s.isFinancialHandler)
+                        : staff
+                      ).map(s => ({ value: s.name, label: s.name }))
+                    ]}
+                  />
+                </div>
               </div>
             )}
 
@@ -1531,7 +1625,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
 
             <Button
               type="submit"
-              color="blue"
+              color={savedBooking ? 'light' : 'blue'}
               disabled={isSubmitting}
               className={`w-full mt-4 font-semibold flex items-center justify-center gap-2 transition-opacity ${!canSubmitBooking ? 'opacity-50' : ''}`}
             >
@@ -1540,10 +1634,66 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                   <span>{t('saving_booking_button', 'Saving Booking...')}</span>
                 </>
+              ) : savedBooking ? (
+                <span>Saved Booking ✓</span>
               ) : (
                 <span>{t('save_guest_booking_button', 'Save Booking')}</span>
               )}
             </Button>
+
+            {savedBooking && (
+              <div className="space-y-2 mt-2">
+                <Button
+                  type="button"
+                  color="green"
+                  disabled={isSharingBooking}
+                  onClick={handleShareSavedBooking}
+                  className="w-full font-semibold flex items-center justify-center gap-2"
+                >
+                  {isSharingBooking ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      <span>Preparing Link...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 h-4 shrink-0" />
+                      <span>Share Booking</span>
+                    </>
+                  )}
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    color="light"
+                    onClick={() => {
+                      setSavedBooking(null);
+                      resetBookingForm();
+                    }}
+                    className="flex-1 text-xs font-medium"
+                  >
+                    + Add Another Booking
+                  </Button>
+                  {onClose && (
+                    <Button
+                      type="button"
+                      color="light"
+                      onClick={onClose}
+                      className="flex-1 text-xs font-medium"
+                    >
+                      Close
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* "Or" row between Save Booking and inquiry/quote options */}
+            <div className="flex items-center gap-3 my-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              <span className="text-2xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Or</span>
+              <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            </div>
 
             {/* "Inquiry -> Instant Quote" (5 Sep 2026) - for a guest who called
                 or messaged, send a WhatsApp link with this exact room/dates
@@ -1553,31 +1703,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 requires guest name + phone (a quote link can be sent before
                 either is known). Revising the price and clicking it again
                 just resends - see handleSendInstantQuote/booking_holds.php. */}
-            {/* "Send to guest" group (8 Sep 2026, explicit request: put the hold
-                and the share button "in a box so that user can understand that
-                they both are connected").
-
-                The box is not decoration - it states something true that the old
-                stacked layout got wrong. `holdHours` is read by exactly ONE
-                thing, handleSendInstantQuote; Save Booking never looks at it.
-                Sitting directly under the Save button, the hold select read as a
-                booking field that applied to saving. Fencing both share actions
-                off, with Save deliberately OUTSIDE the fence, says what actually
-                depends on what.
-
-                Both actions belong in here because they share one premise - the
-                dates typed into this form - and answer the two inquiries a host
-                actually gets: "is that room free?" (quote one room, hold it, send
-                a payment link) and "what have you got?" (list everything free
-                with rates). The hold select is attached to the Quote row only,
-                which is accurate: it has no effect on the all-rooms share. */}
-            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 p-3 space-y-2">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 p-3 space-y-2">
               <div>
-                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Send to Guest</h4>
-                {/* Carries what the button label no longer says. "Share Quote"
-                    had to get short enough to fit beside the select on a phone,
-                    but the payment link is the most persuasive part of it for
-                    staff - so it moved here rather than being dropped. */}
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Ask guest to book.</h4>
                 <p className="text-2xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Holds the room for the chosen time and sends a payment link.
                 </p>

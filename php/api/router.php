@@ -4325,6 +4325,7 @@ switch ($action) {
     // anywhere inside this run.
     case 'get_guests':
     case 'get_guest_extra_charges':
+    case 'add_guest_extra_charge':
     case 'add_guest':
     case 'update_guest':
     case 'checkout_guest':

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, AlertCircle, Pencil, Check, X, Sparkles } from './icons/FlowbiteIcons';
+import { Plus, Trash2, Loader2, AlertCircle, X, Sparkles } from './icons/FlowbiteIcons';
 import { Drawer, Alert } from 'flowbite-react';
 import { t } from '../i18n/en';
 import { Button } from './Button';
@@ -7,7 +7,8 @@ import { Input } from './Input';
 import { useConfirm } from './ConfirmDialogContext';
 import { useToast } from './ToastContext';
 import { useAuth } from '../contexts/AuthContext';
-import { apiFetch } from '../services/api';
+import { apiFetch, fetchRateRulesDB, RateRule } from '../services/api';
+import { RateRuleModal } from './RateRuleModal';
 
 interface Room {
   id: number;
@@ -71,13 +72,14 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
   const [addingRoom, setAddingRoom] = useState(false);
   const [deletingRoom, setDeletingRoom] = useState<number | null>(null);
   const [slotUsage, setSlotUsage] = useState<{ total_slots: number; used_slots: number; remaining_slots: number } | null>(null);
-  // Inline tariff edit - a room row's tariff can be edited in place, no
-  // separate "edit room" screen exists for anything else on this page yet.
-  const [editingTariffRoomId, setEditingTariffRoomId] = useState<number | null>(null);
-  const [tariffDraft, setTariffDraft] = useState('');
-  const [savingTariff, setSavingTariff] = useState(false);
   const [housekeepingStatuses, setHousekeepingStatuses] = useState<Record<number, string>>({});
   const [markingReadyRoomId, setMarkingReadyRoomId] = useState<number | null>(null);
+
+  // Pricing modal — opened per room via "Edit Pricing" button
+  const [pricingModalOpen, setPricingModalOpen] = useState(false);
+  const [pricingModalRoom, setPricingModalRoom] = useState<Room | null>(null);
+  const [rateRules, setRateRules] = useState<RateRule[]>([]);
+  const [defaultTariff, setDefaultTariff] = useState<number | null>(null);
 
   const { isAuthenticated, authChecked, currentUser } = useAuth();
   const { confirm } = useConfirm();
@@ -194,38 +196,12 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
     }
   };
 
-  const handleStartEditTariff = (room: Room) => {
-    setEditingTariffRoomId(room.id);
-    setTariffDraft(room.default_tariff != null ? String(room.default_tariff) : '');
-  };
-
-  const handleSaveTariff = async (roomId: number) => {
-    setSavingTariff(true);
-    try {
-      const response = await apiFetch('/php/api/router.php?action=update_room_tariff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ room_id: roomId, default_tariff: tariffDraft }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setEditingTariffRoomId(null);
-        showToast('Room tariff saved successfully!', { type: 'success' });
-        await loadData();
-        onUpdated?.();
-      } else {
-        const msg = data.message || 'Failed to update tariff';
-        setError(msg);
-        showToast(msg, { type: 'error' });
-      }
-    } catch (err) {
-      console.error('Failed to update tariff:', err);
-      const msg = 'Failed to update tariff';
-      setError(msg);
-      showToast(msg, { type: 'error' });
-    } finally {
-      setSavingTariff(false);
-    }
+  const handleOpenPricing = async (room: Room) => {
+    setPricingModalRoom(room);
+    setPricingModalOpen(true);
+    const data = await fetchRateRulesDB();
+    setRateRules(data.rules);
+    setDefaultTariff(data.default_tariff);
   };
 
   const handleDeleteRoom = async (roomId: number) => {
@@ -399,52 +375,15 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
                   </div>
 
                   <div>
-                    {editingTariffRoomId === room.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          type="number"
-                          value={tariffDraft}
-                          onChange={(e) => setTariffDraft(e.target.value)}
-                          placeholder={t('default_tariff_placeholder', 'e.g. 2000')}
-                          className="!h-7 !py-0.5 w-24 text-xs"
-                          autoFocus
-                        />
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleSaveTariff(room.id)}
-                          disabled={savingTariff}
-                          className="text-emerald-600 dark:text-emerald-400 p-1"
-                          title={t('save_tooltip', 'Save')}
-                        >
-                          {savingTariff ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setEditingTariffRoomId(null)}
-                          disabled={savingTariff}
-                          className="text-slate-400 p-1"
-                          title={t('cancel_button', 'Cancel')}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleStartEditTariff(room)}
-                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                        <span>
-                          {room.default_tariff != null
-                            ? t('default_tariff_display', 'Default Tariff: {{currency}} {{amount}}/night')
-                                .replace('{{currency}}', property.currency || '₹')
-                                .replace('{{amount}}', room.default_tariff.toFixed(0))
-                            : t('set_default_tariff_label', 'Set Default Tariff')}
-                        </span>
-                      </button>
-                    )}
+                    <Button
+                      variant="edit"
+                      size="xs"
+                      onClick={() => handleOpenPricing(room)}
+                    >
+                      {room.default_tariff != null
+                        ? `Edit Pricing · ${property.currency || '₹'}${room.default_tariff.toFixed(0)}/night`
+                        : 'Set Pricing'}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -580,6 +519,29 @@ export const RoomsManagement: React.FC<RoomsManagementProps> = ({
 
       {/* No propertyId: the unit is not saved yet, so this returns the scraped
           data to applyImportedUnit() instead of writing it to a property. */}
+
+      {/* Pricing modal — opened per room via "Edit Pricing" button */}
+      {pricingModalRoom && (
+        <RateRuleModal
+          isOpen={pricingModalOpen}
+          onClose={() => {
+            setPricingModalOpen(false);
+            setPricingModalRoom(null);
+          }}
+          propertyId={propertyId}
+          rooms={property?.rooms.map((r) => ({ id: r.id, name: r.name, default_tariff: r.default_tariff ?? undefined })) ?? []}
+          rateRules={rateRules}
+          defaultTariff={defaultTariff}
+          initialRoomIds={[pricingModalRoom.id]}
+          onRulesUpdated={async () => {
+            const data = await fetchRateRulesDB();
+            setRateRules(data.rules);
+            setDefaultTariff(data.default_tariff);
+            await loadData();
+            onUpdated?.();
+          }}
+        />
+      )}
     </div>
   );
 };
