@@ -1143,14 +1143,35 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
     setIsSharePreviewOpen(true);
   };
 
+  // Opens straight into the guest's own WhatsApp chat instead of a generic OS
+  // share sheet / contact picker (12 Sep 2026, explicit request: "when clicked
+  // on send, it should automatically choose the guest phone number") - same
+  // 10-digit-India-first wa.me pattern GuestManagement.tsx's own send flows
+  // already use. Falls back to the old copy-to-clipboard-only behavior only
+  // if the browser can't open a new tab/window at all (shouldn't happen in
+  // practice, but keeps this from being a dead button on an odd browser).
   const handleConfirmSendBooking = async () => {
-    await shareTextContent(
-      'Booking Details',
-      sharePreviewMessage,
-      showToast,
-      "Booking details copied - paste them wherever you'd like to send them.",
-      'Could not share or copy booking details.',
-    );
+    const cleanPhone = (guest.phoneNumber || '').replace(/\D/g, '');
+    const waUrl = cleanPhone.length === 10
+      ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(sharePreviewMessage)}`
+      : cleanPhone.length > 10
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(sharePreviewMessage)}`
+      : `https://wa.me/?text=${encodeURIComponent(sharePreviewMessage)}`;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(sharePreviewMessage).catch(() => {});
+    }
+
+    const opened = window.open(waUrl, '_blank');
+    if (!opened) {
+      await shareTextContent(
+        'Booking Details',
+        sharePreviewMessage,
+        showToast,
+        "Booking details copied - paste them wherever you'd like to send them.",
+        'Could not share or copy booking details.',
+      );
+    }
     setIsSharePreviewOpen(false);
   };
 
@@ -1164,6 +1185,16 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
 
   const handleSaveSharePreview = () => {
     setSharePreviewMessage(editableSharePreview);
+    setIsEditingSharePreview(false);
+  };
+
+  // Cancel out of edit mode back to the read-only preview, discarding the
+  // in-progress edit buffer - does NOT close the modal (12 Sep 2026, explicit
+  // request: "close button should take back to share preview"). Previously
+  // the modal's only close affordance was the header X, which unconditionally
+  // closed the whole preview even mid-edit - there was no way to back out of
+  // an edit without either saving it or losing the preview entirely.
+  const handleCancelEditSharePreview = () => {
     setIsEditingSharePreview(false);
   };
 
@@ -1392,18 +1423,19 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <Input
-                  label={t('today_guest_name_label', 'Guest Name *')}
+                  label={isEditing ? t('today_guest_name_label', 'Guest Name *') : 'Guest Name * (1: Transparent Notch)'}
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   disabled={!isEditing}
+                  disabledVariant="transparent"
                   placeholder="Enter guest's full name"
                   required
                 />
               </div>
               <div>
                 <Input
-                  label={t('contact_phone_label', 'Phone Number *')}
+                  label={isEditing ? t('contact_phone_label', 'Phone Number *') : 'Phone * (2: Rounded Badge)'}
                   type="tel"
                   value={editPhone}
                   // No maxLength - see GuestManagement.tsx's onChange comment (23 Aug 2026): a
@@ -1412,6 +1444,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
                   onChange={(e) => setEditPhone(normalizePhoneNumber(e.target.value))}
                   placeholder="10-digit mobile number"
                   disabled={!isEditing}
+                  disabledVariant="badge"
                   required
                   error={
                     isEditing && editPhone.trim().length > 0 && !isValidPhoneNumber(editPhone, editIsForeignGuest)
@@ -1472,12 +1505,13 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </div>
               <div>
                 <Input
-                  label={t('no_of_guests_label', 'No. of Guests')}
+                  label={isEditing ? t('no_of_guests_label', 'No. of Guests') : 'Guests (3: Inset Inside)'}
                   type="number"
                   min={1}
                   value={editGuests}
                   onChange={(e) => setEditGuests(e.target.value)}
                   disabled={!isEditing}
+                  disabledVariant="inset"
                 />
               </div>
             </div>
@@ -2274,7 +2308,14 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
           above is a Modal). z-70 matches that same "secondary dialog over an already-open
           page modal" tier. */}
       {isSharePreviewOpen && (
-        <Modal show onClose={() => setIsSharePreviewOpen(false)} dismissible size="lg" popup className="z-70">
+        <Modal
+          show
+          onClose={() => (isEditingSharePreview ? handleCancelEditSharePreview() : setIsSharePreviewOpen(false))}
+          dismissible
+          size="lg"
+          popup
+          className="z-70"
+        >
           <div className="flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg shrink-0">
               <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">
@@ -2282,9 +2323,10 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
               </h2>
               <button
                 type="button"
-                onClick={() => setIsSharePreviewOpen(false)}
+                onClick={() => (isEditingSharePreview ? handleCancelEditSharePreview() : setIsSharePreviewOpen(false))}
                 className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                aria-label="Close share preview"
+                aria-label={isEditingSharePreview ? 'Cancel editing, back to preview' : 'Close share preview'}
+                title={isEditingSharePreview ? 'Back to preview' : undefined}
               >
                 <X className="w-5 h-5" />
               </button>

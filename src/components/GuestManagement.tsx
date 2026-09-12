@@ -916,9 +916,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       // property-wide fallback for a SINGLE property - same precedence shape as
       // propertySecurityDeposit elsewhere in this file.
       const activeMakeBookingTemplate = propertyMakeBookingTemplate?.trim() || DEFAULT_MAKE_BOOKING_TEMPLATE;
+      // Empty cancellation policy used to render the "CANCELLATION POLICY"
+      // heading with nothing under it - a guest reading a blank line has no
+      // idea whether that means "free cancellation" or "we forgot to answer".
+      // Falls back to a real sentence instead (12 Sep 2026, explicit request).
       const cancellationPolicyValue = isMultiKeyProperty
-        ? (selectedRoomObj?.cancellation_policy || '')
-        : (propertyCancellationPolicy || '');
+        ? (selectedRoomObj?.cancellation_policy || 'Contact host for cancellation policy.')
+        : (propertyCancellationPolicy || 'Contact host for cancellation policy.');
       const waText = renderWhatsappVoucherTemplate(activeMakeBookingTemplate, {
         property_name: propertyName || 'our property',
         room_name: quote.room_name,
@@ -939,7 +943,22 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         booking_link: shareUrl,
       }) + `\n\n_(Room held for the next ${holdLabel})_`;
 
-      window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank');
+      // Open straight into the guest's own chat instead of a contact-picker/
+      // "Message yourself" default (12 Sep 2026, explicit request) - same
+      // 10-digit-India-first pattern already used by handleSendInstantQuote's
+      // sibling send flows a little further down this file.
+      const cleanPhone = (phoneNumber || '').replace(/\D/g, '');
+      const waUrl = cleanPhone.length === 10
+        ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
+        : cleanPhone.length > 10
+        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
+        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(waText).catch(() => {});
+      }
+
+      window.open(waUrl, '_blank');
       showToast(`Quote link created - room held for ${holdLabel}.`, { type: 'success' });
     } catch (err: any) {
       showToast(err?.message || 'Network error creating quote', { type: 'error' });

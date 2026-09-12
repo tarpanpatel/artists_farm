@@ -16,6 +16,12 @@
  * already worked (this file, GuestManagement's "Share Quote", and
  * BookingDetailsModal's "Share Preview") - restored verbatim from the commit
  * before that change (73057ac0^) rather than reconstructed from memory.
+ *
+ * Nights line removed again 12 Sep 2026 (this time deliberately, explicit
+ * request: "No need to mention number of nights in any of the emails,
+ * messages") - not a repeat of the accidental drop above. Check-in/check-out
+ * dates already imply the stay length; don't re-add a {nights} display line
+ * to either template without another explicit ask.
  */
 
 /**
@@ -52,7 +58,6 @@ export const DEFAULT_MAKE_BOOKING_TEMPLATE =
 📅 *CHECK-IN & CHECK-OUT*
 • Check-in: {checkin_date} from {checkin_time}
 • Check-out: {checkout_date} until {checkout_time}
-• Nights: {nights}
 👥 *Guests:* {guest_count}
 
 📍 *Location:* {address}
@@ -80,7 +85,6 @@ export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
 🏠 *Unit / Room:* {room_name}
 📅 *Check-In:* {checkin_date} from {checkin_time}
 📅 *Check-Out:* {checkout_date} until {checkout_time}
-🌙 *Nights:* {nights}
 👥 *Number of Guests:* {guest_count}
 👨‍👩‍👧 *Party:* {guest_breakdown}
 💰 *Room Tariff:* ₹{room_tariff}
