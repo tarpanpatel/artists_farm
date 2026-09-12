@@ -717,6 +717,9 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
                       {basePriceTitle}
                     </h4>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      {basePriceRateDisplay}
+                    </span>
                     <Popover
                       placement="bottom"
                       trigger="click"
@@ -737,9 +740,6 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                         Help?
                       </button>
                     </Popover>
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      {basePriceRateDisplay}
-                    </span>
                   </div>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {focusedRoom
@@ -767,6 +767,9 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                     <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
                       {basePriceTitle}
                     </h4>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      {basePriceRateDisplay}
+                    </span>
                     <Popover
                       placement="bottom"
                       trigger="click"
@@ -787,9 +790,6 @@ export const PricingRulesPanel: React.FC<PricingRulesPanelProps> = ({
                         Help?
                       </button>
                     </Popover>
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      {basePriceRateDisplay}
-                    </span>
                   </div>
                   <p className="text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {focusedRoom

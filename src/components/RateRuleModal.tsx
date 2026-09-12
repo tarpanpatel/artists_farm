@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from 'flowbite-react';
 import { RateRule } from '../services/api';
-import { Home, X } from './icons/FlowbiteIcons';
+import { IndianRupee, X } from './icons/FlowbiteIcons';
 import { PricingRulesPanel } from './PricingRulesPanel';
 
 interface RateRuleModalProps {
@@ -61,6 +61,14 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
     initialRoomIds && initialRoomIds.length > 0 ? initialRoomIds : rooms.map((r) => r.id)
   );
 
+  const unitTitle = selectedRoomIdsForBadge.length === 1
+    ? (rooms.find((r) => r.id === selectedRoomIdsForBadge[0])?.name || '1 Unit')
+    : selectedRoomIdsForBadge.length === 0
+    ? 'No Units Selected'
+    : selectedRoomIdsForBadge.length === rooms.length && rooms.length > 0
+    ? 'All Units'
+    : `${selectedRoomIdsForBadge.length} Units`;
+
   return (
     // z-70 stacks this modal above CalendarEditorPanel (the drawer, z-58/z-59)
     // so closing this modal returns cleanly to the drawer without dropping
@@ -84,37 +92,23 @@ export const RateRuleModal: React.FC<RateRuleModalProps> = ({
       className="z-70"
     >
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm select-none">
-            ₹
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+            <IndianRupee className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-            Pricing
-          </h3>
-          {rooms.length > 0 && (
-            <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-semibold rounded-md border ${
-              selectedRoomIdsForBadge.length === 0
-                ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
-                : selectedRoomIdsForBadge.length === 1
-                ? 'bg-blue-100 dark:bg-blue-900/60 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200'
-                : 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
-            }`}>
-              {selectedRoomIdsForBadge.length === 0 ? (
-                'No units selected'
-              ) : selectedRoomIdsForBadge.length === 1 ? (
-                <>
-                  <Home className="w-3.5 h-3.5 mr-1 shrink-0" />
-                  <span>{rooms.find((r) => r.id === selectedRoomIdsForBadge[0])?.name || '1 Unit'}</span>
-                </>
-              ) : (
-                `${selectedRoomIdsForBadge.length} Units`
-              )}
-            </span>
-          )}
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white m-0">
+              {unitTitle}
+            </h2>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
+              Pricing
+            </p>
+          </div>
         </div>
         <button
           type="button"
           onClick={onClose}
+          aria-label="Close"
           className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
         >
           <X className="w-5 h-5" />
