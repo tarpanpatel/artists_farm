@@ -162,7 +162,17 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
 
                 foreach ($orders as &$order) {
                     try {
-                        $itemStmt = $pdo->prepare("SELECT oi.id, oi.menu_item_id, m.name, oi.quantity, m.price as unit_price,
+                        // COALESCE(oi.unit_price, m.price) - not m.price alone
+                        // (13 Sep 2026). This feeds a GUEST'S in-room dining
+                        // charges, and aliasing the live menu price as
+                        // "unit_price" meant changing a dish's price mid-stay
+                        // silently re-priced food that guest had already eaten
+                        // and been quoted for. Same defect as the walk-in bill
+                        // re-pricing, on the larger surface: room guests.
+                        // oi.unit_price is captured at order time; the fallback
+                        // only applies to rows written before that column existed.
+                        $itemStmt = $pdo->prepare("SELECT oi.id, oi.menu_item_id, m.name, oi.quantity,
+                                                  COALESCE(oi.unit_price, m.price, 0) as unit_price,
                                                   oi.item_status, oi.ready_at
                                                   FROM order_items oi
                                                   LEFT JOIN menu_items m ON oi.menu_item_id = m.id
@@ -170,6 +180,13 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                         $itemStmt->execute([$order['id']]);
                         $order['items'] = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
                     } catch (PDOException $ie) {
+                        // Log it (13 Sep 2026). This handler turns ANY query
+                        // failure - a missing column after a partial migration,
+                        // most of all - into "this order has no items", which
+                        // reads as a real empty order and is invisible until a
+                        // guest is undercharged. Still degrades rather than
+                        // failing the whole request, but no longer silently.
+                        error_log('get_orders: failed to load items for order ' . ($order['id'] ?? '?') . ': ' . $ie->getMessage());
                         $order['items'] = [];
                     }
                     $total = 0;

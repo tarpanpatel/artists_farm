@@ -40,6 +40,14 @@ function validateWalkInTabInput(array $input): array {
 
 if (!function_exists('ensureWalkInTabSchema')) {
     function ensureWalkInTabSchema($pdo) {
+        // BEFORE the early return below, not after it. unit_price has its own
+        // independent schema key, and every environment that already ran this
+        // function has `schema_walk_in_tabs` cached as verified - so a call
+        // placed after the return would never execute there, the column would
+        // never be added, and every query selecting oi.unit_price would fail
+        // into a `catch (PDOException) { items = [] }` and silently serve
+        // EMPTY order items. (Caught in review before shipping, 13 Sep 2026.)
+        ensureOrderItemUnitPriceColumn($pdo);
         if (isSchemaVerified('schema_walk_in_tabs')) return;
         try {
             $pdo->exec("CREATE TABLE IF NOT EXISTS walk_in_tabs (
@@ -67,7 +75,6 @@ if (!function_exists('ensureWalkInTabSchema')) {
         } catch (Exception $e) {
             error_log("walk_in_tabs schema migration error: " . $e->getMessage());
         }
-        ensureOrderItemUnitPriceColumn($pdo);
     }
 }
 
