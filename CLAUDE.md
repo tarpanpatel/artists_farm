@@ -221,10 +221,18 @@ makes them go hunting for the right screen, and most simply won't.
 - **Build the URL from the request's own host, validated.** `$_SERVER['HTTP_HOST']` is just a request
   header and is attacker-controllable, so check it against the hosts this app actually runs on
   (`ground-code.com`, `www.`, `staging.`, plus localhost/192.168.* for dev) and fall back to
-  production on anything else - these messages carry passcodes and booking details, and a forged
-  Host would otherwise put an arbitrary domain in front of them. Scheme is HTTPS for everything
-  except local dev; don't infer it from `$_SERVER['HTTPS']` alone (unset in a CLI/cron context,
-  which silently produced an `http://` link).
+  production on anything else - these messages carry account/booking details, and a forged Host
+  would otherwise put an arbitrary domain in front of them. Scheme is HTTPS for everything except
+  local dev; don't infer it from `$_SERVER['HTTPS']` alone (unset in a CLI/cron context, which
+  silently produced an `http://` link).
+- **Never put a passcode/OTP-shaped value in a Utility-category template, in ANY wording.** Meta's
+  own pre-submit classifier forces Authentication category the instant a variable looks like a
+  one-time code - confirmed live, before body wording is even a factor, so no amount of rewording
+  fixes it. Authentication templates allow exactly one variable (the code) with Meta's fixed
+  wording and a mandatory copy-code button - no room for an action link, which makes Authentication
+  a dead end for any message this rule applies to. Keep credentials out of Utility templates
+  entirely; deliver them through a channel without that constraint (email today - see
+  `welcome_onboarding`'s full incident below for why this took three attempts to nail down).
 - **For a guest-facing message, the destination is that booking's public voucher**, not a login
   screen - guests have no account. `getOrCreateVoucherToken($pdo, $propertyId, $bookingId)`
   (`php/api/public_voucher.php`) mints a per-booking token; the page is `https://<host>/voucher/<token>`.
@@ -247,41 +255,53 @@ plus Meta's sample `hello_world`) are referenced nowhere in the repo and have ne
 
 | Template | Called from | Link? |
 |---|---|---|
-| `welcome_onboarding` | `configuration.php` `registerTenantTrial()` | ✅ `{{2}}` = full login URL - 4 params: name, URL, username, passcode |
+| `welcome_onboarding` | `configuration.php` `registerTenantTrial()` | ✅ `{{2}}` = full login URL - 3 params: name, URL, username (NO passcode - see below) |
 | `new_booking_cofirmation` | `guests.php` booking path | ❌ **OPEN** - 3 params (name/date/room), no link |
 
-`welcome_onboarding` was rejected once by Meta as the wrong category (read as Marketing, not
-Utility). **The passcode was briefly dropped as the fix, then explicitly restored the same day at
-the owner's request** - both changes are worth understanding, not just the end state:
+**Never put a passcode/OTP-shaped value in a Utility-category WhatsApp template body, in ANY
+wording.** `welcome_onboarding` went through three attempts in one day before this was settled, and
+the final answer is a Meta platform constraint, not a copywriting one - worth recording all three so
+nobody re-litigates the first two:
 
-- The rejection was about CATEGORY, not the presence of a credential. The likely trigger was the
-  "🎉 Welcome to Ground Code!" framing - a credential plus celebratory tone is exactly what a
-  promotional onboarding message looks like to a reviewer.
-- `$passcode` here is the 6-digit PIN the owner just typed into the signup form themselves
-  (`SelfOnboardingWizard.tsx`), not a system-generated temp code. Sending it back over WhatsApp is
-  confirming a receipt of something they already chose and saw, not disclosing a secret to them for
-  the first time - a materially lower-risk case than it might first look like.
-- The durable fix was rewriting the BODY to be neutral and factual (no exclamation, no emoji, no
-  "Welcome") - what Meta's own Utility category description asks for - not removing information the
-  owner asked to receive. Current body:
-  ```
-  Hi {{1}}, your Ground Code account is set up.
+1. First draft: greeting + link + username + passcode, Utility. **Rejected** - read as Marketing.
+2. Second attempt: dropped the passcode entirely, reasoning it was an unnecessary credential
+   exposure anyway (the owner had just typed it into the signup form themselves, so WhatsApp would
+   only be confirming a receipt - a materially lower risk than a system-generated secret). Correct
+   engineering call, but arrived at for the wrong immediate reason.
+3. Owner explicitly asked for the passcode back, reasoning point 2's risk analysis was sound but
+   overcautious for a value the owner already knows. Tried rewriting the body neutral and factual
+   (no exclamation, no "Welcome", no emoji) on the theory the CATEGORY rejection was really a TONE
+   problem.
+4. **Meta's own pre-submit classifier disproved that theory outright**: the template editor threw
+   "Category does not match" and recommended Authentication, live, before the body wording was even
+   evaluated - confirming the trigger is the passcode-shaped VALUE itself, not the surrounding
+   words. Any tone at all is irrelevant once a variable looks like a one-time code.
 
-  Login link: {{2}}
-  Username: {{3}}
-  Passcode: {{4}}
+Authentication category cannot substitute: it allows exactly ONE variable (the code) with Meta's
+fixed wording and a mandatory copy-code button - no room for the link+username this message also
+needs, and no room for the action-link rule above. So `welcome_onboarding` carries link+username
+only; **the passcode stays in the welcome email**, which delivers it today with no such constraint.
+Current body:
+```
+Hi {{1}}, your Ground Code account is set up.
 
-  Keep this passcode safe - you'll need it to sign in.
-  ```
+Login link: {{2}}
+Username: {{3}}
+```
 
-**This stays a DIFFERENT situation from `create_tenant`/`create_tenant_login`/`reset_tenant_login`
-in `router.php`**, which DO generate a real random temp passcode for someone else's account
+If WhatsApp delivery of the passcode itself is wanted later, the correct shape is a SECOND,
+Authentication-category template carrying only the code (Meta's fixed wording, copy-code button) -
+sent as its own message alongside this one, not merged into it. That path may also require extra
+WhatsApp Business Account verification for the Authentication use case - unconfirmed, check Meta
+Business Manager before committing to it.
+
+**This is a DIFFERENT situation from `create_tenant`/`create_tenant_login`/`reset_tenant_login` in
+`router.php`**, which DO generate a real random temp passcode for someone else's account
 (`must_change_passcode = 1`) and hand it to Root Admin to relay by hand - a genuine "nobody chose
 this secret" exposure, untouched by any of the above. If that flow is ever automated or moved onto a
-WhatsApp template, do NOT reuse `welcome_onboarding`'s "just send it, it's their own receipt"
-reasoning - the recipient there has no idea what the value even is, so the correct fix is a
-single-use setup link the recipient uses to choose their own passcode, not texting them a secret
-generated on their behalf.
+WhatsApp template, it hits the exact same Authentication-category wall as point 4 - the fix there is
+a single-use setup link the recipient uses to choose their own passcode, not attempting to text them
+a secret generated on their behalf (which Meta will reject the same way, for the same reason).
 
 `new_booking_cofirmation` is the outstanding violation: it should gain a 4th variable carrying the
 voucher URL, which means editing the template on Meta **and** passing `getOrCreateVoucherToken()`'s
