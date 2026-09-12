@@ -3036,6 +3036,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <PastWalkInBillsDrawer
           open={isPastBillsDrawerOpen}
           onClose={() => setIsPastBillsDrawerOpen(false)}
+          menu={menu}
           propertyName={propertyName}
           propertyGstin={propertyGstin}
           propertyUpiId={propertyUpiId}

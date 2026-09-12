@@ -76,7 +76,7 @@ if (!function_exists('ensureWalkInTabSchema')) {
 if (!function_exists('getWalkInTabItems')) {
     function getWalkInTabItems($pdo, $tabId) {
         $stmt = $pdo->prepare("
-            SELECT m.name, m.price, SUM(oi.quantity) as quantity
+            SELECT oi.menu_item_id, m.name, COALESCE(m.price, 0) as price, SUM(oi.quantity) as quantity
             FROM orders o
             JOIN order_items oi ON oi.order_id = o.id
             LEFT JOIN menu_items m ON oi.menu_item_id = m.id
@@ -88,6 +88,7 @@ if (!function_exists('getWalkInTabItems')) {
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $subtotal = 0;
         foreach ($items as &$it) {
+            $it['menu_item_id'] = (int)($it['menu_item_id'] ?? 0);
             $it['price'] = (float)($it['price'] ?? 0);
             $it['quantity'] = (int)($it['quantity'] ?? 0);
             $it['lineTotal'] = $it['price'] * $it['quantity'];
@@ -282,13 +283,55 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                     $gstEnabled = !empty($input['gst_enabled']);
                     $gstRate = $gstEnabled ? (float)($input['gst_rate'] ?? 5) : 0;
 
+                    $pdo->beginTransaction();
+
+                    // If items array is provided in update payload, sync order_items for this tab
+                    if (isset($input['items']) && is_array($input['items'])) {
+                        $orderStmt = $pdo->prepare("SELECT id FROM orders WHERE walk_in_tab_id = ? ORDER BY id ASC");
+                        $orderStmt->execute([$tabId]);
+                        $orderIds = $orderStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                        if (empty($orderIds)) {
+                            $createOrder = $pdo->prepare("INSERT INTO orders (property_id, walk_in_tab_id, order_time, status) VALUES (?, ?, NOW(), 'Fulfilled')");
+                            $createOrder->execute([$propertyId, $tabId]);
+                            $primaryOrderId = $pdo->lastInsertId();
+                        } else {
+                            $primaryOrderId = $orderIds[0];
+                            if (count($orderIds) > 1) {
+                                $extraOrderIds = array_slice($orderIds, 1);
+                                $inClause = implode(',', array_fill(0, count($extraOrderIds), '?'));
+                                $pdo->prepare("DELETE FROM order_items WHERE order_id IN ($inClause)")->execute($extraOrderIds);
+                                $pdo->prepare("DELETE FROM orders WHERE id IN ($inClause)")->execute($extraOrderIds);
+                            }
+                            $pdo->prepare("DELETE FROM order_items WHERE order_id = ?")->execute([$primaryOrderId]);
+                        }
+
+                        $insItem = $pdo->prepare("INSERT INTO order_items (property_id, order_id, menu_item_id, quantity, item_status) VALUES (?, ?, ?, ?, 'Fulfilled')");
+                        foreach ($input['items'] as $it) {
+                            $mId = !empty($it['menu_item_id']) ? (int)$it['menu_item_id'] : (!empty($it['id']) ? (int)$it['id'] : null);
+                            $qty = max(1, (int)($it['quantity'] ?? 1));
+                            if (!$mId && !empty($it['name'])) {
+                                $findM = $pdo->prepare("SELECT id FROM menu_items WHERE property_id = ? AND name = ? LIMIT 1");
+                                $findM->execute([$propertyId, $it['name']]);
+                                $mId = $findM->fetchColumn() ?: null;
+                            }
+                            if (!$mId && !empty($it['name'])) {
+                                $insM = $pdo->prepare("INSERT INTO menu_items (property_id, name, category, price, available) VALUES (?, ?, 'Starters', ?, 1)");
+                                $insM->execute([$propertyId, $it['name'], (float)($it['price'] ?? 0)]);
+                                $mId = $pdo->lastInsertId();
+                            }
+                            if ($mId) {
+                                $insItem->execute([$propertyId, $primaryOrderId, $mId, $qty]);
+                            }
+                        }
+                    }
+
                     $agg = getWalkInTabItems($pdo, $tabId);
                     $subtotal = $agg['subtotal'];
                     $afterDiscount = max(0, $subtotal - $discount);
                     $gstAmount = $gstEnabled ? round($afterDiscount * ($gstRate / 100), 2) : 0;
                     $grandTotal = round($afterDiscount + $gstAmount, 2);
 
-                    $pdo->beginTransaction();
                     $upd = $pdo->prepare("UPDATE walk_in_tabs SET label = ?, payment_method = ?, discount = ?, gst_enabled = ?, gst_rate = ?, gst_amount = ?, grand_total = ? WHERE id = ? AND property_id = ?");
                     $upd->execute([$label, $paymentMethod, $discount, $gstEnabled ? 1 : 0, $gstRate, $gstAmount, $grandTotal, $tabId, $propertyId]);
 

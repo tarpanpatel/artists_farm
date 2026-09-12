@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Button, Modal } from 'flowbite-react';
-import { X, Search, History, Eye, Pencil, Trash2, Share2, RefreshCw, AlertCircle, CheckCircle2, Loader2 } from './icons/FlowbiteIcons';
+import { X, Search, History, Eye, Pencil, Trash2, Share2, RefreshCw, AlertCircle, CheckCircle2, Loader2, Plus, Minus } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 import { fetchWalkInTabHistoryFromDB, updateWalkInTabDB, deleteWalkInTabDB } from '../services/api';
@@ -11,6 +11,7 @@ import { Popover } from './Popover';
 import { getWhatsAppShareUrl } from '../utils/phoneUtils';
 import * as htmlToImage from 'html-to-image';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
+import { MenuItem } from '../types';
 
 export interface PastWalkInBillItem {
   id: number;
@@ -25,13 +26,14 @@ export interface PastWalkInBillItem {
   gst_amount: number;
   grand_total: number;
   subtotal?: number;
-  items?: { name: string; price: number; quantity: number; lineTotal: number }[];
+  items?: { menu_item_id?: number; name: string; price: number; quantity: number; lineTotal: number }[];
 }
 
 interface PastWalkInBillsDrawerProps {
   open: boolean;
   onClose: () => void;
   onViewBill?: (bill: any) => void;
+  menu?: MenuItem[];
   propertyName?: string;
   propertyGstin?: string;
   propertyUpiId?: string;
@@ -41,6 +43,7 @@ interface PastWalkInBillsDrawerProps {
 export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
   open,
   onClose,
+  menu = [],
   propertyName,
   propertyGstin,
   propertyUpiId,
@@ -63,6 +66,8 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
   const [editDiscount, setEditDiscount] = useState<number>(0);
   const [editGstEnabled, setEditGstEnabled] = useState<boolean>(false);
   const [editGstRate, setEditGstRate] = useState<number>(5);
+  const [editItems, setEditItems] = useState<Array<{ menu_item_id?: number; name: string; price: number; quantity: number }>>([]);
+  const [dishSelectValue, setDishSelectValue] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
   // Deleting state
@@ -99,6 +104,15 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
     });
   }, [bills, searchQuery]);
 
+  const menuOptions = useMemo(() => {
+    return (menu || [])
+      .filter((m) => m.available !== false)
+      .map((m) => ({
+        value: String(m.id),
+        label: `${m.name} (₹${Number(m.price).toFixed(2)})`,
+      }));
+  }, [menu]);
+
   const handleStartEdit = (b: PastWalkInBillItem) => {
     setEditingBill(b);
     setEditLabel(b.label || '');
@@ -106,10 +120,77 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
     setEditDiscount(Number(b.discount) || 0);
     setEditGstEnabled(Boolean(b.gst_enabled));
     setEditGstRate(Number(b.gst_rate) || 5);
+    setEditItems(
+      (b.items || []).map((it) => ({
+        menu_item_id: it.menu_item_id,
+        name: it.name,
+        price: Number(it.price) || 0,
+        quantity: Math.max(1, Number(it.quantity) || 1),
+      }))
+    );
+    setDishSelectValue('');
   };
+
+  const handleItemQuantityChange = (index: number, delta: number) => {
+    setEditItems((prev) => {
+      const next = [...prev];
+      const item = next[index];
+      if (!item) return prev;
+      const newQty = item.quantity + delta;
+      if (newQty <= 0) {
+        return next.filter((_, i) => i !== index);
+      }
+      next[index] = { ...item, quantity: newQty };
+      return next;
+    });
+  };
+
+  const handleRemoveEditItem = (index: number) => {
+    setEditItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddDishToEdit = (menuItemIdStr: string) => {
+    if (!menuItemIdStr) return;
+    const menuItemId = Number(menuItemIdStr);
+    const dish = (menu || []).find((m) => m.id === menuItemId);
+    if (!dish) return;
+
+    setEditItems((prev) => {
+      const existingIdx = prev.findIndex(
+        (it) => (it.menu_item_id && it.menu_item_id === dish.id) || it.name.toLowerCase() === dish.name.toLowerCase()
+      );
+      if (existingIdx >= 0) {
+        const next = [...prev];
+        next[existingIdx] = { ...next[existingIdx], quantity: next[existingIdx].quantity + 1 };
+        return next;
+      }
+      return [
+        ...prev,
+        {
+          menu_item_id: dish.id,
+          name: dish.name,
+          price: Number(dish.price) || 0,
+          quantity: 1,
+        },
+      ];
+    });
+    setDishSelectValue('');
+  };
+
+  const editSubtotal = useMemo(() => {
+    return editItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
+  }, [editItems]);
+
+  const editAfterDiscount = Math.max(0, editSubtotal - editDiscount);
+  const editGstAmount = editGstEnabled ? Math.round(editAfterDiscount * (editGstRate / 100) * 100) / 100 : 0;
+  const editGrandTotal = Math.round((editAfterDiscount + editGstAmount) * 100) / 100;
 
   const handleSaveEdit = async () => {
     if (!editingBill) return;
+    if (editItems.length === 0) {
+      showToast('A bill must have at least one dish', { type: 'warning' });
+      return;
+    }
     setIsSavingEdit(true);
     try {
       const res = await updateWalkInTabDB({
@@ -119,12 +200,28 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
         discount: editDiscount,
         gstEnabled: editGstEnabled,
         gstRate: editGstRate,
+        items: editItems,
       });
 
       if (res.success && res.bill) {
         showToast('Walk-in bill updated successfully', { type: 'success' });
         setBills((prev) =>
-          prev.map((b) => (b.id === editingBill.id ? { ...b, ...res.bill, grand_total: res.bill.grandTotal, payment_method: res.bill.paymentMethod, discount: res.bill.discount, gst_enabled: res.bill.gstEnabled, gst_rate: res.bill.gstRate, gst_amount: res.bill.gstAmount } : b))
+          prev.map((b) =>
+            b.id === editingBill.id
+              ? {
+                  ...b,
+                  ...res.bill,
+                  grand_total: res.bill.grandTotal,
+                  payment_method: res.bill.paymentMethod,
+                  discount: res.bill.discount,
+                  gst_enabled: res.bill.gstEnabled,
+                  gst_rate: res.bill.gstRate,
+                  gst_amount: res.bill.gstAmount,
+                  subtotal: res.bill.subtotal,
+                  items: res.bill.items,
+                }
+              : b
+          )
         );
         setEditingBill(null);
       } else {
@@ -499,54 +596,153 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
         <Modal
           show={!!editingBill}
           onClose={() => setEditingBill(null)}
-          size="md"
+          size="lg"
           popup
           className="z-70"
         >
-          <div className="p-5 space-y-4 bg-white dark:bg-gray-800 rounded-lg">
+          <div className="p-5 space-y-4 bg-white dark:bg-gray-800 rounded-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                Edit Walk-in Bill #{editingBill.id}
-              </h3>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Edit Walk-in Bill #{editingBill.id}
+                </h3>
+                <p className="text-2xs text-gray-500 dark:text-gray-400">
+                  Update items, quantities, pricing, customer details, or payment method.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditingBill(null)}
-                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1"
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1 cursor-pointer"
+                aria-label="Close"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block mb-1 font-medium text-gray-900 dark:text-white">
-                  Table / Customer Label
-                </label>
-                <Input
-                  type="text"
-                  value={editLabel}
-                  onChange={(e) => setEditLabel(e.target.value)}
-                  placeholder="e.g. Table 1 or Guest Name"
-                />
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 font-medium text-gray-900 dark:text-white">
+                    Table / Customer Label
+                  </label>
+                  <Input
+                    type="text"
+                    value={editLabel}
+                    onChange={(e) => setEditLabel(e.target.value)}
+                    placeholder="e.g. Table 1 or Guest Name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 font-medium text-gray-900 dark:text-white">
+                    Payment Method
+                  </label>
+                  <StyledSelect
+                    value={editPaymentMethod}
+                    onChange={(v) => setEditPaymentMethod(String(v))}
+                    options={[
+                      { value: 'Cash', label: 'Cash' },
+                      { value: 'UPI', label: 'UPI' },
+                      { value: 'Card', label: 'Card' },
+                      { value: 'Online', label: 'Online' },
+                      { value: 'Bank Transfer', label: 'Bank Transfer' },
+                    ]}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block mb-1 font-medium text-gray-900 dark:text-white">
-                  Payment Method
-                </label>
-                <StyledSelect
-                  value={editPaymentMethod}
-                  onChange={(v) => setEditPaymentMethod(String(v))}
-                  options={[
-                    { value: 'Cash', label: 'Cash' },
-                    { value: 'UPI', label: 'UPI' },
-                    { value: 'Card', label: 'Card' },
-                    { value: 'Online', label: 'Online' },
-                    { value: 'Bank Transfer', label: 'Bank Transfer' },
-                  ]}
-                />
+              {/* Dishes Section */}
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-850 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
+                  <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                    Dishes on Bill ({editItems.length})
+                  </span>
+                  <span className="text-2xs font-semibold text-gray-500 dark:text-gray-400">
+                    Subtotal: ₹{editSubtotal.toFixed(2)}
+                  </span>
+                </div>
+
+                {/* Dish Rows */}
+                {editItems.length === 0 ? (
+                  <div className="py-3 text-center text-2xs text-amber-600 dark:text-amber-400 font-medium">
+                    No dishes on this bill. Please add at least one dish below.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {editItems.map((it, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 p-2 rounded bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                            {it.name}
+                          </div>
+                          <div className="text-2xs text-gray-500 dark:text-gray-400">
+                            ₹{Number(it.price).toFixed(2)} each
+                          </div>
+                        </div>
+
+                        {/* Quantity Stepper */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleItemQuantityChange(idx, -1)}
+                            className="w-6 h-6 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors cursor-pointer"
+                            title="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center font-bold text-xs text-gray-900 dark:text-white">
+                            {it.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleItemQuantityChange(idx, 1)}
+                            className="w-6 h-6 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors cursor-pointer"
+                            title="Increase quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Line Total */}
+                        <div className="w-16 text-right font-semibold text-xs text-gray-900 dark:text-white shrink-0">
+                          ₹{(it.price * it.quantity).toFixed(2)}
+                        </div>
+
+                        {/* Remove Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditItem(idx)}
+                          className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors cursor-pointer shrink-0"
+                          title="Remove dish"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add Dish Dropdown */}
+                <div className="pt-1.5 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                  <div className="flex-1">
+                    <StyledSelect
+                      value={dishSelectValue}
+                      onChange={(v) => handleAddDishToEdit(String(v))}
+                      options={[
+                        { value: '', label: '+ Add a dish from menu...' },
+                        ...menuOptions,
+                      ]}
+                      placeholder="+ Add a dish from menu..."
+                    />
+                  </div>
+                </div>
               </div>
 
+              {/* Discount and GST */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block mb-1 font-medium text-gray-900 dark:text-white">
@@ -576,7 +772,7 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-0.5">
                 <input
                   type="checkbox"
                   id="edit-bill-gst-toggle"
@@ -587,6 +783,30 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
                 <label htmlFor="edit-bill-gst-toggle" className="text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none">
                   Apply GST ({editGstRate}%)
                 </label>
+              </div>
+
+              {/* Live Calculation Summary */}
+              <div className="bg-gray-100 dark:bg-gray-750 rounded-lg p-3 space-y-1 text-2xs">
+                <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>Subtotal:</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">₹{editSubtotal.toFixed(2)}</span>
+                </div>
+                {editDiscount > 0 && (
+                  <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                    <span>Discount:</span>
+                    <span>-₹{editDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {editGstEnabled && (
+                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                    <span>GST ({editGstRate}%):</span>
+                    <span>+₹{editGstAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-gray-200 dark:border-gray-600">
+                  <span>Grand Total:</span>
+                  <span>₹{editGrandTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
 
@@ -603,7 +823,7 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
                 color="blue"
                 size="sm"
                 onClick={handleSaveEdit}
-                disabled={isSavingEdit}
+                disabled={isSavingEdit || editItems.length === 0}
               >
                 {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
                 Save Changes

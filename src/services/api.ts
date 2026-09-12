@@ -1593,6 +1593,7 @@ export async function updateWalkInTabDB(params: {
   discount: number;
   gstEnabled: boolean;
   gstRate: number;
+  items?: Array<{ menu_item_id?: number; name: string; price: number; quantity: number }>;
 }): Promise<{ success: boolean; message?: string; bill?: any }> {
   try {
     const res = await apiFetch(`${API_BASE}?action=update_walk_in_tab`, {
@@ -1605,6 +1606,7 @@ export async function updateWalkInTabDB(params: {
         discount: params.discount,
         gst_enabled: params.gstEnabled,
         gst_rate: params.gstRate,
+        items: params.items,
       }),
     });
     const json = await res.json();
