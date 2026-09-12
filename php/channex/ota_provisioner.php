@@ -692,9 +692,12 @@ function autoCreateRoomsFromAirbnbListings(PDO $pdo, int $propertyId): array {
     $syncer = new ChannexContentSyncer($pdo, $channelClient->client ?? new ChannexClient());
     $syncer->syncProperty($propertyId);
 
-    // Fetch updated local rooms
+    // Fetch updated local rooms. default_tariff included 12 Sep 2026 to match
+    // channex_channel_connection_status's own local_rooms shape - the mapping step reads it
+    // to tell "this unit has no price" apart from "content was never synced", and this
+    // response feeds the same setCurrentLocalRooms() state in ChannelConnectWizard.tsx.
     $statusStmt = $pdo->prepare("
-        SELECT p.id AS local_room_id, p.name, m.channex_rate_plan_id
+        SELECT p.id AS local_room_id, p.name, p.default_tariff, m.channex_rate_plan_id
         FROM properties p
         LEFT JOIN channex_mappings m ON m.property_id = ? AND m.room_id = p.id
         WHERE p.parent_property_id = ? AND p.property_type = 'MULTI_KEY_ROOM' AND p.is_deleted = 0
@@ -702,6 +705,11 @@ function autoCreateRoomsFromAirbnbListings(PDO $pdo, int $propertyId): array {
     ");
     $statusStmt->execute([$propertyId, $propertyId]);
     $localRooms = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($localRooms as &$lr) {
+        // PDO hands DECIMAL back as a string; the UI does `> 0` on it.
+        $lr['default_tariff'] = $lr['default_tariff'] !== null ? (float)$lr['default_tariff'] : null;
+    }
+    unset($lr);
 
     return [
         'status' => 'success',

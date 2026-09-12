@@ -5378,9 +5378,13 @@ switch ($action) {
                 $propTypeStmt->execute([$targetPropertyId]);
                 $propRow = $propTypeStmt->fetch(PDO::FETCH_ASSOC);
                 $localRooms = [];
+                // default_tariff included (12 Sep 2026, GO_LIVE_SPEC.md Phase 2b): the mapping
+                // step needs to know whether a unit actually has a price, because "no rate
+                // plan" is now almost always caused by "no price" rather than "content never
+                // synced" - and the wizard was telling the owner the wrong one of those.
                 if ($propRow && $propRow['property_type'] === 'MULTI_KEY') {
                     $roomsStmt = $pdo->prepare("
-                        SELECT r.id AS local_room_id, r.name, m.channex_rate_plan_id
+                        SELECT r.id AS local_room_id, r.name, r.default_tariff, m.channex_rate_plan_id
                         FROM properties r
                         LEFT JOIN channex_mappings m ON m.property_id = ? AND m.room_id = r.id
                         WHERE r.parent_property_id = ? AND r.property_type = 'MULTI_KEY_ROOM' AND r.is_deleted = 0
@@ -5388,12 +5392,20 @@ switch ($action) {
                     ");
                     $roomsStmt->execute([$targetPropertyId, $targetPropertyId]);
                     $localRooms = $roomsStmt->fetchAll(PDO::FETCH_ASSOC);
+                    foreach ($localRooms as &$lr) {
+                        $lr['default_tariff'] = $lr['default_tariff'] !== null ? (float)$lr['default_tariff'] : null;
+                    }
+                    unset($lr);
                 } elseif ($propRow) {
                     $singleStmt = $pdo->prepare("SELECT channex_rate_plan_id FROM channex_mappings WHERE property_id = ? AND room_id IS NULL LIMIT 1");
                     $singleStmt->execute([$targetPropertyId]);
+                    $tariffStmt = $pdo->prepare("SELECT default_tariff FROM properties WHERE id = ?");
+                    $tariffStmt->execute([$targetPropertyId]);
+                    $singleTariff = $tariffStmt->fetchColumn();
                     $localRooms = [[
                         'local_room_id' => null,
                         'name' => $propRow['name'],
+                        'default_tariff' => $singleTariff !== null && $singleTariff !== false ? (float)$singleTariff : null,
                         'channex_rate_plan_id' => $singleStmt->fetchColumn() ?: null,
                     ]];
                 }

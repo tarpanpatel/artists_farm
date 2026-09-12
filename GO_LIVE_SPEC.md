@@ -249,21 +249,37 @@ inject one (per the channex-pms-integration skill), only the dashboard's Booking
 |---|---|---|---|
 | **1** | Read-only page + `channex_go_live_status`. Shows stage, units, prices, mapping, live channel state, drift flag, blockers. | Very low — no writes | ✅ Shipped 12 Sep 2026 |
 | **2a** | Inline price entry on the Go Live page (`channex_set_unit_price`) + visible reporting when a listing is skipped for lacking a price, in both mapping paths (`channex_channel_save_mapping` and the auto-import). | Medium — writes prices, triggers content-sync self-heal; never binds a channel | ✅ Shipped 12 Sep 2026 (soft form — see below) |
-| **2b** | The hard-block form of §1a.1: mapping cannot *complete* until a price is accepted, not just reported after the fact. | Medium — same writes as 2a, plus a new required UI step in `ChannelConnectWizard.tsx` | ⏳ Not built |
+| **2b** | The hard-block form of §1a.1: mapping cannot *complete* until a price is accepted, not just reported after the fact. | Medium — same writes as 2a, plus a new required UI step in `ChannelConnectWizard.tsx` | ✅ Shipped 12 Sep 2026 (client-side block; server-side still open — §7.6) |
 | **3** | Stage 4a+4b wired in: preflight gate + sync-control acknowledgment, then activation. | Higher — this is the live push | ⏳ Not built |
 | **4** | Stage 5: test-booking tracker (5a) and readback verification (5b). | Low — tracking + read-only API calls | ⏳ Not built |
 
 **Why Phase 2 split into 2a/2b.** §1a.1 asked for a hard block — mapping refuses to
-complete without a price. What shipped (2a) is deliberately the softer half: the same
-gap is now *visible* (named units, in both the response and the UI) rather than silent,
-and an inline tool exists to fix it immediately, but a listing can still be mapped
-without one if the owner ignores the message. Reason for stopping there: a true hard
-block means adding a required step inside `ChannelConnectWizard.tsx`'s existing
-multi-step flow, a component this pass hadn't reviewed deeply enough to modify safely in
-the same sitting as the backend change. Visible-but-not-blocked was judged the right
-stopping point for one pass — low risk, ships the highest-value half immediately,
-and 2b remains a clearly-scoped, separate next step rather than a rushed addition to a
-live wizard.
+complete without a price. 2a shipped the softer half first (the gap made *visible*:
+named units in both the response and the UI, plus an inline tool to fix it), because a
+true hard block meant modifying `ChannelConnectWizard.tsx`'s live multi-step flow, which
+that pass hadn't reviewed deeply enough to touch safely alongside a backend change.
+
+**2b then shipped the block itself (12 Sep 2026), in three parts:**
+
+1. **`default_tariff` now travels with the local-rooms payload** (both
+   `channex_channel_connection_status` and the auto-create-rooms response), because the
+   mapping step previously had no way to know whether a unit had a price.
+2. **The mapping step's message was wrong and is now correct.** It read *"Not yet synced
+   to Channex — sync property content first"* for any unit without a rate plan. Since 11
+   Sep that advice is usually false and actively unhelpful: content sync ran fine, then
+   correctly declined to invent a price. Telling the owner to re-sync sends them round a
+   loop that cannot fix it. The two cases are now distinguished, and the no-price case
+   carries an inline price field (reusing `channex_set_unit_price`) that fixes it on the
+   spot.
+3. **`handleSaveMapping()` refuses to proceed** while any unit being mapped lacks a
+   price, naming the units and pointing at the field on the same screen.
+
+**The server-side half of 2b is deliberately still open**, pending §7.6. The server
+still *accepts* such a save and reports the skipped units honestly (2a's
+`skipped_no_price`), rather than hard-refusing — because "map now, price later" may be a
+legitimate API-driven workflow, and converting that into a server refusal is a product
+decision, not something to settle silently inside a UI handler. Nothing is lost either
+way: the skip is reported, never silent.
 
 **What was deliberately NOT live-tested.** `channex_set_unit_price` was verified by
 code review and by reusing `update_room_tariff`'s own proven side effect (the exact

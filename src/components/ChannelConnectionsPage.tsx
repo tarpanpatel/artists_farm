@@ -44,6 +44,10 @@ export interface ChannexLocalRoom {
   local_room_id: number | null;
   name: string;
   channex_rate_plan_id: string | null;
+  // 12 Sep 2026: needed to tell "this unit has no price" apart from "content was never
+  // synced" - the two produce the identical symptom (no rate plan) but need opposite
+  // advice, and the mapping step was confidently giving the wrong one.
+  default_tariff?: number | null;
 }
 
 export const ChannelConnectionsPage: React.FC<ChannelConnectionsPageProps> = ({ propertyId, onLogAudit }) => {

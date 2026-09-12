@@ -166,9 +166,69 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
   const [currentLocalRooms, setCurrentLocalRooms] = useState<ChannexLocalRoom[]>(localRooms);
   const [autoCreatingRooms, setAutoCreatingRooms] = useState(false);
 
+  // Inline price entry on the mapping step (GO_LIVE_SPEC.md Phase 2b, 12 Sep 2026), so a
+  // unit blocked purely for lacking a price can be fixed here instead of being told to go
+  // re-sync something that was never the problem. Keyed the same way roomMapping is.
+  const [inlinePrice, setInlinePrice] = useState<Record<string, string>>({});
+  const [savingPriceKey, setSavingPriceKey] = useState<string | null>(null);
+
   useEffect(() => {
     setCurrentLocalRooms(localRooms);
   }, [localRooms]);
+
+  /**
+   * Saves a base price for one unit, then re-reads local rooms so the card updates in
+   * place. Uses the same channex_set_unit_price endpoint the Go Live page does - which
+   * writes default_tariff and lets content sync create the real rate plan, but never
+   * binds anything to a live channel (see that endpoint's own doc comment).
+   */
+  const handleSaveInlinePrice = async (room: ChannexLocalRoom) => {
+    const key = String(room.local_room_id ?? 'null');
+    const raw = inlinePrice[key];
+    const price = Number(raw);
+    if (!raw || !Number.isFinite(price) || price <= 0) {
+      showToast('Enter a real price greater than 0', { type: 'error' });
+      return;
+    }
+    setSavingPriceKey(key);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_set_unit_price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: room.local_room_id, price }),
+      });
+      const json = await res.json();
+      if (json?.status !== 'success') {
+        showToast(json?.message || 'Could not save price', { type: 'error' });
+        return;
+      }
+      showToast(`Price saved for ${room.name}.`, { type: 'success' });
+      setInlinePrice((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      // Re-read local rooms so this card picks up its new rate plan. Content sync creates
+      // it asynchronously via the outbox drain, so it may still be absent on this first
+      // refresh - the card then simply shows the priced-but-not-yet-synced state, which is
+      // accurate rather than misleading.
+      try {
+        const statusRes = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_channel_connection_status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ property_id: propertyId }),
+        });
+        const statusJson = await statusRes.json();
+        if (statusJson?.status === 'success' && Array.isArray(statusJson.data?.local_rooms)) {
+          setCurrentLocalRooms(statusJson.data.local_rooms);
+        }
+      } catch { /* non-fatal - the price itself saved */ }
+    } catch (err: any) {
+      showToast(err?.message || 'Could not save price', { type: 'error' });
+    } finally {
+      setSavingPriceKey(null);
+    }
+  };
 
   const [readinessProblems, setReadinessProblems] = useState<any[] | null>(null);
   const [checkingReadiness, setCheckingReadiness] = useState(false);
@@ -479,6 +539,33 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
 
   const handleSaveMapping = async () => {
     if (!selectedCode || !isMappingComplete) return;
+
+    // GO_LIVE_SPEC.md Phase 2b (12 Sep 2026) - refuse to proceed while a unit being mapped
+    // has no price. Without this, the save "succeeds", that unit is silently skipped
+    // server-side (it has no rate plan to bind), and the owner walks to Go Live believing
+    // every listing is connected - the exact shape of the incident this whole effort came
+    // from. Blocked here rather than only warned afterwards because the fix is one field
+    // away on this very screen.
+    //
+    // Client-side only, deliberately: the server still ACCEPTS such a save and reports the
+    // skipped units honestly (skipped_no_price, shipped in Phase 2a), because "map now,
+    // price later" may be a legitimate workflow for someone driving the API directly, and
+    // turning that into a hard server refusal is an open product decision (GO_LIVE_SPEC.md
+    // §7.6) rather than something to settle silently inside a UI handler.
+    const unpriced = currentLocalRooms.filter((r) => {
+      const m = roomMapping[String(r.local_room_id ?? 'null')];
+      const isBeingMapped = !!m?.external_room_code;
+      return isBeingMapped && !((r.default_tariff ?? 0) > 0);
+    });
+    if (unpriced.length > 0) {
+      const names = unpriced.map((r) => r.name).join(', ');
+      showToast(
+        `Set a base price for ${names} before mapping - without one there is no rate plan to connect the listing to, and ${unpriced.length === 1 ? 'it' : 'they'} would be silently left out. There's a price box on ${unpriced.length === 1 ? 'that unit' : 'each of those units'} above.`,
+        { type: 'error', duration: 10000 },
+      );
+      return;
+    }
+
     setSavingMapping(true);
     try {
       const rooms = currentLocalRooms.map((r) => {
@@ -909,8 +996,46 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                     return (
                       <div key={key} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
                         <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{room.name}</div>
-                        {!room.channex_rate_plan_id && (
-                          <div className="text-xs text-red-600 dark:text-red-400">Not yet synced to Channex - sync property content first.</div>
+                        {/* GO_LIVE_SPEC.md Phase 2b (12 Sep 2026). This used to read "Not yet
+                            synced to Channex - sync property content first" for ANY room with
+                            no rate plan. Since 11 Sep that advice is usually just wrong: content
+                            sync runs fine, then deliberately declines to create a rate plan for a
+                            unit with no price rather than inventing one (the ₹3,500 incident).
+                            So the room needs a PRICE, not a re-sync - and telling someone to
+                            re-sync sends them round a loop that cannot fix it. Distinguish the
+                            two, and for the common one put the fix right here. */}
+                        {!room.channex_rate_plan_id && !((room.default_tariff ?? 0) > 0) && (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 dark:border-amber-800 dark:bg-amber-950/30 space-y-2">
+                            <p className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                              This unit has no base price yet, so it has no rate plan to map to.
+                              Set one and it can be mapped straight away.
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                placeholder="e.g. 2000"
+                                value={inlinePrice[key] ?? ''}
+                                onChange={(e) => setInlinePrice((prev) => ({ ...prev, [key]: e.target.value }))}
+                                disabled={savingPriceKey === key}
+                                className="w-32 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white px-2.5 py-1.5"
+                              />
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => handleSaveInlinePrice(room)}
+                                disabled={savingPriceKey === key || !inlinePrice[key]}
+                                leftIcon={savingPriceKey === key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : undefined}
+                              >
+                                Save price
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {!room.channex_rate_plan_id && (room.default_tariff ?? 0) > 0 && (
+                          <div className="text-xs text-red-600 dark:text-red-400">
+                            Priced, but not yet synced to Channex - sync property content first.
+                          </div>
                         )}
                         {isAirbnbMode ? (
                           <select
