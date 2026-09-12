@@ -225,11 +225,18 @@ function handleKitchenRequests($pdo, $request_method, $action, $propertyId) {
                         // same misattribution shape CLAUDE.md already flags for
                         // postFinancialLedger - fixing it now rather than leaving a second
                         // dormant copy of that bug.
-                        $itemStmt = $pdo->prepare("INSERT INTO order_items (property_id, order_id, menu_item_id, quantity, item_status) VALUES (?, ?, ?, ?, 'Pending')");
+                        // unit_price captures what the dish sells for RIGHT NOW, so a
+                        // later menu price change can never retroactively alter what
+                        // this order was billed at (13 Sep 2026 - see the column's own
+                        // note in walk_in_tabs.php).
+                        $itemStmt = $pdo->prepare("INSERT INTO order_items (property_id, order_id, menu_item_id, quantity, item_status, unit_price) VALUES (?, ?, ?, ?, 'Pending', ?)");
                         foreach ($input['items'] as $item) {
                             $menuItemId = $item['menu_item_id'] ?? $item['id'] ?? null;
                             $qty = (int)($item['quantity'] ?? 1);
-                            $itemStmt->execute([$propertyId, $order_id, $menuItemId, $qty]);
+                            $priceStmt = $pdo->prepare("SELECT price FROM menu_items WHERE id = ? AND property_id = ?");
+                            $priceStmt->execute([$menuItemId, $propertyId]);
+                            $unitPrice = $priceStmt->fetchColumn();
+                            $itemStmt->execute([$propertyId, $order_id, $menuItemId, $qty, $unitPrice === false ? null : (float)$unitPrice]);
                             $nameStmt = $pdo->prepare("SELECT name FROM menu_items WHERE id = ?");
                             $nameStmt->execute([$menuItemId]);
                             $itemsPayload[] = ['name' => $nameStmt->fetchColumn() ?: 'Dish', 'qty' => $qty];

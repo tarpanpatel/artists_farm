@@ -914,22 +914,33 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
       }, {} as Record<string, number>)
   ).sort((a, b) => Number(b[1]) - Number(a[1]));
 
-  // Hospitality BI calculations
+  // Hospitality BI calculations.
+  //
+  // ADR, ALOS and Occupancy are ROOM-STAY metrics and must only ever see
+  // room-stay receipts (13 Sep 2026). get_receipts now also returns billed
+  // walk-in food tabs so they show up in the bills list - those carry
+  // nights_count = 0, and every reducer below reads `nightsCount || 1`, so a
+  // zero counted as ONE NIGHT: each restaurant bill was inflating room nights,
+  // deflating ADR, dragging ALOS toward 1 and inventing occupancy for a guest
+  // who never took a room. walk_in_tabs.php's own header comment says billing
+  // deliberately never touches billing_receipts for exactly this reason.
+  const stayReceipts = filteredReceipts.filter((r) => r.sourceType !== 'walk_in_tab');
+
   const adr = (() => {
-    const roomRevenueTotal = filteredReceipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);
-    const totalNights = filteredReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    const roomRevenueTotal = stayReceipts.reduce((sum, r) => sum + (r.roomTotal || 0), 0);
+    const totalNights = stayReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
     return totalNights > 0 ? roomRevenueTotal / totalNights : 0;
   })();
 
   const alos = (() => {
-    const totalNights = filteredReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
-    const totalBookings = filteredReceipts.length;
+    const totalNights = stayReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    const totalBookings = stayReceipts.length;
     return totalBookings > 0 ? totalNights / totalBookings : 0;
   })();
 
   const totalRooms = rooms.length || 1;
   const occupancyRate = (() => {
-    const totalNights = filteredReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
+    const totalNights = stayReceipts.reduce((sum, r) => sum + (r.nightsCount || 1), 0);
     const activePeriodDays = periodDays || 365;
     const availableNights = totalRooms * activePeriodDays;
     return Math.min(100, (totalNights / availableNights) * 100);
@@ -941,7 +952,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
   // dateFilter-scoped filteredReceipts above), so the figure always matches
   // real ledger-posted P&L rather than a re-derived approximation.
   const ledgerMonthNights = receipts
-    .filter((r) => r.checkinDate && r.checkinDate.startsWith(ledgerMonth))
+    .filter((r) => r.sourceType !== 'walk_in_tab' && r.checkinDate && r.checkinDate.startsWith(ledgerMonth))
     .reduce((sum, r) => sum + (r.nightsCount || 1), 0);
   const profitPerRoomNight = (() => {
     const income = ledgerData.filter((l) => l.direction === 'credit' && !isInternalCashMovement(l.category)).reduce((s, l) => s + Number(l.amount || 0), 0);

@@ -89,12 +89,14 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                         $inPlaceholders = implode(',', array_fill(0, count($tabIds), '?'));
 
                         $itemsStmt = $pdo->prepare("
-                            SELECT o.walk_in_tab_id, oi.menu_item_id, m.name, COALESCE(m.price, 0) as price, SUM(oi.quantity) as quantity
+                            SELECT o.walk_in_tab_id, oi.menu_item_id, m.name,
+                                   COALESCE(oi.unit_price, m.price, 0) as price,
+                                   SUM(oi.quantity) as quantity
                             FROM orders o
                             JOIN order_items oi ON oi.order_id = o.id
                             LEFT JOIN menu_items m ON m.id = oi.menu_item_id
                             WHERE o.walk_in_tab_id IN ($inPlaceholders)
-                            GROUP BY o.walk_in_tab_id, oi.menu_item_id, m.name, m.price
+                            GROUP BY o.walk_in_tab_id, oi.menu_item_id, m.name, COALESCE(oi.unit_price, m.price, 0)
                         ");
                         $itemsStmt->execute($tabIds);
                         $allItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -127,6 +129,8 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                             $grandTotal = floatval($tab['grand_total'] ?? 0);
                             $foodTotal = $subtotal > 0 ? $subtotal : $grandTotal;
                             $paymentMethod = $tab['payment_method'] ?: 'Cash';
+                            $isUpiPayment = (stripos($paymentMethod, 'upi') !== false || stripos($paymentMethod, 'online') !== false);
+                            $isCardPayment = (stripos($paymentMethod, 'card') !== false);
                             $billedAt = $tab['billed_at'] ?: $tab['opened_at'];
 
                             $data[] = [
@@ -148,9 +152,14 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                                 'grand_total' => $grandTotal,
                                 'advance_paid' => 0,
                                 'payment_method' => $paymentMethod,
-                                'cash_amount' => (stripos($paymentMethod, 'cash') !== false) ? $grandTotal : 0,
-                                'upi_amount' => (stripos($paymentMethod, 'upi') !== false || stripos($paymentMethod, 'online') !== false) ? $grandTotal : 0,
-                                'card_amount' => (stripos($paymentMethod, 'card') !== false) ? $grandTotal : 0,
+                                // Cash is the fallback bucket, not a fourth empty one:
+                                // an unrecognised payment_method used to leave cash,
+                                // upi AND card all at 0 while grand_total was positive,
+                                // so any report summing the three under-counted real
+                                // takings with nothing to show it had (13 Sep 2026).
+                                'cash_amount' => ($isUpiPayment || $isCardPayment) ? 0 : $grandTotal,
+                                'upi_amount' => $isUpiPayment ? $grandTotal : 0,
+                                'card_amount' => $isCardPayment ? $grandTotal : 0,
                                 'bank_transfer_amount' => 0,
                                 'split_details' => '',
                                 'status' => 'Paid',

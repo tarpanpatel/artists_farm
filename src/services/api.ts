@@ -1969,6 +1969,22 @@ export async function fetchAuditLogsFromDB(): Promise<any[]> {
   return [];
 }
 
+/**
+ * Reads a JSON-encoded DB column without letting one malformed value take down
+ * the whole fetch. Always returns an array, never throws.
+ */
+function parseJsonColumn(value: any): any[] {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    console.warn('[receipts] Ignoring malformed JSON column value:', value.slice(0, 120));
+    return [];
+  }
+}
+
 export async function fetchReceiptsFromDB(): Promise<any[]> {
   try {
     const res = await apiFetch(`${API_BASE}?action=get_receipts`);
@@ -2012,9 +2028,14 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
         gstIgst: Number(r.gst_igst || 0),
         guestGstin: r.guest_gstin || '',
         guestBillingName: r.guest_billing_name || '',
-        foodItems: (typeof r.food_items === 'string' ? JSON.parse(r.food_items || '[]') : r.food_items) || [],
-        adjustments: (typeof r.adjustments === 'string' ? JSON.parse(r.adjustments || '[]') : r.adjustments) || [],
-        auditTrail: (typeof r.audit_trail === 'string' ? JSON.parse(r.audit_trail || '[]') : r.audit_trail) || [],
+        // parseJsonColumn, not a bare JSON.parse (13 Sep 2026). This whole map
+        // runs inside a try whose catch returns [], so ONE legacy or truncated
+        // JSON value in ONE row made every receipt in the property disappear -
+        // silently, with an empty Finances screen and no error to explain it.
+        // A bad column is now just that one empty field.
+        foodItems: parseJsonColumn(r.food_items),
+        adjustments: parseJsonColumn(r.adjustments),
+        auditTrail: parseJsonColumn(r.audit_trail),
         sourceType: r.source_type || (r.walk_in_tab_id ? 'walk_in_tab' : 'checkout'),
         walkInTabId: r.walk_in_tab_id ? Number(r.walk_in_tab_id) : undefined,
       }));

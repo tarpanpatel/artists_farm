@@ -67,6 +67,46 @@ if (!function_exists('ensureWalkInTabSchema')) {
         } catch (Exception $e) {
             error_log("walk_in_tabs schema migration error: " . $e->getMessage());
         }
+        ensureOrderItemUnitPriceColumn($pdo);
+    }
+}
+
+// order_items.unit_price - what the dish ACTUALLY sold for, captured at the
+// moment it was ordered (13 Sep 2026).
+//
+// Before this, every bill total was recomputed live from menu_items.price.
+// That was survivable while a bill's grand_total was frozen at billing time
+// and nothing ever recalculated it - but the past-bills editor (Sep 2026) both
+// recalculates and re-displays, so raising a dish's price silently re-priced
+// every historical bill containing it, and a past bill's own line items could
+// stop adding up to the total it was actually paid at.
+//
+// Nullable on purpose: rows written before this column existed have no
+// recoverable sale price, so every read falls back to the live menu price for
+// those (COALESCE below). New rows never need that fallback.
+if (!function_exists('ensureOrderItemUnitPriceColumn')) {
+    function ensureOrderItemUnitPriceColumn($pdo) {
+        if (isSchemaVerified('schema_order_items_unit_price')) return;
+        try {
+            $cols = $pdo->query("SHOW COLUMNS FROM order_items")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('unit_price', $cols)) {
+                $pdo->exec("ALTER TABLE order_items ADD COLUMN unit_price DECIMAL(10,2) NULL DEFAULT NULL");
+            }
+            markSchemaVerified('schema_order_items_unit_price');
+        } catch (Exception $e) {
+            error_log("order_items unit_price column migration error: " . $e->getMessage());
+        }
+    }
+}
+
+// The price one dish sold at, for a NEW order_items row: whatever the menu
+// says right now. Read once at insert so it can never drift afterwards.
+if (!function_exists('currentMenuItemPrice')) {
+    function currentMenuItemPrice($pdo, $menuItemId, $propertyId) {
+        $s = $pdo->prepare("SELECT price FROM menu_items WHERE id = ? AND property_id = ?");
+        $s->execute([$menuItemId, $propertyId]);
+        $p = $s->fetchColumn();
+        return $p === false ? null : (float)$p;
     }
 }
 
@@ -76,12 +116,14 @@ if (!function_exists('ensureWalkInTabSchema')) {
 if (!function_exists('getWalkInTabItems')) {
     function getWalkInTabItems($pdo, $tabId) {
         $stmt = $pdo->prepare("
-            SELECT oi.menu_item_id, m.name, COALESCE(m.price, 0) as price, SUM(oi.quantity) as quantity
+            SELECT oi.menu_item_id, m.name,
+                   COALESCE(oi.unit_price, m.price, 0) as price,
+                   SUM(oi.quantity) as quantity
             FROM orders o
             JOIN order_items oi ON oi.order_id = o.id
             LEFT JOIN menu_items m ON oi.menu_item_id = m.id
             WHERE o.walk_in_tab_id = ?
-            GROUP BY oi.menu_item_id, m.name, m.price
+            GROUP BY oi.menu_item_id, m.name, COALESCE(oi.unit_price, m.price, 0)
             ORDER BY MIN(oi.id)
         ");
         $stmt->execute([$tabId]);
@@ -123,10 +165,42 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                 $stmt = $pdo->prepare("SELECT id, label, status, opened_at, billed_at, payment_method, discount, gst_enabled, gst_rate, gst_amount, grand_total FROM walk_in_tabs WHERE property_id = ? AND status = 'billed' ORDER BY billed_at DESC LIMIT 100");
                 $stmt->execute([$propertyId]);
                 $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                // One grouped query for every tab's items, not getWalkInTabItems()
+                // per row (13 Sep 2026) - at LIMIT 100 that was 100 extra round
+                // trips on each open of the past-bills drawer.
+                $itemsByTab = [];
+                if (!empty($history)) {
+                    $tabIds = array_column($history, 'id');
+                    $ph = implode(',', array_fill(0, count($tabIds), '?'));
+                    $iStmt = $pdo->prepare("
+                        SELECT o.walk_in_tab_id, oi.menu_item_id, m.name,
+                               COALESCE(oi.unit_price, m.price, 0) as price,
+                               SUM(oi.quantity) as quantity
+                        FROM orders o
+                        JOIN order_items oi ON oi.order_id = o.id
+                        LEFT JOIN menu_items m ON oi.menu_item_id = m.id
+                        WHERE o.walk_in_tab_id IN ($ph)
+                        GROUP BY o.walk_in_tab_id, oi.menu_item_id, m.name, COALESCE(oi.unit_price, m.price, 0)
+                        ORDER BY MIN(oi.id)
+                    ");
+                    $iStmt->execute($tabIds);
+                    foreach ($iStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                        $tId = (int)$row['walk_in_tab_id'];
+                        $price = (float)$row['price'];
+                        $qty = (int)$row['quantity'];
+                        $itemsByTab[$tId][] = [
+                            'menu_item_id' => (int)($row['menu_item_id'] ?? 0),
+                            'name' => $row['name'],
+                            'price' => $price,
+                            'quantity' => $qty,
+                            'lineTotal' => $price * $qty,
+                        ];
+                    }
+                }
                 foreach ($history as &$tab) {
-                    $agg = getWalkInTabItems($pdo, $tab['id']);
-                    $tab['items'] = $agg['items'];
-                    $tab['subtotal'] = (float)$agg['subtotal'];
+                    $items = $itemsByTab[(int)$tab['id']] ?? [];
+                    $tab['items'] = $items;
+                    $tab['subtotal'] = (float)array_sum(array_column($items, 'lineTotal'));
                     $tab['discount'] = (float)($tab['discount'] ?? 0);
                     $tab['gst_rate'] = (float)($tab['gst_rate'] ?? 0);
                     $tab['gst_amount'] = (float)($tab['gst_amount'] ?? 0);
@@ -306,7 +380,11 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                             $pdo->prepare("DELETE FROM order_items WHERE order_id = ?")->execute([$primaryOrderId]);
                         }
 
-                        $insItem = $pdo->prepare("INSERT INTO order_items (property_id, order_id, menu_item_id, quantity, item_status) VALUES (?, ?, ?, ?, 'Fulfilled')");
+                        // unit_price is carried across the delete-and-reinsert so an
+                        // edit that only changes a QUANTITY keeps the price that line
+                        // actually sold at, instead of silently re-pricing it at
+                        // today's menu (13 Sep 2026).
+                        $insItem = $pdo->prepare("INSERT INTO order_items (property_id, order_id, menu_item_id, quantity, item_status, unit_price) VALUES (?, ?, ?, ?, 'Fulfilled', ?)");
                         foreach ($input['items'] as $it) {
                             $mId = !empty($it['menu_item_id']) ? (int)$it['menu_item_id'] : (!empty($it['id']) ? (int)$it['id'] : null);
                             $qty = max(1, (int)($it['quantity'] ?? 1));
@@ -315,19 +393,49 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                                 $findM->execute([$propertyId, $it['name']]);
                                 $mId = $findM->fetchColumn() ?: null;
                             }
-                            if (!$mId && !empty($it['name'])) {
-                                $insM = $pdo->prepare("INSERT INTO menu_items (property_id, name, category, price, available) VALUES (?, ?, 'Starters', ?, 1)");
-                                $insM->execute([$propertyId, $it['name'], (float)($it['price'] ?? 0)]);
-                                $mId = $pdo->lastInsertId();
+                            // A menu item is NOT invented from a bill edit any more
+                            // (13 Sep 2026). It used to INSERT one with a hardcoded
+                            // 'Starters' category and available = 1, so a typo while
+                            // correcting a bill published a new orderable dish.
+                            // An unrecognised name is a client mistake - say so.
+                            if (!$mId) {
+                                throw new RuntimeException(
+                                    'Unknown dish "' . (string)($it['name'] ?? '') . '". Add it to the menu first, then edit this bill.'
+                                );
                             }
+                            // The id came from the client, so confirm it belongs to
+                            // THIS property before billing against its price.
+                            $priceNow = currentMenuItemPrice($pdo, $mId, $propertyId);
+                            if ($priceNow === null) {
+                                throw new RuntimeException('That dish does not belong to this property.');
+                            }
+                            // Keep the original sale price when the client echoed one
+                            // back for a line that already existed; price new lines at
+                            // today's menu.
+                            $unitPrice = (isset($it['price']) && $it['price'] !== '' && $it['price'] !== null)
+                                ? (float)$it['price']
+                                : $priceNow;
                             if ($mId) {
-                                $insItem->execute([$propertyId, $primaryOrderId, $mId, $qty]);
+                                $insItem->execute([$propertyId, $primaryOrderId, $mId, $qty, $unitPrice]);
                             }
                         }
                     }
 
                     $agg = getWalkInTabItems($pdo, $tabId);
                     $subtotal = $agg['subtotal'];
+                    // An already-billed tab must never end up at zero through an
+                    // edit - that is a paid bill silently becoming free. Same guard
+                    // bill_walk_in_tab has always had; update_walk_in_tab shipped
+                    // without it (13 Sep 2026).
+                    if ($tab['status'] === 'billed' && $subtotal <= 0) {
+                        $pdo->rollBack();
+                        http_response_code(400);
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'A billed tab must keep at least one item. Delete the bill instead if it should not exist.',
+                        ]);
+                        break;
+                    }
                     $afterDiscount = max(0, $subtotal - $discount);
                     $gstAmount = $gstEnabled ? round($afterDiscount * ($gstRate / 100), 2) : 0;
                     $grandTotal = round($afterDiscount + $gstAmount, 2);
@@ -377,10 +485,22 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                             'paymentMethod' => $paymentMethod,
                         ],
                     ]);
-                } catch (PDOException $e) {
+                } catch (RuntimeException $eBad) {
+                    // Deliberate rejections raised above (unknown dish, wrong
+                    // property) - the message is meant for the user.
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
                     }
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => $eBad->getMessage()]);
+                } catch (Throwable $e) {
+                    // Throwable, not PDOException (13 Sep 2026): postFinancialLedger
+                    // can raise a plain Exception, which previously escaped this
+                    // handler with the transaction still OPEN and no rollback.
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    error_log('update_walk_in_tab failed: ' . $e->getMessage());
                     echo json_encode(['status' => 'error', 'message' => 'Failed to update tab']);
                 }
             }
@@ -405,9 +525,13 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                     }
 
                     $pdo->beginTransaction();
-                    // Delete ledger entry if billed
-                    $ledgerKey = 'walk_in_tab_bill:' . $tabId;
-                    $pdo->prepare("DELETE FROM financial_ledger WHERE entry_key = ? AND property_id = ?")->execute([$ledgerKey, $propertyId]);
+                    // REVERSE the ledger entry, never DELETE it (13 Sep 2026).
+                    // The original hard-deleted the row, so a bill already counted
+                    // in a closed cash drawer could vanish from the books with no
+                    // trace it had ever existed. reverseFinancialSource() is the
+                    // convention everywhere else in this codebase: money moves by
+                    // appending an opposite entry, so the history stays readable.
+                    reverseFinancialSource($pdo, 'walk_in_tab', (string)$tabId, 'Walk-in bill deleted', $propertyId);
 
                     // Unlink any orders connected to this tab
                     $pdo->prepare("UPDATE orders SET walk_in_tab_id = NULL WHERE walk_in_tab_id = ?")->execute([$tabId]);
@@ -417,10 +541,11 @@ function handleWalkInTabRequests($pdo, $request_method, $action, $propertyId) {
                     $pdo->commit();
 
                     echo json_encode(['status' => 'success', 'message' => 'Walk-in bill deleted successfully']);
-                } catch (PDOException $e) {
+                } catch (Throwable $e) {
                     if ($pdo->inTransaction()) {
                         $pdo->rollBack();
                     }
+                    error_log('delete_walk_in_tab failed: ' . $e->getMessage());
                     echo json_encode(['status' => 'error', 'message' => 'Failed to delete walk-in bill']);
                 }
             }

@@ -81,7 +81,8 @@ export function getWhatsAppPhone(raw: string): string {
 
 /**
  * Generates an optimal WhatsApp share URL:
- * - On Mobile (Android/iOS): wa.me deep links open the native WhatsApp mobile app where UTF-8 emojis work properly.
+ * - On Mobile (Android/iOS): api.whatsapp.com opens the native WhatsApp mobile app with UTF-8 emojis intact
+ *   (NOT wa.me - see the note in the branch below for why).
  * - On Desktop (Windows/Mac): opens WhatsApp Web (web.whatsapp.com) directly. This completely prevents the Windows
  *   OS protocol handler bug where launching the Windows native WhatsApp desktop app via wa.me / api.whatsapp.com
  *   corrupts 4-byte UTF-8 emojis into replacement characters (diamond question marks).
