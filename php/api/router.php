@@ -6104,7 +6104,10 @@ switch ($action) {
                         echo json_encode(['status' => 'error', 'message' => 'Failed to map: ' . implode('; ', $failures), 'data' => ['saved_count' => count($localRows)]]);
                         break 2;
                     }
-                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
+                    // Never demotes an already-live channel: saving room mappings
+                    // on a live connection used to reset it to 'ready_to_activate'
+                    // (12 Sep 2026). See parkChannexConnectionForActivation().
+                    parkChannexConnectionForActivation($pdo, $targetPropertyId, $channelCode);
 
                     // Read each listing's own configuration now that we know which
                     // Ground Code room maps to which Airbnb listing. This is the
@@ -6218,7 +6221,12 @@ switch ($action) {
                         echo json_encode(['status' => 'error', 'message' => 'Failed to update the channel mapping', 'error' => $updateRes['error'] ?? null]);
                         break 2;
                     }
-                    upsertChannexChannelConnection($pdo, $targetPropertyId, $channelCode, ['status' => 'ready_to_activate', 'last_error' => null]);
+                    // updateChannel() only rewrites rate plans - it does not
+                    // deactivate anything on Channex, so a live channel must stay
+                    // live here (12 Sep 2026). The sibling branch above is a
+                    // brand-new channel, where parking is correct and this helper
+                    // behaves identically to the plain upsert it replaced.
+                    parkChannexConnectionForActivation($pdo, $targetPropertyId, $channelCode);
                 }
 
                 saveChannexChannelRoomMappings($pdo, (int)getChannexChannelConnection($pdo, $targetPropertyId, $channelCode)['id'], $localRows);

@@ -546,10 +546,11 @@ function autoProvisionPropertyFromAirbnb(
     //
     // DO NOT re-add an activateChannel() or enqueueOutboxItem() call here. If a future change
     // needs a push, it belongs behind the owner's own Go Live action, never inside an import.
-    upsertChannexChannelConnection($pdo, $propertyId, 'AirBNB', [
-        'status' => 'ready_to_activate',
-        'last_error' => null,
-    ]);
+    // Parks the connection, but never demotes one that is already live - a
+    // re-import on a live channel used to reset it to 'ready_to_activate'
+    // (12 Sep 2026). See parkChannexConnectionForActivation().
+    $wasAlreadyActive = (getChannexChannelConnection($pdo, $propertyId, 'AirBNB')['status'] ?? '') === 'active';
+    parkChannexConnectionForActivation($pdo, $propertyId, 'AirBNB');
 
     // Pull reservations that predate the connection. This is a READ, not a push: Channex
     // documents load_future_reservations as running in the background and NOT triggering guest
@@ -569,9 +570,15 @@ function autoProvisionPropertyFromAirbnb(
     $slugStmt->execute([$propertyId]);
     $finalSlug = $slugStmt->fetchColumn() ?: $property['slug'];
 
-    $baseMessage = 'Property and rooms imported from Airbnb. Nothing has been sent to Airbnb - '
-        . 'the channel is not live yet. Review your rates and blocked dates, then use Go Live '
-        . 'when you are ready to start syncing.';
+    // The "not live yet" wording is only true for a channel that has not gone
+    // live. Telling an owner whose channel is already syncing that nothing
+    // reaches Airbnb is worse than saying nothing at all (12 Sep 2026).
+    $baseMessage = $wasAlreadyActive
+        ? 'Property and rooms imported from Airbnb. This import sent nothing to Airbnb, and your '
+            . 'channel stays live and syncing as before - no need to run Go Live again.'
+        : 'Property and rooms imported from Airbnb. Nothing has been sent to Airbnb - '
+            . 'the channel is not live yet. Review your rates and blocked dates, then use Go Live '
+            . 'when you are ready to start syncing.';
     if (!empty($pendingPriceUnits)) {
         $names = implode(', ', array_map(fn($u) => $u['room_name'], $pendingPriceUnits));
         $baseMessage .= " Note: " . count($pendingPriceUnits) . " unit"
@@ -589,7 +596,7 @@ function autoProvisionPropertyFromAirbnb(
         'rooms_count' => count($roomMappingsToSave),
         'mapped_count' => count($localRowsForDb),
         'pending_price_units' => $pendingPriceUnits,
-        'channel_active' => false,
+        'channel_active' => $wasAlreadyActive,
         'reservations_pull_started' => $reservationsPullStarted,
     ];
 }

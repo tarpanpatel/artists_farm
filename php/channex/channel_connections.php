@@ -95,6 +95,36 @@ function listChannexChannelConnectionsByStatus(PDO $pdo, string $status): array 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+/**
+ * Park a connection at 'ready_to_activate' WITHOUT ever demoting one that is
+ * already live.
+ *
+ * Added 12 Sep 2026 after Patel Colony's Airbnb connection showed "Ready to
+ * activate" in the UI while Channex reported `is_active: true` for the same
+ * channel. Three routine post-go-live actions each wrote 'ready_to_activate'
+ * unconditionally - an Airbnb re-import, a room-mapping save, and a rate-plan
+ * update on an existing channel - so any owner who went live and later came
+ * back to add a listing or adjust mappings silently demoted their own live
+ * channel's status.
+ *
+ * The damage is not cosmetic: sync_audit.php joins on `status = 'active'`, so
+ * a demoted row drops out of the audit that is meant to catch sync problems on
+ * a live channel, and the UI invites the owner into Go Live - a wide ARI push -
+ * on a channel that is already syncing.
+ *
+ * Creating a brand-new channel is the one case that SHOULD land here, and it
+ * does: there is no prior row to preserve, so this behaves exactly as the
+ * plain upsert did.
+ */
+function parkChannexConnectionForActivation(PDO $pdo, int $propertyId, string $channelCode, array $extraFields = []): int {
+    $existing = getChannexChannelConnection($pdo, $propertyId, $channelCode);
+    $fields = $extraFields + ['last_error' => null];
+    // Anything already live stays live. Only a connection that is not yet
+    // active gets parked.
+    $fields['status'] = (($existing['status'] ?? '') === 'active') ? 'active' : 'ready_to_activate';
+    return upsertChannexChannelConnection($pdo, $propertyId, $channelCode, $fields);
+}
+
 function upsertChannexChannelConnection(PDO $pdo, int $propertyId, string $channelCode, array $fields): int {
     ensureChannexChannelConnectionsSchema($pdo);
     $existing = getChannexChannelConnection($pdo, $propertyId, $channelCode);
