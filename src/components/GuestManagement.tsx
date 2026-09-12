@@ -341,7 +341,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // Phone Number field as you type instead of only after clicking Save. Only
   // judges once a full 10-digit number is entered - a partial number isn't
   // "wrong", it's just unfinished, so it stays quiet until then.
-  const duplicateBookingLive = !isSubmitting && phoneNumber.length === 10 && guests.some((g) => {
+  //
+  // !savedBooking added 12 Sep 2026 (reported live, "this is a bug, there is
+  // no reservation on 17th") - once a booking successfully saves, the form
+  // switches to the post-save Share/Add Another/Close state but the phone
+  // number and dates are still sitting in state at the values that were just
+  // submitted. `guests` refreshes to include the row that just got created,
+  // so this check found the just-saved booking matching ITSELF and showed a
+  // false "already exists" error on a form that had already succeeded. Once
+  // `savedBooking` is null again (either "Add Another Booking" resets it, or
+  // the drawer is closed and reopened fresh), this re-arms normally.
+  const duplicateBookingLive = !isSubmitting && !savedBooking && phoneNumber.length === 10 && guests.some((g) => {
     if (g.status === 'CheckedOut' || (g.status as string) === GUEST_STATUS_CHECKED_OUT || (g.status as string) === 'Cancelled') return false;
     const gPhone = (g.phoneNumber || '').trim();
     const gCheckin = (g.checkinDate || '').split(' ')[0];
@@ -367,7 +377,15 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // same-day turnover is not a conflict). Only judges once both dates are
   // chosen AND, for multi-key, a room is chosen too - an incomplete form isn't
   // "wrong", it's unfinished.
+  //
+  // !savedBooking added same day (12 Sep 2026) as the same fix on
+  // duplicateBookingLive just above - same root cause: after a successful
+  // save the just-created booking is now sitting in `guests` and the form
+  // fields still hold the values that created it, so this matched the
+  // booking against itself and showed "already booked" on a form that had
+  // already succeeded.
   const roomDateConflictLive =
+    !savedBooking &&
     !!checkinDate &&
     !!expectedCheckout &&
     checkinDate < expectedCheckout &&
