@@ -92,12 +92,15 @@ export function getWhatsAppShareUrl(rawPhone?: string, text?: string): string {
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   if (isMobile) {
+    // Note: NEVER use wa.me - Meta's wa.me 302 redirect server has a bug that corrupts
+    // 4-byte UTF-8 emojis into %EF%BF%BD (replacement diamonds). api.whatsapp.com serves
+    // direct 200 responses with emojis completely intact.
     if (phone) {
-      return `https://wa.me/${phone}${encodedText ? `?text=${encodedText}` : ''}`;
+      return `https://api.whatsapp.com/send/?phone=${phone}${encodedText ? `&text=${encodedText}` : ''}`;
     }
-    return `https://wa.me/?text=${encodedText}`;
+    return `https://api.whatsapp.com/send/?text=${encodedText}`;
   } else {
-    // Desktop: use WhatsApp Web so the browser decodes UTF-8 natively and preserves all emojis
+    // Desktop: use WhatsApp Web directly so the browser decodes UTF-8 natively and preserves all emojis
     if (phone) {
       return `https://web.whatsapp.com/send?phone=${phone}${encodedText ? `&text=${encodedText}` : ''}`;
     }
