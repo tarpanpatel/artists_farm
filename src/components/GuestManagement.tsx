@@ -1559,16 +1559,29 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             value={line.category}
                             onChange={(val) => handleUpdateBookingExtraChargeLine(line.id, 'category', val)}
                             placeholder="-- Select Type --"
-                            options={[
-                              ...miscChargesList.map((m) => {
-                                const chargeLabel = m.label || (m as any).name || 'Misc Charge';
-                                return { value: chargeLabel, label: chargeLabel };
-                              }),
-                              { value: 'Decoration Fees', label: 'Decoration Fees' },
-                              { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
-                              { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
-                              { value: 'Misc', label: 'Misc (Custom Note)' },
-                            ]}
+                            options={
+                              miscChargesList.length > 0
+                                ? [
+                                    ...miscChargesList.map((m) => {
+                                      const chargeLabel = m.label || (m as any).name || 'Misc Charge';
+                                      const price = m.default_amount ?? (m as any).defaultPrice ?? 0;
+                                      return {
+                                        value: chargeLabel,
+                                        label: price > 0 ? `${chargeLabel} (₹${price.toLocaleString('en-IN')})` : chargeLabel,
+                                      };
+                                    }),
+                                    { value: 'Misc', label: 'Misc (Custom Note)' },
+                                  ]
+                                : [
+                                    { value: 'Decoration & Event Setup', label: 'Decoration & Event Setup' },
+                                    { value: 'Early Check-in Fee', label: 'Early Check-in Fee' },
+                                    { value: 'Extra Bed / Mattress', label: 'Extra Bed / Mattress' },
+                                    { value: 'Late Check-out Fee', label: 'Late Check-out Fee' },
+                                    { value: 'Pet Stay Fee', label: 'Pet Stay Fee' },
+                                    { value: 'Room Damage', label: 'Room Damage' },
+                                    { value: 'Misc', label: 'Misc (Custom Note)' },
+                                  ]
+                            }
                             searchable
                           />
                         </div>

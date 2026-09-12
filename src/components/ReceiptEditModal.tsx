@@ -161,10 +161,13 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     const list = miscCharges && Array.isArray(miscCharges) ? miscCharges : [];
     if (list.length === 0) {
       return [
-        { value: 'Decoration Fees', label: 'Decoration Fees' },
-        { value: 'Extra Housekeeping', label: 'Extra Housekeeping' },
+        { value: 'Decoration & Event Setup', label: 'Decoration & Event Setup' },
+        { value: 'Early Check-in Fee', label: 'Early Check-in Fee' },
+        { value: 'Extra Bed / Mattress', label: 'Extra Bed / Mattress' },
+        { value: 'Late Check-out Fee', label: 'Late Check-out Fee' },
+        { value: 'Pet Stay Fee', label: 'Pet Stay Fee' },
+        { value: 'Room Damage', label: 'Room Damage' },
         { value: 'Misc', label: 'Misc' },
-        { value: 'Pet Stay Charges', label: 'Pet Stay Charges' },
       ];
     }
     return list.map((m: any) => {
