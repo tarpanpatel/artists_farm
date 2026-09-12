@@ -16,7 +16,8 @@ import {
 import { Drawer, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Dropdown, DropdownItem } from 'flowbite-react';
 import { Button } from './Button';
 import { Badge } from './Badge';
-import { AuditLog, BillingReceipt } from '../types';
+import { AuditLog, BillingReceipt, MenuItem } from '../types';
+import { updateWalkInTabDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
@@ -29,12 +30,14 @@ interface AuditLogsViewProps {
   receipts?: BillingReceipt[];
   onUpdateReceipt?: (updatedReceipt: BillingReceipt) => void;
   auditLogs?: AuditLog[];
+  menu?: MenuItem[];
 }
 
 export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   receipts = [],
   onUpdateReceipt,
-  auditLogs: _auditLogs = []
+  auditLogs: _auditLogs = [],
+  menu = [],
 }) => {
   const { showToast } = useToast();
   const [receiptsSearch, setReceiptsSearch] = useState('');
@@ -107,8 +110,6 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
     setDishRate(0);
   };
 
-  const defaultMenuCatalog: { name: string; price: number }[] = [];
-
   const handleUpdateFoodQty = (index: number, delta: number) => {
     setFoodItemList((prev) =>
       prev
@@ -144,16 +145,17 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   const calculatedStayRent = editingReceipt ? (editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0) : 0;
   const calculatedIncidentalsTotal = foodItemList.reduce((sum, item) => sum + (item.total || (item.quantity * item.unitPrice)), 0);
   const calculatedAdjustmentsTotal = adjustmentsList.reduce((sum, a) => a.type.includes('(-)') ? sum - a.amount : sum + a.amount, 0);
-  const calculatedGrandTotal = calculatedStayRent + calculatedIncidentalsTotal + calculatedAdjustmentsTotal;
+  const calculatedGrandTotal = (editingReceipt?.sourceType === 'walk_in_tab' ? 0 : calculatedStayRent) + calculatedIncidentalsTotal + calculatedAdjustmentsTotal;
 
-  const handleSaveReceiptEdit = (e: React.FormEvent) => {
+  const handleSaveReceiptEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingReceipt) return;
 
+    const isWalkIn = editingReceipt.sourceType === 'walk_in_tab' || !!editingReceipt.walkInTabId;
     const updated: BillingReceipt = {
       ...editingReceipt,
-      roomRent: calculatedStayRent,
-      roomTotal: calculatedStayRent,
+      roomRent: isWalkIn ? 0 : calculatedStayRent,
+      roomTotal: isWalkIn ? 0 : calculatedStayRent,
       foodTotal: calculatedIncidentalsTotal,
       kitchenTotal: calculatedIncidentalsTotal,
       grandTotal: calculatedGrandTotal,
@@ -161,6 +163,22 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       adjustments: adjustmentsList,
       auditTrail: auditTrailList
     };
+
+    if (isWalkIn && editingReceipt.walkInTabId) {
+      await updateWalkInTabDB({
+        tabId: editingReceipt.walkInTabId,
+        label: editingReceipt.guestName,
+        paymentMethod: editingReceipt.paymentMethod || 'Cash',
+        discount: editingReceipt.discount || 0,
+        gstEnabled: editingReceipt.gstEnabled ?? false,
+        gstRate: editingReceipt.gstRate || 0,
+        items: foodItemList.map((item) => ({
+          name: item.name,
+          price: item.unitPrice,
+          quantity: item.quantity,
+        })),
+      });
+    }
 
     if (onUpdateReceipt) onUpdateReceipt(updated);
     showToast(`Receipt #${editingReceipt.id} updated!`, { type: 'success' });
@@ -271,7 +289,11 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                   <div className="py-1">
                     <span className="font-semibold text-gray-900 dark:text-white block text-xs whitespace-nowrap">{rec.guestName}</span>
                     {rec.roomNumber && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 mt-0.5 rounded-md text-2xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 mt-0.5 rounded text-2xs font-medium whitespace-nowrap ${
+                        rec.roomNumber === 'Walk-in' || rec.sourceType === 'walk_in_tab'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      }`}>
                         {rec.roomNumber}
                       </span>
                     )}
@@ -390,7 +412,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                         <div className="min-w-0 flex-1">
                           <span className="font-bold text-xs text-slate-400 block">{rec.id}</span>
                           <h4 className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{rec.guestName}</h4>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{rec.roomNumber}</span>
+                          <span className={`inline-block text-2xs font-medium px-2 py-0.5 rounded mt-0.5 ${
+                            rec.roomNumber === 'Walk-in' || rec.sourceType === 'walk_in_tab'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                              : 'text-slate-500 dark:text-slate-400 bg-gray-100 dark:bg-gray-700'
+                          }`}>
+                            {rec.roomNumber}
+                          </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Badge variant="success" size="sm">
@@ -480,45 +508,52 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                       {/* LEFT 2 COLUMNS: ACCOMMODATION & FOOD LOGS */}
                       <div className="lg:col-span-2 space-y-6">
 
-                        {/* 1. ACCOMMODATION INVOICE BREAKDOWN */}
-                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-4">
-                          <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
-                            <Home className="w-4 h-4 text-emerald-600" />
-                            <span>{t('accommodation_invoice_breakdown_heading', 'ACCOMMODATION INVOICE BREAKDOWN')}</span>
-                          </h4>
+                        {/* 1. ACCOMMODATION INVOICE BREAKDOWN (Hidden for Walk-in Diners) */}
+                        {editingReceipt.sourceType === 'walk_in_tab' || editingReceipt.roomNumber === 'Walk-in' ? (
+                          <div className="bg-amber-50/60 dark:bg-amber-950/20 p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/50 flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                            <UtensilsCrossed className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>Walk-in Diner Bill — Dining POS order only (no room tariff).</span>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-4">
+                            <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-2xs flex items-center gap-2 uppercase tracking-wide">
+                              <Home className="w-4 h-4 text-emerald-600" />
+                              <span>{t('accommodation_invoice_breakdown_heading', 'ACCOMMODATION INVOICE BREAKDOWN')}</span>
+                            </h4>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Input
-                                label={t('base_lodging_charges_contract_label', 'BASE ACCOMMODATION CHARGES (CONTRACT)')}
-                                type="number"
-                                value={editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  setEditingReceipt(prev => prev ? ({ ...prev, roomRent: val, roomTotal: val }) : null);
-                                }}
-                                labelClassName="text-[11px]"
-                              />
-                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Input
+                                  label={t('base_lodging_charges_contract_label', 'BASE ACCOMMODATION CHARGES (CONTRACT)')}
+                                  type="number"
+                                  value={editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    setEditingReceipt(prev => prev ? ({ ...prev, roomRent: val, roomTotal: val }) : null);
+                                  }}
+                                  labelClassName="text-[11px]"
+                                />
+                              </div>
 
-                            <div>
-                              <Input
-                                label={t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
-                                type="number"
-                                value={editingReceipt.advancePaid ?? 0}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  setEditingReceipt(prev => prev ? ({ ...prev, advancePaid: val }) : null);
-                                }}
-                                labelClassName="text-[11px]"
-                              />
+                              <div>
+                                <Input
+                                  label={t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
+                                  type="number"
+                                  value={editingReceipt.advancePaid ?? 0}
+                                  onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    setEditingReceipt(prev => prev ? ({ ...prev, advancePaid: val }) : null);
+                                  }}
+                                  labelClassName="text-[11px]"
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* 2. FOOD & EXTRAS INCIDENTALS BREAKDOWN */}
                         <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-4">
-                          <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
+                          <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-2xs flex items-center gap-2 uppercase tracking-wide">
                             <Utensils className="w-4 h-4 text-cyan-600" />
                             <span>{t('food_extras_incidentals_heading', 'FOOD & EXTRAS INCIDENTALS')}</span>
                           </h4>
@@ -528,9 +563,13 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
                             <StyledSelect
                               className="flex-1 w-full"
                               value={selectedDish}
-                              onChange={setSelectedDish}
+                              onChange={(dishName) => {
+                                setSelectedDish(dishName);
+                                const found = menu.find((item) => item.name === dishName);
+                                if (found) setDishRate(found.price);
+                              }}
                               placeholder={t('audit_choose_menu_dish_placeholder', '-- Choose Menu Dish --')}
-                              options={defaultMenuCatalog.map((item) => ({
+                              options={menu.map((item) => ({
                                 value: item.name,
                                 label: `${item.name} (₹${item.price})`,
                               }))}

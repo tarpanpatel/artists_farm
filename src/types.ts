@@ -97,6 +97,8 @@ export interface BillingReceipt {
   foodItems?: { name: string; quantity: number; unitPrice: number; total: number }[];
   adjustments?: { type: string; label: string; amount: number }[];
   auditTrail?: string[];
+  sourceType?: 'checkout' | 'walk_in_tab';
+  walkInTabId?: number;
 }
 
 export interface MenuItem {

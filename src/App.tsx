@@ -1356,6 +1356,8 @@ function AppBody({ preloadedData }: AppBodyProps) {
     if (activeTab === 'dashboard') {
       fetchGuestsFromDB().then((data) => setGuests(data || []));
       fetchServiceRequestsFromDB().then((data) => setServiceRequests(data || []));
+    } else if (activeTab === 'audit_logs') {
+      fetchReceiptsFromDB().then((data) => setReceipts(data || []));
     }
   }, [activeTab, isAuthenticated, authChecked]);
 

@@ -2012,6 +2012,11 @@ export async function fetchReceiptsFromDB(): Promise<any[]> {
         gstIgst: Number(r.gst_igst || 0),
         guestGstin: r.guest_gstin || '',
         guestBillingName: r.guest_billing_name || '',
+        foodItems: (typeof r.food_items === 'string' ? JSON.parse(r.food_items || '[]') : r.food_items) || [],
+        adjustments: (typeof r.adjustments === 'string' ? JSON.parse(r.adjustments || '[]') : r.adjustments) || [],
+        auditTrail: (typeof r.audit_trail === 'string' ? JSON.parse(r.audit_trail || '[]') : r.audit_trail) || [],
+        sourceType: r.source_type || (r.walk_in_tab_id ? 'walk_in_tab' : 'checkout'),
+        walkInTabId: r.walk_in_tab_id ? Number(r.walk_in_tab_id) : undefined,
       }));
     }
   } catch (err) {

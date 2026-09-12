@@ -74,15 +74,107 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                 $stmt = $pdo->prepare("SELECT * FROM billing_receipts WHERE property_id = ? ORDER BY created_at DESC");
                 $stmt->execute([$propertyId]);
                 $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                if (empty($data)) {
-                    // Fallback: try to reconstruct from audit_logs if billing_receipts is empty
-                    $stmt = $pdo->prepare("SELECT * FROM audit_logs WHERE property_id = ? AND action LIKE '%Checkout%' ORDER BY timestamp DESC");
-                    $stmt->execute([$propertyId]);
-                    $auditData = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    echo json_encode(['status' => 'success', 'data' => $auditData]);
-                } else {
-                    echo json_encode(['status' => 'success', 'data' => $data]);
+                if (!is_array($data)) $data = [];
+
+                // Also include billed walk-in guest tabs so all bills generated at the property appear here
+                try {
+                    require_once __DIR__ . '/../kitchen/walk_in_tabs.php';
+                    ensureWalkInTabSchema($pdo);
+                    $tabStmt = $pdo->prepare("SELECT * FROM walk_in_tabs WHERE property_id = ? AND status = 'billed' ORDER BY billed_at DESC");
+                    $tabStmt->execute([$propertyId]);
+                    $walkInTabs = $tabStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    if (!empty($walkInTabs)) {
+                        $tabIds = array_column($walkInTabs, 'id');
+                        $inPlaceholders = implode(',', array_fill(0, count($tabIds), '?'));
+
+                        $itemsStmt = $pdo->prepare("
+                            SELECT o.walk_in_tab_id, oi.menu_item_id, m.name, COALESCE(m.price, 0) as price, SUM(oi.quantity) as quantity
+                            FROM orders o
+                            JOIN order_items oi ON oi.order_id = o.id
+                            LEFT JOIN menu_items m ON m.id = oi.menu_item_id
+                            WHERE o.walk_in_tab_id IN ($inPlaceholders)
+                            GROUP BY o.walk_in_tab_id, oi.menu_item_id, m.name, m.price
+                        ");
+                        $itemsStmt->execute($tabIds);
+                        $allItems = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        $groupedItems = [];
+                        foreach ($allItems as $it) {
+                            $tId = (int)$it['walk_in_tab_id'];
+                            if (!isset($groupedItems[$tId])) $groupedItems[$tId] = [];
+                            $groupedItems[$tId][] = $it;
+                        }
+
+                        foreach ($walkInTabs as $tab) {
+                            $tId = (int)$tab['id'];
+                            $items = [];
+                            $subtotal = 0;
+                            if (isset($groupedItems[$tId])) {
+                                foreach ($groupedItems[$tId] as $it) {
+                                    $qty = (int)$it['quantity'];
+                                    $price = (float)$it['price'];
+                                    $lineTotal = round($qty * $price, 2);
+                                    $subtotal += $lineTotal;
+                                    $items[] = [
+                                        'name' => $it['name'] ?: 'Dish',
+                                        'quantity' => $qty,
+                                        'unitPrice' => $price,
+                                        'total' => $lineTotal,
+                                    ];
+                                }
+                            }
+                            $grandTotal = floatval($tab['grand_total'] ?? 0);
+                            $foodTotal = $subtotal > 0 ? $subtotal : $grandTotal;
+                            $paymentMethod = $tab['payment_method'] ?: 'Cash';
+                            $billedAt = $tab['billed_at'] ?: $tab['opened_at'];
+
+                            $data[] = [
+                                'id' => 'W-' . $tId,
+                                'property_id' => $propertyId,
+                                'guest_id' => '',
+                                'guest_name' => $tab['label'] ?: 'Walk-in Guest',
+                                'room_number' => 'Walk-in',
+                                'checkin_date' => $tab['opened_at'],
+                                'checkout_date' => $billedAt,
+                                'room_rate_per_night' => 0,
+                                'nights_count' => 0,
+                                'room_rent' => 0,
+                                'room_total' => 0,
+                                'food_total' => $foodTotal,
+                                'kitchen_total' => $foodTotal,
+                                'misc_total' => 0,
+                                'discount' => floatval($tab['discount'] ?? 0),
+                                'grand_total' => $grandTotal,
+                                'advance_paid' => 0,
+                                'payment_method' => $paymentMethod,
+                                'cash_amount' => (stripos($paymentMethod, 'cash') !== false) ? $grandTotal : 0,
+                                'upi_amount' => (stripos($paymentMethod, 'upi') !== false || stripos($paymentMethod, 'online') !== false) ? $grandTotal : 0,
+                                'card_amount' => (stripos($paymentMethod, 'card') !== false) ? $grandTotal : 0,
+                                'bank_transfer_amount' => 0,
+                                'split_details' => '',
+                                'status' => 'Paid',
+                                'paid_at' => $billedAt,
+                                'created_at' => $billedAt,
+                                'gst_enabled' => intval($tab['gst_enabled'] ?? 0),
+                                'gst_rate' => floatval($tab['gst_rate'] ?? 0),
+                                'gst_amount' => floatval($tab['gst_amount'] ?? 0),
+                                'food_items' => json_encode($items),
+                                'source_type' => 'walk_in_tab',
+                                'walk_in_tab_id' => $tId,
+                            ];
+                        }
+                    }
+                } catch (Exception $eTab) {
+                    error_log("Failed to include walk_in_tabs in get_receipts: " . $eTab->getMessage());
                 }
+
+                usort($data, function($a, $b) {
+                    $dateA = $a['paid_at'] ?? $a['created_at'] ?? $a['checkout_date'] ?? '';
+                    $dateB = $b['paid_at'] ?? $b['created_at'] ?? $b['checkout_date'] ?? '';
+                    return strcmp((string)$dateB, (string)$dateA);
+                });
+                echo json_encode(['status' => 'success', 'data' => $data]);
             } catch (PDOException $e) {
                 echo json_encode(['status' => 'success', 'data' => []]);
             }
