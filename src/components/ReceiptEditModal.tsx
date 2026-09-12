@@ -847,8 +847,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   </div>
 
                   {/* Dish / Item Selector Controls */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                    <div className="sm:col-span-7">
+                  <div className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-8 sm:col-span-7">
                       <StyledSelect
                         label={t('select_dish_item_label', 'Select Dish / Item')}
                         value={selectedMenuId}
@@ -859,7 +859,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         ]}
                       />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div className="col-span-4 sm:col-span-2">
                       <Input
                         label={t('quantity_label', 'Quantity')}
                         type="number"
@@ -869,7 +869,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         className="text-xs font-semibold text-center"
                       />
                     </div>
-                    <div className="sm:col-span-3 flex items-end">
+                    <div className="col-span-12 sm:col-span-3 flex items-end">
                       <Button
                         type="button"
                         variant="primary"

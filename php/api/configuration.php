@@ -716,7 +716,15 @@ function registerTenantTrial($pdo) {
         if (is_file(__DIR__ . '/../whatsapp/sender.php')) {
             require_once __DIR__ . '/../whatsapp/sender.php';
         }
-        if (function_exists('sendWhatsAppTemplateMessage')) {
+        // Gated to tenants explicitly switched on (12 Sep 2026). This send had NO gate
+        // at all while the booking-confirmation path next door had one, so every brand-new
+        // tenant - not just the account that owns the Meta number - got a WhatsApp from
+        // "Artists Farm", billed to that one Meta account. A tenant outside the gate still
+        // gets the welcome EMAIL, which already carries the login URL, username and
+        // temporary passcode, so nobody is left without their credentials.
+        if (function_exists('sendWhatsAppTemplateMessage')
+            && function_exists('isWhatsAppEnabledForTenant')
+            && isWhatsAppEnabledForTenant($pdo, $tenantId)) {
             try {
                 // {{1}} name, {{2}} FULL login URL, {{3}} username. Positional - the template
                 // on Meta must use numbered variables ({{1}}), not named ones

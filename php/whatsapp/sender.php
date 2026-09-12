@@ -24,18 +24,20 @@ if (!defined('WHATSAPP_API_VERSION')) {
 }
 /**
  * Phased rollout gate: this WhatsApp number/account is shared platform-wide (see
- * file header), which is fine long-term but not yet something every tenant has
- * agreed to or been billed for. Until that's sorted out, guest notifications only
- * fire for the tenant whose registered contact phone matches this - i.e. the
- * platform owner's own properties. Anchored to the tenant's phone rather than a
- * tenant/property slug or domain, since those can and will change (see the
- * "Multi-Tenant Scale" memory) - the registered contact number is the one
- * durable identifier. Widen this to per-tenant opt-in (or remove entirely) once
- * WhatsApp is rolled out platform-wide.
+ * file header) - one Meta number, one bill, and every message reads as coming from
+ * "Artists Farm" regardless of which tenant's guest receives it. So it may only
+ * send on behalf of tenants explicitly switched on, via `tenants.whatsapp_enabled`
+ * (self-heals in router.php, defaults to 0).
+ *
+ * REPLACED a WHATSAPP_ENABLED_TENANT_PHONE constant compared against tenants.phone
+ * (12 Sep 2026). That gate had already drifted silently: the constant matched NO
+ * tenant on staging, so booking confirmations were sending to nobody - failing
+ * closed, which is the safe direction, but with no error or log to notice it by. A
+ * phone number is mutable identity; the owner edits it in their own settings and
+ * the gate dies. The tenant slug has the same problem (one was being renamed the
+ * same day this was written). An explicit column is the only key that survives both,
+ * and it is what per-tenant credentials will hang off later.
  */
-if (!defined('WHATSAPP_ENABLED_TENANT_PHONE')) {
-    define('WHATSAPP_ENABLED_TENANT_PHONE', '9571263474');
-}
 
 /**
  * Permanent System User access token - env var first, falling back to the
@@ -69,25 +71,40 @@ if (!function_exists('normalizeWhatsAppNumber')) {
 }
 
 /**
- * Gate for the phased rollout above: does $propertyId belong (directly, or via
+ * Gate for the phased rollout above, by tenant id. Fails closed (false) on any
+ * lookup error or missing row, so a DB hiccup never sends a message on behalf of
+ * a tenant who has not been switched on.
+ */
+if (!function_exists('isWhatsAppEnabledForTenant')) {
+    function isWhatsAppEnabledForTenant($pdo, $tenantId) {
+        if (!$tenantId) return false;
+        try {
+            $stmt = $pdo->prepare("SELECT whatsapp_enabled FROM tenants WHERE id = ?");
+            $stmt->execute([$tenantId]);
+            return (int)$stmt->fetchColumn() === 1;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+}
+
+/**
+ * Same gate, resolved from a property: does $propertyId belong (directly, or via
  * its parent for a MULTI_KEY_ROOM child that never got its own tenant_id
- * backfilled) to the tenant enabled for WhatsApp? Fails closed (false) on any
- * lookup error or missing tenant phone, so a DB hiccup never accidentally
- * sends a guest-facing message nobody approved yet.
+ * backfilled) to a tenant enabled for WhatsApp?
  */
 if (!function_exists('isWhatsAppEnabledForProperty')) {
     function isWhatsAppEnabledForProperty($pdo, $propertyId) {
         try {
             $stmt = $pdo->prepare(
-                "SELECT t.phone FROM properties p
+                "SELECT t.whatsapp_enabled FROM properties p
                  LEFT JOIN properties parent ON p.parent_property_id = parent.id
                  JOIN tenants t ON t.id = COALESCE(p.tenant_id, parent.tenant_id)
                  WHERE p.id = ?"
             );
             $stmt->execute([$propertyId]);
-            $ownerPhone = $stmt->fetchColumn();
-            if (!$ownerPhone) return false;
-            return normalizeWhatsAppNumber($ownerPhone) === normalizeWhatsAppNumber(WHATSAPP_ENABLED_TENANT_PHONE);
+            $enabled = $stmt->fetchColumn();
+            return $enabled !== false && (int)$enabled === 1;
         } catch (PDOException $e) {
             return false;
         }

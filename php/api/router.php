@@ -546,6 +546,30 @@ if (!isSchemaVerified('schema_tenants_voucher_template')) {
     markSchemaVerified('schema_tenants_voucher_template');
 }
 
+// Per-tenant WhatsApp Business API opt-in (12 Sep 2026). The Meta sender is ONE
+// number registered to Artists Farm, billed to one Meta account, and every message
+// it sends reads as coming from "Artists Farm" - so it must only ever send on behalf
+// of that account until other tenants have their own credentials (see
+// CLAUDE.md/memory: per-tenant WhatsApp is the eventual target architecture).
+//
+// Replaces a hardcoded WHATSAPP_ENABLED_TENANT_PHONE comparison that had already
+// drifted: on staging it matched no tenant at all, so booking confirmations were
+// silently sending to nobody. A phone number is mutable identity - the owner edits
+// it and the gate dies with no error anywhere. So is the tenant slug. A column the
+// platform admin sets deliberately survives both, and is the shape needed anyway to
+// switch tenant #2 on without a code change.
+//
+// Defaults to 0: a brand-new tenant never sends from this number by accident.
+if (!isSchemaVerified('schema_tenants_whatsapp_enabled')) {
+    try {
+        $tenantsColsWa = $pdo->query("SHOW COLUMNS FROM tenants")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('whatsapp_enabled', $tenantsColsWa)) {
+            $pdo->exec("ALTER TABLE tenants ADD COLUMN `whatsapp_enabled` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_demo`");
+        }
+    } catch (Exception $e) {}
+    markSchemaVerified('schema_tenants_whatsapp_enabled');
+}
+
 // Renewal history for manual/offline billing (27 Aug 2026, see PRODUCT_STRATEGY.md).
 // update_tenant's own UPDATE overwrites plan_type/subscription_expires_at in place -
 // there was no record anywhere of what the plan/expiry WAS before a Root Admin change,
@@ -3346,10 +3370,20 @@ switch ($action) {
             $hasVoucherTemplateField = array_key_exists('whatsapp_voucher_template', $input);
             $newVoucherTemplate = $hasVoucherTemplateField ? trim((string)$input['whatsapp_voucher_template']) : null;
 
+            // whatsapp_enabled (12 Sep 2026) - same present-or-keep handling as the
+            // voucher template directly above, and for the same reason: this action is
+            // also called by toggleTenantStatus, which sends only the active/inactive
+            // flip. Joining the fixed column list would mean a routine "deactivate this
+            // tenant" click silently revoked WhatsApp for whoever was switched on, with
+            // nothing in the UI saying so.
+            $hasWhatsappEnabledField = array_key_exists('whatsapp_enabled', $input);
+            $newWhatsappEnabled = !empty($input['whatsapp_enabled']) ? 1 : 0;
+
             $stmt = $pdo->prepare("
                 UPDATE tenants
                 SET name = ?, slug = COALESCE(?, slug), email = ?, phone = ?, subscription_status = ?, is_active = ?, is_demo = ?, max_properties = COALESCE(?, max_properties), subscription_expires_at = ?, plan_type = ?,
-                    whatsapp_voucher_template = CASE WHEN ? THEN ? ELSE whatsapp_voucher_template END
+                    whatsapp_voucher_template = CASE WHEN ? THEN ? ELSE whatsapp_voucher_template END,
+                    whatsapp_enabled = CASE WHEN ? THEN ? ELSE whatsapp_enabled END
                 WHERE id = ?
             ");
             $stmt->execute([
@@ -3365,6 +3399,8 @@ switch ($action) {
                 $newPlanType,
                 $hasVoucherTemplateField ? 1 : 0,
                 $newVoucherTemplate !== '' ? $newVoucherTemplate : null,
+                $hasWhatsappEnabledField ? 1 : 0,
+                $newWhatsappEnabled,
                 $id
             ]);
             echo json_encode(['success' => true, 'message' => 'Tenant updated successfully']);
