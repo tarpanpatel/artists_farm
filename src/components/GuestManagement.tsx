@@ -594,21 +594,6 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const bookingTotalDue = bookingRoomTariff + calcTotalBookingExtraCharges(bookingExtraChargesList, showBookingExtraCharges);
   const advanceExceedsTotal = bookingAdvance > 0 && bookingTotalDue > 0 && bookingAdvance > bookingTotalDue;
 
-  // "Add more charges" only appears once the current last line actually has
-  // something in it (12 Sep 2026, explicit request) - otherwise the button just
-  // stacks empty rows. Gating on the LAST line rather than literally the first
-  // means a second empty line can't be added either; with a single line (the
-  // common case) the two are the same thing.
-  //
-  // Safe to hide, because this block always has at least one line to fill in:
-  // ticking the Additional Charges checkbox seeds one, and removing the last
-  // line auto-unticks the checkbox - so there is no state where the button is
-  // hidden AND there is no row to type into.
-  const lastExtraChargeLine = bookingExtraChargesList[bookingExtraChargesList.length - 1];
-  const canAddMoreExtraCharges = Boolean(
-    lastExtraChargeLine && lastExtraChargeLine.category && Number(lastExtraChargeLine.amount) > 0
-  );
-
   // Every condition that would make the submit handler below reject this
   // booking, recomputed reactively so the Save button can be greyed until they
   // all pass. Per CLAUDE.md, the button stays CLICKABLE (opacity only, never
@@ -1857,9 +1842,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             {/* Multi-Line Additional Charges Block (if checked) */}
             {showBookingExtraCharges && (
               <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {bookingExtraChargesList.map((line) => (
-                    <div key={line.id} className="p-2.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 space-y-2">
+                    <div key={line.id} className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 min-w-0">
                           <StyledSelect
@@ -1941,26 +1926,21 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   ))}
                 </div>
 
-                {/* Footer row (12 Sep 2026, explicit request): the example hint
-                    sits bottom-left and "Add more charges" bottom-right, under
-                    the Amount column it follows on from - previously both sat
-                    above the rows, which put an "Add" action before there was
-                    anything to add to. items-end keeps the hint aligned with the
-                    button's baseline when it wraps to two lines on a phone. */}
-                <div className="flex items-end justify-between gap-2">
+                {/* Footer row: the example hint sits bottom-left and "Add more charges"
+                    bottom-right, under the Amount column it follows on from.
+                    Button is always visible to append as many rows as necessary. */}
+                <div className="flex items-center justify-between gap-2 pt-1">
                   <span className="text-2xs text-gray-500 dark:text-gray-400">
                     e.g. Pet Stay, Decoration, Misc
                   </span>
-                  {canAddMoreExtraCharges && (
-                    <Button
-                      color="light"
-                      size="sm"
-                      onClick={handleAddBookingExtraChargeLine}
-                      className="shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5 mr-1.5" /> Add more charges
-                    </Button>
-                  )}
+                  <Button
+                    color="light"
+                    size="sm"
+                    onClick={handleAddBookingExtraChargeLine}
+                    className="shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Add more charges
+                  </Button>
                 </div>
               </div>
             )}
