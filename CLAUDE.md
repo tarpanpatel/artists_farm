@@ -247,8 +247,23 @@ plus Meta's sample `hello_world`) are referenced nowhere in the repo and have ne
 
 | Template | Called from | Link? |
 |---|---|---|
-| `welcome_onboarding` | `configuration.php` `registerTenantTrial()` | ✅ `{{2}}` = full login URL (12 Sep 2026) |
+| `welcome_onboarding` | `configuration.php` `registerTenantTrial()` | ✅ `{{2}}` = full login URL - 3 params: name, URL, username (12 Sep 2026) |
 | `new_booking_cofirmation` | `guests.php` booking path | ❌ **OPEN** - 3 params (name/date/room), no link |
+
+`welcome_onboarding`'s first draft carried a 4th variable, the passcode - rejected by Meta as the
+wrong category (read as Marketing, not Utility). The fix was to drop the passcode, not switch
+category: `$passcode` in `registerTenantTrial()` is the 6-digit PIN the owner types into the signup
+form themselves (`SelfOnboardingWizard.tsx`) - not a system-generated temp code - so texting it back
+added a plaintext copy of their own credential to WhatsApp's history for no benefit; they already
+know it. A message with no credential and no "Welcome!" greeting to read as promotional is
+unambiguously Utility. **This is a DIFFERENT situation from `create_tenant`/`create_tenant_login`/
+`reset_tenant_login` in `router.php`**, which DO generate a real random temp passcode for someone
+else's account (`must_change_passcode = 1`) and hand it to Root Admin to relay by hand - a genuine
+"nobody chose this secret" exposure, and untouched by the fix above. If that flow is ever automated
+or moved onto a WhatsApp template, it should NOT reuse the "just drop the passcode" fix - it has no
+substitute value the recipient already knows, so the correct fix there is a single-use setup link
+the recipient uses to choose their own passcode, not silently withholding the only credential they
+have.
 
 `new_booking_cofirmation` is the outstanding violation: it should gain a 4th variable carrying the
 voucher URL, which means editing the template on Meta **and** passing `getOrCreateVoucherToken()`'s
