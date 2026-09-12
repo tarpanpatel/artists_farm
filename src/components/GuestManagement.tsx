@@ -340,6 +340,41 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   // same gating style as every other live check in this file.
   const phoneFormatInvalid = phoneNumber.trim().length > 0 && !isValidPhoneNumber(phoneNumber, isForeignGuest);
 
+  // Live room/date-conflict check (12 Sep 2026, explicit report: picking dates
+  // FIRST and an already-booked room/place SECOND gave zero feedback in the
+  // form - the server's 409 at Save Booking was still the real guard (per
+  // CLAUDE.md's "no overlapping bookings" rule), but nothing told the user
+  // which of the two fields to change until they'd already tried to submit.
+  // Mirrors getBlockedDateStrings()' own room-matching just above (single-key:
+  // every active booking counts, since the property IS the one room; multi-key:
+  // match by room id, falling back to name) and the same half-open overlap
+  // rule used by the server, handleShareAllAvailableRooms() below, and every
+  // other conflict check in this codebase (gIn < checkout && gOut > checkin -
+  // same-day turnover is not a conflict). Only judges once both dates are
+  // chosen AND, for multi-key, a room is chosen too - an incomplete form isn't
+  // "wrong", it's unfinished.
+  const roomDateConflictLive =
+    !!checkinDate &&
+    !!expectedCheckout &&
+    checkinDate < expectedCheckout &&
+    (!isMultiKeyProperty || !!roomNumber) &&
+    guests
+      .filter((g) => g.status === GUEST_STATUS_CHECKED_IN || (g.status as string) === GUEST_STATUS_ACTIVE_LEGACY || g.status === GUEST_STATUS_BOOKED)
+      .some((g) => {
+        if (isMultiKeyProperty) {
+          const selectedRoomObj = rooms.find((r) => r.name === roomNumber || r.slug === roomNumber);
+          const selectedRoomId = selectedRoomObj?.id;
+          const gRoomId = (g as any).roomId || (g as any).room_id;
+          const matchesRoom =
+            (selectedRoomId && gRoomId && Number(gRoomId) === Number(selectedRoomId)) ||
+            (g.roomNumber && roomNumber && g.roomNumber.toLowerCase().trim() === roomNumber.toLowerCase().trim());
+          if (!matchesRoom) return false;
+        }
+        const gIn = (g.checkinDate || '').split(' ')[0];
+        const gOut = (g.expectedCheckout || g.checkoutDate || g.checkinDate || '').split(' ')[0];
+        return gIn < expectedCheckout && gOut > checkinDate;
+      });
+
   // BillingCheckout's own effect (child, so it fires first within the same
   // commit) reads focusGuestId to jump to the right tab and pre-fill the
   // search box - clearing it here right after just resets App.tsx's state so
@@ -511,6 +546,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     !duplicateBookingLive &&
     !!checkinDate && !!expectedCheckout &&
     (!isMultiKeyProperty || (!!roomNumber && roomNumber.trim().length > 0)) &&
+    !roomDateConflictLive &&
     !advanceExceedsTotal;
 
   // Get all blocked date strings for DatePicker
@@ -1160,7 +1196,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         setRoomTouched(true);
                       }}
                       options={rooms.map((room) => ({ value: room.name, label: room.name }))}
-                      error={isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim()) ? 'An assigned place selection is required' : undefined}
+                      error={
+                        isMultiKeyProperty && roomTouched && (!roomNumber || !roomNumber.trim())
+                          ? 'An assigned place selection is required'
+                          : roomDateConflictLive
+                          ? 'This place is already booked for the selected dates'
+                          : undefined
+                      }
                     />
                   </div>
                 </div>
@@ -1353,7 +1395,13 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 }}
                 blockedDates={getBlockedDateStrings()}
                 disablePastDates
-                error={datesTouched && (!checkinDate || !expectedCheckout) ? 'Check-in and check-out dates are required' : undefined}
+                error={
+                  datesTouched && (!checkinDate || !expectedCheckout)
+                    ? 'Check-in and check-out dates are required'
+                    : roomDateConflictLive
+                    ? (isMultiKeyProperty ? 'The selected place is not available for these dates' : 'This property is already booked for these dates')
+                    : undefined
+                }
               />
             </div>
 

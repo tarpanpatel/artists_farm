@@ -1032,15 +1032,21 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         sendPropertyTelegramMessage($pdo, $propertyId, 'admin', $telegramMessage, $bookingReplyMarkup);
                     }
 
-                    // WhatsApp booking confirmation direct to the guest (staff-facing
-                    // Telegram notification above is separate from this). Phased
-                    // rollout - only fires for the tenant currently enabled, see
-                    // isWhatsAppEnabledForProperty()'s docblock in sender.php.
+                    // Send WhatsApp "Make Booking" message when a booking is created
+                    // (staff-facing Telegram notification above is separate from this).
+                    // Phased rollout - only fires for the tenant currently enabled.
                     require_once __DIR__ . '/../whatsapp/sender.php';
                     if (isWhatsAppEnabledForProperty($pdo, $propertyId)) {
-                        $checkinDateFormatted = date('d M Y', strtotime($checkinDate));
                         $roomLabel = $input['room_number'] ?? $input['roomNumber'] ?? 'your assigned room';
-                        sendWhatsAppTemplateMessage($phone, 'new_booking_cofirmation', [$guestName, $checkinDateFormatted, $roomLabel]);
+                        $bookingDataForWhatsApp = [
+                            'checkin_date' => $checkinDate,
+                            'expected_checkout' => $checkoutDate,
+                            'no_of_guests' => $noOfGuests,
+                            'base_room_rent' => floatval($input['base_room_rent'] ?? 0),
+                            'cancellation_policy' => $input['cancellation_policy'] ?? 'Standard cancellation terms apply',
+                            'maps_link' => $input['maps_link'] ?? '',
+                        ];
+                        sendMakeBookingWhatsApp($pdo, $phone, $propertyId, $roomId, $bookingDataForWhatsApp);
                     }
 
                     // Channel Manager Outbox (31 Aug 2026): a booking here enqueued an
@@ -1556,6 +1562,48 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         break;
                     }
                     echo json_encode(['status' => 'success', 'message' => 'Guest checked in successfully']);
+
+                    // Send Booking Confirmation WhatsApp after guest is checked in
+                    // (this is when they've been confirmed and are ready to check in)
+                    if (function_exists('fastcgi_finish_request')) {
+                        fastcgi_finish_request();
+                    } else {
+                        ignore_user_abort(true);
+                        if (ob_get_level() > 0) { @ob_end_flush(); }
+                        @flush();
+                    }
+
+                    // Get guest details for WhatsApp send
+                    $guestStmt = $pdo->prepare("SELECT id, guest_name, phone_number, checkin_date, expected_checkout,
+                                                      no_of_guests, base_room_rent, pending_amount, advance_paid,
+                                                      property_id
+                                               FROM guests WHERE id = ? LIMIT 1");
+                    $guestStmt->execute([$guestId]);
+                    $guest = $guestStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($guest) {
+                        require_once __DIR__ . '/../whatsapp/sender.php';
+                        if (isWhatsAppEnabledForProperty($pdo, $guest['property_id'])) {
+                            $guestDataForWhatsApp = [
+                                'guest_name' => $guest['guest_name'],
+                                'phone_number' => $guest['phone_number'],
+                                'checkin_date' => $guest['checkin_date'],
+                                'expected_checkout' => $guest['expected_checkout'],
+                                'no_of_guests' => $guest['no_of_guests'],
+                                'base_room_rent' => $guest['base_room_rent'],
+                                'pending_amount' => $guest['pending_amount'],
+                                'advance_paid' => $guest['advance_paid'],
+                                'room_name' => 'your room',
+                                'maps_link' => '',
+                                'security_deposit' => 0,
+                                'guest_breakdown' => '',
+                                'payments_list' => '',
+                                'upi_qr_code_url' => '',
+                                'voucher_link' => '',
+                            ];
+                            sendBookingConfirmationWhatsApp($pdo, $guest['phone_number'], $guest['property_id'], $guestId, $guestDataForWhatsApp);
+                        }
+                    }
                 } catch (PDOException $e) {
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => 'Failed to check in guest: ' . $e->getMessage()]);

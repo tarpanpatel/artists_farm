@@ -252,3 +252,150 @@ if (!function_exists('sendWhatsAppDirectTextMessage')) {
         }
     }
 }
+
+/**
+ * Send "Make Booking" WhatsApp message when a property owner creates a booking.
+ * Contains cancellation policy, location, pricing, dates — NOT guest-specific
+ * details like WiFi passwords.
+ */
+if (!function_exists('sendMakeBookingWhatsApp')) {
+    function sendMakeBookingWhatsApp($pdo, $guestPhoneNumber, $propertyId, $roomId, $bookingData) {
+        if (!isWhatsAppEnabledForProperty($pdo, $propertyId)) {
+            return ['skipped' => true, 'reason' => 'WhatsApp not enabled for this property'];
+        }
+
+        try {
+            require_once __DIR__ . '/template_renderer.php';
+
+            // Get property details
+            $propStmt = $pdo->prepare("SELECT name, address, phone as contact_phone, whatsapp_make_booking_template FROM properties WHERE id = ? LIMIT 1");
+            $propStmt->execute([$propertyId]);
+            $property = $propStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$property) {
+                return ['status' => 'error', 'message' => 'Property not found'];
+            }
+
+            // Get room details if specified
+            $roomName = 'your assigned room';
+            if ($roomId) {
+                $roomStmt = $pdo->prepare("SELECT name FROM properties WHERE id = ? AND is_deleted = 0 LIMIT 1");
+                $roomStmt->execute([$roomId]);
+                $room = $roomStmt->fetch(PDO::FETCH_ASSOC);
+                if ($room) {
+                    $roomName = $room['name'];
+                }
+            }
+
+            // Use property-level custom template if set, otherwise default
+            $template = !empty($property['whatsapp_make_booking_template'])
+                ? $property['whatsapp_make_booking_template']
+                : getDefaultMakeBookingTemplate();
+
+            // Build template variables from booking data
+            $variables = [
+                'property_name' => $property['name'] ?? 'Your Property',
+                'room_name' => $roomName,
+                'checkin_date' => date('d M Y', strtotime($bookingData['checkin_date'] ?? date('Y-m-d'))),
+                'checkout_date' => date('d M Y', strtotime($bookingData['expected_checkout'] ?? date('Y-m-d', strtotime('+1 day')))),
+                'guest_count' => intval($bookingData['no_of_guests'] ?? 1),
+                'room_tariff' => number_format(floatval($bookingData['base_room_rent'] ?? 0), 2),
+                'cancellation_policy' => $bookingData['cancellation_policy'] ?? 'Standard cancellation terms apply',
+                'address' => $property['address'] ?? '',
+                'contact_phone' => $property['contact_phone'] ?? '',
+                'maps_link' => $bookingData['maps_link'] ?? '',
+            ];
+
+            // Render template with variables
+            $messageText = renderWhatsappVoucherTemplate($template, $variables);
+
+            // For now, send as direct text since Meta templates require pre-approval
+            // This will be replaced with template send once templates are approved
+            return sendWhatsAppDirectTextMessage($guestPhoneNumber, $messageText);
+        } catch (Exception $e) {
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('whatsapp', 'ERROR', "Failed to send Make Booking WhatsApp: " . $e->getMessage(), "Make Booking Sender", ['error' => $e->getMessage()]);
+            }
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+}
+
+/**
+ * Send "Booking Confirmation Voucher" WhatsApp message after a booking is confirmed.
+ * Contains all practical check-in information: WiFi, house manual, notes, full booking details.
+ */
+if (!function_exists('sendBookingConfirmationWhatsApp')) {
+    function sendBookingConfirmationWhatsApp($pdo, $guestPhoneNumber, $propertyId, $bookingId, $guestData) {
+        if (!isWhatsAppEnabledForProperty($pdo, $propertyId)) {
+            return ['skipped' => true, 'reason' => 'WhatsApp not enabled for this property'];
+        }
+
+        try {
+            require_once __DIR__ . '/template_renderer.php';
+
+            // Get property details and guest info
+            $propStmt = $pdo->prepare("SELECT name, address, phone as contact_phone,
+                                            wifi_network, wifi_password, house_manual,
+                                            upi_id, checkin_time, checkout_time,
+                                            whatsapp_booking_confirmation_template
+                                       FROM properties WHERE id = ? LIMIT 1");
+            $propStmt->execute([$propertyId]);
+            $property = $propStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$property) {
+                return ['status' => 'error', 'message' => 'Property not found'];
+            }
+
+            // Use property-level custom template if set, otherwise default
+            $template = !empty($property['whatsapp_booking_confirmation_template'])
+                ? $property['whatsapp_booking_confirmation_template']
+                : getDefaultBookingConfirmationTemplate();
+
+            // Get the guest/booking data
+            $checkinTime = $property['checkin_time'] ?? '14:00';
+            $checkoutTime = $property['checkout_time'] ?? '11:00';
+
+            // Build template variables
+            $variables = [
+                'booking_id' => $bookingId,
+                'guest_name' => $guestData['guest_name'] ?? 'Guest',
+                'guest_phone' => $guestData['phone_number'] ?? '',
+                'room_name' => $guestData['room_name'] ?? 'your room',
+                'checkin_date' => date('d M Y', strtotime($guestData['checkin_date'] ?? date('Y-m-d'))),
+                'checkin_time' => date('H:i', strtotime($checkinTime)),
+                'checkout_date' => date('d M Y', strtotime($guestData['expected_checkout'] ?? date('Y-m-d', strtotime('+1 day')))),
+                'checkout_time' => date('H:i', strtotime($checkoutTime)),
+                'guest_count' => intval($guestData['no_of_guests'] ?? 1),
+                'guest_breakdown' => $guestData['guest_breakdown'] ?? '',
+                'room_tariff' => number_format(floatval($guestData['base_room_rent'] ?? 0), 2),
+                'advance_paid' => number_format(floatval($guestData['advance_paid'] ?? 0), 2),
+                'payments_list' => $guestData['payments_list'] ?? '',
+                'balance_due' => number_format(floatval($guestData['pending_amount'] ?? 0), 2),
+                'security_deposit' => number_format(floatval($guestData['security_deposit'] ?? 0), 2),
+                'address' => $property['address'] ?? '',
+                'contact_phone' => $property['contact_phone'] ?? '',
+                'maps_link' => $guestData['maps_link'] ?? '',
+                'upi_id' => $property['upi_id'] ?? '',
+                'upi_qr_code_url' => $guestData['upi_qr_code_url'] ?? '',
+                'other_notes' => $property['house_manual'] ?? '',
+                'wifi_network' => $property['wifi_network'] ?? '',
+                'wifi_password' => $property['wifi_password'] ?? '',
+                'house_manual' => $property['house_manual'] ?? '',
+                'voucher_link' => $guestData['voucher_link'] ?? '',
+                'property_name' => $property['name'] ?? 'Your Property',
+            ];
+
+            // Render template with variables
+            $messageText = renderWhatsappVoucherTemplate($template, $variables);
+
+            // For now, send as direct text since Meta templates require pre-approval
+            return sendWhatsAppDirectTextMessage($guestPhoneNumber, $messageText);
+        } catch (Exception $e) {
+            if (class_exists('TelescopeLogger')) {
+                TelescopeLogger::log('whatsapp', 'ERROR', "Failed to send Booking Confirmation WhatsApp: " . $e->getMessage(), "Booking Confirmation Sender", ['error' => $e->getMessage()]);
+            }
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
+    }
+}
