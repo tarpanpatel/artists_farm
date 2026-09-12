@@ -57,7 +57,7 @@ import { Button } from './Button';
 import { PageHeader } from './PageHeader';
 import { EmptyState } from './EmptyState';
 import { t } from '../i18n/en';
-import { formatDateTimeDDMMYYYY, toDatetimeLocalValue } from '../utils/dateUtils';
+import { formatDateTimeDDMMYYYY, toDatetimeLocalValue, getTodayKey } from '../utils/dateUtils';
 import { TextInput as FlowbiteTextInput } from 'flowbite-react';
 
 const mapWalkInTabFromApi = (raw: any): WalkInTab => ({
@@ -421,7 +421,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
 
   const [billingTab, setBillingTab] = useState<WalkInTab | null>(null);
   const [isPastBillsDrawerOpen, setIsPastBillsDrawerOpen] = useState<boolean>(false);
-  const [viewingPastBill, setViewingPastBill] = useState<any | null>(null);
 
   const [servedLogs, setServedLogs] = useState<Array<{ id: string; orderId: string; itemName: string; quantity: number; servedBy: string; guestName: string; roomNumber: string; servedAt: string; readyAt: string | null }>>([]);
 
@@ -1543,7 +1542,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
       itemName: reqItemName,
       requestedQty: Number(reqQty) || 0,
       unit: reqUnit,
-      requestedAt: `${new Date().toISOString().split('T')[0]} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+      requestedAt: `${getTodayKey()} ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
       status: 'Pending',
       requestedBy: 'Kitchen Staff',
     };
@@ -3021,7 +3020,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           tab={billingTab}
           onClose={() => {
             setBillingTab(null);
-            setViewingPastBill(null);
           }}
           onBilled={() => {
             refreshWalkInTabs();
@@ -3031,7 +3029,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           propertyGstin={propertyGstin}
           propertyUpiId={propertyUpiId}
           propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
-          initialBill={viewingPastBill || undefined}
         />
       )}
 
@@ -3039,15 +3036,6 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
         <PastWalkInBillsDrawer
           open={isPastBillsDrawerOpen}
           onClose={() => setIsPastBillsDrawerOpen(false)}
-          onViewBill={(bill) => {
-            setViewingPastBill(bill);
-            setBillingTab({
-              id: bill.tabId || bill.id,
-              label: bill.label,
-              items: bill.items || [],
-              subtotal: bill.subtotal || bill.grandTotal || 0,
-            } as any);
-          }}
           propertyName={propertyName}
           propertyGstin={propertyGstin}
           propertyUpiId={propertyUpiId}

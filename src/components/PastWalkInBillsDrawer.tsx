@@ -4,11 +4,13 @@ import { X, Search, History, Eye, Pencil, Trash2, Share2, RefreshCw, AlertCircle
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
 import { fetchWalkInTabHistoryFromDB, updateWalkInTabDB, deleteWalkInTabDB } from '../services/api';
-import { formatDateOrdinal } from '../utils/dateUtils';
+import { formatDateOrdinal, formatDateDDMMYYYY } from '../utils/dateUtils';
 import { StyledSelect } from './StyledSelect';
 import { Input } from './Input';
 import { Popover } from './Popover';
 import { getWhatsAppShareUrl } from '../utils/phoneUtils';
+import * as htmlToImage from 'html-to-image';
+import { UpiPaymentBlock } from '../utils/upiQrCode';
 
 export interface PastWalkInBillItem {
   id: number;
@@ -29,7 +31,7 @@ export interface PastWalkInBillItem {
 interface PastWalkInBillsDrawerProps {
   open: boolean;
   onClose: () => void;
-  onViewBill: (bill: any) => void;
+  onViewBill?: (bill: any) => void;
   propertyName?: string;
   propertyGstin?: string;
   propertyUpiId?: string;
@@ -39,14 +41,20 @@ interface PastWalkInBillsDrawerProps {
 export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
   open,
   onClose,
-  onViewBill,
+  propertyName,
+  propertyGstin,
   propertyUpiId,
+  propertyUpiQrCodeUrl,
 }) => {
   const { showToast } = useToast();
 
   const [bills, setBills] = useState<PastWalkInBillItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Viewing state
+  const [viewingBill, setViewingBill] = useState<PastWalkInBillItem | null>(null);
+  const [isSharingImage, setIsSharingImage] = useState<boolean>(false);
 
   // Editing state
   const [editingBill, setEditingBill] = useState<PastWalkInBillItem | null>(null);
@@ -159,6 +167,29 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
     }
     const url = getWhatsAppShareUrl('', whatsappText);
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShareImage = async () => {
+    const node = document.getElementById('pastBillPrintable');
+    if (!node || !viewingBill) return;
+    setIsSharingImage(true);
+    try {
+      const dataUrl = await htmlToImage.toPng(node, { backgroundColor: '#ffffff', pixelRatio: 2 });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `walk-in-bill-${viewingBill.id}.png`, { type: 'image/png' });
+      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: t('walk_in_bill_title', 'Walk-in Bill') });
+      } else {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `walk-in-bill-${viewingBill.id}.png`;
+        link.click();
+      }
+    } catch (err) {
+      showToast(t('share_bill_failed_toast', 'Could not generate the bill image'), { type: 'error' });
+    } finally {
+      setIsSharingImage(false);
+    }
   };
 
   return (
@@ -297,25 +328,10 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
                     <Button
                       size="xs"
                       color="light"
-                      onClick={() =>
-                        onViewBill({
-                          tabId: b.id,
-                          id: b.id,
-                          label: b.label,
-                          items: b.items || [],
-                          subtotal: Number(b.subtotal ?? b.grand_total),
-                          discount: Number(b.discount || 0),
-                          gstEnabled: Boolean(b.gst_enabled),
-                          gstRate: Number(b.gst_rate || 5),
-                          gstAmount: Number(b.gst_amount || 0),
-                          grandTotal: Number(b.grand_total),
-                          paymentMethod: b.payment_method,
-                          billed_at: b.billed_at,
-                        })
-                      }
+                      onClick={() => setViewingBill(b)}
                       className="text-xs"
                     >
-                      <Eye className="w-3.5 h-3.5 mr-1" /> View
+                      <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" /> View
                     </Button>
 
                     <Button
@@ -361,6 +377,123 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
         </DrawerItems>
       </FlowbiteDrawer>
 
+      {/* View Bill Receipt Modal */}
+      {viewingBill && (
+        <Modal
+          show={!!viewingBill}
+          onClose={() => setViewingBill(null)}
+          size="md"
+          popup
+          className="z-70"
+        >
+          <div className="p-5 space-y-4 bg-white dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                Walk-in Bill #{viewingBill.id}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setViewingBill(null)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1 cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Share Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleShareImage}
+                disabled={isSharingImage}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {isSharingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
+                {t('share_bill_png_button', 'Share Bill (PNG)')}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShareWhatsApp(viewingBill)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-center"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                {t('share_via_whatsapp_button', 'Share via WhatsApp')}
+              </button>
+            </div>
+
+            {/* Printable Receipt Card */}
+            <div id="pastBillPrintable" className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 text-xs text-black">
+              <div className="text-center pb-2 border-b border-slate-200">
+                <h3 className="font-extrabold text-base uppercase">{propertyName || 'Ground Code Resort'}</h3>
+                <p className="font-medium">{viewingBill.gst_enabled ? t('tax_invoice_label', 'Tax Invoice') : t('walk_in_bill_title', 'Walk-in Bill')}</p>
+                {viewingBill.gst_enabled && propertyGstin && <p className="text-2xs">GSTIN: {propertyGstin}</p>}
+              </div>
+
+              <div className="flex justify-between border-b border-dashed border-slate-300 pb-2 font-semibold">
+                <span>{viewingBill.label || t('walk_in_badge', 'Walk-in')}</span>
+                <span>{formatDateDDMMYYYY(viewingBill.billed_at || new Date().toISOString())}</span>
+              </div>
+
+              <div className="space-y-1">
+                {(viewingBill.items || []).map((it: any, idx: number) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>{it.quantity}x {it.name}</span>
+                    <span>₹{Number(it.lineTotal).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-1 border-t border-dashed border-slate-300 pt-2">
+                <div className="flex justify-between">
+                  <span>{t('subtotal_label', 'Subtotal')}</span>
+                  <span>₹{Number(viewingBill.subtotal ?? viewingBill.grand_total).toFixed(2)}</span>
+                </div>
+                {Number(viewingBill.discount) > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t('discount_label', 'Discount')}</span>
+                    <span>-₹{Number(viewingBill.discount).toFixed(2)}</span>
+                  </div>
+                )}
+                {viewingBill.gst_enabled && Number(viewingBill.gst_amount) > 0 && (
+                  <div className="flex justify-between">
+                    <span>{t('cgst_split_label', 'CGST (50% split):')} / SGST</span>
+                    <span>₹{Number(viewingBill.gst_amount).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-sm pt-1 border-t border-slate-200">
+                  <span>{t('grand_total_label', 'Grand Total')}</span>
+                  <span>₹{Number(viewingBill.grand_total).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>{t('payment_method_label', 'Payment Method')}</span>
+                  <span>{viewingBill.payment_method || 'Cash'}</span>
+                </div>
+              </div>
+
+              {propertyUpiId && (
+                <UpiPaymentBlock
+                  upiId={propertyUpiId}
+                  qrCodeImageUrl={propertyUpiQrCodeUrl}
+                  payeeName={propertyName || 'Ground Code Resort'}
+                  amount={Number(viewingBill.grand_total)}
+                />
+              )}
+            </div>
+
+            <div className="pt-1">
+              <Button
+                color="light"
+                className="w-full"
+                onClick={() => setViewingBill(null)}
+              >
+                {t('done_button', 'Done')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Edit Bill Modal */}
       {editingBill && (
         <Modal
@@ -368,6 +501,7 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
           onClose={() => setEditingBill(null)}
           size="md"
           popup
+          className="z-70"
         >
           <div className="p-5 space-y-4 bg-white dark:bg-gray-800 rounded-lg">
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
@@ -486,6 +620,7 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
           onClose={() => setDeletingBillId(null)}
           size="sm"
           popup
+          className="z-70"
         >
           <div className="p-5 text-center space-y-3 bg-white dark:bg-gray-800 rounded-lg">
             <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center">
