@@ -138,10 +138,10 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
 
     let labelBgAndBorder = disabled
       ? 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5'
-      : bgToken;
+      : `${bgToken} peer-disabled:bg-gray-100 peer-disabled:dark:bg-gray-700 peer-disabled:border-t peer-disabled:border-b-0 peer-disabled:border-x-0 peer-disabled:border-gray-300 peer-disabled:dark:border-gray-600 peer-disabled:rounded-t peer-disabled:px-2 peer-disabled:py-0.5`;
     let labelTypography = disabled
       ? 'text-gray-600 dark:text-gray-300 font-semibold text-2xs'
-      : labelColor;
+      : `${labelColor} peer-disabled:text-gray-600 peer-disabled:dark:text-gray-300 peer-disabled:font-semibold peer-disabled:text-2xs`;
 
     if (disabled) {
       if (isTransparent) {
@@ -182,7 +182,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             className={twMerge(
-              'block px-2.5 pb-1.5 pt-3 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200',
+              'block px-2.5 pb-1.5 pt-3 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600',
               borderAndFocusColor,
               disabledClasses,
               leftIcon ? 'ps-10' : '',

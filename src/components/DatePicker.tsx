@@ -223,10 +223,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             className={twMerge(
               'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
               disabled
-                ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
+                ? 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5 text-gray-600 dark:text-gray-300 font-semibold text-2xs'
                 : hasError
                 ? `${bgToken} text-red-600 dark:text-red-500`
-                : `${bgToken} text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500`
+                : `${bgToken} text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500 peer-disabled:bg-gray-100 peer-disabled:dark:bg-gray-700 peer-disabled:border-t peer-disabled:border-b-0 peer-disabled:border-x-0 peer-disabled:border-gray-300 peer-disabled:dark:border-gray-600 peer-disabled:rounded-t peer-disabled:px-2 peer-disabled:py-0.5 peer-disabled:text-gray-600 peer-disabled:dark:text-gray-300 peer-disabled:font-semibold peer-disabled:text-2xs`
             )}
           >
             {label}

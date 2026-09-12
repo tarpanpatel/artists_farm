@@ -1340,20 +1340,16 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 them does nothing until "Add Another Booking" resets the form, so
                 leaving them fully interactive was misleading (reported live, 12 Sep
                 2026: "if the booking is created, saved booking button and other
-                fields should be greyed out"). A real <fieldset disabled> is used
-                rather than adding a `disabled` prop to every Input/Select/
-                DateRangePicker individually - the browser cascades `disabled` (and
-                therefore each field's own `disabled:opacity-*` Tailwind styling) to
-                every native form control inside automatically, so nothing else in
-                this file needs to change. `contents` keeps the fieldset out of the
-                grid/spacing layout - a real <fieldset> defaults to a bordered block
-                box that would otherwise visually nest all these rows one level in. */}
-            <fieldset disabled={!!savedBooking} className="contents">
+                fields should be greyed out"). A real <fieldset disabled> with
+                space-y-4 is used so the browser cascades disabled state to every
+                native form control inside, while maintaining clean vertical spacing. */}
+            <fieldset disabled={!!savedBooking} className="space-y-4 border-0 p-0 m-0 min-w-0">
             {/* Row 0: Guest Name (Full width) */}
             <div>
               <Input
                 label={t('guest_name_label', 'Guest Name')}
                 type="text"
+                disabled={!!savedBooking}
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 onBlur={() => setGuestNameTouched(true)}
@@ -1370,6 +1366,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <Input
                       label={t('contact_phone_label', 'Phone Number *')}
                       type="tel"
+                      disabled={!!savedBooking}
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
                       onBlur={() => setPhoneNumberTouched(true)}
@@ -1391,6 +1388,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <StyledSelect
                       label={t('assigned_room_label', 'Assigned Place *')}
                       value={roomNumber}
+                      disabled={!!savedBooking}
                       onChange={(val) => {
                         handleRoomChange(val);
                         setRoomTouched(true);
@@ -1412,6 +1410,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <StyledSelect
                       label={t('booking_source_label', 'Booking Source')}
                       value={bookingSourceLocal}
+                      disabled={!!savedBooking}
                       onChange={setBookingSourceLocal}
                       options={[
                         { value: 'Offline', label: 'Offline' },
@@ -1424,6 +1423,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       label={t('no_of_guests_label', 'No. of Guests')}
                       type="number"
                       min="1"
+                      disabled={!!savedBooking}
                       value={noOfGuests}
                       onChange={(e) => {
                         const next = Math.max(1, Number(e.target.value));
@@ -1440,40 +1440,44 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       The checkbox sits in the guests grid's second column so it
                       lands directly under the count it qualifies, and the number
                       field appears in its place once ticked. */}
-                  <div className="flex items-center gap-2 self-center">
-                    <Checkbox
-                      id="booking-has-children-cb"
-                      checked={hasChildren}
-                      onChange={(e) => {
-                        const on = e.target.checked;
-                        setHasChildren(on);
-                        // Unticking must clear the count, not just hide it -
-                        // otherwise a hidden non-zero silently rides along onto
-                        // the booking and the confirmation claims children the
-                        // staff member can no longer see or correct.
-                        if (!on) setChildrenCount(0);
-                      }}
-                    />
-                    <label
-                      htmlFor="booking-has-children-cb"
-                      className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
-                    >
-                      Travelling with kids
-                    </label>
-                  </div>
-                  {hasChildren && (
-                    <div>
-                      <Input
-                        label={t('children_count_label', 'Number of Kids')}
-                        type="number"
-                        min="0"
-                        max={noOfGuests}
-                        value={childrenCount}
-                        onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
-                        helperText="Included in the guest count above, not added to it."
+                  <div className="col-start-2 space-y-2">
+                    <div className="flex items-center gap-2 self-center">
+                      <Checkbox
+                        id="booking-has-children-cb"
+                        disabled={!!savedBooking}
+                        checked={hasChildren}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setHasChildren(on);
+                          // Unticking must clear the count, not just hide it -
+                          // otherwise a hidden non-zero silently rides along onto
+                          // the booking and the confirmation claims children the
+                          // staff member can no longer see or correct.
+                          if (!on) setChildrenCount(0);
+                        }}
                       />
+                      <label
+                        htmlFor="booking-has-children-cb"
+                        className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                      >
+                        Travelling with kids
+                      </label>
                     </div>
-                  )}
+                    {hasChildren && (
+                      <div>
+                        <Input
+                          label={t('children_count_label', 'Number of Kids')}
+                          type="number"
+                          min="0"
+                          max={noOfGuests}
+                          value={childrenCount}
+                          disabled={!!savedBooking}
+                          onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                          helperText="Included in the guest count above, not added to it."
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             ) : (
@@ -1483,6 +1487,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <Input
                       label={t('contact_phone_label', 'Phone Number *')}
                       type="tel"
+                      disabled={!!savedBooking}
                       value={phoneNumber}
                       onChange={e => setPhoneNumber(normalizePhoneNumber(e.target.value))}
                       onBlur={() => setPhoneNumberTouched(true)}
@@ -1504,6 +1509,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       label={t('no_of_guests_label', 'No. of Guests')}
                       type="number"
                       min="1"
+                      disabled={!!savedBooking}
                       value={noOfGuests}
                       onChange={(e) => {
                         const next = Math.max(1, Number(e.target.value));
@@ -1520,40 +1526,44 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       The checkbox sits in the guests grid's second column so it
                       lands directly under the count it qualifies, and the number
                       field appears in its place once ticked. */}
-                  <div className="flex items-center gap-2 self-center">
-                    <Checkbox
-                      id="booking-has-children-cb"
-                      checked={hasChildren}
-                      onChange={(e) => {
-                        const on = e.target.checked;
-                        setHasChildren(on);
-                        // Unticking must clear the count, not just hide it -
-                        // otherwise a hidden non-zero silently rides along onto
-                        // the booking and the confirmation claims children the
-                        // staff member can no longer see or correct.
-                        if (!on) setChildrenCount(0);
-                      }}
-                    />
-                    <label
-                      htmlFor="booking-has-children-cb"
-                      className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
-                    >
-                      Travelling with kids
-                    </label>
-                  </div>
-                  {hasChildren && (
-                    <div>
-                      <Input
-                        label={t('children_count_label', 'Number of Kids')}
-                        type="number"
-                        min="0"
-                        max={noOfGuests}
-                        value={childrenCount}
-                        onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
-                        helperText="Included in the guest count above, not added to it."
+                  <div className="col-start-2 space-y-2">
+                    <div className="flex items-center gap-2 self-center">
+                      <Checkbox
+                        id="booking-has-children-cb"
+                        disabled={!!savedBooking}
+                        checked={hasChildren}
+                        onChange={(e) => {
+                          const on = e.target.checked;
+                          setHasChildren(on);
+                          // Unticking must clear the count, not just hide it -
+                          // otherwise a hidden non-zero silently rides along onto
+                          // the booking and the confirmation claims children the
+                          // staff member can no longer see or correct.
+                          if (!on) setChildrenCount(0);
+                        }}
                       />
+                      <label
+                        htmlFor="booking-has-children-cb"
+                        className="text-xs font-medium text-gray-900 dark:text-gray-300 cursor-pointer select-none"
+                      >
+                        Travelling with kids
+                      </label>
                     </div>
-                  )}
+                    {hasChildren && (
+                      <div>
+                        <Input
+                          label={t('children_count_label', 'Number of Kids')}
+                          type="number"
+                          min="0"
+                          max={noOfGuests}
+                          value={childrenCount}
+                          disabled={!!savedBooking}
+                          onChange={(e) => setChildrenCount(Math.min(noOfGuests, Math.max(0, Number(e.target.value))))}
+                          helperText="Included in the guest count above, not added to it."
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -1561,6 +1571,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <StyledSelect
                       label={t('booking_source_label', 'Booking Source')}
                       value={bookingSourceLocal}
+                      disabled={!!savedBooking}
                       onChange={setBookingSourceLocal}
                       options={[
                         { value: 'Offline', label: 'Offline' },
@@ -1572,6 +1583,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <Input
                       label={t('room_rent', 'Room Rent / Price (₹)')}
                       type="number"
+                      disabled={!!savedBooking}
                       value={bookingRoomTariff || ''}
                       onChange={e => handleTariffChange(Number(e.target.value))}
                       placeholder="Enter room rent in ₹"
@@ -1585,6 +1597,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
             <div>
               <DateRangePicker
                 label="Booking Dates *"
+                disabled={!!savedBooking}
                 checkinDate={checkinDate}
                 checkoutDate={expectedCheckout}
                 onCheckinChange={(d) => {
@@ -1611,6 +1624,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <Input
                   label={t('checkin_time_label', 'Check-In Time')}
                   type="time"
+                  disabled={!!savedBooking}
                   value={checkinTime}
                   onChange={e => setCheckinTime(e.target.value)}
                 />
@@ -1619,6 +1633,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <Input
                   label={t('checkout_time_label', 'Check-Out Time')}
                   type="time"
+                  disabled={!!savedBooking}
                   value={checkoutTime}
                   onChange={e => setCheckoutTime(e.target.value)}
                 />
@@ -1631,6 +1646,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 <Input
                   label={t('room_rent', 'Room Rent / Price (₹)')}
                   type="number"
+                  disabled={!!savedBooking}
                   value={bookingRoomTariff || ''}
                   onChange={e => handleTariffChange(Number(e.target.value))}
                   placeholder="Enter room rent in ₹"
@@ -1653,6 +1669,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <Input
                     label={t('advance_paid', 'Advance Paid (₹)')}
                     type="number"
+                    disabled={!!savedBooking}
                     value={bookingAdvance || ''}
                     onChange={e => handleAdvanceChange(Number(e.target.value))}
                     placeholder="0.00"
@@ -1667,6 +1684,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     <StyledSelect
                       label={t('advance_received_by', 'Advance Received By')}
                       value={advanceReceivedBy}
+                      disabled={!!savedBooking}
                       onChange={setAdvanceReceivedBy}
                       placeholder="-- Select Staff/User --"
                       options={[
@@ -1692,6 +1710,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <StyledSelect
                     label="Advance Payment Mode"
                     value={advancePaymentMode}
+                    disabled={!!savedBooking}
                     onChange={(val) => setAdvancePaymentMode(val as 'Cash' | 'Online')}
                     options={[
                       { value: 'Cash', label: 'Cash' },
@@ -1707,6 +1726,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <img src={advancePaymentProofBase64} alt="Advance payment proof" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
                         <button
                           type="button"
+                          disabled={!!savedBooking}
                           onClick={() => setAdvancePaymentProofBase64('')}
                           className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
                         >
@@ -1717,6 +1737,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={!!savedBooking}
                         onChange={handleAdvanceProofFileChange}
                         className="text-2xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-2xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 cursor-pointer"
                       />
@@ -1733,6 +1754,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <Input
                     label={t('pending_balance_label', 'Pending Balance (₹)')}
                     type="number"
+                    disabled={!!savedBooking}
                     value={bookingPending || ''}
                     onChange={e => handlePendingChange(Number(e.target.value))}
                     placeholder="0.00"
@@ -1746,6 +1768,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <StyledSelect
                     label={t('pending_received_by_label', 'Pending Received By')}
                     value={pendingReceivedBy}
+                    disabled={!!savedBooking}
                     onChange={setPendingReceivedBy}
                     placeholder="-- Select Staff/User --"
                     options={[
@@ -1769,6 +1792,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   <StyledSelect
                     label="Pending Payment Mode"
                     value={pendingPaymentMode}
+                    disabled={!!savedBooking}
                     onChange={(val) => setPendingPaymentMode(val as 'Cash' | 'Online')}
                     options={[
                       { value: 'Cash', label: 'Cash' },
@@ -1784,6 +1808,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                         <img src={pendingPaymentProofBase64} alt="Pending payment proof" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
                         <button
                           type="button"
+                          disabled={!!savedBooking}
                           onClick={() => setPendingPaymentProofBase64('')}
                           className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
                         >
@@ -1794,6 +1819,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={!!savedBooking}
                         onChange={handlePendingProofFileChange}
                         className="text-2xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-2xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 cursor-pointer"
                       />
@@ -1808,6 +1834,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="booking-guest-notes-cb"
+                  disabled={!!savedBooking}
                   checked={showGuestNotes}
                   onChange={e => setShowGuestNotes(e.target.checked)}
                 />
@@ -1822,6 +1849,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="booking-foreign-guest-cb"
+                  disabled={!!savedBooking}
                   checked={isForeignGuest}
                   onChange={e => setIsForeignGuest(e.target.checked)}
                 />
@@ -1836,6 +1864,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="booking-additional-charges-cb"
+                  disabled={!!savedBooking}
                   checked={showBookingExtraCharges}
                   onChange={e => handleToggleExtraChargesCheckbox(e.target.checked)}
                 />

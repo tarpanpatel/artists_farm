@@ -61,7 +61,7 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
             value={value}
             defaultValue={defaultValue}
             className={twMerge(
-              'block px-2.5 pb-1.5 pt-3 pe-8 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer',
+              'block px-2.5 pb-1.5 pt-3 pe-8 w-full text-sm bg-transparent rounded-lg border appearance-none focus:outline-none focus:ring-0 peer transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600',
               borderAndFocusColor,
               disabledClasses,
               className
@@ -80,8 +80,8 @@ export const FloatingSelect = forwardRef<HTMLSelectElement, FloatingSelectProps>
             htmlFor={selectId}
             className={twMerge(
               'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
-              disabled ? 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5' : bgToken,
-              disabled ? 'text-gray-600 dark:text-gray-300 font-semibold text-2xs' : labelColor
+              disabled ? 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5' : `${bgToken} peer-disabled:bg-gray-100 peer-disabled:dark:bg-gray-700 peer-disabled:border-t peer-disabled:border-b-0 peer-disabled:border-x-0 peer-disabled:border-gray-300 peer-disabled:dark:border-gray-600 peer-disabled:rounded-t peer-disabled:px-2 peer-disabled:py-0.5`,
+              disabled ? 'text-gray-600 dark:text-gray-300 font-semibold text-2xs' : `${labelColor} peer-disabled:text-gray-600 peer-disabled:dark:text-gray-300 peer-disabled:font-semibold peer-disabled:text-2xs`
             )}
           >
             {label}

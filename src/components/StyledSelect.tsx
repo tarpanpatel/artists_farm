@@ -87,7 +87,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
   const bgToken = getBgToken(bgMode);
 
   return (
-    <div className={`app-select-wrapper ${className} styled-select relative w-full min-w-0`}>
+    <div className={`app-select-wrapper ${className} styled-select group relative w-full min-w-0`}>
       {!isFloating && label && (
         <div className="mb-1.5 block">
           <label
@@ -112,7 +112,7 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
             id={id}
             disabled={disabled}
             className={twMerge(
-              'app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none',
+              'app-select-button peer group w-full flex items-center justify-between gap-2 px-2.5 border rounded-lg transition-colors outline-none disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600',
               // h-10 on BOTH branches (7 Sep 2026, reported: "Advance Received By
               // and Pending Received By field height is not like others"). The
               // floating branch had no height at all, so it was sized by its
@@ -184,8 +184,8 @@ export const StyledSelect: React.FC<StyledSelectProps> = ({
           className={twMerge(
             'floating-label absolute whitespace-nowrap text-sm duration-300 transform -translate-y-3 scale-75 top-1 z-10 origin-[0] px-2 start-1 pointer-events-none transition-all',
             disabled
-              ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium'
-              : `${bgToken} ${error ? 'text-red-600 dark:text-red-500' : 'text-gray-500 dark:text-gray-400'}`
+              ? 'bg-gray-100 dark:bg-gray-700 border-t border-b-0 border-x-0 border-gray-300 dark:border-gray-600 rounded-t px-2 py-0.5 text-gray-600 dark:text-gray-300 font-semibold text-2xs'
+              : `${bgToken} ${error ? 'text-red-600 dark:text-red-500' : 'text-gray-500 dark:text-gray-400'} group-has-[:disabled]:bg-gray-100 group-has-[:disabled]:dark:bg-gray-700 group-has-[:disabled]:border-t group-has-[:disabled]:border-b-0 group-has-[:disabled]:border-x-0 group-has-[:disabled]:border-gray-300 group-has-[:disabled]:dark:border-gray-600 group-has-[:disabled]:rounded-t group-has-[:disabled]:px-2 group-has-[:disabled]:py-0.5 group-has-[:disabled]:text-gray-600 group-has-[:disabled]:dark:text-gray-300 group-has-[:disabled]:font-semibold group-has-[:disabled]:text-2xs`
           )}
         >
           {label}
