@@ -245,18 +245,38 @@ inject one (per the channex-pms-integration skill), only the dashboard's Booking
 
 ## 6. Phasing
 
-| Phase | Scope | Risk |
-|---|---|---|
-| **1** | Read-only page + `channex_go_live_status`. Shows stage, units, prices, mapping, live channel state, drift flag, blockers. | Very low — no writes |
-| **2** | Mandatory price-at-mapping (§1a.1) and inline pricing in Stage 2, so a blocker can be cleared without leaving the page. Re-runs content sync for `pending_price` units once a real price exists. | Medium — writes prices, triggers sync |
-| **3** | Stage 4a+4b wired in: preflight gate + sync-control acknowledgment, then activation. | Higher — this is the live push |
-| **4** | Stage 5: test-booking tracker (5a) and readback verification (5b). | Low — tracking + read-only API calls |
+| Phase | Scope | Risk | Status |
+|---|---|---|---|
+| **1** | Read-only page + `channex_go_live_status`. Shows stage, units, prices, mapping, live channel state, drift flag, blockers. | Very low — no writes | ✅ Shipped 12 Sep 2026 |
+| **2a** | Inline price entry on the Go Live page (`channex_set_unit_price`) + visible reporting when a listing is skipped for lacking a price, in both mapping paths (`channex_channel_save_mapping` and the auto-import). | Medium — writes prices, triggers content-sync self-heal; never binds a channel | ✅ Shipped 12 Sep 2026 (soft form — see below) |
+| **2b** | The hard-block form of §1a.1: mapping cannot *complete* until a price is accepted, not just reported after the fact. | Medium — same writes as 2a, plus a new required UI step in `ChannelConnectWizard.tsx` | ⏳ Not built |
+| **3** | Stage 4a+4b wired in: preflight gate + sync-control acknowledgment, then activation. | Higher — this is the live push | ⏳ Not built |
+| **4** | Stage 5: test-booking tracker (5a) and readback verification (5b). | Low — tracking + read-only API calls | ⏳ Not built |
+
+**Why Phase 2 split into 2a/2b.** §1a.1 asked for a hard block — mapping refuses to
+complete without a price. What shipped (2a) is deliberately the softer half: the same
+gap is now *visible* (named units, in both the response and the UI) rather than silent,
+and an inline tool exists to fix it immediately, but a listing can still be mapped
+without one if the owner ignores the message. Reason for stopping there: a true hard
+block means adding a required step inside `ChannelConnectWizard.tsx`'s existing
+multi-step flow, a component this pass hadn't reviewed deeply enough to modify safely in
+the same sitting as the backend change. Visible-but-not-blocked was judged the right
+stopping point for one pass — low risk, ships the highest-value half immediately,
+and 2b remains a clearly-scoped, separate next step rather than a rushed addition to a
+live wizard.
+
+**What was deliberately NOT live-tested.** `channex_set_unit_price` was verified by
+code review and by reusing `update_room_tariff`'s own proven side effect (the exact
+same outbox-enqueue-then-drain pattern already running in production), not by calling
+it against a real property with an active channel — doing so would itself trigger a
+real ARI push, which is exactly the kind of unrequested live action this whole project
+now treats as a hard line. If this is tested live, use a property with no active
+channel connection first.
 
 Phase 1 is worth shipping alone. Nearly every incident was invisible state, and Phase 1
-makes the state visible without being able to cause a new one. Phase 2's mandatory-price
-step is the single highest-leverage addition from §1a — it closes the exact gap that
-produced the ₹3,500 incident, structurally, rather than relying on a guard further
-downstream to catch it.
+makes the state visible without being able to cause a new one. Phase 2a closes the
+*reporting* half of the gap that produced the ₹3,500 incident; 2b would close it
+structurally by making the gap impossible to walk past, not just visible.
 
 ## 7. Decisions needed before building
 

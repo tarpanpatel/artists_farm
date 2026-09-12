@@ -350,6 +350,14 @@ function autoProvisionPropertyFromAirbnb(
 
     // Step 3: Link Channex Channel Mappings and local mappings table
     $localRowsForDb = [];
+    // LAUNCH_CHECKLIST.md §2.1 (12 Sep 2026) - a listing whose price couldn't be read (Airbnb
+    // omitted default_daily_price, or its details call failed) correctly gets no fabricated
+    // price and no channel mapping, parked at sync_status='pending_price' - but this response
+    // used to say nothing about it: 'status'=>'success', 'rooms_count'=>count(ALL listings),
+    // and a generic "imported" message, with the unpriced unit simply absent from what actually
+    // got mapped. Same fix as channex_channel_save_mapping's skipped_no_price (router.php,
+    // same day) - still skip (there's genuinely no rate plan to bind yet), but say so.
+    $pendingPriceUnits = [];
     foreach ($roomMappingsToSave as $m) {
         $localRoomId = $m['local_room_id'];
         $listingId = $m['external_room_code'];
@@ -365,6 +373,13 @@ function autoProvisionPropertyFromAirbnb(
                 'channex_rate_plan_id' => $ratePlanId,
                 'external_room_code' => $listingId,
                 'external_rate_code' => $listingId,
+            ];
+        } else {
+            $nameStmt = $pdo->prepare("SELECT name FROM properties WHERE id = ?");
+            $nameStmt->execute([$localRoomId ?: $propertyId]);
+            $pendingPriceUnits[] = [
+                'room_id' => $localRoomId,
+                'room_name' => $nameStmt->fetchColumn() ?: ($localRoomId ? "Room #{$localRoomId}" : 'This property'),
             ];
         }
 
@@ -524,15 +539,26 @@ function autoProvisionPropertyFromAirbnb(
     $slugStmt->execute([$propertyId]);
     $finalSlug = $slugStmt->fetchColumn() ?: $property['slug'];
 
+    $baseMessage = 'Property and rooms imported from Airbnb. Nothing has been sent to Airbnb - '
+        . 'the channel is not live yet. Review your rates and blocked dates, then use Go Live '
+        . 'when you are ready to start syncing.';
+    if (!empty($pendingPriceUnits)) {
+        $names = implode(', ', array_map(fn($u) => $u['room_name'], $pendingPriceUnits));
+        $baseMessage .= " Note: " . count($pendingPriceUnits) . " unit"
+            . (count($pendingPriceUnits) === 1 ? '' : 's') . " could not be mapped yet because "
+            . (count($pendingPriceUnits) === 1 ? 'it has' : 'they have') . " no price set ({$names}) - "
+            . "add a base price on the Go Live Status page, then re-import to finish mapping.";
+    }
+
     return [
         'status' => 'success',
-        'message' => 'Property and rooms imported from Airbnb. Nothing has been sent to Airbnb - '
-            . 'the channel is not live yet. Review your rates and blocked dates, then use Go Live '
-            . 'when you are ready to start syncing.',
+        'message' => $baseMessage,
         'property_id' => $propertyId,
         'property_slug' => $finalSlug,
         'redirect_url' => "/{$finalSlug}",
         'rooms_count' => count($roomMappingsToSave),
+        'mapped_count' => count($localRowsForDb),
+        'pending_price_units' => $pendingPriceUnits,
         'channel_active' => false,
         'reservations_pull_started' => $reservationsPullStarted,
     ];

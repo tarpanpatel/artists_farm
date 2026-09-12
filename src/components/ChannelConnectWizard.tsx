@@ -500,7 +500,20 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
         showToast((json?.message || 'Failed to save room mapping') + suffix, { type: 'error' });
         return;
       }
-      showToast('Room mapping saved. Ready for final activation.', { type: 'success' });
+      // 12 Sep 2026 (GO_LIVE_SPEC.md §1a.1) - a room can map successfully while ANOTHER
+      // is silently skipped for having no rate plan yet (no price). That used to vanish
+      // entirely; the backend now reports it as skipped_no_price, so surface it here
+      // rather than showing a plain, misleadingly-complete success toast.
+      const skippedForPrice = (json?.data?.skipped_no_price || []).filter((s: any) => !s.has_price);
+      if (skippedForPrice.length > 0) {
+        const names = skippedForPrice.map((s: any) => s.room_name).join(', ');
+        showToast(
+          `Room mapping saved, but ${skippedForPrice.length} unit${skippedForPrice.length === 1 ? '' : 's'} without a price ${skippedForPrice.length === 1 ? "wasn't" : "weren't"} mapped: ${names}. Add a base price for ${skippedForPrice.length === 1 ? 'it' : 'them'} on the Go Live Status page, then map again.`,
+          { type: 'warning', duration: 10000 },
+        );
+      } else {
+        showToast('Room mapping saved. Ready for final activation.', { type: 'success' });
+      }
       setStep(4);
     } catch (err: any) {
       showToast(err.message || 'Failed to save room mapping', { type: 'error' });

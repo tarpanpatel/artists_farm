@@ -139,32 +139,42 @@ these nights for nothing", and it isn't even what happens now (the rate is omitt
 sent as 0). This gate exists to state a checkable fact about the push, so it now states
 the real one.
 
+### 1.9 CLOSED 12 Sep 2026 — Import reports full success while silently dropping unpriced listings
+**Was:** `php/channex/ota_provisioner.php`'s auto-import response said `status: 'success'`,
+`rooms_count: <all listings>`, and "Property and rooms imported from Airbnb" even when a
+listing's price couldn't be read and it was correctly skipped rather than given a
+fabricated one — nothing told the owner. The exact same shape existed in a sibling path,
+`channex_channel_save_mapping` (router.php, used by `ChannelConnectWizard.tsx`'s manual
+"Connect a Channel" flow), where a `!$ratePlanId` room was silently `continue`d with zero
+trace in the response.
+
+**Fix:** both now report the skipped units by name (`pending_price_units` /
+`skipped_no_price`) instead of a bare count, and both frontends (`PropertySetupWizard.tsx`'s
+import result, `ChannelConnectWizard.tsx`'s mapping-save toast) show them explicitly instead
+of a blanket success message. Still skips the same way — there's genuinely no rate plan to
+bind yet — the fix is entirely about the owner being told.
+
+**Deliberately NOT a hard block.** GO_LIVE_SPEC.md §1a.1 originally proposed making
+acceptance mandatory *before* mapping can complete. What shipped is the softer half only:
+visible, not prevented. A true hard block would mean touching `ChannelConnectWizard.tsx`'s
+multi-step flow more invasively (a modal gate before Step 3 can proceed) - deferred as a
+separate, deliberately scoped change so this fix could ship low-risk. See GO_LIVE_SPEC.md
+Phase 2 for the remaining piece.
+
+**Also shipped alongside this:** `channex_set_unit_price` (new endpoint) + inline price
+entry on the new Go Live Status page (`#go_live`), so a unit named in one of the messages
+above can be priced immediately without leaving the page. Writes `default_tariff` and
+enqueues the same outbox 'rates' item `update_room_tariff` already does, so the existing
+self-heal (§1.6 above) creates the real rate plan automatically. Verified by code reuse
+(this is the identical side effect `update_room_tariff` has run in production already) -
+**deliberately NOT live-tested against a real active channel**, to avoid triggering an
+actual push to The Artists' Farm's live Airbnb connection as a side effect of testing.
+
 ---
 
 ## 2. Open — ranked
 
-### 2.1 🔴 Import reports full success while silently dropping unpriced listings
-**Where:** `php/channex/ota_provisioner.php` (~line 352 `if ($ratePlanId)`), response
-built at the end of the same function.
-
-A listing whose price can't be read — Airbnb omits `default_daily_price`, or the
-`listing_details` call failed — now correctly refuses to fabricate a price, so it's
-parked at `pending_price`, skips `createChannelMapping()`, and gets rewritten out of the
-mapping table by `saveChannexChannelRoomMappings()` ("replace wholesale").
-
-But the response still says `status: 'success'`, `rooms_count: <all listings>`, and
-"Property and rooms imported from Airbnb." **Nothing tells the owner that 2 of their 7
-listings have no channel mapping.** They find out at Go Live via a generic Channex 422
-that never says "set a base price".
-
-This is a behaviour change introduced by the fixes above — previously every room got a
-(fake) price and a mapping, so the partial state didn't exist. The fix is correct; the
-reporting has to catch up.
-
-**Fix direction:** return the `pending_price` units in the import result and surface them
-in the wizard as "needs a base price before this unit can go live."
-
-### 2.2 🔴 Patel Colony's Airbnb is almost certainly not receiving bookings either
+### 2.1 🔴 Patel Colony's Airbnb is almost certainly not receiving bookings either
 **Status:** `ready_to_activate` — correct and deliberate (import must never activate), but
 the consequences need confirming and acting on.
 
@@ -195,11 +205,11 @@ Neither is a substitute for checking.
 - [ ] Decide whether Patel Colony's Airbnb should be live at all right now — if it is
       meant to be selling, it currently isn't.
 
-### 2.3 🔴 No automated invariant tests — see §3
+### 2.2 🔴 No automated invariant tests — see §3
 The systemic fix. Everything in §1 was found by reading code, which does not scale and
 already missed things twice in one day.
 
-### 2.4 🟠 Overbooking conflicts are recorded but not shown in the UI
+### 2.3 🟠 Overbooking conflicts are recorded but not shown in the UI
 `guests.overbooking_conflict_with` is now written and alerted on, but no dashboard,
 calendar, or booking list renders it. The alert is the only surface. A staff member who
 misses the Telegram message has no in-app way to find the clash.
@@ -208,7 +218,7 @@ misses the Telegram message has no in-app way to find the clash.
 `OperationalDashboard.tsx` (which already merges guest and OTA alerts into one
 severity-sorted list).
 
-### 2.5 🟠 Wizard's post-import room refetch can't help a first-time import
+### 2.4 🟠 Wizard's post-import room refetch can't help a first-time import
 **Where:** `src/components/PropertySetupWizard.tsx` (~lines 140, 284-291).
 
 `isMultiKey` is derived from the `propertyType` **prop**, which is stale immediately
@@ -221,7 +231,7 @@ property was *already* MULTI_KEY before the import.
 **Fix direction:** set a local "property is now multi-key" flag from the import response
 alongside `setFreshRooms`, and derive `isMultiKey` from that.
 
-### 2.6 🟠 Plaintext password comparison still accepted at login
+### 2.5 🟠 Plaintext password comparison still accepted at login
 **Where:** `php/security/unified_login.php:96`
 
 ```php
@@ -233,7 +243,7 @@ The third clause authenticates against an unhashed stored password. Presumably l
 migration support. Before launch, confirm no tenant row still has a plaintext password,
 then remove the clause.
 
-### 2.7 🟡 Unverified: is the cron dispatcher actually running on the server?
+### 2.6 🟡 Unverified: is the cron dispatcher actually running on the server?
 Every piece of monitoring in this product — outbox health, sync audit, feed drain, licence
 expiry, trial cadence — hangs off one dispatcher entry in the real crontab. If that entry
 isn't installed on staging/production, **all of it is silently dead** and the Cron Jobs
@@ -245,7 +255,7 @@ admin page would still look populated.
 
 *(Needs explicit go-ahead — read-only, but it's a server login.)*
 
-### 2.8 🟡 Unverified: does anyone actually receive the alerts?
+### 2.7 🟡 Unverified: does anyone actually receive the alerts?
 `php/errors/logger.php:127` short-circuits with `if (empty(wp_load_subscriptions())) return;`
 — "nobody has tapped Enable Alerts yet". If no device is subscribed, every alert in §1.3,
 §1.4 and all the health crons terminates silently, and the only remaining surface is a
@@ -254,20 +264,22 @@ Telescope page someone has to remember to open.
 - [ ] Confirm at least one live Web Push subscription exists (ideally two devices).
 - [ ] Send a test alert end-to-end and confirm it lands on a phone.
 
-### 2.9 🟡 Airbnb `sync_all` locks the host out of their own calendar
+### 2.8 🟡 Airbnb `sync_all` locks the host out of their own calendar
 Already documented in CHANNEX.md §6: connecting the channel switches the listing to
 `sync_all`, which greys out manual date/price editing on Airbnb's own host portal. Seven
 of ten connected listings are in this state. Whether a host can still edit their listing
 *content* anywhere is **not established**. Settle this before more listings go live —
 it's a support-load and trust issue, not a code bug.
 
-### 2.10 🟡 OAuth state token exposed to the frontend
+### 2.9 🟡 OAuth state token exposed to the frontend
 **Where:** `channex_channel_connection_status` (`router.php` ~line 5362) json_decodes and
 forwards `channex_channel_connections.settings` verbatim, which contains
 `{"oauth_token": "...", "link_generated_at": "..."}`.
 
 Found 12 Sep 2026 while verifying the new `channex_go_live_status` endpoint doesn't leak
-Channex's own live OAuth tokens (it doesn't — see §1.1 in the Go Live work). This is a
+Channex's own live OAuth tokens (it doesn't — `ChannexChannelClient::getChannel()`'s
+response carries one under `attributes.settings.tokens`, and that endpoint extracts only
+`is_active`, never the raw response). This is a
 different, lower-severity token: a single-use CSRF/state nonce Ground Code generates
 itself for the Airbnb OAuth landing round-trip (`channex_airbnb_oauth_landing`,
 verified with `hash_equals()` against what the redirect carries back). Not a live bearer

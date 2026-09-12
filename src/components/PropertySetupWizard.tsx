@@ -276,9 +276,22 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
         setError(json?.message || 'Import failed');
         return;
       }
-      setImportResult(
-        `Imported ${json.rooms_count ?? selectedListingIds.length} listing(s). Nothing was sent to Airbnb - the channel is not live yet.`,
-      );
+      // LAUNCH_CHECKLIST.md §2.1 (12 Sep 2026) - this used to always report every listing as
+      // fully imported even when one had no readable price and was silently left unmapped.
+      // The backend now names any such unit in pending_price_units; surface it here rather
+      // than rebuilding a generic success line that hides it, same as the fix already made
+      // to ChannelConnectWizard.tsx's equivalent mapping-save success handler.
+      const pendingPrice: Array<{ room_id: number | null; room_name: string }> = json.pending_price_units || [];
+      const mappedCount = json.mapped_count ?? json.rooms_count ?? selectedListingIds.length;
+      let resultMsg = `Imported ${json.rooms_count ?? selectedListingIds.length} listing(s). Nothing was sent to Airbnb - the channel is not live yet.`;
+      if (pendingPrice.length > 0) {
+        const names = pendingPrice.map((u) => u.room_name).join(', ');
+        resultMsg = `Imported ${json.rooms_count ?? selectedListingIds.length} listing(s), ${mappedCount} fully mapped. `
+          + `${pendingPrice.length} unit${pendingPrice.length === 1 ? '' : 's'} - ${names} - `
+          + `${pendingPrice.length === 1 ? "wasn't" : "weren't"} mapped yet: no price could be read from Airbnb. `
+          + `Add a base price for ${pendingPrice.length === 1 ? 'it' : 'them'} on the Go Live Status page, then import again.`;
+      }
+      setImportResult(resultMsg);
 
       // Refetch rooms from server so the Rooms step has fresh data without needing a full page reload
       try {

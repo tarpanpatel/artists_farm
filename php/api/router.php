@@ -1162,6 +1162,7 @@ $channex_ops_actions = [
     'channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox',
     'channex_push_ari', 'channex_outbox_drain', 'get_channex_status',
     'channex_drain_feed', 'channex_push_preflight',
+    'channex_go_live_status', 'channex_set_unit_price',
 ];
 if (in_array($action, $channex_ops_actions, true)) {
     $userRole = strtolower($_SESSION['role'] ?? '');
@@ -5969,6 +5970,14 @@ switch ($action) {
                     }
                     $localRows = [];
                     $failures = [];
+                    // Go Live Phase 2 (12 Sep 2026, GO_LIVE_SPEC.md §1a.1) - a room with no
+                    // channex_rate_plan_id used to be dropped here with `continue` and NO
+                    // trace in the response: the caller saw "success" and the room was
+                    // simply absent, exactly the "listing vanishes with a success message"
+                    // failure named throughout LAUNCH_CHECKLIST.md. Still skipped (this
+                    // action still cannot map a room with nothing to map to), but now
+                    // reported by local_room_id so the caller can tell the owner why.
+                    $skippedRoomIds = [];
                     foreach ($rooms as $r) {
                         $localRoomId = !empty($r['local_room_id']) ? (int)$r['local_room_id'] : null;
                         $listingId = trim((string)($r['external_room_code'] ?? ''));
@@ -5976,7 +5985,10 @@ switch ($action) {
                         $mapStmt = $pdo->prepare("SELECT channex_rate_plan_id FROM channex_mappings WHERE property_id = ? AND (room_id = ? OR (room_id IS NULL AND ? IS NULL)) LIMIT 1");
                         $mapStmt->execute([$targetPropertyId, $localRoomId, $localRoomId]);
                         $ratePlanId = $mapStmt->fetchColumn();
-                        if (!$ratePlanId) continue; // never content-synced - skip, don't fatal the whole save
+                        if (!$ratePlanId) {
+                            $skippedRoomIds[] = $localRoomId;
+                            continue; // no rate plan to map yet - skip, don't fatal the whole save
+                        }
 
                         $existing = $existingByRoom[$localRoomId === null ? 'null' : (string)$localRoomId] ?? null;
                         $unchanged = $existing
@@ -6022,9 +6034,50 @@ switch ($action) {
                             'external_rate_code' => $listingId,
                         ];
                     }
+                    // Resolve WHY each skipped room has no rate plan - specifically, whether
+                    // it's because default_tariff is unset (the common, actionable case this
+                    // whole Go Live effort exists for) versus content simply never having
+                    // synced yet (rarer, a different fix). One batch query, not one per room.
+                    $skippedNoPrice = [];
+                    if (!empty($skippedRoomIds)) {
+                        $realIds = array_values(array_filter($skippedRoomIds, fn($id) => $id !== null));
+                        $tariffByRoom = [];
+                        if (!empty($realIds)) {
+                            $ph = implode(',', array_fill(0, count($realIds), '?'));
+                            $tStmt = $pdo->prepare("SELECT id, name, default_tariff FROM properties WHERE id IN ($ph)");
+                            $tStmt->execute($realIds);
+                            foreach ($tStmt->fetchAll(PDO::FETCH_ASSOC) as $tr) {
+                                $tariffByRoom[(int)$tr['id']] = $tr;
+                            }
+                        }
+                        foreach ($skippedRoomIds as $srId) {
+                            if ($srId === null) {
+                                // The property's own single unit - name/tariff live on $conn's property.
+                                $pStmt = $pdo->prepare("SELECT name, default_tariff FROM properties WHERE id = ?");
+                                $pStmt->execute([$targetPropertyId]);
+                                $pr = $pStmt->fetch(PDO::FETCH_ASSOC) ?: ['name' => 'This property', 'default_tariff' => null];
+                                $skippedNoPrice[] = ['room_id' => null, 'room_name' => $pr['name'], 'has_price' => (float)($pr['default_tariff'] ?? 0) > 0];
+                            } else {
+                                $tr = $tariffByRoom[$srId] ?? null;
+                                $skippedNoPrice[] = [
+                                    'room_id' => $srId,
+                                    'room_name' => $tr['name'] ?? "Room #{$srId}",
+                                    'has_price' => (float)($tr['default_tariff'] ?? 0) > 0,
+                                ];
+                            }
+                        }
+                    }
+
                     if (empty($localRows) && empty($failures)) {
                         http_response_code(422);
-                        echo json_encode(['status' => 'error', 'message' => 'None of the submitted rooms have a Channex rate plan yet - sync property content first']);
+                        $allUnpriced = !empty($skippedNoPrice) && !array_filter($skippedNoPrice, fn($s) => $s['has_price']);
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => $allUnpriced
+                                ? 'None of these listings have a price set yet - add a base price for each unit (Go Live Status page) before mapping.'
+                                : 'None of the submitted rooms have a Channex rate plan yet - sync property content first',
+                            'data' => ['skipped_no_price' => $skippedNoPrice],
+                        ]);
                         break 2;
                     }
                     // Persist whatever succeeded (or was already correct) even if
@@ -6045,9 +6098,12 @@ switch ($action) {
                     // to retype it.
                     //
                     // Returned as a PROPOSAL, not applied - see proposeAirbnbRoomConfig()
-                    // for why OTA capacity cannot be trusted unreviewed, and why price is
-                    // never imported at all. Never fails the mapping save: a listing read
-                    // that goes wrong leaves the mapping (the thing actually being saved)
+                    // for why OTA capacity cannot be trusted unreviewed. Price WAS reversed
+                    // to "import as a proposal too" on 6 Sep 2026 (this comment previously
+                    // said "price is never imported at all" - stale since that date, fixed
+                    // 12 Sep 2026: see priceable['default_tariff'] above in this same file).
+                    // Never fails the mapping save: a listing read that goes wrong leaves
+                    // the mapping (the thing actually being saved)
                     // intact.
                     $importReport = null;
                     try {
@@ -6059,6 +6115,10 @@ switch ($action) {
                     echo json_encode(['status' => 'success', 'data' => [
                         'channex_channel_id' => $conn['channex_channel_id'],
                         'imported_room_config' => $importReport,
+                        // Non-empty exactly when at least one room mapped successfully while
+                        // at least one other was skipped for lacking a rate plan - a real,
+                        // NOT-fatal, partial outcome that must not read as complete success.
+                        'skipped_no_price' => $skippedNoPrice,
                     ]]);
                     break 2;
                 }
@@ -6400,6 +6460,85 @@ switch ($action) {
             isset($input['date_from']) ? trim((string)$input['date_from']) : null,
             isset($input['date_to']) ? trim((string)$input['date_to']) : null
         )]);
+        break;
+
+    case 'channex_set_unit_price':
+        // Go Live Phase 2 (GO_LIVE_SPEC.md §Stage 2, 12 Sep 2026) - closes the mandatory-
+        // price gap from the CURRENT property/room only. Deliberately does NOT accept a
+        // property_id from the request body the way channex_push_preflight (read-only)
+        // does - this WRITES, so it is scoped strictly to $propertyId (this session's own
+        // resolved property, from the universal slug-based gate at the top of this file)
+        // and, when a room_id is given, to a room verified to belong to that exact
+        // property via denyIfRoomNotInMultiKeyScope(). There is no path here to touch
+        // another tenant's property.
+        //
+        // Reuses update_room_tariff's own side effect (enqueue a 'rates' outbox item +
+        // trigger the drain) rather than the plainer update_property, which does NOT
+        // enqueue anything - a SINGLE-unit property saving its price here would otherwise
+        // sit at sync_status='pending_price' indefinitely until some UNRELATED booking
+        // edit happened to trigger a drain. This makes the self-heal (ChannexAdapter::
+        // getMapping() treating an empty rate plan id as "no mapping", fixed 11 Sep 2026)
+        // fire immediately and predictably for both property shapes.
+        //
+        // IMPORTANT - what this does NOT do: it never calls createChannelMapping() and
+        // never touches channex_channel_room_mappings. Re-syncing content (creating a
+        // priced rate plan on Channex's PROPERTY object) is safe and channel-agnostic -
+        // grep content_sync.php's own syncProperty(): it never calls createChannelMapping.
+        // BINDING that rate plan to a live OTA listing is a separate, already-existing,
+        // explicit step (channex_channel_save_mapping / "Save Mapping" in the UI) that
+        // this endpoint deliberately leaves untouched - if that channel is already active,
+        // binding is the moment a price actually becomes visible to guests, so it must
+        // stay a visible, deliberate click, never a side effect of saving a number.
+        if ($propertyId <= 0) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No property in context']);
+            break;
+        }
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+        $roomId = !empty($input['room_id']) ? (int)$input['room_id'] : null;
+        $price = $input['price'] ?? null;
+
+        if (!is_numeric($price) || (float)$price <= 0) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'A real price greater than 0 is required']);
+            break;
+        }
+        $price = round((float)$price, 2);
+
+        $targetRowId = $propertyId;
+        if ($roomId !== null) {
+            require_once __DIR__ . '/multikey_properties.php';
+            denyIfRoomNotInMultiKeyScope($pdo, $currentProperty, $roomId); // exits on failure
+            $targetRowId = $roomId;
+        }
+
+        try {
+            $pdo->prepare("UPDATE properties SET default_tariff = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+                ->execute([$price, $targetRowId]);
+
+            if (is_file(__DIR__ . '/../channex/outbox.php')) {
+                require_once __DIR__ . '/../channex/outbox.php';
+                if (function_exists('enqueueOutboxItem')) {
+                    $today = date('Y-m-d');
+                    $future = date('Y-m-d', strtotime('+500 days'));
+                    enqueueOutboxItem($pdo, $propertyId, $roomId, 'rates', $today, $future, [
+                        'action' => 'go_live_set_unit_price',
+                        'default_tariff' => $price,
+                        'rate_per_night' => $price,
+                        'changed_fields' => ['rate_per_night'],
+                    ]);
+                }
+                if (function_exists('triggerEventDrivenChannexDrain')) {
+                    triggerEventDrivenChannexDrain($pdo);
+                }
+            }
+
+            echo json_encode(['status' => 'success', 'message' => 'Price saved']);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
         break;
 
     case 'channex_push_ari':

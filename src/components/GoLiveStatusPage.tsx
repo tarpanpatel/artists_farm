@@ -3,8 +3,10 @@ import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { Badge } from './Badge';
 import { Button } from './Button';
+import { Input } from './Input';
 import { Loader2, CheckCircle2, AlertCircle, AlertTriangle, RefreshCw, ShieldAlert } from './icons/FlowbiteIcons';
 import { getOtaIcon, formatOtaLabel } from '../utils/otaIcons';
+import { useToast } from './ToastContext';
 
 interface GoLiveStatusPageProps {
   propertyId: number;
@@ -72,6 +74,50 @@ export const GoLiveStatusPage: React.FC<GoLiveStatusPageProps> = ({ propertyId }
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  // Phase 2 (12 Sep 2026): inline price entry for a unit with none, so the "unit_no_price"
+  // blocker can be cleared without leaving this page. Keyed by room_id ('null' for the
+  // single-unit property itself, matching the string-keying convention used elsewhere on
+  // this page). Deliberately does NOT bind anything to a live channel - see
+  // channex_set_unit_price's own doc comment in router.php for exactly what it does and
+  // does not do.
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [savingUnit, setSavingUnit] = useState<string | null>(null);
+
+  const handleSavePrice = async (roomId: number | null) => {
+    const key = roomId === null ? 'null' : String(roomId);
+    const draft = priceDrafts[key];
+    const price = Number(draft);
+    if (!draft || !Number.isFinite(price) || price <= 0) {
+      showToast('Enter a real price greater than 0', { type: 'error' });
+      return;
+    }
+    setSavingUnit(key);
+    try {
+      const res = await apiFetch(`${API_ROOT_BASE}/php/api/router.php?action=channex_set_unit_price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ room_id: roomId, price }),
+      });
+      const json = await res.json();
+      if (json?.status === 'success') {
+        showToast('Price saved', { type: 'success' });
+        setPriceDrafts((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        fetchStatus(true);
+      } else {
+        showToast(json?.message || 'Could not save price', { type: 'error' });
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Could not save price', { type: 'error' });
+    } finally {
+      setSavingUnit(null);
+    }
+  };
 
   const fetchStatus = async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -169,41 +215,72 @@ export const GoLiveStatusPage: React.FC<GoLiveStatusPageProps> = ({ propertyId }
           Units ({data.units.length})
         </h3>
         <div className="space-y-2">
-          {data.units.map((u) => (
-            <div
-              key={String(u.room_id ?? 'self')}
-              className="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{u.name}</p>
-                <p className="mt-0.5 text-2xs text-gray-500 dark:text-gray-400">
-                  {u.has_price ? (
+          {data.units.map((u) => {
+            const key = String(u.room_id ?? 'null');
+            const isSaving = savingUnit === key;
+            return (
+              <div
+                key={key}
+                className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{u.name}</p>
+                  <p className="mt-0.5 text-2xs text-gray-500 dark:text-gray-400">
+                    {u.has_price ? (
+                      <>
+                        Base price ₹{u.default_tariff.toLocaleString('en-IN')}/night
+                        {u.unpriced_nights > 0 && (
+                          <> · {u.unpriced_nights} of the next {u.total_nights} nights would use this flat rate (no explicit rule)</>
+                        )}
+                      </>
+                    ) : (
+                      'No base price set'
+                    )}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {!u.has_price ? (
+                    // Inline entry closes the exact gap that produced the ₹3,500 incident:
+                    // a listing mapped with no price, silently backfilled by fabricated code
+                    // instead of a real number. Saving here writes default_tariff and
+                    // enqueues the outbox item that lets content sync create a real,
+                    // correctly-priced rate plan - it never touches a live channel binding.
                     <>
-                      Base price ₹{u.default_tariff.toLocaleString('en-IN')}/night
-                      {u.unpriced_nights > 0 && (
-                        <> · {u.unpriced_nights} of the next {u.total_nights} nights would use this flat rate (no explicit rule)</>
-                      )}
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 2000"
+                        value={priceDrafts[key] ?? ''}
+                        onChange={(e) => setPriceDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-28"
+                        fullWidth={false}
+                        disabled={isSaving}
+                      />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleSavePrice(u.room_id)}
+                        disabled={isSaving || !priceDrafts[key]}
+                        leftIcon={isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : undefined}
+                      >
+                        Save price
+                      </Button>
                     </>
                   ) : (
-                    'No base price set'
+                    <Badge variant="success">Priced</Badge>
                   )}
-                </p>
+                  {u.sync_status === 'pending_price' && (
+                    <Badge variant="warning" title="Mapped on Channex but no rate plan yet - waiting on a real price">
+                      Pending price
+                    </Badge>
+                  )}
+                  {u.sync_status !== 'not_synced' && u.sync_status !== 'pending_price' && u.has_rate_plan && (
+                    <Badge variant="neutral">Mapped</Badge>
+                  )}
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Badge variant={u.has_price ? 'success' : 'warning'}>
-                  {u.has_price ? 'Priced' : 'Needs price'}
-                </Badge>
-                {u.sync_status === 'pending_price' && (
-                  <Badge variant="warning" title="Mapped on Channex but no rate plan yet - waiting on a real price">
-                    Pending price
-                  </Badge>
-                )}
-                {u.sync_status !== 'not_synced' && u.sync_status !== 'pending_price' && u.has_rate_plan && (
-                  <Badge variant="neutral">Mapped</Badge>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
