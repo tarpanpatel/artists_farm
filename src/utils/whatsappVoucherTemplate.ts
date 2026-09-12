@@ -76,6 +76,42 @@ export const MAKE_BOOKING_TOKENS: string[] = Array.from(
   new Set(DEFAULT_MAKE_BOOKING_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
 );
 
+/**
+ * Payment Request message (added 12 Sep 2026, explicit request: the Booking
+ * Details "Share" button needed a second option alongside the confirmation
+ * voucher - "send booking confirmation or booking payment request"). Same
+ * manual wa.me-send shape as every other template in this file - no property
+ * override yet (not asked for), rendered client-side, sent by a human.
+ *
+ * {upi_id}/{upi_qr_code_url} are optional (see renderWhatsappVoucherTemplate's
+ * optionalTokens) so a property with no UPI configured still sends a usable
+ * message; {voucher_link} is the action link this message points at (CLAUDE.md's
+ * "every WhatsApp message must carry an action link" rule) - it is NOT optional
+ * on purpose, same reasoning as {booking_link} above.
+ */
+export const DEFAULT_PAYMENT_REQUEST_TEMPLATE =
+  `💰 *PAYMENT REQUEST*
+━━━━━━━━━━━━━━━━━
+Hi {guest_name}, a quick reminder for your upcoming stay at {property_name}.
+
+🏡 *Unit / Room:* {room_name}
+📅 *Check-In:* {checkin_date}
+━━━━━━━━━━━━━━━━━
+
+💰 *Amount Due:* ₹{balance_due}
+
+💳 *Pay via UPI:* {upi_id}
+📷 *Payment QR Code:* {upi_qr_code_url}
+
+📞 *Questions? Call us:* {contact_phone}
+
+━━━━━━━━━━━━━━━━━
+🔗 *Your booking:* {voucher_link}`;
+
+export const PAYMENT_REQUEST_TOKENS: string[] = Array.from(
+  new Set(DEFAULT_PAYMENT_REQUEST_TEMPLATE.match(/\{[a-z_]+\}/g) || [])
+);
+
 export const DEFAULT_WHATSAPP_VOUCHER_TEMPLATE =
   `🏨 *BOOKING CONFIRMATION VOUCHER*
 ━━━━━━━━━━━━━━━━━

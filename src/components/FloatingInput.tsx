@@ -39,6 +39,7 @@ export interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputE
   // typing/pasting a minus sign and defaults `min` to 0 so the native
   // spinner/arrow keys can't decrement below zero either.
   allowNegative?: boolean;
+  disabledVariant?: 'transparent' | 'badge' | 'inset';
 }
 
 export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
@@ -60,6 +61,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       defaultValue,
       type = 'text',
       allowNegative = false,
+      disabledVariant,
       onKeyDown,
       onPaste,
       min,
@@ -93,19 +95,6 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
     const hasSuccess = !hasError && Boolean(success);
     const successMessage = typeof success === 'string' ? success : undefined;
 
-    // whitespace-nowrap is load-bearing (5 Sep 2026). scale-75 is a TRANSFORM:
-    // it is applied after layout, so the browser breaks lines at the label's
-    // real font size and only then shrinks the result. A long label like
-    // "Contact Phone Number *" therefore wrapped to two lines and the second
-    // line landed on top of the input's own text. Raising the mobile label to
-    // 16px (to match the input, see custom.css) made that worse, not better.
-    //
-    // The chip behind a floated label has to match whatever is BEHIND the
-    // border it is cutting through - that is the whole trick. A disabled field
-    // fills grey (disabled:bg-gray-100), so a bg-white chip on top of it reads
-    // as a stray white box rather than a gap in the border. Booking Details
-    // renders every field disabled until you hit Edit, so that was most of the
-    // screen.
     // Background token for label cutout to seamlessly match parent surface
     const bgToken = getBgToken(bgMode);
 
@@ -122,18 +111,46 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
       ? 'text-green-600 dark:text-green-500 peer-focus:text-green-600 peer-focus:dark:text-green-500'
       : 'text-gray-500 dark:text-gray-400 peer-focus:text-blue-600 peer-focus:dark:text-blue-500';
 
-    const disabledClasses = disabled
-      ? 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600'
-      : '';
+    const isTransparent = disabled && disabledVariant === 'transparent';
+    const isBadge = disabled && disabledVariant === 'badge';
+    const isInset = disabled && disabledVariant === 'inset';
+
+    let disabledClasses = '';
+    if (disabled) {
+      if (isTransparent) {
+        disabledClasses = 'disabled:cursor-not-allowed disabled:bg-transparent disabled:text-gray-700 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600';
+      } else if (isInset) {
+        disabledClasses = 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-200 disabled:border-gray-300 dark:disabled:border-gray-600 pt-5 pb-1 px-3';
+      } else {
+        disabledClasses = 'disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-900 dark:disabled:text-gray-300 disabled:border-gray-300 dark:disabled:border-gray-600';
+      }
+    }
 
     // Date/time inputs have native browser glyphs/placeholders (--:--, dd/mm/yyyy)
     // so their label must always remain in the top-floating position to avoid colliding.
     const isAlwaysFloatingType = type === 'date' || type === 'time' || type === 'datetime-local' || type === 'month';
     const hasExplicitValue = value !== undefined && value !== '' && value !== null;
 
-    const labelTransform = (isAlwaysFloatingType || hasExplicitValue)
+    let effectiveLabelTransform = (isAlwaysFloatingType || hasExplicitValue)
       ? '-translate-y-3 scale-75 top-1'
       : '-translate-y-3 scale-75 top-1 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-1 peer-focus:scale-75 peer-focus:-translate-y-3';
+
+    let labelBgAndBorder = disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken;
+    let labelTypography = disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor;
+
+    if (disabled) {
+      if (isTransparent) {
+        labelBgAndBorder = bgToken; // Seamless cutout with parent background
+        labelTypography = 'text-gray-500 dark:text-gray-400 font-medium';
+      } else if (isBadge) {
+        labelBgAndBorder = 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 shadow-2xs';
+        labelTypography = 'text-gray-600 dark:text-gray-300 font-semibold text-2xs';
+      } else if (isInset) {
+        effectiveLabelTransform = 'top-1.5 start-3 text-[10px] uppercase font-bold tracking-wider transform-none';
+        labelBgAndBorder = 'bg-transparent px-0 border-none';
+        labelTypography = 'text-gray-500 dark:text-gray-400';
+      }
+    }
 
     return (
       <div className={twMerge('w-full min-w-0', containerClassName)}>
@@ -170,10 +187,10 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             htmlFor={inputId}
             className={twMerge(
               'floating-label absolute whitespace-nowrap text-sm duration-300 transform origin-[0] px-2 peer-focus:px-2 start-1 pointer-events-none transition-all z-10',
-              labelTransform,
-              disabled ? 'bg-gray-100 dark:bg-gray-700' : bgToken,
-              disabled ? 'text-gray-500 dark:text-gray-400 font-medium' : labelColor,
-              leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-1' : 'start-1'
+              effectiveLabelTransform,
+              labelBgAndBorder,
+              labelTypography,
+              isInset ? 'start-3 px-0' : (leftIcon ? 'peer-placeholder-shown:start-8 peer-focus:start-1' : 'start-1')
             )}
           >
             {label}
