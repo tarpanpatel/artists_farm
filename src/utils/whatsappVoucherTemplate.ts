@@ -159,6 +159,12 @@ export function renderWhatsappVoucherTemplate(
     // a one-payment booking already said the amount on the Advance Paid line.
     '{payments_list}',
     '{guest_breakdown}',
+    // A SINGLE (non-multi-key) property has only one unit, so "Unit / Room:
+    // <property name>" just repeats the Property line above it - callers pass
+    // '' here for a single property (12 Sep 2026, explicit request: "in
+    // single property no need to have Unit/Room line") and this drops the
+    // whole line rather than showing a blank room name.
+    '{room_name}',
     '{guest_phone}',
     '{balance_due}',
     '{security_deposit}',

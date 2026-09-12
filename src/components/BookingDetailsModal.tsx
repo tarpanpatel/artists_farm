@@ -1022,6 +1022,11 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   const buildShareMessage = () => {
     const matchedRoom = rooms.find((r) => String(r.id) === String(g.roomId ?? g.room_id));
     const unitName = guest.roomNumber || matchedRoom?.name || propertyName || 'N/A';
+    // Same "no room number" rule as getEditBlockedDateStrings()'s isMultiKey
+    // check above - a single property has nothing distinct to call out on its
+    // own "Unit / Room" line (see {room_name} in renderWhatsappVoucherTemplate's
+    // optionalTokens).
+    const isMultiKey = isMultiKeyProperty ?? (rooms && rooms.length > 1);
 
     const addressVal = propertyAddress || g.address || '';
     const phoneVal = propertyPhone || g.phone || '';
@@ -1099,7 +1104,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
       // than a second derivation that can drift from it.
       balance_due: pendingDisplay > 0 ? pendingDisplay.toFixed(2) : '',
       security_deposit: depositVal > 0 ? depositVal.toFixed(2) : '',
-      room_name: unitName,
+      room_name: isMultiKey ? unitName : '',
       room_number: unitName,
       property_name: propertyName || 'our property',
       checkin_date: formatDate(guest.checkinDate?.split(' ')[0] || ''),

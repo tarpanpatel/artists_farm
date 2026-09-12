@@ -822,7 +822,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         nights: String(stayNights),
         balance_due: balDue > 0 ? balDue.toFixed(2) : '',
         security_deposit: depositVal > 0 ? depositVal.toFixed(2) : '',
-        room_name: savedBooking.roomNumber || '',
+        // Single property: nothing distinct beyond the Property line above it
+        // (12 Sep 2026, explicit request) - '' drops the whole line.
+        room_name: isMultiKeyProperty ? (savedBooking.roomNumber || '') : '',
         room_number: savedBooking.roomNumber || '',
         property_name: propertyName || 'our property',
         checkin_date: formatDateOrdinal(cIn),
@@ -925,7 +927,11 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         : (propertyCancellationPolicy || 'Contact host for cancellation policy.');
       const waText = renderWhatsappVoucherTemplate(activeMakeBookingTemplate, {
         property_name: propertyName || 'our property',
-        room_name: quote.room_name,
+        // A single property has nothing distinct to name beyond the Property
+        // line above it - '' drops the whole "Unit / Room" line (12 Sep 2026,
+        // explicit request, see {room_name} in renderWhatsappVoucherTemplate's
+        // optionalTokens).
+        room_name: isMultiKeyProperty ? quote.room_name : '',
         room_tariff: (Number(bookingRoomTariff) || (quote.total_tariff / Math.max(1, quote.nights))).toFixed(2),
         checkin_date: quote.checkin_date,
         checkin_time: checkinTime,
