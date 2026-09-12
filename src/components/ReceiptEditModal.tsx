@@ -123,6 +123,24 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [checkoutDate, setCheckoutDate] = useState('');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
+
+  const baseCashHandlers = useMemo(() => {
+    const list = cashHandlers.length > 0 ? cashHandlers : staff;
+    return list.map((s) => ({ value: s.name, label: s.name }));
+  }, [cashHandlers, staff]);
+
+  const availableCashHandlers = useMemo(() => {
+    return [
+      { value: '', label: '- Not Selected -' },
+      ...baseCashHandlers,
+      ...(advanceReceivedBy && advanceReceivedBy !== '- Not Selected -' && !baseCashHandlers.some((h) => h.value === advanceReceivedBy)
+        ? [{ value: advanceReceivedBy, label: advanceReceivedBy }]
+        : []),
+      ...(pendingReceivedBy && pendingReceivedBy !== '- Not Selected -' && pendingReceivedBy !== advanceReceivedBy && !baseCashHandlers.some((h) => h.value === pendingReceivedBy)
+        ? [{ value: pendingReceivedBy, label: pendingReceivedBy }]
+        : []),
+    ];
+  }, [baseCashHandlers, advanceReceivedBy, pendingReceivedBy]);
   // Kitchen / Incidentals State
   const [menuList, setMenuList] = useState<Array<{ id: string; name: string; price: number }>>([]);
   const [selectedMenuId, setSelectedMenuId] = useState('');
@@ -786,11 +804,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         label={t('received_by_booking_label', 'Received By (Booking)')}
                         value={advanceReceivedBy}
                         onChange={setAdvanceReceivedBy}
-                        placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                        options={[
-                          { value: '', label: '- Not Selected -' },
-                          ...cashHandlers.map((s) => ({ value: s.name, label: s.name }))
-                        ]}
+                        placeholder="-- Choose cash handler --"
+                        options={availableCashHandlers}
                       />
                     </div>
                   )}
@@ -807,11 +822,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                         label={t('pending_received_by_label', 'Pending Received By')}
                         value={pendingReceivedBy}
                         onChange={handlePendingReceivedByChange}
-                        placeholder={t('choose_cash_handler_placeholder', '-- Choose cash handler --')}
-                        options={[
-                          { value: '', label: '- Not Selected -' },
-                          ...cashHandlers.map((s) => ({ value: s.name, label: s.name }))
-                        ]}
+                        placeholder="-- Choose cash handler --"
+                        options={availableCashHandlers}
                       />
                     </div>
                   )}
