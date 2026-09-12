@@ -254,6 +254,22 @@ if (
 $test_db = $live_db . '_test';
 $db_name = $is_testing_mode ? $test_db : $live_db;
 
+// Unit-test seam (12 Sep 2026). php/tests/*.php must run with no MySQL and no network -
+// the "zero setup, runs anywhere" rule test_ai_intents.php established. A test that needs a
+// CLASS out of a file which requires this one (AriDrainWorker, ChannexAdapter) would
+// otherwise be killed right below, because a failed connection calls exit() rather than
+// throwing something a caller could handle. Tests define this constant before requiring,
+// then inject their own in-memory SQLite PDO.
+//
+// Everything above this line still runs, so the environment constants and helpers those
+// classes rely on are all present - only the connection itself is skipped. This cannot be
+// reached from a web request: a constant cannot be set by input, and nothing in the request
+// path defines it.
+if (defined('APP_UNIT_TEST_NO_DB') && APP_UNIT_TEST_NO_DB) {
+    $pdo = null;
+    return;
+}
+
 try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

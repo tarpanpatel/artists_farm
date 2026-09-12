@@ -211,6 +211,39 @@ try {
         Write-Ok "Committed."
     }
 
+    # 0b. Channex safety invariants (12 Sep 2026)
+    #
+    # Runs BEFORE the push, so a violated invariant stops the deploy while everything is
+    # still local - nothing has reached GitHub, staging, or an OTA. These 9 checks each
+    # encode a bug that already reached a live Airbnb listing once (fabricated prices, an
+    # import that activates a channel, a cron documented but never registered, a rate push
+    # that silently dropped real prices). They exist because every one of those was found by
+    # a human reading code after the fact.
+    #
+    # A gate nobody runs is just a suggestion, which is why this lives here rather than in a
+    # README. It blocks on a genuine FAILURE only: if PHP isn't on PATH (a machine setup
+    # issue, not a code problem) it warns and continues, because refusing to deploy over a
+    # missing interpreter would teach people to reach for -SkipTests, and a gate that gets
+    # routinely bypassed protects nothing.
+    $invariantSuite = Join-Path $PSScriptRoot 'php\tests\test_channex_invariants.php'
+    if (Test-Path $invariantSuite) {
+        Write-Step "Running Channex safety invariants"
+        $phpExe = (Get-Command php -ErrorAction SilentlyContinue).Source
+        if (-not $phpExe -and (Test-Path 'C:\xampp\php\php.exe')) { $phpExe = 'C:\xampp\php\php.exe' }
+
+        if (-not $phpExe) {
+            Write-Warn "PHP not found on PATH - skipping invariant suite (run it by hand: php php/tests/test_channex_invariants.php)"
+        } else {
+            $invariantOutput = & $phpExe $invariantSuite 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                $invariantOutput | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+                throw "Channex safety invariants FAILED - deploy stopped. Each failing check above is a bug that has already reached a live listing once. Fix it rather than bypassing this."
+            }
+            $summary = ($invariantOutput | Select-String -Pattern 'Channex invariants:').ToString().Trim()
+            Write-Ok $summary
+        }
+    }
+
     # 1. Push commits
     Write-Step "Pushing commits to GitHub ($Branch)"
     # The bundle is built from the local working tree, so deploying a branch

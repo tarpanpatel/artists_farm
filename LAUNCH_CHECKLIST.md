@@ -205,9 +205,28 @@ Neither is a substitute for checking.
 - [ ] Decide whether Patel Colony's Airbnb should be live at all right now — if it is
       meant to be selling, it currently isn't.
 
-### 2.2 🔴 No automated invariant tests — see §3
-The systemic fix. Everything in §1 was found by reading code, which does not scale and
-already missed things twice in one day.
+### 2.2 🟠 Automated invariant tests — first suite shipped, coverage still partial
+**`php php/tests/test_channex_invariants.php`** (12 Sep 2026) — 9 checks, exit code for CI,
+no MySQL and no network required. Covers: the fabricated-money-fallback pattern across all of
+`php/channex/`; both import paths never activating or enqueueing ARI; CHANNEX.md's cron table
+matching `getCronJobDefinitions()`; the 12 Sep rate-suppression regression and its inverse;
+and `getMapping()`'s empty-rate-plan guard.
+
+**Every check was mutation-tested** — each bug reintroduced deliberately to confirm the test
+actually fails — and that mattered: the **first version of the money-fallback check silently
+caught nothing**. PHP's tokenizer splits `?:` into separate `?` and `:` tokens, so a regex
+for a literal `?:` never fired, and the suite reported a confident 9/9 PASS against a
+deliberately reintroduced `?: 3500`. A test that cannot fail is this file's own §0 bug,
+committed inside the file written to prevent it. **Mutation-test anything added here.**
+
+**Still uncovered** (the reason this stays open rather than closing):
+- A conflicting inbound OTA booking is stored rather than rejected (§1.3) — needs a webhook
+  fixture substantial enough to drive `handleWebhook()`.
+- The frontend invariants entirely — e.g. §1.7's badge, which was a UI label asserting an
+  unchecked state. Nothing in this suite can see a `.tsx` file.
+- Nothing runs this automatically yet. It is a command someone has to remember, which is a
+  weaker version of the same problem. Wire it into `deploy-staging.ps1` as a pre-deploy gate
+  (§3.3) so a failing invariant blocks the deploy rather than being available to check.
 
 ### 2.3 🟠 Overbooking conflicts are recorded but not shown in the UI
 `guests.overbooking_conflict_with` is now written and alerted on, but no dashboard,
@@ -295,27 +314,47 @@ forwarding that response raw.
 
 ## 3. The systemic fix: make the invariants executable
 
-Every item in §1 would have been caught before deploy by a check that runs. Proposed, in
-priority order:
+Every item in §1 would have been caught before deploy by a check that runs.
 
-**3.1 A `php/tests/test_channex_invariants.php` suite** asserting the things that are
-currently only claimed in comments:
-- [ ] No file under `php/channex/` contains a numeric fallback near a money field
-      (grep-level: `default_tariff.*\?[:?]\s*[0-9]{2,}`). This one bug appeared in three
-      files; a grep assertion makes it permanently unable to reappear quietly.
-- [ ] The import path (`autoProvisionPropertyFromAirbnb`) never calls `activateChannel()`
-      or `enqueueOutboxItem()`.
-- [ ] `computeCompressedRestrictions()` with a real rate rule and **no** base tariff still
-      emits that rule's rate. *(This is the §1.2 regression — it had a working repro
-      harness; promote it into the suite.)*
-- [ ] `getMapping()` returns null for a row with an empty `channex_rate_plan_id`.
-- [ ] A conflicting inbound booking is stored, not rejected.
+**3.1 `php/tests/test_channex_invariants.php`** — built 12 Sep 2026. Run it with
+`php php/tests/test_channex_invariants.php` (exit 0/1; no MySQL, no network).
+- [x] No file under `php/channex/` contains a hardcoded money fallback. Walks the **token
+      sequence**, not regex over text — see the warning in 3.1b, this is where the first
+      attempt failed. One bug appeared in three files; this makes it unable to reappear quietly.
+- [x] Both import paths (`autoProvisionPropertyFromAirbnb`,
+      `autoCreateRoomsFromAirbnbListings`) never call `activateChannel()` or
+      `enqueueOutboxItem()`. Brace-matched from tokens so a mention in a comment can't
+      satisfy or trip it.
+- [x] `computeCompressedRestrictions()` with a real rate rule and **no** base tariff still
+      emits that rule's rate (the §1.2 regression, promoted from its repro harness) — plus
+      the inverse: a date with no price of any kind emits no rate at all.
+- [x] `getMapping()` returns null for a row with an empty `channex_rate_plan_id`, and still
+      returns a genuine mapping unchanged.
+- [ ] A conflicting inbound booking is stored, not rejected. **Not built** — needs a fixture
+      substantial enough to drive `handleWebhook()`.
+- [ ] Anything frontend. **Not built** — §1.7's badge was a UI label asserting an unchecked
+      state, and nothing here can see a `.tsx` file.
 
-**3.2 A doc-drift check.** Every job named in `CHANNEX.md`'s cron table must exist in
-`getCronJobDefinitions()`. That single assertion would have caught §1.4.
+**3.1b MUTATION-TEST EVERY CHECK YOU ADD.** Each of the checks above was verified by
+deliberately reintroducing the bug and confirming the suite goes red. This is not ceremony:
+**the first version of the money-fallback check silently caught nothing.** PHP's tokenizer
+splits `?:` into separate `?` and `:` tokens, so a regex for a literal `?:` never matched,
+and the suite reported a confident 9/9 against a deliberately planted `?: 3500`. A test that
+cannot fail is §0's exact bug — a claim of safety that isn't real — committed inside the file
+written to prevent it. Assume a new check is decorative until you have watched it fail.
 
-**3.3 Run both before every staging deploy**, not just before production — staging is
-where these are actually found.
+**3.2 A doc-drift check.** ✅ Built — every job named in `CHANNEX.md`'s cron table must exist
+in `getCronJobDefinitions()`. That single assertion would have caught §1.4.
+
+**3.3 Run before every staging deploy.** ✅ Wired into `deploy-staging.ps1` as step 0b, before
+the push — so a violated invariant stops the deploy while everything is still local, having
+reached neither GitHub, staging, nor an OTA. Blocks on a real failure; warns and continues if
+PHP isn't on PATH, because a gate that gets routinely bypassed protects nothing.
+
+*Known limitation:* it runs against the **working tree**, while the deploy builds from the
+committed state (uncommitted changes are stashed at step 2, after this). In the normal
+commit-then-deploy flow these are identical. They diverge only if you deploy with uncommitted
+changes present — which the script already warns about separately.
 
 **3.4 One regression test per incident, from here on.** The rule: when something breaks,
 the fix isn't done until there's a check that fails if it comes back. A CLAUDE.md
