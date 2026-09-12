@@ -200,9 +200,13 @@ function getCurrentProperty(PDO $pdo, ?int $knownId = null): array {
 /**
  * The tenant's account-wide WhatsApp voucher template, or null (7 Sep 2026).
  *
- * Resolution order for what a guest actually receives is:
+ * Resolution order for what a guest actually receives is (corrected 12 Sep 2026 -
+ * this list omitted the platform level, which getSystemVoucherTemplate() has
+ * supplied since 7 Sep; PropertyEditForm.tsx:114-126 is the authority, and it
+ * resolves four levels, not three):
  *   properties.whatsapp_voucher_template  (this one property's override)
  *   -> tenants.whatsapp_voucher_template  (the account default, this function)
+ *   -> system_whatsapp_voucher_template   (the platform default, Root Dashboard)
  *   -> DEFAULT_WHATSAPP_VOUCHER_TEMPLATE  (shipped in the frontend)
  *
  * Returned alongside the property's own value rather than merged into it, so

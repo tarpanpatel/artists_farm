@@ -13,18 +13,35 @@ import { useToast } from './ToastContext';
  * Root Admin's platform-wide versions.
  *
  * Used to also hold the guest-facing WhatsApp booking-confirmation template
- * editor + its live preview (moved here 25 Aug 2026 from Edit Property).
- * Removed entirely 26 Aug 2026 (explicit request: "dont let there be
- * facility of whatsapp message customisation... move this at Edit Property
- * page so user can see directly whats his message will look like, as the
- * message anyway pulls data from edit property details") - the message is
- * now a single fixed template (DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, see
- * utils/whatsappVoucherTemplate.ts) for every property, with no per-property
- * override possible any more. The live, accurate preview of that fixed
- * message now lives on PropertyEditForm.tsx instead, right next to the
- * actual fields (phone/address/UPI/instructions/etc.) it pulls from - since
- * it was never really a "messaging" setting, just a readout of property
- * details that happened to live on the wrong page.
+ * editor + its live preview (moved here 25 Aug 2026 from Edit Property), then
+ * removed 26 Aug 2026 (explicit request: "dont let there be facility of
+ * whatsapp message customisation... move this at Edit Property page so user can
+ * see directly whats his message will look like, as the message anyway pulls
+ * data from edit property details"). The preview moved to PropertyEditForm.tsx,
+ * next to the actual fields (phone/address/UPI/instructions) it reads from -
+ * it was never really a "messaging" setting, just a readout of property details
+ * sitting on the wrong page.
+ *
+ * CORRECTED 12 Sep 2026 - this docblock used to end by saying the wording was
+ * "now a single fixed template for every property, with no per-property override
+ * possible any more". That stopped being true on 7 Sep 2026, five days before
+ * anyone noticed, and it was quoted as current in the meantime. Editable voucher
+ * wording came back that day as a four-level inheritance chain, with the
+ * per-property override living on PropertyEditForm.tsx (`voucherTemplate` state,
+ * saved as `whatsapp_voucher_template`):
+ *
+ *   properties.whatsapp_voucher_template   - this one property (Edit Property)
+ *   -> tenants.whatsapp_voucher_template   - the account default (Root Admin)
+ *   -> system_whatsapp_voucher_template    - the platform default (Root Dashboard)
+ *   -> DEFAULT_WHATSAPP_VOUCHER_TEMPLATE   - shipped in whatsappVoucherTemplate.ts
+ *
+ * An empty override means "inherit" and is deliberately NOT the same as an
+ * override whose text happens to equal what it would have inherited - see
+ * PropertyEditForm.tsx:106. This chain is for the wa.me SHARE text a staff
+ * member sends by hand, which is freely editable; it has nothing to do with the
+ * Meta-approved WhatsApp API templates, where only the {{1}}/{{2}} variable
+ * VALUES are ours and every word is fixed until Meta re-approves a change (see
+ * CLAUDE.md, "WhatsApp Business API - Every Message Must Carry an Action Link").
  */
 interface WhatsAppTemplateSettingsProps {
   property: {

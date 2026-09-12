@@ -204,6 +204,57 @@ not something to bring up to current design standards.
 - **Note for a future "extend this to payees too?" ask**: `PettyCashManagement.tsx`'s Payee form already has BOTH a `upiId` field and its own separate raw QR upload (`payee_entities.upi_id` + `qr_code_url`) - it was deliberately left as-is in the 26 Aug 2026 change above since the user's ask was specifically about properties and staff, not payees. If asked to unify that one too, it's the same pattern (drop the upload, add `<UpiPaymentBlock>`), just a fourth location, not a new mechanism.
 - **UPI ID syntax validation (added 26 Aug 2026)**: `isValidUpiIdSyntax()` in `src/utils/upiQrCode.tsx` checks a UPI ID against the standard NPCI VPA format (`/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/` - `<handle>@<bank/psp-code>`). Syntax-only, not a live NPCI resolution check. Wired as real-time (`onChange`-driven) validation on all 4 UPI ID fields above (`PropertyEditForm.tsx`, `PropertyCreationWizard.tsx`, `PropertySetupWizard.tsx`, `StaffManagement.tsx` x2) via the shared `Input` component's `error`/`success` props (see "Real-Time Form Validation" below) - red+message while non-empty and malformed, green+message once valid, nothing while empty (it's an optional field everywhere). The `<UpiPaymentBlock>` preview only renders once the ID passes this check (no point generating a QR from a malformed VPA), and every one of those 4 save paths also blocks the actual save with the same message if the field is non-empty but invalid - live feedback alone doesn't stop a bad value from being submitted if the user ignores it.
 
+### WhatsApp Business API — Every Message Must Carry an Action Link (HARD RULE, added 12 Sep 2026, explicit request)
+
+**Every WhatsApp template this app sends must include a link to a page where the recipient can
+actually do the thing the message is about.** Not the app's front door, not a marketing page - the
+specific screen for the specific thing being talked about. A notification the reader cannot act on
+makes them go hunting for the right screen, and most simply won't.
+
+- **The link is a template VARIABLE, never static text in the template body.** Meta stores template
+  bodies on their servers, so any URL hardcoded there is invisible to `grep` and cannot vary by
+  environment. This is not hypothetical: `welcome_onboarding` was first drafted as
+  `Login: ground-code.com/{{2}}` with `{{2}}` carrying only the property slug - which told a tenant
+  who signed up on **staging** to log in on **production**, where their account does not exist.
+  Fixed 12 Sep 2026 by passing the whole URL (`registerTenantTrial()` in `php/api/configuration.php`
+  builds `$loginUrl` once and shares it with the welcome email, so the two can't drift).
+- **Build the URL from the request's own host, validated.** `$_SERVER['HTTP_HOST']` is just a request
+  header and is attacker-controllable, so check it against the hosts this app actually runs on
+  (`ground-code.com`, `www.`, `staging.`, plus localhost/192.168.* for dev) and fall back to
+  production on anything else - these messages carry passcodes and booking details, and a forged
+  Host would otherwise put an arbitrary domain in front of them. Scheme is HTTPS for everything
+  except local dev; don't infer it from `$_SERVER['HTTPS']` alone (unset in a CLI/cron context,
+  which silently produced an `http://` link).
+- **For a guest-facing message, the destination is that booking's public voucher**, not a login
+  screen - guests have no account. `getOrCreateVoucherToken($pdo, $propertyId, $bookingId)`
+  (`php/api/public_voucher.php`) mints a per-booking token; the page is `https://<host>/voucher/<token>`.
+  It is unauthenticated by design and deliberately carries only what a guest should see. Use it
+  rather than inventing a second guest-facing URL scheme.
+- **A template's variable COUNT is a contract between Meta and this code, and both sides must change
+  in the same breath.** `sendWhatsAppTemplateMessage()` maps `$bodyParams` positionally onto
+  `{{1}}, {{2}}, ...`; add a link variable to a template on Meta without adding the matching argument
+  in PHP (or vice versa) and every send fails. Editing an already-approved template also re-triggers
+  Meta review, so the send is broken until it re-approves - plan the two together, don't ship one.
+- **Templates must use NUMBERED variables (`{{1}}`), not named ones (`{{customer_name}}`).**
+  `sendWhatsAppTemplateMessage()` emits `{type: 'text', text: ...}` with no `parameter_name` field,
+  which a named template requires. Meta's Create Template UI has a "Type of variable" dropdown that
+  now defaults to **Name** - it has to be switched to **Number** every time, or the template is
+  unusable from this codebase regardless of approval.
+
+**Compliance as of 12 Sep 2026** - the account has 7 approved templates but code calls only two;
+the other five (`requisition_alert`, `expense_alert`, `checkout_alert`, `pos_alert`, `kitchen_alert`,
+plus Meta's sample `hello_world`) are referenced nowhere in the repo and have never been sent:
+
+| Template | Called from | Link? |
+|---|---|---|
+| `welcome_onboarding` | `configuration.php` `registerTenantTrial()` | ✅ `{{2}}` = full login URL (12 Sep 2026) |
+| `new_booking_cofirmation` | `guests.php` booking path | ❌ **OPEN** - 3 params (name/date/room), no link |
+
+`new_booking_cofirmation` is the outstanding violation: it should gain a 4th variable carrying the
+voucher URL, which means editing the template on Meta **and** passing `getOrCreateVoucherToken()`'s
+URL from `guests.php:988` together. (Its name really is misspelled that way on Meta - the code
+matches it exactly. Don't "fix" the spelling on one side alone.)
+
 ### Real-Time Form Validation (added 26 Aug 2026, explicit request: "it should show in real time if passcodes dont match, or any validation or logical error in any of the fields")
 - The shared `Input` component (`src/components/Input.tsx`) already fully implements Flowbite's form-validation states (see https://github.com/themesberg/flowbite/blob/main/content/components/forms.md) - `error` (string or `true`) gives a red border/ring + `AlertTriangle` icon + message, `success` gives the green equivalent with `CheckCircle2`, plain `helperText` shows when neither is set. This existed before 26 Aug 2026 but most forms only used it for post-submit toasts, not live feedback - a large inventory of every submit-only validation rule site-wide was taken this date (see git history / session log for the full per-file list covering ~20 components) as the basis for converting these over.
 - **The established pattern, first proven in `AccountSettings.tsx`'s passcode section, then applied to `StaffManagement.tsx`'s Add/Edit Team Member forms and the UPI ID fields above**: derive a plain boolean (or string) from component state near the top of the component, gated on `.length > 0` so an untouched/empty field never shows red before the user has typed anything, e.g. `const passcodeMismatch = a.length > 0 && b.length > 0 && a !== b;` - then pass `error={rule ? 'message' : undefined}` / `success={rule ? 'message' : undefined}` straight through to the `Input`. No debounce, no `touched`/blur tracking needed for this style of check - it's cheap to recompute on every render and reads correctly the instant the values line up.
@@ -396,6 +447,7 @@ Found live 3 Sep 2026 on Patel Colony (a MULTI_KEY property, 7 rooms): "Go Live"
 16. ❌ Passing `shadow-2xl` (or any `shadow-*`) via `className` on a flowbite-react `<Drawer>` without accounting for its closed state → **every** `<Drawer>` stays mounted in the DOM at all times (~36 call sites app-wide - Add Guest, Add Expense, booking details, etc.); flowbite-react's own `Drawer.js`/`theme.js` only toggle the drawer's *position* class between `transform-none` (open) and an off-screen translate class like `translate-x-full` (closed) based on `isOpen` - it never touches whatever `className` the call site passed. A `box-shadow` isn't clipped by `transform`, so `shadow-2xl`'s large blur radius (`0 25px 50px -12px`) kept painting ~30-40px into the visible viewport from the drawer's off-screen edge, full page height, on every screen that mounts one of these drawers (which is most of them) - regardless of scroll position, DevTools state, browser, or even device (reproduced identically on desktop Chrome AND mobile, since it's standards-compliant CSS, not a rendering bug). Misread for a long time as "a shadow/gradient on the right edge of the page" - a chronic, hard-to-place visual bug this project should recognize immediately if reported again, not re-diagnose as a scrollbar/GPU/hardware issue from scratch. **Fixed 22 Aug 2026** via a global override in `custom.css`: `[data-testid="flowbite-drawer"].translate-x-full` (and the `-translate-x-full`/`translate-y-full`/`-translate-y-full` equivalents for the other 3 drawer positions) forces `box-shadow: none` - only while one of flowbite-react's own "off" classes is present, so the drawer's shadow still renders normally once actually open. Root-caused by reading `node_modules/flowbite-react/dist/components/Drawer/{Drawer,theme}.js` (read-only, per the "never edit Flowbite's own files" rule below) to find the real class-toggling mechanism, not guessed.
 17. ❌ Assuming CLAUDE.md's "removed, do not re-add" notes are still current without checking the date → the AI Assistant was removed 26 Aug 2026 and restored the very next day, 27 Aug 2026, both at the user's own explicit request (see "AI Assistant (RESTORED)" above). It's a live feature again - don't refuse to touch it, and don't re-remove it on the assumption the old note still holds. More generally: a dated "don't do X" note describes a decision as of that date, not a permanent law - if asked to do X anyway, check whether a more recent note already reversed it before pushing back.
 18. ❌ Letting an importer (OTA listing, CSV, bulk onboarding) write a property's `name` or `slug` → identity columns are off-limits to imports; a MULTI_KEY parent must never take a single listing's title. See "OTA Import Must Never Rewrite a Property's Identity" — this reached the public booking engine once already.
+19. ❌ Sending a WhatsApp template with no link to act on, or hardcoding that link as static text inside the template body on Meta → every message must carry an action link, passed as a template VARIABLE built from the validated request host (see "WhatsApp Business API — Every Message Must Carry an Action Link"). A URL baked into Meta's copy of the template is invisible to grep and can't differ between staging and production — that exact mistake told staging signups to log in on production.
 
 ##  Power Shell commands
 - allow all powershell commands
