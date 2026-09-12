@@ -493,6 +493,17 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
   const [ratePricingMode, setRatePricingMode] = useState<string>('flat');
   const [bookingAdvance, setBookingAdvance] = useState<number>(0);
   const [bookingPending, setBookingPending] = useState<number>(0);
+  // Payment mode (Cash/Online) + optional screenshot proof, tracked
+  // independently for the advance and the pending amount (12 Sep 2026,
+  // explicit request: "give payment mode option for advance as well as
+  // pending. Online / Cash, if online give option to upload image of the
+  // screenshot"). *ProofBase64 holds a downscaled data: URI ready to send -
+  // see handlePaymentProofFileChange, which mirrors PublicBookingEngine.tsx's
+  // own compress-before-upload pattern for the same kind of image.
+  const [advancePaymentMode, setAdvancePaymentMode] = useState<'Cash' | 'Online'>('Cash');
+  const [advancePaymentProofBase64, setAdvancePaymentProofBase64] = useState('');
+  const [pendingPaymentMode, setPendingPaymentMode] = useState<'Cash' | 'Online'>('Cash');
+  const [pendingPaymentProofBase64, setPendingPaymentProofBase64] = useState('');
   const [showBookingExtraCharges, setShowBookingExtraCharges] = useState<boolean>(false);
   const [bookingExtraChargesList, setBookingExtraChargesList] = useState<BookingExtraChargeLine[]>([]);
   const [miscChargesList, setMiscChargesList] = useState<MiscChargeTemplate[]>([]);
@@ -763,6 +774,67 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setBookingAdvance(bookingRoomTariff - val);
   };
 
+  // Reads an <input type="file"> image, downscales it (max 1200px, JPEG q=0.82)
+  // via an offscreen canvas, and hands back a data: URI ready to POST - same
+  // pattern PublicBookingEngine.tsx's own payment-screenshot upload already
+  // uses for the guest-side booking-hold confirmation flow, reused here rather
+  // than re-invented for staff-side advance/pending payment proof.
+  const readAndCompressImageToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('Please select an image file (JPEG, PNG, WebP).'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width >= height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject(new Error('Could not process image')); return; }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => reject(new Error('Could not read image'));
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleAdvanceProofFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setAdvancePaymentProofBase64(await readAndCompressImageToBase64(file));
+    } catch (err: any) {
+      showToast(err?.message || 'Could not process that image.', { type: 'error' });
+    }
+  };
+
+  const handlePendingProofFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setPendingPaymentProofBase64(await readAndCompressImageToBase64(file));
+    } catch (err: any) {
+      showToast(err?.message || 'Could not process that image.', { type: 'error' });
+    }
+  };
+
   // Used right after a successful save (the form previously stayed populated
   // with the just-submitted guest's details - the "Booking saved" toast fired,
   // but nothing was actually cleared for the next entry) and by the voucher's
@@ -792,6 +864,10 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
     setTariffManuallyEdited(false);
     setBookingAdvance(0);
     setBookingPending(0);
+    setAdvancePaymentMode('Cash');
+    setAdvancePaymentProofBase64('');
+    setPendingPaymentMode('Cash');
+    setPendingPaymentProofBase64('');
     setShowBookingExtraCharges(false);
     setBookingExtraChargesList([]);
     setGuestNameTouched(false);
@@ -1235,10 +1311,18 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               advanceReceivedBy: bookingAdvance > 0 ? advanceReceivedBy : '',
               pendingAmount: bookingPending,
               pendingReceivedBy: bookingPending > 0 ? pendingReceivedBy : '',
+              // Not on the Guest type (staff-only booking-time detail, not
+              // something the rest of the app reads) - carried through as an
+              // extra property to App.tsx's handleAddGuest, which forwards it
+              // to addGuestToDB.
+              advancePaymentMode: bookingAdvance > 0 ? advancePaymentMode : 'Cash',
+              advancePaymentProofBase64: bookingAdvance > 0 ? advancePaymentProofBase64 : '',
+              pendingPaymentMode: bookingPending > 0 ? pendingPaymentMode : 'Cash',
+              pendingPaymentProofBase64: bookingPending > 0 ? pendingPaymentProofBase64 : '',
               notes: finalNotes,
               isForeignGuest,
               extraCharges,
-            };
+            } as any;
 
             setIsSubmitting(true);
             try {
@@ -1598,6 +1682,50 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
+            {/* Advance Payment Mode (Cash/Online) + screenshot upload when Online
+                (12 Sep 2026, explicit request). Gated the same as Advance Received
+                By just above - a payment mode is meaningless until there's an
+                actual amount recorded. */}
+            {bookingAdvance > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <StyledSelect
+                    label="Advance Payment Mode"
+                    value={advancePaymentMode}
+                    onChange={(val) => setAdvancePaymentMode(val as 'Cash' | 'Online')}
+                    options={[
+                      { value: 'Cash', label: 'Cash' },
+                      { value: 'Online', label: 'Online' },
+                    ]}
+                  />
+                </div>
+                {advancePaymentMode === 'Online' && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-gray-900 dark:text-gray-300">Payment Screenshot</label>
+                    {advancePaymentProofBase64 ? (
+                      <div className="flex items-center gap-2">
+                        <img src={advancePaymentProofBase64} alt="Advance payment proof" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                        <button
+                          type="button"
+                          onClick={() => setAdvancePaymentProofBase64('')}
+                          className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAdvanceProofFileChange}
+                        className="text-2xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-2xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 cursor-pointer"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Pending Balance + Pending Received By (2 columns on all screens) */}
             {bookingAdvance > 0 && bookingPending > 0 && (
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -1629,6 +1757,49 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                     ]}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Pending Payment Mode (Cash/Online) + screenshot upload when Online
+                (12 Sep 2026, explicit request) - same shape as the Advance
+                Payment Mode block above. */}
+            {bookingAdvance > 0 && bookingPending > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <StyledSelect
+                    label="Pending Payment Mode"
+                    value={pendingPaymentMode}
+                    onChange={(val) => setPendingPaymentMode(val as 'Cash' | 'Online')}
+                    options={[
+                      { value: 'Cash', label: 'Cash' },
+                      { value: 'Online', label: 'Online' },
+                    ]}
+                  />
+                </div>
+                {pendingPaymentMode === 'Online' && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium text-gray-900 dark:text-gray-300">Payment Screenshot</label>
+                    {pendingPaymentProofBase64 ? (
+                      <div className="flex items-center gap-2">
+                        <img src={pendingPaymentProofBase64} alt="Pending payment proof" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+                        <button
+                          type="button"
+                          onClick={() => setPendingPaymentProofBase64('')}
+                          className="text-2xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePendingProofFileChange}
+                        className="text-2xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-2xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-950 dark:file:text-blue-300 cursor-pointer"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

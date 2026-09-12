@@ -1193,6 +1193,16 @@ export async function addGuestToDB(guest: {
   total_charge?: number;
   pending_amount?: number;
   pending_received_by?: string;
+  // Payment mode ('Cash'|'Online') + optional screenshot proof, tracked
+  // independently for the advance and the pending amount (12 Sep 2026) - see
+  // ensureGuestPaymentModeSchema() in guests.php. *_proof_base64 is a raw
+  // data: URI (already downscaled client-side); the backend decodes and
+  // stores it via savePaymentProofImage(), same as the public booking-hold
+  // confirmation flow's payment screenshot.
+  advance_payment_mode?: 'Cash' | 'Online';
+  advance_payment_proof_base64?: string;
+  pending_payment_mode?: 'Cash' | 'Online';
+  pending_payment_proof_base64?: string;
   is_foreign_guest?: boolean;
   // Set only when converting an OTA (Airbnb/Booking.com/etc) iCal-synced block
   // into a real booking - see ConvertOtaBookingModal.tsx. Omitted for a normal

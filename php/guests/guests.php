@@ -416,6 +416,34 @@ function ensureOtaBookingSchema($pdo) {
     markSchemaVerified('schema_ota_booking');
 }
 
+// Payment mode (Cash/Online) + optional screenshot proof, tracked separately
+// for the advance and the pending/balance payment (12 Sep 2026, explicit
+// request: "give payment mode option for advance as well as pending. Online
+// / Cash, if online give option to upload image of the screenshot"). Two
+// independent pairs of columns rather than one - a guest can plausibly pay
+// the advance in cash at check-in and the balance online later (or the
+// reverse), so a single booking-wide mode/proof would silently lose whichever
+// payment didn't match it. Proof images reuse savePaymentProofImage()
+// (booking_holds.php) - the same base64-decode-and-store helper the public
+// booking-hold confirmation flow already uses, so this doesn't invent a
+// second upload mechanism for the same kind of file.
+function ensureGuestPaymentModeSchema($pdo) {
+    if (isSchemaVerified('schema_guest_payment_mode')) return;
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `advance_payment_mode` VARCHAR(20) DEFAULT 'Cash'");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `advance_payment_proof_url` VARCHAR(255) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `pending_payment_mode` VARCHAR(20) DEFAULT 'Cash'");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE guests ADD COLUMN IF NOT EXISTS `pending_payment_proof_url` VARCHAR(255) DEFAULT NULL");
+    } catch (PDOException $e) {}
+    markSchemaVerified('schema_guest_payment_mode');
+}
+
 // Itemized "Additional Charges" lines from the booking form (Decoration
 // Fees, Extra Housekeeping, Pet Stay Charges, or a custom Misc Charges
 // Management template). Before this, the per-line category/amount only ever
@@ -552,6 +580,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
             ensureOtaBookingSchema($pdo);
             // The edit form needs updated_at to send back as its concurrency token.
             ensureGuestConcurrencySchema($pdo);
+            ensureGuestPaymentModeSchema($pdo);
             try {
                 // A Single property has no separate "room" to assign - it IS the one
                 // bookable unit, so a guest there should show the property's own name,
@@ -655,6 +684,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                 ensureGuestExtraChargesSchema($pdo);
                 ensureGuestTelegramCheckinoutSchema($pdo);
                 ensureGuestConcurrencySchema($pdo);
+                ensureGuestPaymentModeSchema($pdo);
                 $input = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($input)) $input = [];
                 try {
@@ -818,6 +848,22 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     // and inbound OTA bookings arrive through Channex.
                     $overlapWarning = null;
 
+                    // Payment mode + optional screenshot for the advance and the
+                    // pending amount, independently (12 Sep 2026). require_once here
+                    // rather than relying on the conditional require a few lines above
+                    // (that one only runs for a room-scoped or whole-property booking -
+                    // a room-less MULTI_KEY "unassigned" booking would otherwise reach
+                    // savePaymentProofImage() undefined).
+                    require_once __DIR__ . '/../api/booking_holds.php';
+                    $advancePaymentMode = in_array($input['advance_payment_mode'] ?? '', ['Cash', 'Online'], true)
+                        ? $input['advance_payment_mode'] : 'Cash';
+                    $pendingPaymentMode = in_array($input['pending_payment_mode'] ?? '', ['Cash', 'Online'], true)
+                        ? $input['pending_payment_mode'] : 'Cash';
+                    $advancePaymentProofUrl = !empty($input['advance_payment_proof_base64'])
+                        ? savePaymentProofImage($input['advance_payment_proof_base64'], 'advance') : null;
+                    $pendingPaymentProofUrl = !empty($input['pending_payment_proof_base64'])
+                        ? savePaymentProofImage($input['pending_payment_proof_base64'], 'pending') : null;
+
                     // advance_received_by/pending_received_by columns have existed on
                     // this table all along - the Add Booking form collects both as
                     // *required* fields, but nothing ever actually wrote them here.
@@ -829,7 +875,7 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                     } else {
                         $status = GUEST_STATUS_BOOKED;
                     }
-                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, adults, children, property_id, is_foreign_guest, room_id, ota_source, ota_source_label, ical_external_event_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $pdo->prepare("INSERT INTO guests (guest_name, phone_number, checkin_date, expected_checkout, status, advance_paid, advance_received_by, total_charge, pending_amount, pending_received_by, base_room_rent, notes, booking_source, no_of_guests, adults, children, property_id, is_foreign_guest, room_id, ota_source, ota_source_label, ical_external_event_id, advance_payment_mode, advance_payment_proof_url, pending_payment_mode, pending_payment_proof_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $stmt->execute([
                         $resolvedGuestName,
                         $input['phone_number'] ?? $input['contact'] ?? '0000000000',
@@ -859,6 +905,10 @@ function handleGuestRequests($pdo, $request_method, $action, $propertyId) {
                         $otaSource,
                         $otaSourceLabel,
                         $icalExternalEventId,
+                        $advancePaymentMode,
+                        $advancePaymentProofUrl,
+                        $pendingPaymentMode,
+                        $pendingPaymentProofUrl,
                     ]);
                     $newId = $pdo->lastInsertId();
 
