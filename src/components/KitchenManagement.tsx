@@ -1596,6 +1596,7 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
             active={activeTab === 'kds'}
             title={
               <span className="inline-flex items-center gap-1.5">
+                <ChefHat className="w-4 h-4 shrink-0" />
                 <span>{t('live_active_orders_label', 'Live Tickets')}</span>
                 {pendingOrdersCount > 0 && (
                   <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-2xs font-semibold rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
@@ -1607,7 +1608,12 @@ export const KitchenManagement: React.FC<KitchenManagementProps> = ({
           />
           <TabItem
             active={activeTab === 'new_order'}
-            title={t('create_resident_order_button', 'Take Order')}
+            title={
+              <span className="inline-flex items-center gap-1.5">
+                <UtensilsCrossed className="w-4 h-4 shrink-0" />
+                <span>{t('create_resident_order_button', 'Take Order')}</span>
+              </span>
+            }
           />
         </Tabs>
         )}
