@@ -362,6 +362,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         license_management: { tab: 'licenses', key: 'license_management' },
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
         connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
+        go_live: { tab: 'go_live', key: 'go_live' },
         subscription: { tab: 'subscription', key: 'subscription' },
       };
 
@@ -682,6 +683,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
       licenses: 'license_management',
       channel_manager: 'channel_manager',
       connect_channels: 'connect_channels',
+      go_live: 'go_live',
       subscription: 'subscription',
     };
     const targetKey = menuItemKey || defaults[tab] || tab;
@@ -1580,7 +1582,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         // removed (11 Sep 2026, site still in testing), so these are dead/unknown
         // hashes now and never match either branch below.
         'edit_food_menu', 'beta_recipe_builder', 'misc_charges', 'edit_items_group',
-        'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'subscription'
+        'service_requests', 'license_management', 'channel_manager', 'connect_channels', 'go_live', 'subscription'
       ]);
 
       // 'edit_property' is deliberately NOT in `reserved` above - clicking it
@@ -1681,6 +1683,7 @@ function AppBody({ preloadedData }: AppBodyProps) {
         license_management: { tab: 'licenses', key: 'license_management' },
         channel_manager: { tab: 'channel_manager', key: 'channel_manager' },
         connect_channels: { tab: 'connect_channels', key: 'connect_channels' },
+        go_live: { tab: 'go_live', key: 'go_live' },
         subscription: { tab: 'subscription', key: 'subscription' },
       };
 
@@ -3062,11 +3065,11 @@ ${itemsStr}
                 </ErrorBoundary>
               )}
 
-              {!selectedRoomSlugOverride && (activeTab === 'channel_manager' || activeTab === 'connect_channels') && (
+              {!selectedRoomSlugOverride && (activeTab === 'channel_manager' || activeTab === 'connect_channels' || activeTab === 'go_live') && (
                 <ErrorBoundary section="OTA Channels">
                   <OtaChannelsHub
                     propertyId={preloadedData.currentProperty?.id || 0}
-                    initialTab={activeTab === 'connect_channels' ? 'connections' : 'sync_console'}
+                    initialTab={activeTab === 'connect_channels' ? 'connections' : activeTab === 'go_live' ? 'go_live' : 'sync_console'}
                     onLogAudit={logAudit}
                   />
                 </ErrorBoundary>

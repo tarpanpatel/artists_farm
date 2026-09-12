@@ -5213,6 +5213,7 @@ switch ($action) {
     case 'channex_channels_available':
     case 'channex_channel_adapter':
     case 'channex_channel_connection_status':
+    case 'channex_go_live_status':
     case 'channex_channel_test_connection':
     case 'channex_channel_start_airbnb':
     case 'channex_channel_airbnb_connection_link':
@@ -5398,6 +5399,137 @@ switch ($action) {
 
                 echo json_encode(['status' => 'success', 'data' => ['connections' => $rows, 'local_rooms' => $localRooms]]);
                 break 2;
+
+            case 'channex_go_live_status': {
+                // Go Live status - Phase 1 of GO_LIVE_SPEC.md (12 Sep 2026). READ-ONLY:
+                // no content sync, no mapping, no activation. Assembles a truthful picture
+                // of where a property stands entirely from things that already exist -
+                // per-unit price coverage (buildChannexPushPreflight(), the exact same code
+                // path the real push uses - see that file's own reasoning for why this is
+                // deliberate), per-connection local status, and per-connection LIVE state
+                // read from Channex itself, not trusted from our own stored column. That
+                // last part is the point: `channex_status` disagreeing with `local_status`
+                // (`state_matches: false`) is exactly the gap that let Patel Colony's 7
+                // listings show green "Mapped & Active" while its Airbnb channel had never
+                // been activated - see PRE_LAUNCH_CHECK.md §1.7.
+                if ($targetPropertyId <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['status' => 'error', 'message' => 'property_id is required']);
+                    break 2;
+                }
+
+                require_once __DIR__ . '/../channex/push_preflight.php';
+                $preflight = buildChannexPushPreflight($pdo, $targetPropertyId);
+
+                // sync_status per unit (added 11 Sep 2026 - a mapping created with no real
+                // price is parked here instead of getting a fabricated one). Keyed by
+                // room_id, with the NULL-room (single-unit) row under a string key since
+                // PHP array keys can't be null.
+                $syncStatusByRoom = [];
+                $ssStmt = $pdo->prepare("SELECT room_id, sync_status, channex_rate_plan_id FROM channex_mappings WHERE property_id = ?");
+                $ssStmt->execute([$targetPropertyId]);
+                foreach ($ssStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                    $key = $r['room_id'] === null ? 'null' : (string)$r['room_id'];
+                    $syncStatusByRoom[$key] = [
+                        'sync_status' => $r['sync_status'],
+                        'has_rate_plan' => trim((string)($r['channex_rate_plan_id'] ?? '')) !== '',
+                    ];
+                }
+
+                $units = [];
+                $anyUnitMissingPrice = false;
+                foreach ($preflight['rooms'] as $room) {
+                    $key = $room['room_id'] === null ? 'null' : (string)$room['room_id'];
+                    $ss = $syncStatusByRoom[$key] ?? null;
+                    $hasPrice = (float)$room['default_tariff'] > 0;
+                    if (!$hasPrice) $anyUnitMissingPrice = true;
+                    $units[] = [
+                        'room_id' => $room['room_id'],
+                        'name' => $room['room_name'],
+                        'default_tariff' => $room['default_tariff'],
+                        'has_price' => $hasPrice,
+                        'total_nights' => $room['total_nights'],
+                        'unpriced_nights' => $room['uncovered_nights'],
+                        'unpriced_ranges' => $room['uncovered_ranges'],
+                        'sync_status' => $ss['sync_status'] ?? 'not_synced',
+                        'has_rate_plan' => $ss['has_rate_plan'] ?? false,
+                    ];
+                }
+
+                // Channel state - local row plus a LIVE read from Channex. Only is_active is
+                // ever extracted; getChannel()'s own doc comment explains why the rest of
+                // that response (an OAuth token pair) must never leave this function.
+                $connRows = listChannexChannelConnections($pdo, $targetPropertyId);
+                $channels = [];
+                $anyChannelLive = false;
+                $anyChannelMappingIncomplete = false;
+                foreach ($connRows as $c) {
+                    $channexStatus = 'unknown';
+                    $lastErrorLive = null;
+                    if (!empty($c['channex_channel_id'])) {
+                        try {
+                            $live = $channelClient->getChannel((string)$c['channex_channel_id']);
+                            if (!empty($live['success']) && isset($live['data']['attributes']['is_active'])) {
+                                $channexStatus = !empty($live['data']['attributes']['is_active']) ? 'active' : 'inactive';
+                            }
+                        } catch (Throwable $e) {
+                            $lastErrorLive = 'Could not reach Channex to verify live state';
+                        }
+                    }
+                    $localIsActive = ($c['status'] === 'active');
+                    $channexIsActive = $channexStatus === 'active';
+                    $stateMatches = $channexStatus === 'unknown' ? null : ($localIsActive === $channexIsActive);
+                    if ($channexIsActive) $anyChannelLive = true;
+
+                    $mappingRows = !empty($c['id']) ? getChannexChannelRoomMappings($pdo, (int)$c['id']) : [];
+                    $mappedCount = count($mappingRows);
+                    if ($mappedCount === 0 || $mappedCount < count($units)) $anyChannelMappingIncomplete = true;
+
+                    $channels[] = [
+                        'channel_code' => $c['channel_code'],
+                        'local_status' => $c['status'],
+                        'channex_status' => $channexStatus,
+                        'state_matches' => $stateMatches,
+                        'mapped_listings' => $mappedCount,
+                        'total_units' => count($units),
+                        'last_error' => $lastErrorLive ?? ($c['last_error'] ?? null),
+                    ];
+                }
+
+                $blockers = [];
+                foreach ($units as $u) {
+                    if (!$u['has_price']) {
+                        $blockers[] = [
+                            'code' => 'unit_no_price',
+                            'unit' => $u['name'],
+                            'message' => "\"{$u['name']}\" needs a base price before it can go live.",
+                        ];
+                    }
+                }
+
+                // First incomplete stage, in order. Stage 1 (Setup) isn't re-derived here -
+                // the existing wizard already tracks it (see GO_LIVE_SPEC.md - "not
+                // re-implemented").
+                $stage = 5; // fully live / verify
+                if (empty($connRows)) {
+                    $stage = 3;
+                } elseif ($anyUnitMissingPrice) {
+                    $stage = 2;
+                } elseif ($anyChannelMappingIncomplete) {
+                    $stage = 3;
+                } elseif (!$anyChannelLive) {
+                    $stage = 4;
+                }
+
+                echo json_encode(['status' => 'success', 'data' => [
+                    'stage' => $stage,
+                    'is_live' => $anyChannelLive,
+                    'units' => $units,
+                    'channels' => $channels,
+                    'blockers' => $blockers,
+                ]]);
+                break 2;
+            }
 
             case 'channex_channel_test_connection':
                 $channelCode = trim((string)($input['channel_code'] ?? ''));

@@ -85,7 +85,15 @@ class ChannexChannelClient {
         return $this->client->get('channels', $params);
     }
 
-    /** GET /channels/:id */
+    /**
+     * GET /channels/:id - includes `attributes.is_active` (verified live 12 Sep 2026
+     * against a real connection - a genuine boolean, not guessed from another field).
+     *
+     * SECURITY: the response also carries `attributes.settings.tokens` - a live OAuth
+     * access/refresh token pair for the connected account. Any caller must extract only
+     * the specific fields it needs and NEVER forward the raw response - to the frontend,
+     * to a log line, anywhere outside this request.
+     */
     public function getChannel(string $channelId): array {
         return $this->client->get("channels/{$channelId}");
     }

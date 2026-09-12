@@ -34,6 +34,7 @@ export type TabType =
   | 'licenses'
   | 'channel_manager'
   | 'connect_channels'
+  | 'go_live'
   | 'subscription';
 
 interface NavigationProps {

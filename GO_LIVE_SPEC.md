@@ -2,7 +2,7 @@
 
 **Status:** draft for review, no code written
 **Date:** 12 Sep 2026 (revised same day after checking industry practice — §1a)
-**Companion to:** [PRE_LAUNCH_CHECK.md](PRE_LAUNCH_CHECK.md) — that file lists the bugs; this
+**Companion to:** [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) — that file lists the bugs; this
 proposes the structural fix for why they kept happening.
 
 ---
@@ -68,7 +68,7 @@ account for:
 
 1. **Show computed facts, never assertions.** Every number on this page is read from the
    database or from Channex at the moment of display. No label describes a state that
-   wasn't checked (this is the failure behind every entry in PRE_LAUNCH_CHECK.md §0).
+   wasn't checked (this is the failure behind every entry in LAUNCH_CHECKLIST.md §0).
 2. **Local state is not truth.** `channel_connections.status` is our own stored copy. Where
    it matters, ask Channex and show both — including when they disagree.
 3. **Read-only until the owner says otherwise.** Phase 1 writes nothing at all.
