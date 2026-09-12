@@ -26,7 +26,6 @@ import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
-import { FileInput } from './FileInput';
 import { BillingCheckout } from './BillingCheckout';
 import { PricingPage } from './PricingPage';
 import { t } from '../i18n/en';
@@ -1594,11 +1593,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 Transparent rather than filled so the grouping reads without
                 competing with the Additional Charges block further down. */}
             {bookingRoomTariff > 0 && (
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
-                <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Advance Payment
-                </span>
-
+              <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Input
@@ -1634,38 +1629,39 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                   ) : <div />}
                 </div>
 
-                {/* Mode and proof appear only once a handler is named (12 Sep
-                    2026, explicit request) - typing an amount alone used to
-                    expand the form by two more controls mid-keystroke. The
-                    handler is also the field that makes the mode meaningful:
-                    "Cash" with nobody recorded as having taken it is not an
-                    answer anyone can follow up on. */}
                 {bookingAdvance > 0 && advanceReceivedBy && (
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <StyledSelect
-                        label="Advance Payment Mode"
-                        value={advancePaymentMode}
-                        disabled={!!savedBooking}
-                        onChange={(val) => setAdvancePaymentMode(val as 'Cash' | 'Online')}
-                        options={[
-                          { value: 'Cash', label: 'Cash' },
-                          { value: 'Online', label: 'Online' },
-                        ]}
-                      />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div>
+                        <StyledSelect
+                          label="Advance Payment Mode"
+                          value={advancePaymentMode}
+                          disabled={!!savedBooking}
+                          onChange={(val) => setAdvancePaymentMode(val as 'Cash' | 'Online')}
+                          options={[
+                            { value: 'Cash', label: 'Cash' },
+                            { value: 'Online', label: 'Online' },
+                          ]}
+                        />
+                      </div>
                     </div>
+
                     {advancePaymentMode === 'Online' && (
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-gray-900 dark:text-gray-300">
+                      <div>
+                        <label className="block mb-2 text-xs font-medium text-gray-900 dark:text-white" htmlFor="booking-advance-screenshot">
                           Payment Screenshot
                         </label>
                         {advancePaymentProofBase64 ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                             <img
                               src={advancePaymentProofBase64}
                               alt="Advance payment proof"
-                              className="w-9 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs"
+                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-600 shadow-xs"
                             />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-900 dark:text-white truncate">Screenshot uploaded</p>
+                              <p className="text-2xs text-gray-500 dark:text-gray-400">Ready to save</p>
+                            </div>
                             <button
                               type="button"
                               disabled={!!savedBooking}
@@ -1676,13 +1672,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <FileInput
-                            id="booking-advance-screenshot"
-                            accept="image/*"
-                            sizing="sm"
-                            disabled={!!savedBooking}
-                            onChange={handleAdvanceProofFileChange}
-                          />
+                          <>
+                            <input
+                              className="block w-full text-xs text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                              id="booking-advance-screenshot"
+                              type="file"
+                              accept="image/*"
+                              disabled={!!savedBooking}
+                              onChange={handleAdvanceProofFileChange}
+                            />
+                            <p className="mt-1 text-2xs text-gray-500 dark:text-gray-400">
+                              PNG, JPG, or WebP screenshot
+                            </p>
+                          </>
                         )}
                       </div>
                     )}
@@ -1691,13 +1693,9 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
               </div>
             )}
 
-            {/* Pending Balance box - same shape as the Advance one above. */}
+            {/* Pending Balance - clean rows matching Advance above */}
             {bookingAdvance > 0 && bookingPending > 0 && (
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-3 bg-transparent">
-                <span className="text-2xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                  Pending Balance
-                </span>
-
+              <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <Input
@@ -1732,31 +1730,38 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                 </div>
 
                 {pendingReceivedBy && (
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <StyledSelect
-                        label="Pending Payment Mode"
-                        value={pendingPaymentMode}
-                        disabled={!!savedBooking}
-                        onChange={(val) => setPendingPaymentMode(val as 'Cash' | 'Online')}
-                        options={[
-                          { value: 'Cash', label: 'Cash' },
-                          { value: 'Online', label: 'Online' },
-                        ]}
-                      />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div>
+                        <StyledSelect
+                          label="Pending Payment Mode"
+                          value={pendingPaymentMode}
+                          disabled={!!savedBooking}
+                          onChange={(val) => setPendingPaymentMode(val as 'Cash' | 'Online')}
+                          options={[
+                            { value: 'Cash', label: 'Cash' },
+                            { value: 'Online', label: 'Online' },
+                          ]}
+                        />
+                      </div>
                     </div>
+
                     {pendingPaymentMode === 'Online' && (
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-gray-900 dark:text-gray-300">
+                      <div>
+                        <label className="block mb-2 text-xs font-medium text-gray-900 dark:text-white" htmlFor="booking-pending-screenshot">
                           Payment Screenshot
                         </label>
                         {pendingPaymentProofBase64 ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                             <img
                               src={pendingPaymentProofBase64}
                               alt="Pending payment proof"
-                              className="w-9 h-9 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs"
+                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-600 shadow-xs"
                             />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-900 dark:text-white truncate">Screenshot uploaded</p>
+                              <p className="text-2xs text-gray-500 dark:text-gray-400">Ready to save</p>
+                            </div>
                             <button
                               type="button"
                               disabled={!!savedBooking}
@@ -1767,13 +1772,19 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <FileInput
-                            id="booking-pending-screenshot"
-                            accept="image/*"
-                            sizing="sm"
-                            disabled={!!savedBooking}
-                            onChange={handlePendingProofFileChange}
-                          />
+                          <>
+                            <input
+                              className="block w-full text-xs text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                              id="booking-pending-screenshot"
+                              type="file"
+                              accept="image/*"
+                              disabled={!!savedBooking}
+                              onChange={handlePendingProofFileChange}
+                            />
+                            <p className="mt-1 text-2xs text-gray-500 dark:text-gray-400">
+                              PNG, JPG, or WebP screenshot
+                            </p>
+                          </>
                         )}
                       </div>
                     )}
