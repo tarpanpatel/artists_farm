@@ -1124,6 +1124,37 @@ export const ChannelConnectWizard: React.FC<ChannelConnectWizardProps> = ({
                 anything leaves.
               </span>
             </div>
+
+            {/* GO_LIVE_SPEC.md §1a.2 / Stage 4b (12 Sep 2026). The card above covers THIS push
+                - a one-time event. This one covers the permanent change that follows it, which
+                is a different fact and the one that actually surprised someone: after going
+                live, the OTA's own calendar stops being editable for this listing, and anything
+                changed there gets overwritten on the next sync. That is not a Ground Code
+                behaviour we could soften - it is what connecting a channel manager MEANS (see
+                CHANNEX.md 6 on Airbnb's sync_all), and Guesty/Hostaway both state it plainly up
+                front as the point of the product. On The Artists' Farm it was discovered instead
+                as a greyed-out Airbnb calendar that looked like a fault.
+
+                Deliberately NOT a checkbox. The consent that matters is the typed property name
+                on the next screen; a third thing to tick here would just train people to click
+                through all of them, which is exactly why the two old checkboxes were removed
+                (see the note above). This is disclosure, not consent. */}
+            <div className="flex items-start gap-2.5 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="text-sm text-amber-900 dark:text-amber-200 space-y-1">
+                <p className="font-semibold">
+                  From now on, manage this listing here - not on {selectedAdapter?.title}.
+                </p>
+                <p className="text-amber-800/90 dark:text-amber-300/90">
+                  Once live, {selectedAdapter?.title} hands calendar control to Ground Code. Prices
+                  and blocked dates you set directly on {selectedAdapter?.title} will be replaced
+                  the next time Ground Code syncs
+                  {isAirbnb ? ', and Airbnb greys out its own calendar editing for this listing' : ''}.
+                  This is normal and is what connecting a channel manager does - but it means
+                  Ground Code is the place you change prices and block dates from today.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -1162,7 +1162,7 @@ $channex_ops_actions = [
     'channex_content_sync', 'channex_register_webhook', 'channex_retry_outbox',
     'channex_push_ari', 'channex_outbox_drain', 'get_channex_status',
     'channex_drain_feed', 'channex_push_preflight',
-    'channex_go_live_status', 'channex_set_unit_price',
+    'channex_go_live_status', 'channex_set_unit_price', 'channex_verify_sync',
 ];
 if (in_array($action, $channex_ops_actions, true)) {
     $userRole = strtolower($_SESSION['role'] ?? '');
@@ -6472,6 +6472,62 @@ switch ($action) {
             isset($input['date_from']) ? trim((string)$input['date_from']) : null,
             isset($input['date_to']) ? trim((string)$input['date_to']) : null
         )]);
+        break;
+
+    case 'channex_verify_sync':
+        // Go Live Stage 5b (GO_LIVE_SPEC.md, 12 Sep 2026) - the owner-facing "Verify now".
+        //
+        // READ-ONLY: GETs from Channex, reads the local DB, pushes nothing. Runs the SAME
+        // comparison as the daily channex_sync_audit cron (both call
+        // auditChannexPublishedAvailability) rather than a second implementation, because a
+        // check whose entire purpose is detecting disagreement is the last place to keep two
+        // copies that could themselves disagree.
+        //
+        // Why on demand at all, when a cron already does this daily: the cron is silent when
+        // healthy and alerts to Telescope/push when not, which is right for background
+        // monitoring but useless at the moment someone actually wants to know - just after
+        // going live, or while looking at a channel they suspect. "A task id proves a request
+        // was accepted, not that the numbers agree" (CHANNEX.md's standing rule); this is how
+        // the owner checks the numbers themselves instead of trusting a success toast.
+        require_once __DIR__ . '/../channex/sync_audit.php';
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?: $_POST;
+        $targetPropertyId = !empty($input['property_id']) ? (int)$input['property_id'] : ($propertyId ?: 0);
+        if ($targetPropertyId <= 0) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'property_id is required']);
+            break;
+        }
+        if ($targetPropertyId !== $propertyId && !isPropertyAccessAllowed($pdo, $targetPropertyId)) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Not authorized for this property']);
+            break;
+        }
+
+        // 30 days by default: long enough to be a real check, short enough to stay a snappy
+        // button. The daily cron audits 120 - it can afford the time, a waiting human can't.
+        $verifyDays = isset($input['days']) ? max(1, min(365, (int)$input['days'])) : 30;
+        $vFrom = date('Y-m-d');
+        $vTo = date('Y-m-d', strtotime("+{$verifyDays} days"));
+
+        try {
+            $audit = auditChannexPublishedAvailability($pdo, $vFrom, $vTo, $targetPropertyId);
+            echo json_encode(['status' => 'success', 'data' => [
+                'checked_at' => date('c'),
+                'window' => [$vFrom, $vTo],
+                'days' => $verifyDays,
+                // Empty `checked` with no problems means nothing was audited at all - no ACTIVE
+                // channel for this property. That is a meaningful answer ("nothing is live, so
+                // there is nothing to disagree with"), not a clean bill of health, and the UI
+                // says so rather than showing a reassuring green tick.
+                'checked' => $audit['checked'],
+                'problems' => $audit['problems'],
+                'is_live' => !empty($audit['live_property_ids']),
+            ]]);
+        } catch (Throwable $e) {
+            http_response_code(502);
+            echo json_encode(['status' => 'error', 'message' => 'Could not verify against Channex: ' . $e->getMessage()]);
+        }
         break;
 
     case 'channex_set_unit_price':

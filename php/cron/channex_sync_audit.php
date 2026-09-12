@@ -60,25 +60,15 @@ $logFile = __DIR__ . '/channex_sync_audit.log';
 $timestamp = date('Y-m-d H:i:s');
 $problems = [];
 
-/** Expand the worker's compressed ranges back into a date => availability map,
- *  so the comparison tests the exact values a push would carry rather than a
- *  second reimplementation of the same rules that could drift from it. */
-function expandRanges(array $ranges): array {
-    $out = [];
-    foreach ($ranges as $r) {
-        $cur = strtotime($r['date_from']);
-        $end = strtotime($r['date_to']);
-        while ($cur <= $end) {
-            $out[date('Y-m-d', $cur)] = (int)($r['availability'] ?? 0);
-            $cur = strtotime('+1 day', $cur);
-        }
-    }
-    return $out;
-}
+// expandRanges() and the whole of check #1 below moved to php/channex/sync_audit.php on
+// 12 Sep 2026, unchanged, so the owner-facing "Verify now" button on the Go Live page runs
+// this exact comparison instead of a second one that would slowly disagree with it. A check
+// that exists to detect disagreement is the last place to keep two copies of.
 
 try {
     require_once __DIR__ . '/../channex/ari_drain_worker.php';
     require_once __DIR__ . '/../channex/ChannexClient.php';
+    require_once __DIR__ . '/../channex/sync_audit.php';
 
     $from = date('Y-m-d');
     $to = date('Y-m-d', strtotime('+' . AUDIT_DAYS . ' days'));
@@ -86,118 +76,17 @@ try {
     $client = new ChannexClient();
 
     // ---- 1. Published availability vs. our own ----------------------------
-    // Scoped to properties with an ACTIVE channel connection, not merely a
-    // Channex mapping. A mapping is created by content sync, long before (and
-    // sometimes without ever) a channel goes live - and a Channex room type
-    // that has never had availability pushed sits at 0, which reads as "closed
-    // everywhere". Auditing those produced 8 confidently-wrong findings on the
-    // very first run against staging, for three properties the owner had
-    // explicitly said were not connected yet. A check that cries wolf about
-    // deliberately dormant properties every morning is worse than no check: it
-    // is the exact mechanism by which people stop reading alerts.
-    try {
-        $props = $pdo->query("
-            SELECT DISTINCT m.property_id, m.channex_property_id, p.name
-            FROM channex_mappings m
-            JOIN properties p ON p.id = m.property_id
-            JOIN channex_channel_connections c ON c.property_id = m.property_id AND c.status = 'active'
-            WHERE m.channex_property_id IS NOT NULL
-        ")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $props = []; // connections table not built on this environment yet
+    // The comparison itself lives in php/channex/sync_audit.php (see its doc comment for
+    // why it is scoped to ACTIVE channels only, and what the "never_published" finding
+    // means). Passing null audits every live property, which is this cron's job.
+    $audit = auditChannexPublishedAvailability($pdo, $from, $to, null, $client, $worker);
+    foreach ($audit['problems'] as $p) {
+        $problems[] = $p;
     }
-    $livePropertyIds = array_column($props, 'property_id');
-
-    foreach ($props as $prop) {
-        $res = $client->get('availability', [
-            'filter' => ['property_id' => $prop['channex_property_id'], 'date' => ['gte' => $from, 'lte' => $to]],
-        ]);
-        if (empty($res['success']) || !isset($res['data'])) {
-            $problems[] = [
-                'type' => 'availability_unverifiable',
-                'property_id' => (int)$prop['property_id'],
-                'property' => $prop['name'],
-                'error' => substr(json_encode($res['error'] ?? 'no data in response'), 0, 200),
-            ];
-            continue;
-        }
-        $published = $res['data'];
-
-        $rooms = $pdo->prepare("
-            SELECT m.room_id, m.channex_room_type_id, COALESCE(r.name, p.name) AS name
-            FROM channex_mappings m
-            LEFT JOIN properties r ON r.id = m.room_id
-            JOIN properties p ON p.id = m.property_id
-            WHERE m.property_id = ?
-        ");
-        $rooms->execute([$prop['property_id']]);
-
-        foreach ($rooms->fetchAll(PDO::FETCH_ASSOC) as $room) {
-            $ours = expandRanges($worker->computeCompressedAvailability(
-                (int)$prop['property_id'],
-                $room['room_id'] !== null ? (int)$room['room_id'] : null,
-                $from,
-                $to
-            ));
-            $theirs = $published[$room['channex_room_type_id']] ?? null;
-            if ($theirs === null) {
-                $problems[] = [
-                    'type' => 'room_not_published',
-                    'property' => $prop['name'],
-                    'room' => $room['name'],
-                    'note' => 'Channex returned no availability for this room type at all',
-                ];
-                continue;
-            }
-
-            $mismatches = [];
-            $comparable = 0;
-            $channexOpenNights = 0;
-            foreach ($ours as $date => $expected) {
-                if (!array_key_exists($date, $theirs)) continue; // Channex may return a shorter window
-                $comparable++;
-                $actual = (int)$theirs[$date];
-                if ($actual > 0) $channexOpenNights++;
-                // Compare open/closed, not the exact count: Ground Code models
-                // one unit per room, while a Channex room type can legitimately
-                // carry a higher inventory count. Open-vs-closed is the part
-                // that decides whether a night can be double-sold.
-                if (($expected > 0) !== ($actual > 0)) {
-                    $mismatches[] = ['date' => $date, 'ground_code' => $expected > 0 ? 'open' : 'closed', 'channex' => $actual > 0 ? 'open' : 'closed'];
-                }
-            }
-
-            if (!$mismatches) continue;
-
-            // Closed on EVERY audited night, for a room that is live on a
-            // channel, is not ordinary drift - it is the signature of ARI never
-            // having reached Channex at all. That exact state (AVL=0 for every
-            // room, every date, on a property whose "Go Live" reported success)
-            // is the 3 Sep 2026 incident, and it went unnoticed for days. It
-            // means the room is unsellable on every channel it is listed on, so
-            // it deserves its own name rather than being filed under "a few
-            // nights disagree".
-            if ($comparable > 0 && $channexOpenNights === 0) {
-                $problems[] = [
-                    'type' => 'never_published',
-                    'property' => $prop['name'],
-                    'room' => $room['name'],
-                    'nights_checked' => $comparable,
-                    'note' => 'Live on a channel, but Channex shows this room closed on every audited night - it cannot be booked anywhere. Usually means ARI has never actually reached Channex.',
-                ];
-                continue;
-            }
-
-            $problems[] = [
-                'type' => 'availability_drift',
-                'property' => $prop['name'],
-                'room' => $room['name'],
-                'mismatched_nights' => count($mismatches),
-                'of_nights_checked' => $comparable,
-                'first_few' => array_slice($mismatches, 0, 8),
-            ];
-        }
-    }
+    // From the audit itself, NOT derived from $problems - see that function's doc comment.
+    // Checks #4 and #5 below scope themselves to live properties, and would silently stop
+    // running whenever availability happened to be healthy.
+    $livePropertyIds = $audit['live_property_ids'];
 
     // ---- 2. Undrained booking feed ---------------------------------------
     $feed = $client->get('booking_revisions/feed');

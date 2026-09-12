@@ -250,8 +250,32 @@ inject one (per the channex-pms-integration skill), only the dashboard's Booking
 | **1** | Read-only page + `channex_go_live_status`. Shows stage, units, prices, mapping, live channel state, drift flag, blockers. | Very low — no writes | ✅ Shipped 12 Sep 2026 |
 | **2a** | Inline price entry on the Go Live page (`channex_set_unit_price`) + visible reporting when a listing is skipped for lacking a price, in both mapping paths (`channex_channel_save_mapping` and the auto-import). | Medium — writes prices, triggers content-sync self-heal; never binds a channel | ✅ Shipped 12 Sep 2026 (soft form — see below) |
 | **2b** | The hard-block form of §1a.1: mapping cannot *complete* until a price is accepted, not just reported after the fact. | Medium — same writes as 2a, plus a new required UI step in `ChannelConnectWizard.tsx` | ✅ Shipped 12 Sep 2026 (client-side block; server-side still open — §7.6) |
-| **3** | Stage 4a+4b wired in: preflight gate + sync-control acknowledgment, then activation. | Higher — this is the live push | ⏳ Not built |
-| **4** | Stage 5: test-booking tracker (5a) and readback verification (5b). | Low — tracking + read-only API calls | ⏳ Not built |
+| **3** | Stage 4a+4b: preflight gate + sync-control disclosure, then activation. | Higher — this is the live push | ✅ Shipped 12 Sep 2026 |
+| **4a** | Stage 5a: test-booking tracker. | Low — a tracked prompt, nothing automated | ⏳ Not built |
+| **4b** | Stage 5b: readback verification ("Verify now"). | Low — read-only API calls | ✅ Shipped 12 Sep 2026 |
+
+**Phase 3 note.** 4a (the preflight gate) already existed and already ran on activation — it
+needed no wiring. What was missing was 4b, and it shipped as a **disclosure card on the Go
+Live step, not a fourth confirmation**: the consent that matters is the typed property name on
+the next screen, and a third thing to tick would only train people to click through all of
+them — which is exactly why the two original consent checkboxes were removed on 9 Sep. It
+states the permanent consequence (the OTA's calendar stops being editable for this listing and
+its own edits get overwritten on the next sync), which is a different fact from "this push
+replaces things now" and the one that was actually discovered the hard way, as a greyed-out
+Airbnb calendar that looked like a fault.
+
+**Phase 4b note — it reuses the daily cron's comparison rather than adding a second one.**
+`channex_sync_audit.php` had been doing this exact night-by-night readback since 5 Sep, but
+only daily and only to Telescope/push, which is right for background monitoring and useless
+at the moment someone actually wants to know. The comparison was extracted to
+`php/channex/sync_audit.php`; the cron and the new `channex_verify_sync` endpoint both call
+it. A check whose entire purpose is detecting disagreement is the last place to keep two
+implementations that could themselves disagree.
+
+*Caught during that extraction, before it shipped:* deriving the cron's `$livePropertyIds`
+from the audit's `problems` (rather than returning it explicitly) would have emptied it
+whenever availability was healthy — silently switching off the cron's rate-coverage and
+overlapping-bookings checks precisely when everything looked fine.
 
 **Why Phase 2 split into 2a/2b.** §1a.1 asked for a hard block — mapping refuses to
 complete without a price. 2a shipped the softer half first (the gap made *visible*:
