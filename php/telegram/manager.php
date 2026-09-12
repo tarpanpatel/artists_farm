@@ -320,8 +320,8 @@ if ($action === 'get_templates') {
                     $cleanContent = TelegramTemplates::restoreEmojis($r['content']);
                     if ($cleanContent !== $r['content']) {
                         try {
-                            $upd = $pdo->prepare("UPDATE system_telegram_templates SET content = ? WHERE id = ?");
-                            $upd->execute([$cleanContent, $r['id']]);
+                            $upd = $pdo->prepare("UPDATE system_telegram_templates SET content = ? WHERE template_key = ?");
+                            $upd->execute([$cleanContent, $r['template_key']]);
                             $r['content'] = $cleanContent;
                         } catch (Exception $ex) {}
                     }

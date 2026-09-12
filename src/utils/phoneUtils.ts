@@ -80,6 +80,32 @@ export function getWhatsAppPhone(raw: string): string {
 }
 
 /**
+ * Generates an optimal WhatsApp share URL:
+ * - On Mobile (Android/iOS): wa.me deep links open the native WhatsApp mobile app where UTF-8 emojis work properly.
+ * - On Desktop (Windows/Mac): opens WhatsApp Web (web.whatsapp.com) directly. This completely prevents the Windows
+ *   OS protocol handler bug where launching the Windows native WhatsApp desktop app via wa.me / api.whatsapp.com
+ *   corrupts 4-byte UTF-8 emojis into replacement characters (diamond question marks).
+ */
+export function getWhatsAppShareUrl(rawPhone?: string, text?: string): string {
+  const phone = rawPhone ? getWhatsAppPhone(rawPhone) : '';
+  const encodedText = text ? encodeURIComponent(text) : '';
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    if (phone) {
+      return `https://wa.me/${phone}${encodedText ? `?text=${encodedText}` : ''}`;
+    }
+    return `https://wa.me/?text=${encodedText}`;
+  } else {
+    // Desktop: use WhatsApp Web so the browser decodes UTF-8 natively and preserves all emojis
+    if (phone) {
+      return `https://web.whatsapp.com/send?phone=${phone}${encodedText ? `&text=${encodedText}` : ''}`;
+    }
+    return `https://web.whatsapp.com/send?text=${encodedText}`;
+  }
+}
+
+/**
  * Returns a clickable tel: URI for one-tap calling.
  */
 export function getTelUri(raw: string): string {

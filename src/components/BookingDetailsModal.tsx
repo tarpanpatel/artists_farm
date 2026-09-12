@@ -32,7 +32,7 @@ import {
 } from '../services/api';
 import { shareTextContent } from '../utils/shareText';
 import { parseDateToYMD, formatDateDDMMYYYY } from '../utils/dateUtils';
-import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
+import { normalizePhoneNumber, isValidPhoneNumber, getWhatsAppShareUrl } from '../utils/phoneUtils';
 import { cleanGuestNotes } from '../utils/otaNotesCleaner';
 import { OtaBadge } from './OtaBadge';
 import { t } from '../i18n/en';
@@ -1254,12 +1254,7 @@ export const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({
   // if the browser can't open a new tab/window at all (shouldn't happen in
   // practice, but keeps this from being a dead button on an odd browser).
   const handleConfirmSendBooking = async () => {
-    const cleanPhone = (guest.phoneNumber || '').replace(/\D/g, '');
-    const waUrl = cleanPhone.length === 10
-      ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(sharePreviewMessage)}`
-      : cleanPhone.length > 10
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(sharePreviewMessage)}`
-      : `https://wa.me/?text=${encodeURIComponent(sharePreviewMessage)}`;
+    const waUrl = getWhatsAppShareUrl(guest.phoneNumber || '', sharePreviewMessage);
 
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(sharePreviewMessage).catch(() => {});

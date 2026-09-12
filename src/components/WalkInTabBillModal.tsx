@@ -10,6 +10,7 @@ import { Input } from './Input';
 import { t } from '../i18n/en';
 import { UpiPaymentBlock } from '../utils/upiQrCode';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { getWhatsAppShareUrl } from '../utils/phoneUtils';
 
 interface WalkInTabBillModalProps {
   tab: WalkInTab;
@@ -239,9 +240,14 @@ export const WalkInTabBillModal: React.FC<WalkInTabBillModalProps> = ({
                 {t('share_bill_png_button', 'Share Bill (PNG)')}
               </button>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(whatsappText)}`}
+                href={getWhatsAppShareUrl('', whatsappText)}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                    navigator.clipboard.writeText(whatsappText).catch(() => {});
+                  }
+                }}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-center"
               >
                 {t('share_via_whatsapp_button', 'Share via WhatsApp')}

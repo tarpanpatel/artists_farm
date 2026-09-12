@@ -71,6 +71,7 @@ import { humanizeKey } from '../utils/humanizeKey';
 import { normalizeAmenityList } from '../utils/amenityCatalog';
 import { DEFAULT_WHATSAPP_VOUCHER_TEMPLATE, renderWhatsappVoucherTemplate } from '../utils/whatsappVoucherTemplate';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { getWhatsAppShareUrl } from '../utils/phoneUtils';
 import { apiFetch, API_ROOT_BASE, getBookingHoldDB, confirmBookingHoldDB, BookingHoldDetails } from '../services/api';
 
 interface PublicRoom {
@@ -1164,9 +1165,14 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
             WalkInTabBillModal.tsx for the same pattern. */}
         <div className="grid grid-cols-2 gap-2.5">
           <a
-            href={`https://wa.me/?text=${encodeURIComponent(buildBookingVoucherWhatsAppText(confirmation))}`}
+            href={getWhatsAppShareUrl('', buildBookingVoucherWhatsAppText(confirmation))}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                navigator.clipboard.writeText(buildBookingVoucherWhatsAppText(confirmation)).catch(() => {});
+              }
+            }}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center h-10 cursor-pointer text-center"
           >
             Share on WhatsApp
@@ -1303,15 +1309,27 @@ export const PublicBookingEngine: React.FC<{ propertySlug?: string }> = ({ prope
 
               <div className="p-5 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(buildBookingVoucherWhatsAppText({
+                  href={getWhatsAppShareUrl('', buildBookingVoucherWhatsAppText({
                     ...(quoteHold as any),
                     ...(booking as any),
                     property_name: booking?.property_name || quoteHold?.property_name || '',
                     room_name: booking?.room_name || quoteHold?.room_name || '',
                     guest_name: booking?.guest_name || quoteGuestName || '',
-                  }))}`}
+                  }))}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => {
+                    const txt = buildBookingVoucherWhatsAppText({
+                      ...(quoteHold as any),
+                      ...(booking as any),
+                      property_name: booking?.property_name || quoteHold?.property_name || '',
+                      room_name: booking?.room_name || quoteHold?.room_name || '',
+                      guest_name: booking?.guest_name || quoteGuestName || '',
+                    });
+                    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                      navigator.clipboard.writeText(txt).catch(() => {});
+                    }
+                  }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center h-10 cursor-pointer text-center"
                 >
                   Share on WhatsApp

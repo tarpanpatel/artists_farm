@@ -22,7 +22,7 @@ import {
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 import { parseDateToYMD, formatDateDDMMYYYY, formatDateOrdinal } from '../utils/dateUtils';
-import { normalizePhoneNumber, isValidPhoneNumber } from '../utils/phoneUtils';
+import { normalizePhoneNumber, isValidPhoneNumber, getWhatsAppShareUrl } from '../utils/phoneUtils';
 import { DateRangePicker } from './DateRangePicker';
 import { StyledSelect } from './StyledSelect';
 import { Input, FloatingTextarea } from './Input';
@@ -962,12 +962,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
         house_manual: propertyGuestInfo?.houseManual || '',
       });
 
-      const cleanPhone = (savedBooking.phoneNumber || '').replace(/\D/g, '');
-      const waUrl = cleanPhone.length === 10
-        ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
-        : cleanPhone.length > 10
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
-        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+      const waUrl = getWhatsAppShareUrl(savedBooking.phoneNumber || '', waText);
 
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(waText).catch(() => {});
@@ -1063,12 +1058,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       // "Message yourself" default (12 Sep 2026, explicit request) - same
       // 10-digit-India-first pattern already used by handleSendInstantQuote's
       // sibling send flows a little further down this file.
-      const cleanPhone = (phoneNumber || '').replace(/\D/g, '');
-      const waUrl = cleanPhone.length === 10
-        ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
-        : cleanPhone.length > 10
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
-        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+      const waUrl = getWhatsAppShareUrl(phoneNumber || '', waText);
 
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(waText).catch(() => {});
@@ -1157,12 +1147,7 @@ export const GuestManagement: React.FC<GuestManagementProps> = ({
       waText += `\nTap here to view room details, photos, and book directly:\n${shareUrl}`;
 
       // Target specific guest phone if entered
-      const cleanPhone = phoneNumber.replace(/\D/g, '');
-      const waUrl = cleanPhone.length === 10
-        ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(waText)}`
-        : cleanPhone.length > 10
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waText)}`
-        : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+      const waUrl = getWhatsAppShareUrl(phoneNumber, waText);
 
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(waText).catch(() => {});

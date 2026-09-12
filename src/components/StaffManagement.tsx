@@ -35,6 +35,7 @@ import { StyledSelect } from './StyledSelect';
 import { addStaffUserDB, deleteStaffUserDB, updateStaffUserDB, updateTenantSuperAdminDB } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { formatDateDDMMYYYY } from '../utils/dateUtils';
+import { getWhatsAppShareUrl } from '../utils/phoneUtils';
 import { t } from '../i18n/en';
 
 import { useVerticalSwipe } from '../utils/useSwipeGesture';
@@ -584,9 +585,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const handleShareLogin = (user: { fullName: string; username: string; passcodePin?: string; phone?: string }) => {
     const message = buildStaffLoginShareMessage(user);
     const rawPhone = (user.phone || user.username || '').replace(/\D/g, '');
-    // Send directly to the user's own WhatsApp number
-    const waUrl = `https://wa.me/${rawPhone.startsWith('91') ? rawPhone : rawPhone ? `91${rawPhone}` : ''}?text=${encodeURIComponent(message)}`;
+    const waUrl = getWhatsAppShareUrl(rawPhone, message);
     if (rawPhone) {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(message).catch(() => {});
+      }
       window.open(waUrl, '_blank', 'noopener,noreferrer');
     } else {
       // Fallback: no phone known — copy to clipboard
