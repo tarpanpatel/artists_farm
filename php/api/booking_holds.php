@@ -389,10 +389,14 @@ function handleCreateBookingHold(PDO $pdo, int $propertyId, string $createdBy): 
                 'expires_in_seconds' => $holdMinutes * 60,
             ],
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        // Detail to the log, not to the caller (13 Sep 2026) - see the matching
+        // note in confirm_booking_hold below and in public_booking.php.
         if ($pdo->inTransaction()) $pdo->rollBack();
+        $ref = 'BH-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
+        error_log('create_booking_hold failed [' . $ref . ']: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'Failed to create quote: ' . $e->getMessage()]);
+        echo json_encode(['status' => 'error', 'message' => 'Could not create this quote. Please try again (ref ' . $ref . ').', 'reference' => $ref]);
     }
 }
 
@@ -754,10 +758,22 @@ function handleConfirmBookingHold(PDO $pdo): void {
                 'voucher_token' => $voucherToken,
             ], $voucherFields),
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        // confirm_booking_hold is on router.php's $public_actions list, so this
+        // message reaches an UNAUTHENTICATED guest confirming their own booking.
+        // It was returning $e->getMessage() verbatim, which hands out PDO/SQL
+        // internals (table and column names among them) to anyone who can make
+        // the call fail, and tells the guest nothing useful. Detail goes to the
+        // error log under a reference the guest can quote (13 Sep 2026).
         if ($pdo->inTransaction()) $pdo->rollBack();
+        $ref = 'BC-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
+        error_log('confirm_booking_hold failed [' . $ref . ']: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'Failed to confirm booking: ' . $e->getMessage()]);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'We could not confirm this booking. Nothing has been charged. Please contact the property with reference ' . $ref . '.',
+            'reference' => $ref,
+        ]);
     }
 }
 

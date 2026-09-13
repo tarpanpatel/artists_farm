@@ -357,15 +357,36 @@ function handleCreatePublicBooking(PDO $pdo): void {
         $rStmt = $pdo->prepare("SELECT id, name, default_tariff, pricing_mode FROM properties WHERE id = ? AND parent_property_id = ? LIMIT 1");
         $rStmt->execute([$roomId, $propertyId]);
         $rRow = $rStmt->fetch(PDO::FETCH_ASSOC);
-        if ($rRow) {
-            $targetRoomId = (int)$rRow['id'];
-            $roomName = $rRow['name'];
-            if (!empty($rRow['pricing_mode'])) {
-                $roomPricingMode = $rRow['pricing_mode'];
-            }
-            if ($rRow['default_tariff'] !== null) {
-                $roomDefaultTariff = (float)$rRow['default_tariff'];
-            }
+        if (!$rRow) {
+            // REFUSE, do not fall through (13 Sep 2026, found by probing this
+            // endpoint directly). This lookup was best-effort: when the room did
+            // not belong to the property, the `if ($rRow)` block was simply
+            // skipped and $targetRoomId kept the CLIENT-SUPPLIED value from
+            // line 349 ($roomId ?: $propertyId). Everything downstream - the
+            // FOR UPDATE lock, the overlap check, and the INSERT - then ran
+            // against that foreign room, so a crafted request on one property's
+            // public page could place a real booking on ANOTHER property's room
+            // (verified: property_id=Patel Colony + room_id=a Winter room got
+            // past this point). This endpoint is unauthenticated, so the room
+            // id is attacker-controlled by definition and has to be proven to
+            // belong to the property before anything uses it. Same family as
+            // the "guest could pay for a property they never chose" incident in
+            // CLAUDE.md - an unresolvable identifier must stop the request, not
+            // quietly keep whatever the caller sent.
+            http_response_code(400);
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'That room is not available at this property. Please reload the page and pick a room again.',
+            ]);
+            return;
+        }
+        $targetRoomId = (int)$rRow['id'];
+        $roomName = $rRow['name'];
+        if (!empty($rRow['pricing_mode'])) {
+            $roomPricingMode = $rRow['pricing_mode'];
+        }
+        if ($rRow['default_tariff'] !== null) {
+            $roomDefaultTariff = (float)$rRow['default_tariff'];
         }
     }
 
@@ -638,11 +659,26 @@ function handleCreatePublicBooking(PDO $pdo): void {
             ]
         ]);
 
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        // Throwable, and the raw message NEVER goes to the caller (13 Sep 2026).
+        // This is an UNAUTHENTICATED endpoint, and it was returning
+        // $e->getMessage() verbatim - a real probe got back "Failed to complete
+        // reservation: There is no active transaction", i.e. a PDO internal
+        // handed to whoever asked. A SQL error here would leak table and column
+        // names just as readily. It is also useless to the guest it is shown
+        // to: it says nothing about what they should do next.
+        // The detail goes to the error log, where support can find it by the
+        // reference below; the guest gets something actionable.
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        $ref = 'PB-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
+        error_log('create_public_booking failed [' . $ref . ']: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => 'Failed to complete reservation: ' . $e->getMessage()]);
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'We could not complete this reservation. Nothing has been charged. Please try again, or contact the property with reference ' . $ref . '.',
+            'reference' => $ref,
+        ]);
     }
 }
