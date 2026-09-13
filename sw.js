@@ -48,7 +48,7 @@
 // v53 (4 Sep 2026): Add individual listing sync buttons on Connect Channels page & Pricing Modal
 // v54 (4 Sep 2026): Direct Booking Engine with multi-room calendar & offline payment support
 // v55 (8 Sep 2026): Kitchen push notifications replace the KDS audio chime
-const CACHE_NAME = 'farm-pos-BlTe5MED';
+const CACHE_NAME = 'farm-pos-B8I4r2I1';
 
 // Hashed asset pattern — Vite content-hashed files (e.g. index-CrXjaekR.js)
 // These must NEVER be cached by the SW; the browser cache handles them natively

@@ -709,18 +709,18 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         open={isOpen}
         onClose={onClose}
         position="right"
-        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
+        className="checkout-drawer z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="checkout-drawer__header flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
+            <div className="checkout-drawer__icon-chip w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400">
               <IndianRupee className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="receipt-edit-modal__title text-base font-semibold text-slate-900 dark:text-white m-0">
+              <h2 className="checkout-drawer__title text-base font-semibold text-slate-900 dark:text-white m-0">
                 {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Checkout and Billing')}
               </h2>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
+              <p className="checkout-drawer__subtitle text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
                 Room: {guest.roomNumber}
               </p>
             </div>
@@ -735,15 +735,15 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="checkout-drawer__body flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* LEFT COLUMN: Accommodation + Food Orders (LG: 7 cols) */}
             <div className="lg:col-span-7 space-y-6">
               
               {/* Accommodation & Booking Dates */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-                <div className="flex items-center gap-2 text-2xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
+              <div className="checkout-card rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                <div className="checkout-card__header flex items-center gap-2 text-2xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
                   <Home className="w-4 h-4 text-blue-600" />
                   <span>{t('accommodation_breakdown_heading', 'Accommodation Invoice Breakdown')}</span>
                 </div>
@@ -835,8 +835,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               {/* Food Orders & Incidentals Log (Interactive Dish Insertion if Kitchen Enabled) */}
               {kitchenModuleEnabled && (
-                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="checkout-card rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                  <div className="checkout-card__header flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
                     <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-cyan-600" />
                       {t('food_incidentals_heading', 'Food Orders & Incidentals Log')}
@@ -941,8 +941,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             {/* RIGHT COLUMN: Strategy Adjustments + Final Split Settlement (LG: 5 cols) */}
             <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-0 self-start">
               {/* Strategy Type Custom Adjustments */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
-                <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
+              <div className="checkout-card checkout-card--compact rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
+                <span className="checkout-card__header text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
                   {t('add_custom_adjustments_heading', 'Add Custom Adjustments')}
                 </span>
 
@@ -1042,8 +1042,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               </div>
 
               {/* Final Checkout Split Settlement Box */}
-              <div className="rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
-                <div className="flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
+              <div className="checkout-card--final rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
+                <div className="checkout-card__header--final flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
                   <IndianRupee className="w-4 h-4 text-emerald-600" />
                   <span>{t('final_checkout_split_heading', 'Final Checkout Bill')}</span>
                 </div>

@@ -2,9 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Edit2,
   Home,
-  Utensils,
   Plus,
-  CreditCard,
   AlertTriangle,
   Receipt,
   UtensilsCrossed,
@@ -12,6 +10,9 @@ import {
   Filter,
   X,
   Save,
+  CornerDownRight,
+  Trash2,
+  AlertCircle,
 } from './icons/FlowbiteIcons';
 import { Drawer, Pagination, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell, Dropdown, DropdownItem } from 'flowbite-react';
 import { Button } from './Button';
@@ -20,6 +21,7 @@ import { AuditLog, BillingReceipt, MenuItem } from '../types';
 import { updateWalkInTabDB } from '../services/api';
 import { useToast } from './ToastContext';
 import { StyledSelect } from './StyledSelect';
+import { DateRangePicker } from './DateRangePicker';
 import { Input } from './Input';
 import { PageHeader } from './PageHeader';
 import { KpiCard } from './KpiCard';
@@ -57,10 +59,21 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
   const [dishQty, setDishQty] = useState(1);
   const [dishRate, setDishRate] = useState(0);
 
-  // Quick Insert Adjustment State
-  const [adjType, setAdjType] = useState<string>('Discount (-)');
-  const [adjLabel, setAdjLabel] = useState<string>('');
-  const [adjAmount, setAdjAmount] = useState<string | number>('');
+  // Custom Adjustments State
+  const [adjType, setAdjType] = useState<'charge' | 'discount' | ''>('');
+  const [adjReasonCharge, setAdjReasonCharge] = useState('Misc');
+  const [adjReasonDiscount, setAdjReasonDiscount] = useState('');
+  const [adjAmount, setAdjAmount] = useState<number | ''>('');
+
+  const extraChargeOptions = useMemo(() => [
+    { value: 'Decoration & Event Setup', label: 'Decoration & Event Setup' },
+    { value: 'Early Check-in Fee', label: 'Early Check-in Fee' },
+    { value: 'Extra Bed / Mattress', label: 'Extra Bed / Mattress' },
+    { value: 'Late Check-out Fee', label: 'Late Check-out Fee' },
+    { value: 'Pet Stay Fee', label: 'Pet Stay Fee' },
+    { value: 'Room Damage', label: 'Room Damage' },
+    { value: 'Misc', label: 'Misc' },
+  ], []);
 
   const filteredReceipts = useMemo(() => {
     return receipts.filter(rec => {
@@ -127,25 +140,38 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
     );
   };
 
-
-  const handleAddAdjustment = () => {
+  const handleAddAdjustment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!adjType || !adjAmount || Number(adjAmount) <= 0) return;
     const amt = Number(adjAmount);
-    if (isNaN(amt) || amt <= 0) return;
+    const label = adjType === 'charge' ? (adjReasonCharge.trim() || 'Extra Charge') : (adjReasonDiscount.trim() || 'Discount Rebate');
     const newAdj = {
-      type: adjType,
-      label: adjLabel || 'Custom Adjustment',
+      type: adjType === 'charge' ? 'Extra Incidentals Charge (+)' : 'Discount Rebate (-)',
+      label,
       amount: amt
     };
     setAdjustmentsList(prev => [...prev, newAdj]);
-    setAuditTrailList(prev => [...prev, `Applied adjustment ${adjType}: ${adjLabel || 'Adjustment'} (₹${amt})`]);
-    setAdjLabel('');
+    setAuditTrailList(prev => [...prev, `Applied adjustment ${newAdj.type}: ${label} (₹${amt.toFixed(2)})`]);
     setAdjAmount('');
+    setAdjReasonDiscount('');
+    setAdjType('');
   };
 
   const calculatedStayRent = editingReceipt ? (editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0) : 0;
+  const advancePaid = editingReceipt ? (editingReceipt.advancePaid ?? 0) : 0;
+  const lodgingPendingDue = Math.max(0, calculatedStayRent - advancePaid);
   const calculatedIncidentalsTotal = foodItemList.reduce((sum, item) => sum + (item.total || (item.quantity * item.unitPrice)), 0);
-  const calculatedAdjustmentsTotal = adjustmentsList.reduce((sum, a) => a.type.includes('(-)') ? sum - a.amount : sum + a.amount, 0);
-  const calculatedGrandTotal = (editingReceipt?.sourceType === 'walk_in_tab' ? 0 : calculatedStayRent) + calculatedIncidentalsTotal + calculatedAdjustmentsTotal;
+
+  const extraCharges = adjustmentsList
+    .filter(a => a.type === 'charge' || (!a.type.includes('(-)') && a.type.includes('(+)')))
+    .reduce((sum, a) => sum + Number(a.amount || 0), 0);
+  const discounts = adjustmentsList
+    .filter(a => a.type === 'discount' || a.type.includes('(-)'))
+    .reduce((sum, a) => sum + Number(a.amount || 0), 0);
+  const calculatedAdjustmentsTotal = extraCharges - discounts;
+
+  const grandTargetDue = (editingReceipt?.sourceType === 'walk_in_tab' ? 0 : lodgingPendingDue) + calculatedIncidentalsTotal + calculatedAdjustmentsTotal;
+  const grandTotalFullStay = (editingReceipt?.sourceType === 'walk_in_tab' ? 0 : calculatedStayRent) + calculatedIncidentalsTotal + calculatedAdjustmentsTotal;
 
   const handleSaveReceiptEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +184,9 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
       roomTotal: isWalkIn ? 0 : calculatedStayRent,
       foodTotal: calculatedIncidentalsTotal,
       kitchenTotal: calculatedIncidentalsTotal,
-      grandTotal: calculatedGrandTotal,
+      miscTotal: extraCharges,
+      discount: discounts,
+      grandTotal: grandTargetDue,
       foodItems: foodItemList,
       adjustments: adjustmentsList,
       auditTrail: auditTrailList
@@ -482,305 +510,440 @@ export const AuditLogsView: React.FC<AuditLogsViewProps> = ({
         open={!!editingReceipt}
         onClose={() => setEditingReceipt(null)}
         position="right"
-        className="z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between audit-logs__modal"
+        className="checkout-drawer z-58 w-full sm:max-w-4xl lg:max-w-5xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between audit-logs__modal"
       >
         {editingReceipt && (
           <>
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-              <div>
-                <h3 className="audit-logs-view__subtitle font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
-                  <span>{t('modify_bill_audit_heading', 'Modify Bill & Audit')}: {editingReceipt.guestName} ({formatDateDDMMYYYY(editingReceipt.checkoutDate) || 'Stay'})</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5 font-normal">
-                  {t('modify_bill_audit_subtitle', 'Modify stay contract terms, adjust food logs, and audit checkout behavior perfectly mirroring the live billing desk.')}
-                </p>
+            <div className="checkout-drawer__header flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <div className="flex items-center gap-2.5">
+                <div className="checkout-drawer__icon-chip w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-950 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+                  <IndianRupee className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="checkout-drawer__title text-base font-semibold text-slate-900 dark:text-white m-0">
+                    {t('modify_bill_audit_heading', 'Modify Bill & Audit')}
+                  </h2>
+                  <p className="checkout-drawer__subtitle text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
+                    {editingReceipt.sourceType === 'walk_in_tab' || editingReceipt.roomNumber === 'Walk-in'
+                      ? `Table: ${editingReceipt.guestName || editingReceipt.roomNumber}`
+                      : `Room: ${editingReceipt.roomNumber || editingReceipt.guestName}`}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setEditingReceipt(null)}
+                aria-label={t('close_button', 'Close')}
                 className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-                <div className="flex-1 overflow-y-auto p-4">
-                  <form onSubmit={handleSaveReceiptEdit} className="app-form app-form--edit-receipt space-y-6 text-xs">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="checkout-drawer__body flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+              <form onSubmit={handleSaveReceiptEdit} className="app-form app-form--edit-receipt space-y-6 text-xs">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                      {/* LEFT 2 COLUMNS: ACCOMMODATION & FOOD LOGS */}
-                      <div className="lg:col-span-2 space-y-6">
+                  {/* LEFT COLUMN: Accommodation + Food Orders (LG: 7 cols) */}
+                  <div className="lg:col-span-7 space-y-6">
 
-                        {/* 1. ACCOMMODATION INVOICE BREAKDOWN (Hidden for Walk-in Diners) */}
-                        {editingReceipt.sourceType === 'walk_in_tab' || editingReceipt.roomNumber === 'Walk-in' ? (
-                          <div className="bg-amber-50/60 dark:bg-amber-950/20 p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/50 flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
-                            <UtensilsCrossed className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span>Walk-in Diner Bill — Dining POS order only (no room tariff).</span>
+                    {/* 1. ACCOMMODATION INVOICE BREAKDOWN (Hidden for Walk-in Diners) */}
+                    {editingReceipt.sourceType === 'walk_in_tab' || editingReceipt.roomNumber === 'Walk-in' ? (
+                      <div className="bg-amber-50/60 dark:bg-amber-950/20 p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/50 flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                        <UtensilsCrossed className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Walk-in Diner Bill — Dining POS order only (no room tariff).</span>
+                      </div>
+                    ) : (
+                      <div className="checkout-card rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                        <div className="checkout-card__header flex items-center gap-2 text-2xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
+                          <Home className="w-4 h-4 text-blue-600" />
+                          <span>{t('accommodation_breakdown_heading', 'Accommodation Invoice Breakdown')}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Input
+                              label={t('guest_name_only_label', 'Guest Name')}
+                              type="text"
+                              value={editingReceipt.guestName || ''}
+                              onChange={(e) => setEditingReceipt(prev => prev ? ({ ...prev, guestName: e.target.value }) : null)}
+                              className="text-xs font-semibold text-slate-900 dark:text-white"
+                            />
                           </div>
-                        ) : (
-                          <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-4">
-                            <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-2xs flex items-center gap-2 uppercase tracking-wide">
-                              <Home className="w-4 h-4 text-emerald-600" />
-                              <span>{t('accommodation_invoice_breakdown_heading', 'ACCOMMODATION INVOICE BREAKDOWN')}</span>
-                            </h4>
+                          <div>
+                            <Input
+                              label={t('room_number_label', 'Room Number')}
+                              type="text"
+                              value={editingReceipt.roomNumber || ''}
+                              onChange={(e) => setEditingReceipt(prev => prev ? ({ ...prev, roomNumber: e.target.value }) : null)}
+                              className="text-xs font-semibold text-slate-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <Input
-                                  label={t('base_lodging_charges_contract_label', 'BASE ACCOMMODATION CHARGES (CONTRACT)')}
-                                  type="number"
-                                  value={editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0}
-                                  onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    setEditingReceipt(prev => prev ? ({ ...prev, roomRent: val, roomTotal: val }) : null);
-                                  }}
-                                  labelClassName="text-[11px]"
-                                />
-                              </div>
+                        <DateRangePicker
+                          checkinDate={editingReceipt.checkinDate ? editingReceipt.checkinDate.slice(0, 10) : ''}
+                          checkoutDate={editingReceipt.checkoutDate ? editingReceipt.checkoutDate.slice(0, 10) : ''}
+                          onCheckinChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, checkinDate: val }) : null)}
+                          onCheckoutChange={(val) => setEditingReceipt(prev => prev ? ({ ...prev, checkoutDate: val }) : null)}
+                        />
 
-                              <div>
-                                <Input
-                                  label={t('advance_deposit_paid_label', 'ADVANCE DEPOSIT PAID (₹)')}
-                                  type="number"
-                                  value={editingReceipt.advancePaid ?? 0}
-                                  onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    setEditingReceipt(prev => prev ? ({ ...prev, advancePaid: val }) : null);
-                                  }}
-                                  labelClassName="text-[11px]"
-                                />
-                              </div>
+                        <div>
+                          <Input
+                            label={t('base_lodging_charges_label', 'Base Accommodation Charges (₹)')}
+                            type="number"
+                            value={editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setEditingReceipt(prev => prev ? ({ ...prev, roomRent: val, roomTotal: val }) : null);
+                            }}
+                            className="text-xs font-semibold text-slate-900 dark:text-white"
+                          />
+                        </div>
+
+                        <div className="rounded-lg p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
+                          <div className="flex justify-between items-center font-semibold gap-2">
+                            <span className="text-slate-700 dark:text-slate-300 shrink-0">{t('advance_paid_label', 'Advance Paid:')}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹</span>
+                              <input
+                                type="number"
+                                value={editingReceipt.advancePaid ?? 0}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setEditingReceipt(prev => prev ? ({ ...prev, advancePaid: val }) : null);
+                                }}
+                                className="summary-line summary-line--advance-paid w-24 text-right text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-400"
+                              />
                             </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
+                          <div className="flex justify-between items-center font-semibold">
+                            <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
+                            <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">
+                              ₹{Math.max(0, (editingReceipt.roomRent ?? editingReceipt.roomTotal ?? 0) - (editingReceipt.advancePaid ?? 0)).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. FOOD & EXTRAS INCIDENTALS BREAKDOWN */}
+                    <div className="checkout-card rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                      <div className="checkout-card__header flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                        <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-cyan-600" />
+                          {t('food_incidentals_heading', 'Food Orders & Incidentals Log')}
+                        </span>
+                        <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400">
+                          Subtotal: ₹{calculatedIncidentalsTotal.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* Dish / Item Selector Controls */}
+                      <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-8 sm:col-span-7">
+                          <StyledSelect
+                            label={t('select_dish_item_label', 'Select Dish / Item')}
+                            value={selectedDish}
+                            onChange={(dishName) => {
+                              setSelectedDish(dishName);
+                              const found = menu.find((item) => item.name === dishName);
+                              if (found) setDishRate(found.price);
+                            }}
+                            placeholder={t('choose_menu_dish_placeholder', '-- Choose Menu Dish --')}
+                            options={menu.map((item) => ({
+                              value: item.name,
+                              label: `${item.name} (₹${item.price})`,
+                            }))}
+                          />
+                        </div>
+
+                        <div className="col-span-4 sm:col-span-2">
+                          <Input
+                            label={t('quantity_label', 'Quantity')}
+                            type="number"
+                            min="1"
+                            value={dishQty}
+                            onChange={(e) => setDishQty(Math.max(1, Number(e.target.value) || 1))}
+                            className="text-xs font-semibold text-center"
+                          />
+                        </div>
+
+                        <div className="col-span-12 sm:col-span-3 flex items-end">
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            block
+                            onClick={handleAddFoodItem}
+                            disabled={!selectedDish}
+                            leftIcon={<Plus className="w-3.5 h-3.5" />}
+                          >
+                            {t('insert_button', 'Insert')}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Food Items Table */}
+                      {foodItemList.length > 0 ? (
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
+                          <table className="w-full text-xs text-left receipt-edit-modal__table">
+                            <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-600 receipt-edit-modal__table-header">
+                              <tr className="receipt-edit-modal__table-header-row">
+                                <th className="py-2 px-3 receipt-edit-modal__table-header-cell">{t('description_item_column', 'Description Item')}</th>
+                                <th className="py-2 px-3 text-center receipt-edit-modal__table-header-cell">{t('qty_column', 'Qty')}</th>
+                                <th className="py-2 px-3 text-right receipt-edit-modal__table-header-cell">{t('total_column', 'Total')}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 receipt-edit-modal__table-body">
+                              {foodItemList.map((item, idx) => (
+                                <tr key={idx}>
+                                  <td className="receipt-edit-modal__cell py-2 px-3 font-semibold text-slate-900 dark:text-white">
+                                    {item.name}
+                                  </td>
+                                  <td className="receipt-edit-modal__cell py-2 px-3 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateFoodQty(idx, -1)}
+                                        className="w-5 h-5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 rounded font-semibold text-xs cursor-pointer"
+                                      >
+                                        -
+                                      </button>
+                                      <span className="font-semibold text-xs px-1">{item.quantity}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateFoodQty(idx, 1)}
+                                        className="w-5 h-5 bg-cyan-600 text-white hover:bg-cyan-700 rounded font-semibold text-xs cursor-pointer"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="receipt-edit-modal__cell py-2 px-3 text-right font-semibold text-slate-900 dark:text-white">
+                                    ₹{(item.total || item.quantity * item.unitPrice).toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 italic text-center py-2">
+                          {t('no_incidentals_message', 'No incidentals or food orders logged yet. Select a dish above to add.')}
+                        </p>
+                      )}
+                    </div>
+
+                  </div>
+
+                  {/* RIGHT COLUMN: ADJUSTMENTS, AUDIT TRAIL, FINAL BILL (LG: 5 cols) */}
+                  <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-0 self-start">
+
+                    {/* 3. ADD CUSTOM ADJUSTMENTS */}
+                    <div className="checkout-card checkout-card--compact rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-3">
+                      <span className="checkout-card__header text-[10px] font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide block border-b border-slate-200 dark:border-slate-700 pb-2">
+                        {t('add_custom_adjustments_heading', 'Add Custom Adjustments')}
+                      </span>
+
+                      <div className="space-y-3 text-xs">
+                        <div>
+                          <StyledSelect
+                            label={t('strategy_type_label', 'Strategy Type')}
+                            value={adjType}
+                            onChange={(val) => setAdjType(val as 'charge' | 'discount')}
+                            placeholder={t('choose_placeholder', '-- Choose --')}
+                            options={[
+                              { value: 'charge', label: t('extra_incidentals_charge_option', 'Extra Incidentals Charge (+)') },
+                              { value: 'discount', label: t('discount_rebate_option', 'Discount Rebate (-)') },
+                            ]}
+                          />
+                        </div>
+
+                        {adjType === 'charge' && (
+                          <div>
+                            <StyledSelect
+                              label={t('charge_category_label', 'Charge Category')}
+                              value={adjReasonCharge}
+                              onChange={setAdjReasonCharge}
+                              options={extraChargeOptions}
+                            />
                           </div>
                         )}
 
-                        {/* 2. FOOD & EXTRAS INCIDENTALS BREAKDOWN */}
-                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-4">
-                          <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-2xs flex items-center gap-2 uppercase tracking-wide">
-                            <Utensils className="w-4 h-4 text-cyan-600" />
-                            <span>{t('food_extras_incidentals_heading', 'FOOD & EXTRAS INCIDENTALS')}</span>
-                          </h4>
-
-                          {/* Insert Food Item Bar */}
-                          <div className="flex flex-col sm:flex-row items-center gap-2">
-                            <StyledSelect
-                              className="flex-1 w-full"
-                              value={selectedDish}
-                              onChange={(dishName) => {
-                                setSelectedDish(dishName);
-                                const found = menu.find((item) => item.name === dishName);
-                                if (found) setDishRate(found.price);
-                              }}
-                              placeholder={t('audit_choose_menu_dish_placeholder', '-- Choose Menu Dish --')}
-                              options={menu.map((item) => ({
-                                value: item.name,
-                                label: `${item.name} (₹${item.price})`,
-                              }))}
-                            />
-
-                            <Input
-                              type="number"
-                              min="1"
-                              value={dishQty}
-                              onChange={(e) => setDishQty(Number(e.target.value))}
-                              className="w-16 text-center"
-                              fullWidth={false}
-                            />
-
-                            <button
-                              type="button"
-                              onClick={handleAddFoodItem}
-                              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg text-xs flex items-center gap-1 cursor-pointer shadow-md transition-colors"
-                            >
-                              + {t('audit_insert_button', 'Insert')}
-                            </button>
-                          </div>
-
-                          {/* Food Items Table */}
-                          <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
-                            <Table className="audit-logs-view__table">
-                              <TableHead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold audit-logs-view__table-header">
-                                <TableRow>
-                                  <TableHeadCell className="p-2.5">{t('description_item_column', 'Description Item')}</TableHeadCell>
-                                  <TableHeadCell className="p-2.5 text-center">{t('quantity_label', 'Quantity')}</TableHeadCell>
-                                  <TableHeadCell className="p-2.5 text-right">{t('total_column', 'Total')}</TableHeadCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium audit-logs-view__table-body">
-                                {foodItemList.length > 0 ? (
-                                  foodItemList.map((item, idx) => (
-                                    <TableRow key={idx} className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                      <TableCell className="audit-logs-view__cell p-2.5 font-semibold text-slate-800 dark:text-slate-200">{item.name}</TableCell>
-                                      <TableCell className="audit-logs-view__cell p-2.5 text-center">
-                                        <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-                                          <button
-                                            type="button"
-                                            onClick={() => handleUpdateFoodQty(idx, -1)}
-                                            className="w-6 h-6 flex items-center justify-center bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-slate-700 dark:text-white font-extrabold hover:bg-slate-200 cursor-pointer"
-                                          >
-                                            -
-                                          </button>
-                                          <span className="w-6 text-center font-semibold">{item.quantity}</span>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleUpdateFoodQty(idx, 1)}
-                                            className="w-6 h-6 flex items-center justify-center bg-cyan-500 text-white rounded font-extrabold hover:bg-cyan-600 cursor-pointer"
-                                          >
-                                            +
-                                          </button>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="audit-logs-view__cell p-2.5 text-right font-extrabold text-slate-900 dark:text-white">
-                                        ₹{(item.total || item.quantity * item.unitPrice).toFixed(2)}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))
-                                ) : (
-                                  <TableRow>
-                                    <TableCell colSpan={3} className="audit-logs-view__cell p-4 text-center text-slate-400 italic">
-                                      {t('no_food_incidentals_message', 'No food incidentals recorded for this bill.')}
-                                    </TableCell>
-                                  </TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-
-                          <div className="text-right text-xs font-semibold text-slate-600 dark:text-slate-300">
-                            {t('incidentals_bill_subtotal_label', 'Incidentals Bill Subtotal:')} <span className="summary-line summary-line--food-subtotal text-cyan-600 dark:text-cyan-400 font-extrabold text-sm">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                      </div>
-
-                      {/* RIGHT 1 COLUMN: ADJUSTMENTS, AUDIT TRAIL, FINANCIAL POSITION */}
-                      <div className="space-y-6">
-
-                        {/* 3. ADD CUSTOM ADJUSTMENTS */}
-                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-3">
-                          <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
-                            <Plus className="w-4 h-4 text-emerald-600" />
-                            <span>{t('audit_add_custom_adjustments_heading', 'ADD CUSTOM ADJUSTMENTS')}</span>
-                          </h4>
-
-                          <div>
-                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">{t('audit_strategy_type_label', 'STRATEGY TYPE')}</label>
-                            <StyledSelect
-                              value={adjType}
-                              onChange={setAdjType}
-                              options={[
-                                { value: 'Extra Incidentals Charge (+)', label: 'Extra Incidentals Charge (+)' },
-                                { value: 'Discount / Compensation (-)', label: 'Discount / Compensation (-)' },
-                                { value: 'Tax Adjustment (+)', label: 'Tax Adjustment (+)' },
-                              ]}
-                            />
-                          </div>
-
+                        {adjType === 'discount' && (
                           <div>
                             <Input
-                              label={t('label_description_label', 'LABEL DESCRIPTION')}
+                              label={t('discount_label_label', 'Discount Label')}
                               type="text"
-                              placeholder={t('service_apology_placeholder', 'e.g., Service Apology...')}
-                              value={adjLabel}
-                              onChange={(e) => setAdjLabel(e.target.value)}
-                              labelClassName="text-[10px]"
+                              value={adjReasonDiscount}
+                              onChange={(e) => setAdjReasonDiscount(e.target.value)}
+                              placeholder={t('discount_label_placeholder', 'e.g. Service Apology...')}
+                              className="font-semibold bg-white dark:bg-gray-800"
                             />
                           </div>
+                        )}
 
-                          <div>
-                            <Input
-                              label={t('amount_rupees_label', 'AMOUNT (₹)')}
-                              type="number"
-                              placeholder="0.00"
-                              value={adjAmount}
-                              onChange={(e) => setAdjAmount(e.target.value)}
-                              labelClassName="text-[10px]"
-                            />
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleAddAdjustment}
-                            className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg text-xs cursor-pointer shadow-md transition-colors"
-                          >
-                            {t('apply_active_adjustment_button', 'Apply Active Adjustment')}
-                          </button>
+                        <div>
+                          <Input
+                            label={t('amount_label', 'Amount (₹)')}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={adjAmount}
+                            onChange={(e) => setAdjAmount(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
+                            placeholder="0.00"
+                            inputMode="decimal"
+                            className="font-semibold bg-white dark:bg-gray-800"
+                            error={adjType && (!adjAmount || Number(adjAmount) <= 0) ? 'Amount must be greater than 0' : undefined}
+                          />
                         </div>
 
-                        {/* 4. CHECKOUT MODIFICATIONS AUDIT TRAIL */}
-                        <div className="bg-amber-50/60 dark:bg-amber-950/20 p-4 rounded-lg border border-amber-200 dark:border-amber-900/50 space-y-2">
-                          <h4 className="audit-logs-view__caption font-extrabold text-amber-800 dark:text-amber-400 text-[10px] flex items-center gap-1.5 uppercase tracking-wide">
-                            <AlertTriangle className="w-4 h-4 text-amber-600" />
-                            <span>{t('checkout_modifications_audit_heading', 'CHECKOUT MODIFICATIONS AUDIT TRAIL')}</span>
-                          </h4>
-                          <div className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
-                            {auditTrailList.length === 0 ? (
-                              <p className="italic text-slate-400">{t('no_last_minute_modifications_message', 'No last-minute modifications recorded for this sheet.')}</p>
-                            ) : (
-                              <ul className="space-y-1 list-disc list-inside">
-                                {auditTrailList.map((log, i) => (
-                                  <li key={i}>{log}</li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 5. FINAL FINANCIAL POSITION */}
-                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-lg border border-slate-200 dark:border-slate-700/80 space-y-3">
-                          <h4 className="audit-logs-view__caption font-extrabold text-slate-800 dark:text-slate-200 text-[10px] flex items-center gap-2 uppercase tracking-wide">
-                            <CreditCard className="w-4 h-4 text-emerald-600" />
-                            <span>{t('final_financial_position_heading', 'FINAL FINANCIAL POSITION')}</span>
-                          </h4>
-
-                          <div className="space-y-2 text-xs font-semibold border-b border-slate-200 dark:border-slate-700 pb-3">
-                            <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                              <span>{t('stay_rent_outstanding_balance_label', 'Stay Rent Outstanding Balance:')}</span>
-                              <span className="summary-line summary-line--room-rate font-extrabold text-slate-900 dark:text-white">₹{calculatedStayRent.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                              <span>{t('food_extras_subtotal_label', 'Food & Extras Subtotal:')}</span>
-                              <span className="summary-line summary-line--food-subtotal font-extrabold text-cyan-600">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center text-sm font-extrabold">
-                            <span className="text-slate-900 dark:text-white">{t('total_outstanding_target_label', 'Total Outstanding Target:')}</span>
-                            <span className="summary-line summary-line--grand-target-due text-emerald-600 text-base font-black">₹{calculatedGrandTotal.toFixed(2)}</span>
-                          </div>
-
-                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500">
-                            <p className="font-semibold uppercase text-slate-400 mb-0.5">{t('original_split_payout_breakdown_heading', 'ORIGINAL SPLIT PAYOUT BREAKDOWN')}</p>
-                            <p className="italic">{t('legacy_payment_route_message', 'Legacy payment route or not recorded.')}</p>
-                          </div>
-                        </div>
-
+                        <Button
+                          type="button"
+                          variant="dark"
+                          size="sm"
+                          block
+                          onClick={handleAddAdjustment}
+                          disabled={!adjType || !adjAmount || Number(adjAmount) <= 0}
+                        >
+                          {t('apply_adjustment_button', 'Apply Adjustment')}
+                        </Button>
                       </div>
 
+                      {/* Applied Adjustments List */}
+                      {adjustmentsList.length > 0 && (
+                        <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs mt-2">
+                          <span className="font-semibold text-slate-500 uppercase text-[10px] block">{t('applied_adjustments_label', 'Applied Adjustments')}</span>
+                          {adjustmentsList.map((adj, idx) => {
+                            const isDiscount = adj.type === 'discount' || adj.type.includes('(-)');
+                            return (
+                              <div key={idx} className="flex items-center justify-between font-semibold">
+                                <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                                  <CornerDownRight className="w-3.5 h-3.5" /> {adj.label || adj.reason}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={isDiscount ? 'text-emerald-600' : 'text-red-600'}>
+                                    {isDiscount ? '-' : '+'}₹{Number(adj.amount).toFixed(2)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAdjustmentsList(prev => prev.filter((_, i) => i !== idx));
+                                      setAuditTrailList(prev => [...prev, `Removed adjustment: ${adj.label || adj.reason} (₹${adj.amount})`]);
+                                    }}
+                                    className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Bottom Action Footer */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setEditingReceipt(null)}
-                        className="px-5 py-2.5 font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                      >
-                        {t('cancel_button', 'Cancel')}
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-6 py-2.5 font-semibold text-white bg-blue-600 rounded-lg cursor-pointer hover:bg-blue-700 flex items-center gap-1.5 shadow-md transition-colors"
-                      >
-                        <Save className="w-4 h-4" />
-                        <span>{t('save_modifications_audit_log_button', 'Save Modifications & Audit Log')}</span>
-                      </button>
+                    {/* 4. CHECKOUT MODIFICATIONS AUDIT TRAIL */}
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 p-4 sm:p-6 space-y-2">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wide border-b border-amber-200 dark:border-amber-800/60 pb-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <span>{t('checkout_modifications_audit_heading', 'Checkout Modifications Audit Trail')}</span>
+                      </div>
+                      <div className="text-[11px] text-amber-800 dark:text-amber-300 font-medium pt-1">
+                        {auditTrailList.length === 0 ? (
+                          <p className="italic text-slate-400">{t('no_last_minute_modifications_message', 'No last-minute modifications recorded for this sheet.')}</p>
+                        ) : (
+                          <ul className="space-y-1 list-disc list-inside">
+                            {auditTrailList.map((log, i) => (
+                              <li key={i}>{log}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                     </div>
-                  </form>
+
+                    {/* 5. FINAL CHECKOUT BILL */}
+                    <div className="checkout-card--final rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
+                      <div className="checkout-card__header--final flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
+                        <IndianRupee className="w-4 h-4 text-emerald-600" />
+                        <span>{t('final_checkout_split_heading', 'Final Checkout Bill')}</span>
+                      </div>
+
+                      <div className="space-y-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        {editingReceipt.sourceType !== 'walk_in_tab' && (
+                          <div className="flex justify-between items-center">
+                            <span>{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
+                            <span className="summary-line summary-line--pending-lodging-due font-semibold">
+                              ₹{lodgingPendingDue.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span>{t('food_incidentals_subtotal_label', 'Food & Incidentals Subtotal:')}</span>
+                          <span className="summary-line summary-line--food-subtotal font-semibold">₹{calculatedIncidentalsTotal.toFixed(2)}</span>
+                        </div>
+                        {extraCharges > 0 && (
+                          <div className="flex justify-between items-center text-red-600 font-semibold">
+                            <span>{t('extra_charges_label', '(+) Extra Charges:')}</span>
+                            <span>+₹{extraCharges.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {discounts > 0 && (
+                          <div className="flex justify-between items-center text-emerald-600 font-semibold">
+                            <span>{t('discount_rebate_label', '(-) Discount Rebate:')}</span>
+                            <span>-₹{discounts.toFixed(2)}</span>
+                          </div>
+                        )}
+
+                        {/* Grand Total (full stay, advance included) vs. what's still owed right now */}
+                        <div className="border-t-2 border-emerald-300 dark:border-emerald-700 pt-2 space-y-1">
+                          <div className="flex justify-between items-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            <span>{t('grand_total_full_stay_label', 'Grand Total (Full Stay):')}</span>
+                            <span className="summary-line summary-line--grand-total font-semibold">₹{grandTotalFullStay.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm font-extrabold">
+                            <span className="text-slate-900 dark:text-white">{t('grand_target_due_label', 'Grand Target Due (Pending Today):')}</span>
+                            <span className="summary-line summary-line--grand-target-due text-emerald-700 dark:text-emerald-400 font-extrabold">₹{grandTargetDue.toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500">
+                          <p className="font-semibold uppercase text-slate-400 mb-0.5">{t('original_split_payout_breakdown_heading', 'ORIGINAL SPLIT PAYOUT BREAKDOWN')}</p>
+                          <p className="italic">{editingReceipt.paymentMethod ? `Paid via ${editingReceipt.paymentMethod}` : t('legacy_payment_route_message', 'Legacy payment route or not recorded.')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
                 </div>
-              </>
-            )}
-          </Drawer>
+
+                {/* Bottom Action Footer */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setEditingReceipt(null)}
+                  >
+                    {t('cancel_button', 'Cancel')}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    leftIcon={<Save className="w-4 h-4" />}
+                  >
+                    {t('save_modifications_audit_log_button', 'Save Modifications & Audit Log')}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </>
+        )}
+      </Drawer>
     </div>
   );
 };
