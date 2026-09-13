@@ -1298,7 +1298,11 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
       <nav
         id="superAdminMobileBottomNav"
         aria-label="Super Admin Bottom Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around px-2 shadow-lg"
+        // tenant-mobile-bottom-nav is a styling hook, not decoration - custom.css
+        // uses it to apply the iOS fixed-position mitigation to this bar as well
+        // as MobileBottomNav's. This is the second of the two bars that drifted
+        // on 9 Sep 2026; keep the class if this element is ever refactored.
+        className="tenant-mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 h-[calc(4rem+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)] flex items-center justify-around px-2 shadow-lg"
       >
         <button
           type="button"

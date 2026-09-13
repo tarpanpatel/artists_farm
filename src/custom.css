@@ -54,6 +54,49 @@ html {
   overscroll-behavior-y: none;
 }
 
+/* REPORTED AGAIN 13 Sep 2026 ("bottom nav going out of place keeps reoccurring
+   once in a while"), with a screenshot matching the 9 Sep description above
+   exactly: the nav drawn across the middle of a card, content visible both
+   above and below it, and the fixed header simultaneously gone from the top so
+   page content ran under the status bar. Both fixed bars stale at once, which
+   is the signature of the WebKit issue, not of a per-component CSS mistake.
+
+   So `overscroll-behavior-y: none` alone has NOT closed it. Two additions
+   here, both cheap and neither able to change desktop layout:
+
+   1. `transform: translateZ(0)` puts each bar on its own compositing layer.
+      WebKit anchors a composited fixed element to the visual viewport rather
+      than re-resolving it against a scroll offset it may be holding stale.
+      Safe for these two elements specifically because NEITHER contains a
+      `position: fixed` descendant (checked 13 Sep 2026) - a transform would
+      otherwise become their containing block and re-anchor it. The quick-
+      action drawer in MobileBottomNav.tsx is a SIBLING of <nav>, not a child,
+      so it is unaffected; it also animates via its own transform, which is
+      why the hint is applied to the nav and not to a shared wrapper.
+      Deliberately NOT applied to the fixed header: header dropdowns/popovers
+      can be fixed-positioned, and re-anchoring those would be a real
+      regression traded for a speculative fix.
+
+   2. `bottom: 0` restated after the transform so the bar's anchor is never
+      left to a stale computed value alone.
+
+   HONEST LIMIT, so the next person does not over-trust this: this is a
+   mitigation, not a proven cure. It cannot be verified without a real iOS
+   device, and TenantDashboard's bar already carried `backdrop-blur-md` (hence
+   was already composited) when it drifted on 9 Sep - so compositing by itself
+   demonstrably is not sufficient. The definitive fix is structural: make the
+   app shell a non-scrolling `100dvh` flex column with the content area as the
+   only scroll container, so the bar is an ordinary flex child and `position:
+   fixed` leaves the picture entirely. That cannot drift by construction, but
+   it changes scrolling on every page and needs real-device testing before it
+   ships. If this recurs again, do that instead of adding a third hint here. */
+.mobile-bottom-nav,
+.tenant-mobile-bottom-nav {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  bottom: 0;
+}
+
 html,
 body {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
