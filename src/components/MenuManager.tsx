@@ -240,29 +240,21 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
     setIsVerifyingPasscode(true);
 
-    // 1. Client-side check against Super Admin / Admin staff members
-    const superAdminStaff = staff.filter(s => s.role === 'Super Admin' || s.role === 'Admin');
-    const localMatch = superAdminStaff.find(s => (s.passcodePin || (s as any).passcode || '').toString().trim() === entered);
-
-    // 2. Client-side check against current logged in user (Root Admin / Super Admin)
-    const currentUserMatch = Boolean(
-      currentUser &&
-      (currentUser.role === 'Root Admin' || currentUser.role === 'Super Admin' || currentUser.role === 'Admin' || (currentUser as any).is_platform_admin) &&
-      (((currentUser as any).passcode || currentUser.passcodePin || '').toString().trim() === entered)
-    );
-
-    if (localMatch || currentUserMatch) {
-      setIsVerifyingPasscode(false);
-      setPasscodeModalOpen(false);
-      setPasscodeInput('');
-      setPasscodeError('');
-      const action = pendingPasscodeAction;
-      setPendingPasscodeAction(null);
-      if (action) action();
-      return;
-    }
-
-    // 3. Database check (verifies Root Admin / Super Admin passcodes from DB)
+    // Verified server-side ONLY (13 Sep 2026).
+    //
+    // Two client-side shortcuts used to run before this: one comparing the
+    // entered value against every Super Admin/Admin passcode in the `staff`
+    // prop, and one against the logged-in user's own. Both are removed.
+    //
+    // They were dead as of the passcode-hashing migration - get_staff no
+    // longer ships passcodes to the browser and the login response never did -
+    // so they could only ever fall through to the check below. But they were
+    // also the anti-pattern that made shipping those passcodes look reasonable
+    // in the first place: a gate you can satisfy with data the browser already
+    // holds is not a gate, and leaving code here that reads as if it works
+    // invites someone to "fix" it by putting the passcodes back.
+    //
+    // verify_admin_passcode does the real comparison against the stored hash.
     const result = await verifyAdminPasscodeDB(entered);
     setIsVerifyingPasscode(false);
 
