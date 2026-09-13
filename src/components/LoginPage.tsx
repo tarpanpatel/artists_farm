@@ -4,6 +4,7 @@ import { AlertCircle, Lock, ShieldCheck, Mail, CheckCircle2, ArrowLeft, Loader2,
 import { Input } from './Input';
 import { t } from '../i18n/en';
 import { useAuthOptional } from '../contexts/AuthContext';
+import { INITIAL_RESET_TOKEN } from '../utils/initialUrl';
 
 const NOOP = () => {};
 
@@ -48,22 +49,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
   const [isSendingLoginInfo, setIsSendingLoginInfo] = useState(false);
   const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Passcode reset via emailed link (13 Sep 2026). The token arrives as
-  // `/#reset-passcode?token=...` - read once on mount and then STRIPPED from
-  // the address bar, so a single-use credential isn't left sitting in the URL
-  // to be shoulder-surfed, bookmarked, or leaked through a Referer header.
-  const [resetToken, setResetToken] = useState('');
+  // Passcode reset via emailed link (13 Sep 2026). The token is captured at
+  // app boot by src/utils/initialUrl.ts, NOT read from the hash here - reading
+  // it in a mount effect loses a race against App.tsx's hash router, which
+  // rewrites any unrecognised hash to '#dashboard'. That failure was confirmed
+  // on staging: correct hash, correct parsing, correct bundle, screen never
+  // appeared. See initialUrl.ts for the full explanation.
+  const [resetToken, setResetToken] = useState(INITIAL_RESET_TOKEN);
   const [isResettingPasscode, setIsResettingPasscode] = useState(false);
   const [resetResult, setResetResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    const hash = window.location.hash || '';
-    if (!hash.startsWith('#reset-passcode')) return;
-    const token = new URLSearchParams(hash.slice(hash.indexOf('?') + 1)).get('token') || '';
-    if (!token) return;
-    setResetToken(token);
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }, []);
 
   const handleResetPasscode = async (e: React.FormEvent) => {
     e.preventDefault();

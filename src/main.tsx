@@ -1,3 +1,9 @@
+// MUST STAY THE FIRST IMPORT. This module reads one-shot URL parameters (the
+// passcode-reset token) synchronously on evaluation, and importing it first is
+// what guarantees it runs before App.tsx's hash router can rewrite an
+// unrecognised hash to '#dashboard'. See the file's own comment for the full
+// reasoning - this ordering is load-bearing, not stylistic.
+import './utils/initialUrl';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ThemeProvider } from 'flowbite-react';
