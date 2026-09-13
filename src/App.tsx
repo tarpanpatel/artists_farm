@@ -30,7 +30,7 @@ import { fetchMenuFromDB, addMenuItemDB, updateMenuItemDB, deleteMenuItemDB, fet
 import { ConfigurationDataProvider } from './contexts/ConfigurationDataContext';
 import { ModulesProvider, useModules } from './contexts/ModulesContext';
 import { DataLoader, PreloadedData } from './components/DataLoader';
-import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt } from './components/icons/FlowbiteIcons';
+import { Smartphone, Download, X as CloseIcon, Share, PlusSquare, MoreVertical, Receipt, ArrowLeft } from './components/icons/FlowbiteIcons';
 import { LoadingScreen } from './components/LoadingScreen';
 import { LoginPage } from './components/LoginPage';
 import { getPropertyAndRoomSlugs } from './services/api';
@@ -68,7 +68,7 @@ const EditPropertyPage = lazyWithRetry(() => import('./components/EditPropertyPa
 const PlatformPropertyManagement = lazyWithRetry(() => import('./components/PlatformPropertyManagement').then(m => ({ default: m.PlatformPropertyManagement })), 'PlatformPropertyManagement');
 const TenantDashboard = lazyWithRetry(() => import('./components/TenantDashboard').then(m => ({ default: m.TenantDashboard })), 'TenantDashboard');
 const RootAdminDashboard = lazyWithRetry(() => import('./components/RootAdminDashboard').then(m => ({ default: m.RootAdminDashboard })), 'RootAdminDashboard');
-const MultiKeyPropertyOverview = lazyWithRetry(() => import('./components/MultiKeyPropertyOverview').then(m => ({ default: m.MultiKeyPropertyOverview })), 'MultiKeyPropertyOverview');
+const PropertyEditForm = lazyWithRetry(() => import('./components/PropertyEditForm').then(m => ({ default: m.PropertyEditForm })), 'PropertyEditForm');
 const LegalDrawer = lazyWithRetry(() => import('./components/LegalDrawer').then(m => ({ default: m.LegalDrawer })), 'LegalDrawer');
 const SelfOnboardingWizard = lazyWithRetry(() => import('./components/SelfOnboardingWizard').then(m => ({ default: m.SelfOnboardingWizard })), 'SelfOnboardingWizard');
 const PropertySetupWizard = lazyWithRetry(() => import('./components/PropertySetupWizard').then(m => ({ default: m.PropertySetupWizard })), 'PropertySetupWizard');
@@ -966,6 +966,24 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [focusGuestId, setFocusGuestId] = useState<string | null>(null);
   const [focusRequestId, setFocusRequestId] = useState<string | null>(null);
   const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
+
+  const selectedRoom = useMemo(() => {
+    if (!selectedRoomSlugOverride || !preloadedData.currentProperty?.rooms) return null;
+    return preloadedData.currentProperty.rooms.find((r: any) => r.slug === selectedRoomSlugOverride) || null;
+  }, [selectedRoomSlugOverride, preloadedData.currentProperty?.rooms]);
+
+  const roomGuests = useMemo(() => {
+    if (!selectedRoom) return guests;
+    return guests.filter((g) => {
+      const guestRoomId = g.roomId || g.room_id;
+      return guestRoomId && Number(guestRoomId) === Number(selectedRoom.id);
+    });
+  }, [selectedRoom, guests]);
+
+  const roomReceipts = useMemo(() => {
+    if (!selectedRoom) return receipts;
+    return receipts.filter((r) => roomGuests.some((g) => g.id === r.guestId));
+  }, [selectedRoom, receipts, roomGuests]);
   // Bumped at the start of every guest/menu/audit-log/receipt hydration fetch
   // cycle (see the effect below) so a slower, older in-flight request
   // can detect it's been superseded and skip applying its (possibly
@@ -2658,50 +2676,85 @@ ${itemsStr}
             <main className="app-shell__main flex-1 px-0 pt-3 pb-1 sm:px-6 sm:py-3 lg:px-8 lg:py-4 w-full space-y-2 sm:space-y-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-4">
               <Suspense fallback={<TabContentFallback />}>
 
-              {/* MultiKey room view - takes priority over everything */}
-              {preloadedData.isMultiKeyProperty && selectedRoomSlugOverride ? (
-                <ErrorBoundary section="Multi-Key Property Overview">
-                  <MultiKeyPropertyOverview
-                  onSyncBookings={handleSyncBookings}
-                  propertyId={preloadedData.currentProperty?.id}
-                  propertySlug={multiKeyPropertySlug}
-                  selectedRoomSlug={selectedRoomSlugOverride}
-                  onNavigateToRoom={handleNavigateToRoom}
-                  onBackToOverview={handleNavigateToMultiKeyOverview}
-                  onBackToEditProperty={handleBackToEditPropertyFromRoom}
-                  activeTab={activeTab}
-                  setActiveTab={handleNavigateTab}
-                  guests={guests}
-                  guestsLoading={guestsLoading}
-                  menu={menu}
-                  receipts={receipts}
-                  onAddGuest={handleAddGuest}
-                  onCheckoutGuest={handleCheckoutGuest}
-                  onAddMenuItem={handleAddMenuItem}
-                  onUpdateStock={handleUpdateStock}
-                  onAddInventoryItem={handleAddInventoryItem}
-                  onDispatchTelegram={dispatchTelegramAlert}
-                  activeMenuItemKey={activeMenuItemKey}
-                  onSetActiveMenuItemKey={setActiveMenuItemKey}
-                  kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                  kitchenAccessAllowed={kitchenAccessAllowed}
-                  serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
-                  onUpdateBooking={handleUpdateGuest}
-                  onDeleteBooking={handleDeleteGuest}
-                  onGuestVerificationUpdated={handleGuestVerificationUpdated}
-                  onCFormFiledUpdated={handleCFormFiledUpdated}
-                  onGuestCheckedIn={handleGuestCheckedIn}
-                  onCheckout={(guestId) => {
-                    setFocusGuestId(guestId);
-                    handleNavigateTab('guests', 'all_bookings');
-                  }}
-                  />
-                </ErrorBoundary>
-              ) : null}
-
-              {/* Dashboard - Multi-Key Property Overview or Operational Dashboard */}
-              {!selectedRoomSlugOverride && activeTab === 'dashboard' ? (
-                preloadedData.isMultiKeyProperty ? (
+              {/* Dashboard: Room View, Multi-Key Timeline Overview, or Single-Property Dashboard */}
+              {activeTab === 'dashboard' && (
+                selectedRoomSlugOverride && selectedRoom ? (
+                  <div className="space-y-6">
+                    <ErrorBoundary section="Room Operational Dashboard">
+                      <OperationalDashboard
+                        onSyncBookings={handleSyncBookings}
+                        guests={roomGuests}
+                        receipts={receipts}
+                        menu={menu}
+                        rooms={preloadedData.currentProperty?.rooms}
+                        roomName={selectedRoom.name}
+                        roomId={selectedRoom.id}
+                        propertySlug={multiKeyPropertySlug}
+                        onNavigate={(tab, menuItemKey) => handleNavigateTab(tab, menuItemKey)}
+                        onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
+                        onAddGuest={handleAddGuest}
+                        onCheckoutGuest={handleCheckoutGuest}
+                        onUpdateBooking={handleUpdateGuest}
+                        onDeleteBooking={handleDeleteGuest}
+                        onGuestVerificationUpdated={handleGuestVerificationUpdated}
+                        onCFormFiledUpdated={handleCFormFiledUpdated}
+                        onGuestCheckedIn={handleGuestCheckedIn}
+                        onDispatchTelegram={dispatchTelegramAlert}
+                        kitchenModuleEnabled={isModuleEnabled('kitchen')}
+                        kitchenAccessAllowed={kitchenAccessAllowed}
+                        serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
+                        propertyName={preloadedData.currentProperty?.name || ''}
+                        propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+                        propertyPhone={preloadedData.currentProperty?.phone || ''}
+                        propertyWhatsappTemplate={
+                          preloadedData.currentProperty?.whatsapp_voucher_template ||
+                          (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template ||
+                          ''
+                        }
+                        propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+                        propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+                        propertySecurityDeposit={
+                          (selectedRoom as any)?.security_deposit ??
+                          (preloadedData.currentProperty as any)?.security_deposit ??
+                          null
+                        }
+                        propertyAddress={preloadedData.currentProperty?.address || ''}
+                        propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+                        propertyGuestInfo={{
+                          wifiNetwork:
+                            (selectedRoom as any)?.wifi_network ||
+                            (preloadedData.currentProperty as any)?.wifi_network ||
+                            '',
+                          wifiPassword:
+                            (selectedRoom as any)?.wifi_password ||
+                            (preloadedData.currentProperty as any)?.wifi_password ||
+                            '',
+                          houseManual:
+                            (selectedRoom as any)?.house_manual ||
+                            (preloadedData.currentProperty as any)?.house_manual ||
+                            '',
+                        }}
+                        propertyCheckinTime={
+                          (selectedRoom as any)?.checkin_time ||
+                          preloadedData.currentProperty?.checkin_time ||
+                          ''
+                        }
+                        propertyCheckoutTime={
+                          (selectedRoom as any)?.checkout_time ||
+                          preloadedData.currentProperty?.checkout_time ||
+                          ''
+                        }
+                        onSavePropertyLocation={handleSavePropertyLocation}
+                        isMultiKeyProperty={true}
+                        onCheckout={(guestId) => {
+                          setFocusGuestId(guestId);
+                          handleNavigateTab('guests', 'all_bookings');
+                        }}
+                        serviceRequests={serviceRequests}
+                      />
+                    </ErrorBoundary>
+                  </div>
+                ) : preloadedData.isMultiKeyProperty ? (
                   <div className="space-y-6">
                     <ErrorBoundary section="Booking Calendar">
                       <TodayOverview
@@ -2709,7 +2762,7 @@ ${itemsStr}
                         guests={guests}
                         rooms={preloadedData.currentProperty?.rooms}
                         roomsLoading={!!preloadedData.roomsFetchPending}
-                        isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                        isMultiKeyProperty={true}
                         kitchenModuleEnabled={(() => {
                           const kitchenModule = preloadedData.modules?.find((m: any) => m.slug === 'kitchen');
                           return kitchenModule?.is_enabled ?? true;
@@ -2720,20 +2773,21 @@ ${itemsStr}
                         onAddGuest={handleAddGuest}
                         onUpdateGuest={handleUpdateGuest}
                         onDeleteGuest={handleDeleteGuest}
-                        // Both declared on TodayOverviewProps for a while but never
-                        // actually passed, so checking a guest in or verifying their ID
-                        // from THIS calendar left the rest of the app (dashboard alerts,
-                        // the bookings list) showing the old state until a reload.
                         onCheckInGuest={handleGuestCheckedIn}
                         onGuestVerificationUpdated={handleGuestVerificationUpdated}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
-                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
-                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
+                        propertyWhatsappTemplate={
+                          preloadedData.currentProperty?.whatsapp_voucher_template ||
+                          (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template ||
+                          ''
+                        }
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
-                        propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
+                        propertySecurityDeposit={
+                          (preloadedData.currentProperty as any)?.security_deposit ?? null
+                        }
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
                         propertyGuestInfo={{
@@ -2751,44 +2805,6 @@ ${itemsStr}
                         }}
                       />
                     </ErrorBoundary>
-                    <ErrorBoundary section="Multi-Key Property Overview">
-                      <MultiKeyPropertyOverview
-                      onSyncBookings={handleSyncBookings}
-                      propertyId={preloadedData.currentProperty?.id}
-                      propertySlug={multiKeyPropertySlug}
-                      selectedRoomSlug={null}
-                      onNavigateToRoom={handleNavigateToRoom}
-                      onBackToOverview={handleNavigateToMultiKeyOverview}
-                  onBackToEditProperty={handleBackToEditPropertyFromRoom}
-                      activeTab={activeTab}
-                      setActiveTab={handleNavigateTab}
-                      guests={guests}
-                      menu={menu}
-                      receipts={receipts}
-                      onAddGuest={handleAddGuest}
-                      onCheckoutGuest={handleCheckoutGuest}
-                      onAddMenuItem={handleAddMenuItem}
-                      onUpdateStock={handleUpdateStock}
-                      onAddInventoryItem={handleAddInventoryItem}
-                      onDispatchTelegram={dispatchTelegramAlert}
-                      activeMenuItemKey={activeMenuItemKey}
-                      onSetActiveMenuItemKey={setActiveMenuItemKey}
-                      kitchenModuleEnabled={isModuleEnabled('kitchen')}
-                      kitchenAccessAllowed={kitchenAccessAllowed}
-                      serviceRequestsAccessAllowed={serviceRequestsAccessAllowed}
-                      hideHeader={true}
-                      onUpdateBooking={handleUpdateGuest}
-                      onDeleteBooking={handleDeleteGuest}
-                      onGuestVerificationUpdated={handleGuestVerificationUpdated}
-                      onCFormFiledUpdated={handleCFormFiledUpdated}
-                  onGuestCheckedIn={handleGuestCheckedIn}
-                      serviceRequests={serviceRequests}
-                      onCheckout={(guestId) => {
-                        setFocusGuestId(guestId);
-                        handleNavigateTab('guests', 'all_bookings');
-                      }}
-                      />
-                    </ErrorBoundary>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -2796,12 +2812,6 @@ ${itemsStr}
                       <OperationalDashboard
                         onSyncBookings={handleSyncBookings}
                         guests={guests}
-                        // FIXED 25 Aug 2026 (live report: "View stock request on dashboard
-                        // taking to wrong page") - this wrapper silently dropped the second
-                        // argument every OperationalDashboard onNavigate() call passes
-                        // (menuItemKey, e.g. 'stock_requests'/'all_bookings') - handleNavigateTab
-                        // takes one and landed on each tab's own default sub-view instead every
-                        // time, not just for Stock Requests.
                         onNavigate={(tab, menuItemKey) => handleNavigateTab(tab, menuItemKey)}
                         onOpenCheckin={() => handleNavigateTab('guests', 'guest_registration')}
                         onAddGuest={handleAddGuest}
@@ -2812,15 +2822,20 @@ ${itemsStr}
                         onDeleteBooking={handleDeleteGuest}
                         onGuestVerificationUpdated={handleGuestVerificationUpdated}
                         onCFormFiledUpdated={handleCFormFiledUpdated}
-                  onGuestCheckedIn={handleGuestCheckedIn}
+                        onGuestCheckedIn={handleGuestCheckedIn}
                         propertyName={preloadedData.currentProperty?.name || ''}
                         propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyPhone={preloadedData.currentProperty?.phone || ''}
-                        propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
-                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
+                        propertyWhatsappTemplate={
+                          preloadedData.currentProperty?.whatsapp_voucher_template ||
+                          (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template ||
+                          ''
+                        }
                         propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
                         propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
-                        propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
+                        propertySecurityDeposit={
+                          (preloadedData.currentProperty as any)?.security_deposit ?? null
+                        }
                         propertyAddress={preloadedData.currentProperty?.address || ''}
                         propertyGoogleMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
                         propertyInstructions={preloadedData.currentProperty?.instructions || ''}
@@ -2832,7 +2847,7 @@ ${itemsStr}
                         propertyCheckinTime={preloadedData.currentProperty?.checkin_time || ''}
                         propertyCheckoutTime={preloadedData.currentProperty?.checkout_time || ''}
                         onSavePropertyLocation={handleSavePropertyLocation}
-                        isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+                        isMultiKeyProperty={false}
                         onCheckout={(guestId) => {
                           setFocusGuestId(guestId);
                           handleNavigateTab('guests', 'all_bookings');
@@ -2842,14 +2857,18 @@ ${itemsStr}
                     </ErrorBoundary>
                   </div>
                 )
-              ) : null}
+              )}
 
-              {!selectedRoomSlugOverride && activeTab === 'guests' && (
+              {activeTab === 'guests' && (
                 <ErrorBoundary section="Guest Management">
                   <GuestManagement
-                    propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
-                    guests={guests}
-                    receipts={receipts}
+                    propertySecurityDeposit={
+                      (selectedRoom as any)?.security_deposit ??
+                      (preloadedData.currentProperty as any)?.security_deposit ??
+                      null
+                    }
+                    guests={selectedRoom ? roomGuests : guests}
+                    receipts={selectedRoom ? roomReceipts : receipts}
                     isLoading={guestsLoading}
                     onAddGuest={handleAddGuest}
                     onCheckoutGuest={handleCheckoutGuest}
@@ -2861,7 +2880,7 @@ ${itemsStr}
                     isMultiKeyProperty={preloadedData.isMultiKeyProperty}
                     rooms={preloadedData.currentProperty?.rooms}
                     onSetActiveMenuItemKey={setActiveMenuItemKey}
-                    selectedRoomSlug={preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
+                    selectedRoomSlug={selectedRoomSlugOverride || preloadedData.currentRoomSlug || selectedRoomForGuestRegistration}
                     kitchenModuleEnabled={isModuleEnabled('kitchen')}
                     focusGuestId={focusGuestId}
                     onClearFocusGuest={() => setFocusGuestId(null)}
@@ -3108,6 +3127,40 @@ ${itemsStr}
               {!selectedRoomSlugOverride && activeTab === 'subscription' && (
                 <ErrorBoundary section="Subscription">
                   <SubscriptionPanel propertyId={preloadedData.currentProperty?.id || 0} onNavigate={(tab) => handleNavigateTab(tab)} />
+                </ErrorBoundary>
+              )}
+
+              {selectedRoomSlugOverride && selectedRoom && activeTab === 'edit_property' && (
+                <ErrorBoundary section="Edit Room">
+                  <div className="edit-room-page space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={<ArrowLeft className="w-4 h-4" />}
+                        onClick={handleBackToEditPropertyFromRoom}
+                      >
+                        Go Back
+                      </Button>
+                    </div>
+
+                    <div className="max-w-2xl">
+                      <div className="edit-room-page__form-card bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+                        <h2 className="edit-room-page__heading text-base font-semibold text-slate-900 dark:text-white mb-4">
+                          Edit Room
+                        </h2>
+                        <PropertyEditForm
+                          property={{
+                            ...(selectedRoom as any),
+                            property_type: 'MULTI_KEY_ROOM',
+                          }}
+                          onSaved={() => window.location.reload()}
+                          isRoom
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </ErrorBoundary>
               )}
 

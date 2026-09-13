@@ -374,7 +374,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         fullName: member.name,
         username: member.phone || member.username || '',
         role: member.role,
-        passcodePin: member.passcode || '',
+        // Passcodes are hashed server-side as of 13 Sep 2026, so get_staff no
+        // longer returns one - it reports only whether a passcode is SET. The
+        // only time this screen knows a real passcode is right after an admin
+        // types one (create/change), which is when sharing it is legitimate;
+        // see handleShareLogin.
+        passcodePin: '',
+        hasPasscode: Boolean(member.hasPasscode),
         isFinancialHandler: isSuperOrRoot ? true : Boolean(member.isFinancialHandler),
         accessAllProperties: isSuperOrRoot ? true : Boolean(member.accessAllProperties),
         qrCodeUrl: member.qrCodeUrl,
@@ -576,13 +582,25 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setIsTeamMemberModalOpen(true);
   };
 
-  // Builds this staff member's CURRENT login as plain text.
+  // Builds this staff member's login as plain text. Only ever called when a
+  // passcode is actually known in this session (see handleShareLogin).
   const buildStaffLoginShareMessage = (user: { fullName: string; username: string; passcodePin?: string }) => {
     const loginUrl = window.location.origin + window.location.pathname;
-    return `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nUsername: ${user.username}\nPassword: ${user.passcodePin || '(ask your admin to set one)'}\n\nPlease keep this password private. Didn't request this? You can ignore this message.`;
+    return `Hi ${user.fullName},\n\nHere are your Ground Code login details:\n\nLogin URL: ${loginUrl}\nUsername: ${user.username}\nPassword: ${user.passcodePin}\n\nPlease keep this password private. Didn't request this? You can ignore this message.`;
   };
 
   const handleShareLogin = (user: { fullName: string; username: string; passcodePin?: string; phone?: string }) => {
+    // A stored passcode can no longer be read back (it's a hash), so there is
+    // nothing to share unless an admin set one moments ago in this session.
+    // Previously this sent "(ask your admin to set one)" as the password, which
+    // read to the recipient like a real instruction and told them nothing.
+    if (!user.passcodePin) {
+      showToast(
+        "Passcodes are encrypted and can't be viewed. Use Edit to set a new 6-digit password, then share it.",
+        { type: 'info' }
+      );
+      return;
+    }
     const message = buildStaffLoginShareMessage(user);
     const rawPhone = (user.phone || user.username || '').replace(/\D/g, '');
     const waUrl = getWhatsAppShareUrl(rawPhone, message);

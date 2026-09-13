@@ -633,19 +633,32 @@ if (!isSchemaVerified('schema_tenant_subscription_history')) {
 if (!function_exists('syncTenantSuperAdminRow')) {
     function syncTenantSuperAdminRow(PDO $pdo, $tenantId, $propertyId) {
         try {
+            // staff_users.password is new (13 Sep 2026) and this function writes
+            // to it, so the column has to exist before the UPDATE/INSERT below.
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+
             $identity = null;
 
             $uStmt = $pdo->prepare("
-                SELECT username, passcode, full_name, phone_number FROM users
+                SELECT username, passcode, password, full_name, phone_number FROM users
                 WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL)
                 LIMIT 1
             ");
             $uStmt->execute([$tenantId]);
             $u = $uStmt->fetch();
             if ($u && !empty($u['username'])) {
+                // Carries BOTH credential columns (13 Sep 2026). Passcodes are
+                // hashed into `password` now, so the tenant's real credential
+                // is the hash - copying only `passcode` would replicate a NULL
+                // and the old `?: '123456'` fallback would then have written
+                // the well-known default PIN into a live Super Admin row every
+                // time this ran. A missing credential must replicate as
+                // missing, never as a guessable one.
                 $identity = [
                     'username' => $u['username'],
-                    'passcode' => $u['passcode'] ?: '123456',
+                    'passcode' => $u['passcode'] ?: null,
+                    'password' => $u['password'] ?: null,
                     'full_name' => $u['full_name'] ?: $u['username'],
                     'phone' => $u['phone_number'] ?: $u['username'],
                 ];
@@ -657,7 +670,13 @@ if (!function_exists('syncTenantSuperAdminRow')) {
                 $phoneDigits = preg_replace('/\D/', '', $tenant['phone'] ?? '');
                 $phoneDigits = strlen($phoneDigits) >= 10 ? substr($phoneDigits, -10) : $phoneDigits;
                 if (strlen($phoneDigits) !== 10) return; // no valid phone/login on file yet - nothing to seed
-                $identity = ['username' => $phoneDigits, 'passcode' => '123456', 'full_name' => $tenant['name'], 'phone' => $phoneDigits];
+                // Seeded default for a tenant that has no `users` login at all
+                // yet. Kept as the well-known '123456' deliberately - the owner
+                // has no other way to learn a random one - but stored as a HASH
+                // so it is at least not a plaintext credential at rest. Replaced
+                // the moment they set their own.
+                require_once __DIR__ . '/../security/passcode.php';
+                $identity = ['username' => $phoneDigits, 'passcode' => null, 'password' => hashPasscode('123456'), 'full_name' => $tenant['name'], 'phone' => $phoneDigits];
             }
 
             // Only one Super Admin per property, ever - remove any other claimant.
@@ -668,13 +687,13 @@ if (!function_exists('syncTenantSuperAdminRow')) {
             $existing->execute([$propertyId, $identity['username']]);
             $row = $existing->fetch();
             if ($row) {
-                $pdo->prepare("UPDATE staff_users SET full_name = ?, phone = ?, phone_number = ?, passcode = ?, role = 'Super Admin', status = 'Active', is_financial_handler = 1, access_all_properties = 1 WHERE id = ?")
-                    ->execute([$identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode'], $row['id']]);
+                $pdo->prepare("UPDATE staff_users SET full_name = ?, phone = ?, phone_number = ?, passcode = ?, password = ?, role = 'Super Admin', status = 'Active', is_financial_handler = 1, access_all_properties = 1 WHERE id = ?")
+                    ->execute([$identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode'], $identity['password'], $row['id']]);
             } else {
                 $pdo->prepare("
-                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, access_all_properties, passcode)
-                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, 1, ?)
-                ")->execute(["owner-{$propertyId}", $propertyId, $identity['username'], $identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode']]);
+                    INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, status, is_financial_handler, access_all_properties, passcode, password)
+                    VALUES (?, ?, ?, ?, 'Super Admin', ?, ?, 'Active', 1, 1, ?, ?)
+                ")->execute(["owner-{$propertyId}", $propertyId, $identity['username'], $identity['full_name'], $identity['phone'], $identity['phone'], $identity['passcode'], $identity['password']]);
             }
         } catch (Exception $e) {
             // Non-fatal - the caller's own action (property creation, login
@@ -878,7 +897,7 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // 'update_property' REMOVED from this list 13 Sep 2026 - it was an
 // unauthenticated property-write, exploitable with public information alone.
 // See the full note on the case handler itself.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'get_booking_hold', 'confirm_booking_hold', 'get_public_voucher'];
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'reset_passcode_with_token', 'force_set_passcode', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'get_booking_hold', 'confirm_booking_hold', 'get_public_voucher'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -945,7 +964,8 @@ if ($is_write_action && !empty($api_key) && $provided_key !== $api_key && !$is_a
 // SECURITY (12 Aug 2026): CSRF protection for every state-changing action
 // that isn't in $public_actions - the same "genuinely needs to work before/
 // without a session" boundary already established above, not a new one.
-// login_user/request_login_info/force_set_passcode are deliberately exempt:
+// login_user/request_login_info/reset_passcode_with_token/force_set_passcode
+// are deliberately exempt:
 // there's no authenticated session yet for a forged request to hijack, and
 // the login flow already has its own brute-force protection (RateLimiter).
 // Every actual write once a session exists (add_guest, checkout_guest,
@@ -2056,6 +2076,9 @@ switch ($action) {
         $matchedName = null;
 
         try {
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+
             // 1. Check Root Admin / Platform Admin passcodes in users table
             $stmt = $pdo->prepare("SELECT id, username, full_name, role, is_platform_admin, passcode, password FROM users WHERE is_platform_admin = 1 OR role = 'root_admin'");
             $stmt->execute();
@@ -2063,7 +2086,7 @@ switch ($action) {
             foreach ($rootUsers as $ru) {
                 $sp = $ru['passcode'] ?? '';
                 $spw = $ru['password'] ?? '';
-                if (($sp && $sp === $passcode) || ($spw && (password_verify($passcode, $spw) || $spw === $passcode))) {
+                if (verifyPasscodeAgainst($passcode, $sp, $spw)) {
                     $isValid = true;
                     $matchedRole = 'Root Admin';
                     $matchedName = $ru['full_name'] ?: $ru['username'];
@@ -2084,7 +2107,7 @@ switch ($action) {
                 foreach ($tenantUsers as $tu) {
                     $sp = $tu['passcode'] ?? '';
                     $spw = $tu['password'] ?? '';
-                    if (($sp && $sp === $passcode) || ($spw && (password_verify($passcode, $spw) || $spw === $passcode))) {
+                    if (verifyPasscodeAgainst($passcode, $sp, $spw)) {
                         $isValid = true;
                         $matchedRole = 'Super Admin';
                         $matchedName = $tu['full_name'] ?: $tu['username'];
@@ -2096,14 +2119,14 @@ switch ($action) {
             // 3. Check staff_users table for Super Admin / Admin
             if (!$isValid) {
                 $stmt = $pdo->prepare("
-                    SELECT id, username, full_name, role, passcode
+                    SELECT id, username, full_name, role, passcode, password
                     FROM staff_users
                     WHERE role IN ('Super Admin', 'Admin') AND status = 'Active'
                 ");
                 $stmt->execute();
                 $staffAdmins = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 foreach ($staffAdmins as $sa) {
-                    if (($sa['passcode'] ?? '') === $passcode) {
+                    if (verifyPasscodeAgainst($passcode, $sa['passcode'] ?? '', $sa['password'] ?? '')) {
                         $isValid = true;
                         $matchedRole = $sa['role'];
                         $matchedName = $sa['full_name'] ?: $sa['username'];
@@ -2169,24 +2192,26 @@ switch ($action) {
         }
 
         try {
-            $stmt = $pdo->prepare("SELECT id, passcode FROM users WHERE username = ? LIMIT 1");
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+
+            $stmt = $pdo->prepare("SELECT id, passcode, password FROM users WHERE username = ? LIMIT 1");
             $stmt->execute([$identifier]);
             $user = $stmt->fetch();
 
-            if ($user && ($user['passcode'] ?? '') === $currentPasscode) {
-                $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 0 WHERE id = ?")
-                    ->execute([$newPasscode, $user['id']]);
+            if ($user && verifyPasscodeAgainst($currentPasscode, $user['passcode'] ?? '', $user['password'] ?? '')) {
+                setPasscodeForAccount($pdo, 'users', $user['id'], $newPasscode);
+                $pdo->prepare("UPDATE users SET must_change_passcode = 0 WHERE id = ?")->execute([$user['id']]);
                 echo json_encode(['success' => true, 'message' => 'Passcode updated successfully']);
                 exit;
             }
 
-            $stmt = $pdo->prepare("SELECT id, passcode FROM staff_users WHERE username = ? LIMIT 1");
+            $stmt = $pdo->prepare("SELECT id, passcode, password FROM staff_users WHERE username = ? LIMIT 1");
             $stmt->execute([$identifier]);
             $staff = $stmt->fetch();
 
-            if ($staff && ($staff['passcode'] ?? '') === $currentPasscode) {
-                $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE id = ?")
-                    ->execute([$newPasscode, $staff['id']]);
+            if ($staff && verifyPasscodeAgainst($currentPasscode, $staff['passcode'] ?? '', $staff['password'] ?? '')) {
+                setPasscodeForAccount($pdo, 'staff_users', $staff['id'], $newPasscode);
                 echo json_encode(['success' => true, 'message' => 'Passcode updated successfully']);
                 exit;
             }
@@ -2203,10 +2228,17 @@ switch ($action) {
         }
         exit;
 
-    // "Forgot Password?" on the login page. Passcodes are stored in plaintext
-    // throughout this app (see force_set_passcode above), so this isn't a
-    // reset-link flow - it just emails the tenant their current username +
-    // passcode, same info root admin can already see via get_tenant_credentials.
+    // "Forgot Password?" on the login page. Emails a single-use, 60-minute
+    // RESET LINK - it can no longer email the passcode itself, because as of
+    // 13 Sep 2026 passcodes are stored as bcrypt hashes and there is nothing
+    // left to read back (see php/security/passcode.php).
+    //
+    // A link rather than a freshly-generated temporary passcode, deliberately:
+    // this endpoint is unauthenticated, so a flow that reset the passcode on
+    // REQUEST would let anyone lock a tenant out of their own account just by
+    // submitting their mobile number repeatedly. Minting a token changes
+    // nothing until the real account holder opens their email and uses it.
+    //
     // Scoped to tenant logins only (users.default_tenant_id), since that's
     // the only place we have an email address on file at all.
     case 'request_login_info':
@@ -2226,7 +2258,7 @@ switch ($action) {
         $rateLimiter = new RateLimiter($pdo);
         $rateLimiter->checkAndBlock(RateLimiter::getClientIdentifier(), 'login_user');
 
-        $genericLoginInfoReply = 'If an account exists for that mobile number / username, its login details have been emailed to the address on file.';
+        $genericLoginInfoReply = 'If an account exists for that mobile number / username, a passcode reset link has been emailed to the address on file. The link expires in 1 hour.';
 
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $identifier = trim($input['username'] ?? '');
@@ -2237,8 +2269,11 @@ switch ($action) {
         }
 
         try {
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+
             $stmt = $pdo->prepare("
-                SELECT u.username, u.passcode, u.full_name, t.email AS tenant_email, t.name AS tenant_name
+                SELECT u.id, u.username, u.full_name, t.email AS tenant_email, t.name AS tenant_name
                 FROM users u
                 LEFT JOIN tenants t ON u.default_tenant_id = t.id
                 WHERE u.username = ? AND (u.is_platform_admin = 0 OR u.is_platform_admin IS NULL)
@@ -2259,16 +2294,24 @@ switch ($action) {
                 exit;
             }
 
-            $loginUrl = trim($input['login_url'] ?? '') ?: '/';
-            $displayName = $user['tenant_name'] ?: ($user['full_name'] ?: 'there');
-            $body = "<p>Hi {$displayName},</p>"
-                . "<p>Here are your Ground Code login details:</p>"
-                . "<p><b>Mobile Number / Username:</b> {$user['username']}<br>"
-                . "<b>Passcode:</b> {$user['passcode']}</p>"
-                . "<p><a href=\"{$loginUrl}\">Log in here</a></p>"
-                . "<p style=\"color:#888;font-size:12px;\">Didn't request this? You can safely ignore this email.</p>";
+            // The link's host is built from the VALIDATED request host, never
+            // from the client's own `login_url` field as it used to be - that
+            // was caller-controlled text going straight into an email we send,
+            // i.e. a ready-made phishing link over our SMTP reputation.
+            $resetToken = createPasscodeResetToken($pdo, (int)$user['id'], 60);
+            $resetUrl = buildAppBaseUrl() . '/#reset-passcode?token=' . urlencode($resetToken);
 
-            $emailResult = sendSmtpEmail($pdo, $user['tenant_email'], 'Your Ground Code login details', $body);
+            $displayName = $user['tenant_name'] ?: ($user['full_name'] ?: 'there');
+            $safeName = htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8');
+            $safeUsername = htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8');
+            $body = "<p>Hi {$safeName},</p>"
+                . "<p>We received a request to reset the passcode for your Ground Code account.</p>"
+                . "<p><b>Mobile Number / Username:</b> {$safeUsername}</p>"
+                . "<p><a href=\"{$resetUrl}\">Set a new passcode</a></p>"
+                . "<p style=\"color:#888;font-size:12px;\">This link works once and expires in 1 hour. "
+                . "Didn't request this? You can safely ignore this email - your passcode has not changed.</p>";
+
+            $emailResult = sendSmtpEmail($pdo, $user['tenant_email'], 'Reset your Ground Code passcode', $body);
             // Uniform reply again: a send failure used to echo the SMTP error
             // back to an anonymous caller, which both leaks mail-server detail
             // and confirms the account exists. Logged instead.
@@ -2279,6 +2322,54 @@ switch ($action) {
         } catch (Throwable $e) {
             error_log('request_login_info failed for "' . $identifier . '": ' . $e->getMessage());
             echo json_encode(['success' => true, 'message' => $genericLoginInfoReply]);
+        }
+        exit;
+
+    // Redeem a reset link from request_login_info above and set a new passcode
+    // (13 Sep 2026). Unauthenticated by necessity - the whole point is that the
+    // account holder cannot log in - so the TOKEN is the entire proof of
+    // identity: single-use, 60-minute expiry, and only its SHA-256 is stored,
+    // so a stolen database yields no working links.
+    //
+    // Rate limited on login_user's bucket for the same reason force_set_passcode
+    // is: it answers "is this token valid?", and an unthrottled endpoint that
+    // answers a yes/no question about a secret is a guessing oracle. (A 256-bit
+    // token is not realistically guessable, but the limiter costs nothing and
+    // does not depend on that assumption holding.)
+    case 'reset_passcode_with_token':
+        $rateLimiter = new RateLimiter($pdo);
+        $rateLimiter->checkAndBlock(RateLimiter::getClientIdentifier(), 'login_user');
+
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $resetToken = trim($input['token'] ?? '');
+        $newPasscode = trim($input['new_passcode'] ?? '');
+
+        try {
+            require_once __DIR__ . '/../security/passcode.php';
+            $result = consumePasscodeResetToken($pdo, $resetToken, $newPasscode);
+
+            // A redeemed reset must reach every property's synced Super Admin
+            // row too, or the tenant sets a new passcode and still cannot log
+            // into their own properties (see syncTenantSuperAdminRow).
+            if ($result['ok']) {
+                $tStmt = $pdo->prepare("
+                    SELECT u.default_tenant_id FROM users u
+                    JOIN passcode_reset_tokens prt ON prt.user_id = u.id
+                    WHERE prt.token_hash = ? LIMIT 1
+                ");
+                $tStmt->execute([hash('sha256', $resetToken)]);
+                $tenantForSync = $tStmt->fetchColumn();
+                if (!empty($tenantForSync) && function_exists('syncTenantSuperAdminAcrossProperties')) {
+                    syncTenantSuperAdminAcrossProperties($pdo, $tenantForSync);
+                }
+            }
+
+            http_response_code($result['ok'] ? 200 : 400);
+            echo json_encode(['success' => $result['ok'], 'message' => $result['message']]);
+        } catch (Throwable $e) {
+            error_log('reset_passcode_with_token failed: ' . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Could not reset the passcode. Please request a new link.']);
         }
         exit;
 
@@ -2423,18 +2514,18 @@ switch ($action) {
             $params = [$newUsername, $newFullName ?: null, $newPhoneNumber ?: null, $newEmail ?: null, $newGstin ?: null];
 
             if ($newPasscode) {
-                $storedPasscode = $profileUser['passcode'] ?? '';
-                $storedPassword = $profileUser['password'] ?? '';
-                $currentValid = ($storedPasscode && $storedPasscode === $currentPasscode)
-                    || ($storedPassword && password_verify($currentPasscode, $storedPassword))
-                    || ($storedPassword && $storedPassword === $currentPasscode);
+                require_once __DIR__ . '/../security/passcode.php';
+                ensurePasscodeSchema($pdo);
+                $currentValid = verifyPasscodeAgainst($currentPasscode, $profileUser['passcode'] ?? '', $profileUser['password'] ?? '');
                 if (!$currentValid) {
                     http_response_code(401);
                     echo json_encode(['success' => false, 'message' => 'Current passcode is incorrect']);
                     exit;
                 }
-                $fields .= ', passcode = ?, must_change_passcode = 0';
-                $params[] = $newPasscode;
+                // Hashed into `password`; the legacy plaintext column is cleared
+                // in the same statement so a change never leaves the old value.
+                $fields .= ', password = ?, passcode = NULL, must_change_passcode = 0';
+                $params[] = hashPasscode($newPasscode);
             }
 
             $params[] = $profileUserId;
@@ -2515,12 +2606,16 @@ switch ($action) {
                 $existing->execute([$phoneDigits]);
 
                 if (!$existing->fetch()) {
+                    // Hashed at rest; the plaintext exists only in this request,
+                    // long enough for the welcome message below to carry it.
+                    require_once __DIR__ . '/../security/passcode.php';
+                    ensurePasscodeSchema($pdo);
                     $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
                     $pdo->prepare("
-                        INSERT INTO users (username, full_name, phone_number, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode)
+                        INSERT INTO users (username, full_name, phone_number, password, role, is_platform_admin, default_tenant_id, must_change_passcode)
                         VALUES (?, ?, ?, ?, 'super_admin', 0, ?, 1)
-                    ")->execute([$phoneDigits, $name, $phoneDigits, $tempPasscode, $tenant_id]);
+                    ")->execute([$phoneDigits, $name, $phoneDigits, hashPasscode($tempPasscode), $tenant_id]);
 
                     $renderedMessage = renderTenantWelcomeTemplate(getTenantWelcomeTemplate($pdo), [
                         'tenant_name' => $name,
@@ -2647,11 +2742,16 @@ switch ($action) {
         }
         exit;
 
-    // Root-admin-only: reveal a tenant's current login credentials (username +
-    // passcode). Passcodes are stored in plaintext throughout this app (same
-    // as staff_users), so this is a straightforward lookup, not a decrypt -
-    // it works identically whether the tenant is still on the temp passcode
-    // from create_tenant or has since changed it themselves.
+    // Root-admin-only: a tenant's login USERNAME, and whether a passcode is
+    // set. It no longer returns the passcode itself (13 Sep 2026) - passcodes
+    // are bcrypt hashes now, so there is nothing to reveal.
+    //
+    // The support workflow this used to serve ("read it out to them") becomes
+    // "reset it and give them the new one", via reset_tenant_login below. That
+    // is a real change for Root Admin, and a deliberate one: the old behaviour
+    // meant a single compromised root session - or one database backup - handed
+    // over every tenant's live credentials in the clear, and people reuse PINs.
+    // A reset also leaves an audit trail that a silent read never did.
     case 'get_tenant_credentials':
         if (!($_SESSION['is_platform_admin'] ?? false)) {
             http_response_code(403);
@@ -2665,8 +2765,11 @@ switch ($action) {
             exit;
         }
         try {
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+
             $stmt = $pdo->prepare("
-                SELECT username, passcode, must_change_passcode
+                SELECT username, passcode, password, must_change_passcode
                 FROM users
                 WHERE default_tenant_id = ? AND (is_platform_admin = 0 OR is_platform_admin IS NULL)
                 ORDER BY id ASC LIMIT 1
@@ -2677,10 +2780,19 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'No login found for this tenant yet']);
                 exit;
             }
-            echo json_encode(['success' => true, 'data' => $user]);
+            echo json_encode(['success' => true, 'data' => [
+                'username' => $user['username'],
+                'must_change_passcode' => $user['must_change_passcode'],
+                // No 'passcode' key at all, rather than an empty one - the UI
+                // must render a "Reset passcode" action, not a blank field that
+                // reads as "this tenant has no passcode".
+                'has_passcode' => !empty($user['password']) || !empty($user['passcode']),
+            ]]);
         } catch (Exception $e) {
+            // Root-admin-only, but still no raw PDO text in an API response.
+            error_log('get_tenant_credentials failed: ' . $e->getMessage());
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Could not load the tenant login.']);
         }
         exit;
 
@@ -2744,11 +2856,14 @@ switch ($action) {
                 exit;
             }
 
+            // Hashed at rest, returned once below for Root Admin to relay.
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
             $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $pdo->prepare("
-                INSERT INTO users (username, full_name, phone_number, passcode, role, is_platform_admin, default_tenant_id, must_change_passcode)
+                INSERT INTO users (username, full_name, phone_number, password, role, is_platform_admin, default_tenant_id, must_change_passcode)
                 VALUES (?, ?, ?, ?, 'super_admin', 0, ?, 1)
-            ")->execute([$phoneDigits, $tenant['name'], $phoneDigits, $tempPasscode, $tenant_id]);
+            ")->execute([$phoneDigits, $tenant['name'], $phoneDigits, hashPasscode($tempPasscode), $tenant_id]);
 
             // This tenant's login now exists (or changed) - push it out as the
             // one true Super Admin on every one of their properties.
@@ -2764,18 +2879,22 @@ switch ($action) {
                 ],
             ]);
         } catch (Exception $e) {
+            error_log('create_tenant_login failed: ' . $e->getMessage());
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Could not create the login.']);
         }
         exit;
 
-    // Root-admin-side password reset for a tenant that already has a login -
+    // Root-admin-side passcode reset for a tenant that already has a login -
     // the counterpart to create_tenant_login above (which only fires for
     // tenants with NO login yet). Covers the case the tenant's own
-    // self-service "Forgot Password?" flow (request_login_info) can't: it
-    // emails the CURRENT passcode to the tenant's email on file, so it's a
-    // dead end when that tenant has no email configured, or the admin just
-    // wants to hand them a fresh passcode directly. Same shape as
+    // self-service "Forgot Password?" flow (request_login_info) can't: that
+    // flow emails a reset link to the tenant's email on file, so it's a dead
+    // end when that tenant has no email configured, or the admin just wants to
+    // hand them a fresh passcode directly.
+    //
+    // Since 13 Sep 2026 this is ALSO the replacement for reading a passcode
+    // out of get_tenant_credentials, which can no longer reveal one. Same shape as
     // create_tenant_login's success response (a temp passcode,
     // must_change_passcode forced back on) so the frontend can reuse the
     // exact same "reveal/copy" credentials UI for both.
@@ -2804,9 +2923,15 @@ switch ($action) {
                 exit;
             }
 
+            // Stored as a hash; returned in plaintext ONCE, in this response,
+            // for Root Admin to relay. This is the correct shape for a
+            // credential nobody chose - generate, show once, never readable
+            // again (get_tenant_credentials above no longer reveals it).
+            require_once __DIR__ . '/../security/passcode.php';
             $tempPasscode = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 1 WHERE id = ?")
-                ->execute([$tempPasscode, $existing['id']]);
+            setPasscodeForAccount($pdo, 'users', $existing['id'], $tempPasscode);
+            $pdo->prepare("UPDATE users SET must_change_passcode = 1 WHERE id = ?")
+                ->execute([$existing['id']]);
 
             // Keep every property's synced Super Admin row's passcode current too.
             syncTenantSuperAdminAcrossProperties($pdo, $tenant_id);
@@ -2882,8 +3007,10 @@ switch ($action) {
             }
 
             if ($passcode !== '') {
-                $pdo->prepare("UPDATE users SET full_name = ?, passcode = ? WHERE id = ?")
-                    ->execute([$full_name, $passcode, $existing['id']]);
+                require_once __DIR__ . '/../security/passcode.php';
+                $pdo->prepare("UPDATE users SET full_name = ? WHERE id = ?")
+                    ->execute([$full_name, $existing['id']]);
+                setPasscodeForAccount($pdo, 'users', $existing['id'], $passcode);
             } else {
                 $pdo->prepare("UPDATE users SET full_name = ? WHERE id = ?")
                     ->execute([$full_name, $existing['id']]);
@@ -2964,11 +3091,9 @@ switch ($action) {
                 exit;
             }
 
-            $storedPasscode = $user['passcode'] ?? '';
-            $storedPassword = $user['password'] ?? '';
-            $currentValid = ($storedPasscode && $storedPasscode === $currentPasscode)
-                || ($storedPassword && password_verify($currentPasscode, $storedPassword))
-                || ($storedPassword && $storedPassword === $currentPasscode);
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+            $currentValid = verifyPasscodeAgainst($currentPasscode, $user['passcode'] ?? '', $user['password'] ?? '');
 
             if (!$currentValid) {
                 http_response_code(401);
@@ -2976,8 +3101,8 @@ switch ($action) {
                 exit;
             }
 
-            $pdo->prepare("UPDATE users SET passcode = ?, must_change_passcode = 0 WHERE id = ?")
-                ->execute([$newPasscode, $user['id']]);
+            setPasscodeForAccount($pdo, 'users', $user['id'], $newPasscode);
+            $pdo->prepare("UPDATE users SET must_change_passcode = 0 WHERE id = ?")->execute([$user['id']]);
 
             $targetTenantId = $user['default_tenant_id'] ?? $tenantId;
             if (!empty($targetTenantId) && function_exists('syncTenantSuperAdminAcrossProperties')) {
@@ -3083,6 +3208,17 @@ switch ($action) {
     // access, and the credentials returned are for a designated demo-only
     // account, never a real tenant's real staff.
     case 'get_demo_login_credentials':
+        // THE ONE PLACE A PLAINTEXT PASSCODE IS STILL READ BACK, deliberately
+        // (13 Sep 2026). A public demo's credentials are published on purpose
+        // so a prospect can click straight in - they are not a secret, and
+        // hashing them would break the auto-login to protect nothing. Demo
+        // accounts are correspondingly skipped by the lazy hash migration; see
+        // isExemptFromPasscodeHashing() in php/security/passcode.php.
+        //
+        // The gate below is what keeps that narrow: only a property explicitly
+        // flagged is_public_demo on an environment with demo data enabled can
+        // ever reach it.
+        //
         // Public demo auto-login is a sales/testing aid - never let an
         // anonymous production visitor get auto-logged into it. See
         // APP_DEMO_DATA_ENABLED in config/database.php.
@@ -3122,7 +3258,12 @@ switch ($action) {
             ");
             $tenantStmt->execute([$demoProperty['tenant_id']]);
             $tenantLogin = $tenantStmt->fetch();
-            if ($tenantLogin) {
+            // An empty plaintext passcode here means this demo account got
+            // hashed anyway (the exemption check failed, e.g. on an environment
+            // with no is_public_demo column). Say so instead of shipping the
+            // `password` hash to the browser as if it were a passcode - that
+            // would fail login confusingly AND publish the hash.
+            if ($tenantLogin && !empty($tenantLogin['passcode'])) {
                 echo json_encode(['success' => true, 'username' => $tenantLogin['username'], 'passcode' => $tenantLogin['passcode']]);
                 exit;
             }
@@ -3130,7 +3271,7 @@ switch ($action) {
             $staffStmt = $pdo->prepare("SELECT username, passcode FROM staff_users WHERE property_id = ? AND status = 'Active' ORDER BY (role = 'Super Admin') DESC, (role = 'Admin') DESC, (role = 'Manager') DESC, id ASC LIMIT 1");
             $staffStmt->execute([$demoPropertyId]);
             $staff = $staffStmt->fetch(PDO::FETCH_ASSOC);
-            if (!$staff) {
+            if (!$staff || empty($staff['passcode'])) {
                 echo json_encode(['success' => false, 'message' => 'No active demo staff configured for this property']);
                 exit;
             }
@@ -4290,8 +4431,14 @@ switch ($action) {
             exit;
         }
         try {
-            $stmt = $pdo->prepare("UPDATE staff_users SET passcode = ? WHERE 1");
-            $ok = $stmt->execute(['123456']);
+            // Still resets to the well-known '123456' - that is the entire
+            // point of this recovery tool - but stores it HASHED, and clears
+            // the legacy plaintext column, so it cannot leave a platform-wide
+            // trail of plaintext credentials behind after being used.
+            require_once __DIR__ . '/../security/passcode.php';
+            ensurePasscodeSchema($pdo);
+            $stmt = $pdo->prepare("UPDATE staff_users SET password = ?, passcode = NULL WHERE 1");
+            $ok = $stmt->execute([hashPasscode('123456')]);
             $affected = $stmt->rowCount();
             echo json_encode(['success' => $ok, 'message' => $ok ? 'All staff passcodes reset to 123456' : 'Failed']);
 

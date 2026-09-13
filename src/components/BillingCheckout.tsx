@@ -22,7 +22,21 @@ import { useConfirm } from './ConfirmDialogContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
-import { AddBookingDrawer } from './AddBookingDrawer';
+// Lazy, deliberately - this import closes a CIRCULAR module cycle:
+//   AddBookingDrawer -> GuestManagement -> BillingCheckout -> AddBookingDrawer
+// With a static import the three modules evaluate in a ring, and whichever one
+// is entered first sees `AddBookingDrawer` still uninitialized, which reaches
+// the browser from the minified bundle as the bare
+// "Uncaught ReferenceError: AddBookingDrawer is not defined" that crashed the
+// staging dashboard on load (13 Sep 2026).
+//
+// React.lazy defers the require to first RENDER instead of module evaluation,
+// by which time every module in the ring is fully initialized - so this is the
+// back edge of the cycle being cut, not a code-splitting optimisation. Do not
+// convert it back to a static import.
+const AddBookingDrawer = React.lazy(() =>
+  import('./AddBookingDrawer').then((m) => ({ default: m.AddBookingDrawer }))
+);
 import { PageHeader, PageHeaderButton } from './PageHeader';
 
 interface BillingCheckoutProps {
@@ -869,7 +883,11 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         />
       )}
 
-      {/* Add Booking Drawer */}
+      {/* Add Booking Drawer - lazy (see the import note at the top of this
+          file); mounted only once opened so the chunk isn't fetched on every
+          billing screen, and Suspense has nothing to show for a closed drawer. */}
+      {showAddBookingModal && (
+      <React.Suspense fallback={null}>
       <AddBookingDrawer
         open={showAddBookingModal}
         onClose={() => setShowAddBookingModal(false)}
@@ -896,6 +914,8 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
         }
         kitchenModuleEnabled={kitchenModuleEnabled}
       />
+      </React.Suspense>
+      )}
     </div>
   );
 };

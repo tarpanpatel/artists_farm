@@ -48,6 +48,55 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
   const [isSendingLoginInfo, setIsSendingLoginInfo] = useState(false);
   const [forgotResult, setForgotResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Passcode reset via emailed link (13 Sep 2026). The token arrives as
+  // `/#reset-passcode?token=...` - read once on mount and then STRIPPED from
+  // the address bar, so a single-use credential isn't left sitting in the URL
+  // to be shoulder-surfed, bookmarked, or leaked through a Referer header.
+  const [resetToken, setResetToken] = useState('');
+  const [isResettingPasscode, setIsResettingPasscode] = useState(false);
+  const [resetResult, setResetResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    const hash = window.location.hash || '';
+    if (!hash.startsWith('#reset-passcode')) return;
+    const token = new URLSearchParams(hash.slice(hash.indexOf('?') + 1)).get('token') || '';
+    if (!token) return;
+    setResetToken(token);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
+
+  const handleResetPasscode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetResult(null);
+    if (!passcodeMatch) {
+      setResetResult({ type: 'error', text: 'Enter the same 6-digit passcode in both fields.' });
+      return;
+    }
+    setIsResettingPasscode(true);
+    try {
+      const response = await fetch('/php/api/router.php?action=reset_passcode_with_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken, new_passcode: newPasscode }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Token is spent - drop it so a failed login afterwards doesn't leave
+        // the user staring at a reset form that can no longer work.
+        setResetToken('');
+        setForgotResult(null);
+        setResetResult({ type: 'success', text: data.message || 'Passcode updated. You can now log in.' });
+      } else {
+        setResetResult({ type: 'error', text: data.message || 'Could not reset the passcode.' });
+      }
+    } catch (err) {
+      console.error('Reset passcode error:', err);
+      setResetResult({ type: 'error', text: 'Failed to reset. Please try again.' });
+    } finally {
+      setIsResettingPasscode(false);
+    }
+  };
+
   // Sync browser autofill on mount & delay ticks
   useEffect(() => {
     const syncAutofill = () => {
@@ -259,15 +308,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
       const response = await fetch('/php/api/router.php?action=request_login_info', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: forgotMobile,
-          login_url: window.location.origin + '/',
-        }),
+        // `login_url` is deliberately no longer sent (13 Sep 2026): the server
+        // builds the reset link from its own validated host instead, because a
+        // client-supplied URL going into an email we send is a ready-made
+        // phishing link carrying our sending reputation.
+        body: JSON.stringify({ username: forgotMobile }),
       });
       const data = await response.json();
       setForgotResult({
         type: data.success ? 'success' : 'error',
-        text: data.message || (data.success ? 'Login info sent to your email' : 'Something went wrong. Please try again.'),
+        text: data.message || (data.success ? 'Reset link sent to your email' : 'Something went wrong. Please try again.'),
       });
     } catch (err) {
       console.error('Request login info error:', err);
@@ -276,6 +326,102 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
       setIsSendingLoginInfo(false);
     }
   };
+
+  // Reset-by-link screen. Takes precedence over every other screen: someone
+  // arriving with a live token is here to do exactly one thing.
+  if (resetToken) {
+    return (
+      <section className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col items-center justify-center px-6 py-8 mx-auto md:h-screen lg:py-0">
+        <a href="/" className="flex items-center mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
+          <div className="w-8 h-8 mr-2.5 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+            <Mail className="w-5 h-5" />
+          </div>
+          <span>Ground Code</span>
+        </a>
+
+        <div className="w-full bg-white rounded-lg shadow-sm dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
+          <div className="p-6 space-y-4 md:space-y-6 sm:p-8">
+            <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
+              {t('reset_passcode_title', 'Set a New Passcode')}
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t('reset_passcode_description', 'Choose a new 6-digit passcode for your account.')}
+            </p>
+
+            <form onSubmit={handleResetPasscode} className="space-y-4 md:space-y-6">
+              {resetResult && (
+                <div className={`flex gap-3 p-3 rounded-lg border text-sm ${
+                  resetResult.type === 'success'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+                }`}>
+                  <span className="font-medium">{resetResult.text}</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="reset-new-passcode" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  {t('reset_passcode_new_label', 'New 6-Digit Passcode')}
+                </label>
+                <input
+                  id="reset-new-passcode"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  maxLength={6}
+                  value={newPasscode}
+                  onChange={(e) => setNewPasscode(e.target.value.replace(/\D/g, ''))}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white tracking-[0.5em]"
+                  placeholder="******"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="reset-confirm-passcode" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+                  {t('reset_passcode_confirm_label', 'Confirm New Passcode')}
+                </label>
+                <input
+                  id="reset-confirm-passcode"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  maxLength={6}
+                  value={confirmPasscode}
+                  onChange={(e) => setConfirmPasscode(e.target.value.replace(/\D/g, ''))}
+                  className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white tracking-[0.5em]"
+                  placeholder="******"
+                />
+                {/* Live feedback, per CLAUDE.md's real-time validation rule -
+                    never shown on a pristine field. */}
+                {passcodeMismatch && (
+                  <p className="mt-2 text-sm text-red-600 dark:text-red-400">Passcodes do not match</p>
+                )}
+                {passcodeMatch && (
+                  <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">Passcodes match</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isResettingPasscode}
+                className="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-60 cursor-pointer"
+              >
+                {isResettingPasscode ? 'Saving...' : t('reset_passcode_submit', 'Set New Passcode')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setResetToken(''); setResetResult(null); }}
+                className="w-full text-sm font-medium text-blue-600 hover:underline dark:text-blue-500 cursor-pointer"
+              >
+                {t('back_to_login', 'Back to login')}
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (showForgotPassword) {
     return (
@@ -293,7 +439,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ variant = 'management', on
               {t('forgot_passcode_title', 'Forgot Your Passcode?')}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {t('forgot_passcode_description', "Enter your mobile number and we'll email your login details to the address on file.")}
+              {t('forgot_passcode_description', "Enter your mobile number and we'll email you a link to set a new passcode.")}
             </p>
 
             <form onSubmit={handleRequestLoginInfo} className="space-y-4 md:space-y-6">

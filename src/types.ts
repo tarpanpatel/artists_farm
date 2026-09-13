@@ -278,7 +278,15 @@ export interface StaffMember {
   // Optional fields populated from UserAccount / DB
   // Username - the 10-digit phone number used to log in. Distinct from `name`.
   username?: string;
+  /**
+   * @deprecated Never populated by the API since 13 Sep 2026 - passcodes are
+   * bcrypt hashes and get_staff returns `hasPasscode` instead. Kept only so
+   * an old local/cached object still type-checks; do not read it expecting a
+   * value, and never send it anywhere.
+   */
   passcode?: string;
+  /** Whether a passcode is set at all. Replaces reading the passcode itself. */
+  hasPasscode?: boolean;
   passcodePin?: string;
   isFinancialHandler?: boolean;
   qrCodeUrl?: string;
@@ -380,7 +388,13 @@ export interface UserAccount {
   // person's display name.
   username: string;
   role: string;
+  /**
+   * Known ONLY in the session where an admin just typed it (create/change).
+   * Empty for every row loaded from the server - see StaffMember.passcode.
+   */
   passcodePin: string;
+  /** Whether this account has a passcode set at all (server-reported). */
+  hasPasscode?: boolean;
   isFinancialHandler: boolean;
   qrCodeUrl?: string;
   // See the identical field/comment on StaffMember above.

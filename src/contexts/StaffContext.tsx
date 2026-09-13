@@ -54,7 +54,9 @@ export const StaffProvider: React.FC<StaffProviderProps> = ({
       phone: u.phone || u.username || '',
       monthlySalary: u.monthlySalary || 0,
       status: u.status || 'Active',
-      passcode: u.passcode,
+      // `passcode` is never sent by the API any more (hashed, 13 Sep 2026) -
+      // carry only the boolean the server now reports in its place.
+      hasPasscode: Boolean(u.hasPasscode),
       qrCodeUrl: u.qrCodeUrl,
       isFinancialHandler: isSuperOrRoot ? true : Boolean(u.isFinancialHandler),
       username: u.username || u.phone || '',

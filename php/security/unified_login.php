@@ -42,6 +42,12 @@ if (!function_exists('performUnifiedLogin')) {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
+        // Passcode hashing (13 Sep 2026). This function is the ONLY place a
+        // plaintext passcode is ever proven correct, which makes it the only
+        // place that can safely upgrade one - see php/security/passcode.php.
+        require_once __DIR__ . '/passcode.php';
+        ensurePasscodeSchema($pdo);
+
         if ($requestedPropertyId === null && function_exists('getCurrentPropertyId')) {
             $wasExplicit = false;
             $resolved = getCurrentPropertyId($pdo, $wasExplicit);
@@ -91,11 +97,18 @@ if (!function_exists('performUnifiedLogin')) {
                 $storedPasscode = $user['passcode'] ?? '';
                 $storedPassword = $user['password'] ?? '';
 
-                $isPasscodeValid = ($storedPasscode && $storedPasscode === $passcode) ||
-                                   ($storedPassword && password_verify($passcode, $storedPassword)) ||
-                                   ($storedPassword && $storedPassword === $passcode);
+                $isPasscodeValid = verifyPasscodeAgainst($passcode, $storedPasscode, $storedPassword);
 
                 if ($isPasscodeValid) {
+                    // Lazy migration: this login just PROVED the plaintext, so
+                    // hash it and clear the plaintext column. Doing it here -
+                    // rather than as a bulk migration - means nobody is forced
+                    // to reset and dormant accounts still work until they next
+                    // sign in. Skipped for the public demo, whose passcode is
+                    // published deliberately.
+                    if (!empty($storedPasscode)) {
+                        migratePasscodeToHashOnLogin($pdo, 'users', $user['id'], $passcode);
+                    }
                     $is_platform_admin = (bool)($user['is_platform_admin'] ?? false);
                     $has_default_tenant = !empty($user['default_tenant_id']);
 
@@ -187,7 +200,7 @@ if (!function_exists('performUnifiedLogin')) {
             // 2. Search in `staff_users` table (Property Staff)
             if ($hasPhoneCandidate) {
                 $stmt = $pdo->prepare("
-                    SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
+                    SELECT id, username, phone_number, full_name, role, passcode, password, property_id, access_all_properties
                     FROM staff_users
                     WHERE (username = ? OR phone_number = ? OR username = ? OR (phone_number IS NOT NULL AND phone_number LIKE ?)) AND status = 'Active'
                     LIMIT 1
@@ -195,7 +208,7 @@ if (!function_exists('performUnifiedLogin')) {
                 $stmt->execute([$rawIdentifier, $rawIdentifier, $mobileNumber, '%' . $mobileNumber]);
             } else {
                 $stmt = $pdo->prepare("
-                    SELECT id, username, phone_number, full_name, role, passcode, property_id, access_all_properties
+                    SELECT id, username, phone_number, full_name, role, passcode, password, property_id, access_all_properties
                     FROM staff_users
                     WHERE username = ? AND status = 'Active'
                     LIMIT 1
@@ -225,8 +238,16 @@ if (!function_exists('performUnifiedLogin')) {
                 // for a missing one, where the honest answer is to refuse. '123456' is
                 // still fine as a column DEFAULT for a newly seeded account - a value
                 // actually stored is a deliberate choice; a NULL is the absence of one.
+                //
+                // Hashing (13 Sep 2026): staff_users had NO hash column at all -
+                // staff auth was plaintext-only - so `password` is new here and
+                // is populated by the lazy migration just below on first login.
                 $storedPasscode = $staff['passcode'] ?? '';
-                if ($storedPasscode !== '' && hash_equals($storedPasscode, $passcode)) {
+                $storedStaffHash = $staff['password'] ?? '';
+                if (verifyPasscodeAgainst($passcode, $storedPasscode, $storedStaffHash)) {
+                    if (!empty($storedPasscode)) {
+                        migratePasscodeToHashOnLogin($pdo, 'staff_users', $staff['id'], $passcode);
+                    }
                     if (!empty($staff['access_all_properties'])) {
                         $tenantStmt = $pdo->prepare("
                             SELECT p.tenant_id, t.slug as tenant_slug

@@ -31,6 +31,11 @@ function validateStaffInput(array $input): array {
 }
 
 function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
+    // Passcode hashing (13 Sep 2026) - add_user/update_user below write
+    // staff_users.password, so the column and helpers must both be available.
+    require_once __DIR__ . '/../security/passcode.php';
+    ensurePasscodeSchema($pdo);
+
     // Auto-create staff_users and payees tables
     try {
         require_once __DIR__ . '/../config/schema_cache.php';
@@ -199,7 +204,13 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                 // Ensure all Super Admin rows have access_all_properties and is_financial_handler flags set to 1
                 $pdo->prepare("UPDATE staff_users SET access_all_properties = 1, is_financial_handler = 1 WHERE property_id = ? AND role IN ('Super Admin', 'Root Admin')")->execute([$propertyId]);
 
-                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, daily_wage as dailyWage, status, is_financial_handler as isFinancialHandler, passcode, qr_code_url as qrCodeUrl, upi_id as upiId, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
+                // `passcode`/`password` are deliberately NOT selected (13 Sep 2026).
+                // This list previously shipped every staff member's live passcode
+                // to the browser on every load of Team & Access - readable by
+                // anyone who opened DevTools, and cached in the response. Since
+                // passcodes are hashed now there is nothing to send anyway; the
+                // UI shows whether one is set and offers a reset instead.
+                $stmt = $pdo->prepare("SELECT id, username, full_name as fullName, role, phone, monthly_salary as monthlySalary, daily_wage as dailyWage, status, is_financial_handler as isFinancialHandler, (passcode IS NOT NULL AND passcode != '') OR (password IS NOT NULL AND password != '') AS hasPasscode, qr_code_url as qrCodeUrl, upi_id as upiId, access_all_properties as accessAllProperties FROM staff_users WHERE property_id = ? ORDER BY CAST(id AS UNSIGNED) ASC, id ASC");
                 $stmt->execute([$propertyId]);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $data = array_map(function($r) {
@@ -215,7 +226,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         'dailyWage'          => (float)($r['dailyWage'] ?? 0),
                         'status'             => $r['status'] ?? 'Active',
                         'isFinancialHandler' => $isSuperOrRoot ? true : (bool)$r['isFinancialHandler'],
-                        'passcode'           => $r['passcode'],
+                        'hasPasscode'        => (bool)$r['hasPasscode'],
                         'qrCodeUrl'          => $r['qrCodeUrl'],
                         'upiId'              => $r['upiId'] ?? '',
                         'accessAllProperties' => $isSuperOrRoot ? true : (bool)($r['accessAllProperties'] ?? false),
@@ -223,7 +234,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                 }, $rows);
                 echo json_encode(['status' => 'success', 'data' => $data]);
             } catch (PDOException $e) {
-                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                error_log('get_staff failed: ' . $e->getMessage());
+                echo json_encode(['status' => 'error', 'message' => 'Could not load team members.']);
             }
             break;
 
@@ -257,7 +269,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                 try {
                     $newStaffId = $input['id'] ?? ('usr-' . time());
                     $accessAllProperties = !empty($input['accessAllProperties']) ? 1 : 0;
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, upi_id, access_all_properties)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, password, qr_code_url, upi_id, access_all_properties)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
@@ -269,7 +281,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             daily_wage = VALUES(daily_wage),
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
-                            passcode = VALUES(passcode),
+                            password = VALUES(password),
+                            passcode = NULL,
                             qr_code_url = VALUES(qr_code_url),
                             upi_id = VALUES(upi_id),
                             access_all_properties = VALUES(access_all_properties)");
@@ -285,7 +298,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $input['dailyWage'] ?? 0,
                         $input['status'] ?? 'Active',
                         !empty($input['isFinancialHandler']) ? 1 : 0,
-                        $passcode,
+                        hashPasscode($passcode),
                         $input['qrCodeUrl'] ?? '',
                         $input['upiId'] ?? '',
                         $accessAllProperties
@@ -369,7 +382,24 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         echo json_encode(['status' => 'error', 'message' => 'Username must be a 10-digit phone number.']);
                         break;
                     }
-                    $passcode         = !empty($input['passcode']) ? $input['passcode'] : ($existing['passcode'] ?? '1234');
+                    // Credential merge (13 Sep 2026). A supplied passcode is
+                    // hashed; an absent one carries the row's EXISTING
+                    // credential forward untouched - including a legacy
+                    // plaintext value, so an unrelated edit (a salary change)
+                    // never locks an unmigrated staff member out. It migrates
+                    // on their next login like everyone else.
+                    //
+                    // The old `?: '1234'` fallback is gone: a partial update on
+                    // a row with no passcode silently set one to a 4-digit
+                    // constant that isn't even a valid 6-digit passcode, so the
+                    // account became unloggable-into while looking configured.
+                    if (!empty($input['passcode'])) {
+                        $passcodeHash  = hashPasscode($input['passcode']);
+                        $passcodePlain = null;
+                    } else {
+                        $passcodeHash  = $existing['password'] ?? null;
+                        $passcodePlain = $existing['passcode'] ?? null;
+                    }
                     $qrCodeUrl        = isset($input['qrCodeUrl']) && $input['qrCodeUrl'] !== '' ? $input['qrCodeUrl'] : ($existing['qr_code_url'] ?? '');
                     $upiId            = isset($input['upiId']) ? trim($input['upiId']) : ($existing['upi_id'] ?? '');
                     $phoneNumber      = $input['username'] ?? ($existing['phone_number'] ?? $username);
@@ -381,8 +411,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         ? ($input['accessAllProperties'] ? 1 : 0)
                         : (int)($existing['access_all_properties'] ?? 0);
 
-                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, passcode, qr_code_url, upi_id, access_all_properties)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    $stmt = $pdo->prepare("INSERT INTO staff_users (id, property_id, username, full_name, role, phone, phone_number, monthly_salary, daily_wage, status, is_financial_handler, password, passcode, qr_code_url, upi_id, access_all_properties)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
                             username = VALUES(username),
                             full_name = VALUES(full_name),
@@ -393,6 +423,7 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                             daily_wage = VALUES(daily_wage),
                             status = VALUES(status),
                             is_financial_handler = VALUES(is_financial_handler),
+                            password = VALUES(password),
                             passcode = VALUES(passcode),
                             qr_code_url = VALUES(qr_code_url),
                             upi_id = VALUES(upi_id),
@@ -409,7 +440,8 @@ function handleStaffRequests($pdo, $request_method, $action, $propertyId) {
                         $dailyWage,
                         $status,
                         $isFinancialHandler,
-                        $passcode,
+                        $passcodeHash,
+                        $passcodePlain,
                         $qrCodeUrl,
                         $upiId,
                         $accessAllProperties
