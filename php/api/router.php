@@ -875,7 +875,10 @@ $provided_key = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
 // non-sensitive branding/config columns (name, slug, type, currency,
 // colors, ...) - no guest, financial, or staff data - so this is exactly
 // the same "safe to read before login" class as the settings above.
-$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'update_property', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'get_booking_hold', 'confirm_booking_hold', 'get_public_voucher'];
+// 'update_property' REMOVED from this list 13 Sep 2026 - it was an
+// unauthenticated property-write, exploitable with public information alone.
+// See the full note on the case handler itself.
+$public_actions = ['login_user', 'verify_admin_passcode', 'request_login_info', 'force_set_passcode', 'get_dummy_history_status', 'enable_dummy_history', 'disable_dummy_history', 'get_csrf_token', 'check_session', 'logout', 'get_tenant_by_slug', 'get_demo_login_credentials', 'get_system_settings', 'get_theme_settings', 'get_current_property', 'register_tenant_trial', 'channex_webhook', 'channex_airbnb_oauth_landing', 'get_public_booking_info', 'create_public_booking', 'get_booking_hold', 'confirm_booking_hold', 'get_public_voucher'];
 
 
 $request_method = $_SERVER['REQUEST_METHOD'];
@@ -2137,6 +2140,18 @@ switch ($action) {
     // change - it's not gated behind session auth alone since force_set_passcode
     // is called mid-login, before a full session may exist for the property.
     case 'force_set_passcode':
+        // Rate limited on the SAME bucket as login_user (added 13 Sep 2026).
+        // This endpoint is unauthenticated by design (it runs mid-login, before
+        // a full session exists) and it answers the question "is this the right
+        // passcode for this username?" - success vs 401 "Current passcode is
+        // incorrect". Until now only login_user was rate limited, so this was an
+        // unthrottled oracle for guessing a 6-digit passcode, and using it also
+        // sidestepped the login limiter entirely. Sharing login_user's bucket
+        // means attempts here consume the same budget rather than opening a
+        // parallel one.
+        $rateLimiter = new RateLimiter($pdo);
+        $rateLimiter->checkAndBlock(RateLimiter::getClientIdentifier(), 'login_user');
+
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $identifier = trim($input['username'] ?? '');
         $currentPasscode = trim($input['current_passcode'] ?? '');
@@ -2178,9 +2193,13 @@ switch ($action) {
 
             http_response_code(401);
             echo json_encode(['success' => false, 'message' => 'Current passcode is incorrect']);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
+            // Never hand the raw exception to an unauthenticated caller
+            // (13 Sep 2026) - it leaks SQL/PDO internals to anyone who can make
+            // this fail. Detail goes to the log instead.
+            error_log('force_set_passcode failed: ' . $e->getMessage());
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'message' => 'Could not update the passcode. Please try again.']);
         }
         exit;
 
@@ -3567,32 +3586,38 @@ switch ($action) {
             exit;
         }
 
-        // Allow property setup updates without a logged-in backend session,
-        // but only when the caller proves ownership of the target property
-        // via tenant+property slug in the request body.
+        // SESSION REQUIRED. The slug-based bypass that used to live here was
+        // removed 13 Sep 2026 after being confirmed exploitable on staging.
+        //
+        // It let an UNAUTHENTICATED caller write to a property as long as the
+        // request body carried a tenant_slug + property_slug matching the
+        // property_id. Those three values are not secrets - they are the URL of
+        // every public booking page, and get_public_booking_info /
+        // get_current_property hand out the numeric property id to anyone who
+        // asks. So the "proof of ownership" proved only that the caller had
+        // read a public page. Verified live: a fetch with credentials omitted
+        // and no cookie of any kind returned {"success":true}.
+        //
+        // What that exposed is the serious part. update_property writes, among
+        // others: upi_id and upi_qr_code_url (the payment destination printed on
+        // guest vouchers and checkout bills - rewrite it and every guest payment
+        // goes to the attacker), default_tariff, telegram_bot_token, name,
+        // address, phone, email, gstin, is_active/status, and the WhatsApp
+        // voucher/booking templates.
+        //
+        // Removing it costs nothing: all eight in-app callers (App.tsx,
+        // PlatformPropertyManagement, PropertyCreationWizard x2,
+        // PropertyEditForm, PropertySetupWizard, TenantDashboard,
+        // WhatsAppTemplateSettings) post with `credentials: 'include'` and NONE
+        // of them sends tenant_slug/property_slug in the body - including
+        // PropertySetupWizard, the "setup without a session" flow this bypass
+        // was written for, which in fact relies on the session like the rest.
+        // The action is also out of $public_actions now, so the middleware
+        // rejects it before reaching this handler; this check is the backstop.
         if (!$is_authenticated_user) {
-            $tenantSlug = strtolower(trim($input['tenant_slug'] ?? ''));
-            $propertySlug = strtolower(trim($input['property_slug'] ?? ''));
-            $allowed = false;
-
-            if ($tenantSlug && $propertySlug) {
-                $stmt = $pdo->prepare("
-                    SELECT p.id FROM properties p
-                    JOIN tenants t ON p.tenant_id = t.id
-                    WHERE (t.slug = ? OR REPLACE(t.slug, '_', '-') = ? OR REPLACE(t.slug, '-', '_') = ?)
-                      AND (p.slug = ? OR REPLACE(p.slug, '_', '-') = ? OR REPLACE(p.slug, '-', '_') = ?)
-                      AND p.id = ?
-                    LIMIT 1
-                ");
-                $stmt->execute([$tenantSlug, $tenantSlug, $tenantSlug, $propertySlug, $propertySlug, $propertySlug, $property_id]);
-                $allowed = (bool) $stmt->fetch();
-            }
-
-            if (!$allowed) {
-                http_response_code(401);
-                echo json_encode(['success' => false, 'message' => 'Unauthorized for property setup update']);
-                exit;
-            }
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Authentication required']);
+            exit;
         }
 
         try {
