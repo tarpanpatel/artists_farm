@@ -226,8 +226,21 @@ export const TenantDashboard: React.FC<TenantDashboardProps> = ({
   const totalBookingsAnalytics = filteredGuestsForAnalytics.length;
 
   const combinedRevenueAnalytics = useMemo(() => {
+    // camelCase FIRST (fixed 13 Sep 2026). Every key in the previous chain -
+    // totalAmount, roomRate, total_amount, total_charge, advanceAmount - is a
+    // field the guests API does not return, so the whole chain always missed
+    // and fell through to 0. The owner's dashboard showed "Combined Revenue
+    // ₹0" against 72 real bookings, for every tenant, permanently.
+    // fetchGuestsFromDB converts to camelCase (see CLAUDE.md's field-name
+    // convention), so totalCharge / baseRoomRent are the real names; the
+    // snake_case spellings are kept only as a fallback for any caller passing
+    // a raw unconverted row.
     return filteredGuestsForAnalytics.reduce((sum, g) => {
-      const amt = Number(g.totalAmount ?? g.roomRate ?? g.total_amount ?? g.total_charge ?? g.advanceAmount ?? 0) || 0;
+      const amt = Number(
+        g.totalCharge ?? g.total_charge ??
+        g.baseRoomRent ?? g.base_room_rent ??
+        g.perNightCharges ?? g.per_night_charges ?? 0
+      ) || 0;
       return sum + amt;
     }, 0);
   }, [filteredGuestsForAnalytics]);
