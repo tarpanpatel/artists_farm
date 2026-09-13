@@ -21,38 +21,49 @@ require_once __DIR__ . '/../config/schema_cache.php';
  * CREATE TABLE IF NOT EXISTS only - it never ALTERs an existing table, so this
  * is a no-op wherever the table is already present.
  *
- * NOTE for a human to confirm against production: the unique key below is
- * (property_id, entry_key). postFinancialLedger()'s INSERT IGNORE relies on a
- * unique index over entry_key to dedupe repeat postings, and scoping it by
- * property is the multi-tenant-correct choice - but if production's existing
- * table indexes entry_key ALONE, the two environments dedupe slightly
- * differently for keys that are not already property-unique. Verify with
- * `SHOW CREATE TABLE financial_ledger` and reconcile if they differ.
+ * The DDL below is copied from the REAL table (verified against the local
+ * artists_farm_resort DB, 13 Sep 2026) rather than written from scratch, so a
+ * fresh install gets a byte-identical table instead of a plausible-looking
+ * variant. The first draft of this function guessed `UNIQUE (property_id,
+ * entry_key)`; the actual index is over `entry_key` ALONE, and a self-heal
+ * that silently creates a different shape than every existing environment is
+ * worse than no self-heal at all.
+ *
+ * That global-unique entry_key is load-bearing for postFinancialLedger()'s
+ * INSERT IGNORE dedupe, and it also means entry_keys must be unique ACROSS
+ * properties - see the note on the 'checkout_settlement:REC-<timestamp>'
+ * fallback in receipts.php, which is the one place that can currently
+ * generate the same key for two different properties.
  */
 function ensureFinancialLedger($pdo) {
     if (isSchemaVerified('schema_financial_ledger')) return;
     try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS financial_ledger (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            property_id INT NOT NULL,
-            entry_key VARCHAR(191) NOT NULL,
-            occurred_at DATETIME NOT NULL,
-            direction VARCHAR(10) NOT NULL DEFAULT 'debit',
-            amount DECIMAL(12,2) NOT NULL DEFAULT 0,
-            category VARCHAR(100) DEFAULT 'Uncategorised',
-            payment_method VARCHAR(50) DEFAULT '',
-            party_type VARCHAR(50) DEFAULT '',
-            party_id VARCHAR(64) DEFAULT '',
-            party_name VARCHAR(191) DEFAULT '',
-            source_type VARCHAR(50) NOT NULL DEFAULT 'manual',
-            source_id VARCHAR(64) DEFAULT '',
-            description TEXT,
-            metadata LONGTEXT,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uniq_property_entry (property_id, entry_key),
-            INDEX idx_property_occurred (property_id, occurred_at),
-            INDEX idx_source (source_type, source_id, property_id)
-        )");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `financial_ledger` (
+            `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            `property_id` INT(11) NOT NULL DEFAULT 1,
+            `entry_key` VARCHAR(150) NOT NULL,
+            `occurred_at` DATETIME NOT NULL,
+            `direction` ENUM('credit','debit') NOT NULL,
+            `amount` DECIMAL(12,2) NOT NULL,
+            `category` VARCHAR(80) NOT NULL,
+            `payment_method` VARCHAR(80) DEFAULT '',
+            `party_type` VARCHAR(40) DEFAULT '',
+            `party_id` VARCHAR(80) DEFAULT '',
+            `party_name` VARCHAR(255) DEFAULT '',
+            `source_type` VARCHAR(80) NOT NULL,
+            `source_id` VARCHAR(80) NOT NULL,
+            `description` TEXT DEFAULT NULL,
+            `metadata` JSON DEFAULT NULL,
+            `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `entry_key` (`entry_key`),
+            KEY `idx_ledger_occurred_at` (`occurred_at`),
+            KEY `idx_ledger_party` (`party_type`,`party_id`),
+            KEY `idx_ledger_source` (`source_type`,`source_id`),
+            KEY `idx_financial_ledger_property` (`property_id`),
+            KEY `idx_ledger_prop_occurred` (`property_id`,`occurred_at`),
+            KEY `idx_ledger_prop_source` (`property_id`,`source_type`,`source_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         markSchemaVerified('schema_financial_ledger');
     } catch (Exception $e) {
         error_log('financial_ledger schema migration error: ' . $e->getMessage());

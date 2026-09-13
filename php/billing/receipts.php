@@ -204,9 +204,28 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                     // settlement ledger entry must land together or not at all, or a
                     // checkout can end up "paid" on the bill but missing from the books.
                     $pdo->beginTransaction();
+
+                    // ONE reference for this checkout - the receipt's primary key AND
+                    // every ledger entry_key below (13 Sep 2026). Two problems were
+                    // fixed by hoisting it here:
+                    //
+                    //  1. It was 'REC-' . time(), computed separately in three places.
+                    //     billing_receipts.id is the PRIMARY KEY and this INSERT ends
+                    //     in ON DUPLICATE KEY UPDATE, so two id-less checkouts in the
+                    //     same second would collide and the second would OVERWRITE the
+                    //     first guest's receipt. financial_ledger.entry_key is likewise
+                    //     globally unique, where the collision instead made INSERT
+                    //     IGNORE silently drop a real collected payment.
+                    //  2. Computed separately, the receipt row and the ledger entry
+                    //     could disagree about which id this checkout even had.
+                    //
+                    // A real receipt id from the client is still used verbatim, so the
+                    // idempotent-retry behaviour of both writes is unchanged.
+                    $settlementRef = $input['id'] ?? ('REC-' . $propertyId . '-' . uniqid('', true));
+
                     $stmt = $pdo->prepare("INSERT INTO billing_receipts (id, property_id, guest_id, guest_name, room_number, checkin_date, checkout_date, room_rate_per_night, nights_count, room_rent, room_total, food_total, kitchen_total, misc_total, discount, grand_total, advance_paid, payment_method, cash_amount, upi_amount, card_amount, bank_transfer_amount, split_details, status, paid_at, gst_enabled, gst_rate, gst_amount, gst_cgst, gst_sgst, gst_accommodation_rate, gst_food_rate, gst_accommodation_amount, gst_food_amount, gst_tax_type, gst_igst, guest_gstin, guest_billing_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE guest_name=VALUES(guest_name), grand_total=VALUES(grand_total), payment_method=VALUES(payment_method), cash_amount=VALUES(cash_amount), upi_amount=VALUES(upi_amount), card_amount=VALUES(card_amount), bank_transfer_amount=VALUES(bank_transfer_amount), split_details=VALUES(split_details), status=VALUES(status), gst_enabled=VALUES(gst_enabled), gst_rate=VALUES(gst_rate), gst_amount=VALUES(gst_amount), gst_cgst=VALUES(gst_cgst), gst_sgst=VALUES(gst_sgst), gst_accommodation_rate=VALUES(gst_accommodation_rate), gst_food_rate=VALUES(gst_food_rate), gst_accommodation_amount=VALUES(gst_accommodation_amount), gst_food_amount=VALUES(gst_food_amount), gst_tax_type=VALUES(gst_tax_type), gst_igst=VALUES(gst_igst), guest_gstin=VALUES(guest_gstin), guest_billing_name=VALUES(guest_billing_name)");
                     $stmt->execute([
-                        $input['id'] ?? 'REC-' . time(),
+                        $settlementRef,
                         $propertyId,
                         $input['guestId'] ?? '',
                         $input['guestName'] ?? '',
@@ -287,8 +306,10 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
 
                         $splitCount = ($cashAmt > 0 ? 1 : 0) + ($upiAmt > 0 ? 1 : 0) + ($cardAmt > 0 ? 1 : 0) + ($btAmt > 0 ? 1 : 0);
 
+                        // $settlementRef is built once near the INSERT above - see its
+                        // note there for why it must not be time-based.
                         if ($splitCount > 1) {
-                            $receiptId = $input['id'] ?? 'REC-' . time();
+                            $receiptId = $settlementRef;
                             $splits = [
                                 'Cash' => $cashAmt,
                                 'UPI' => $upiAmt,
@@ -307,14 +328,22 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                                         'party_id' => $input['guestId'] ?? '',
                                         'party_name' => $input['guestName'] ?? '',
                                         'source_type' => 'billing_receipt',
-                                        'source_id' => $input['id'] ?? '',
+                                        // $settlementRef, not `?? ''` - this is the id
+                                        // actually stored as billing_receipts.id, so an
+                                        // id-less checkout no longer writes a ledger row
+                                        // whose source_id is EMPTY and can never be tied
+                                        // back to its receipt (or reversed by
+                                        // reverseFinancialSource). Identical to the old
+                                        // value whenever the client sent a receipt id.
+                                        'source_id' => $settlementRef,
                                         'description' => 'Split checkout collected (' . $mode . ')',
                                     ], $propertyId);
                                 }
                             }
                         } else {
                             postFinancialLedger($pdo, [
-                                'entry_key' => 'checkout_settlement:' . ($input['id'] ?? 'REC-' . time()),
+                                // $settlementRef - see the note where it is built above.
+                                'entry_key' => 'checkout_settlement:' . $settlementRef,
                                 'direction' => 'credit',
                                 'amount' => $settlement,
                                 'category' => 'Guest Checkout Settlement',
@@ -323,7 +352,8 @@ function handleReceiptRequests($pdo, $request_method, $action, $propertyId) {
                                 'party_id' => $input['guestId'] ?? '',
                                 'party_name' => $input['guestName'] ?? '',
                                 'source_type' => 'billing_receipt',
-                                'source_id' => $input['id'] ?? '',
+                                // $settlementRef - see the note in the split branch above.
+                                'source_id' => $settlementRef,
                                 'description' => 'Balance collected on checkout',
                             ], $propertyId);
                         }
