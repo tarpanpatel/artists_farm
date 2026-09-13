@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { PropertyGuestInfo } from '../utils/whatsappVoucherTemplate';
-import { Card, Drawer, TextInput, Tabs, TabItem, TabsRef } from 'flowbite-react';
+import { Card, TextInput, Tabs, TabItem, TabsRef } from 'flowbite-react';
 import { BookingCard } from './BookingCard';
 import { TablePagination } from './TablePagination';
 import { attachedTabsTheme, attachedTabsClearTheme } from '../utils/tabsTheme';
 import { useSwipeTabs } from '../utils/useSwipeTabs';
-import { lazyWithRetry } from '../utils/lazyWithRetry';
 import {
   Search,
   Building,
   Plus,
   Loader2,
-  X,
 } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt } from '../types';
 import { getWhatsAppPhone } from '../utils/phoneUtils';
@@ -24,6 +22,7 @@ import { useConfirm } from './ConfirmDialogContext';
 import { MobileBookingCardStack } from './MobileBookingCardStack';
 import { ReceiptEditModal } from './ReceiptEditModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
+import { AddBookingDrawer } from './AddBookingDrawer';
 import { PageHeader, PageHeaderButton } from './PageHeader';
 
 interface BillingCheckoutProps {
@@ -70,11 +69,6 @@ interface GroupedRoomBooking {
   roomSlug: string;
   guests: Guest[];
 }
-
-const LazyGuestManagement = lazyWithRetry(
-  () => import('./GuestManagement').then(m => ({ default: m.GuestManagement })),
-  'GuestManagement'
-);
 
 export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
   guests,
@@ -876,60 +870,32 @@ export const BillingCheckout: React.FC<BillingCheckoutProps> = ({
       )}
 
       {/* Add Booking Drawer */}
-      <React.Suspense fallback={null}>
-        <Drawer
-          open={showAddBookingModal}
-          onClose={() => setShowAddBookingModal(false)}
-          position="right"
-          className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <Plus className="w-4 h-4" />
-              </div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-                Add Guest Booking
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowAddBookingModal(false)}
-              className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-            <LazyGuestManagement
-              guests={guests}
-              receipts={receipts}
-              menu={[]}
-              rooms={rooms}
-              onAddGuest={async (guest) => {
-                // Does NOT close here (31 Aug 2026) - a second, parallel copy
-                // of the same bug already fixed in App.tsx's own Add Booking
-                // drawer wrapper. Closing inside this wrapper ran BEFORE it
-                // resolved, which is BEFORE the nested GuestManagement's own
-                // onSubmit reached its resetBookingForm()/showToast('Guest
-                // booked successfully!') right after awaiting this same call
-                // - close-then-toast, backwards. onClose is already wired
-                // below and GuestManagement's onSubmit calls it itself, right
-                // after showToast fires - this wrapper just needs to await
-                // and let errors propagate, same as before.
-                await onAddGuest?.(guest);
-              }}
-              onCheckoutGuest={onCheckoutGuest}
-              activeMenuItemKey="guest_registration"
-              isMultiKeyProperty={isMultiKeyProperty}
-              onClose={() => setShowAddBookingModal(false)}
-              propertyName={propertyName}
-              propertyUpiId={propertyUpiId}
-              propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
-            />
-          </div>
-        </Drawer>
-      </React.Suspense>
+      <AddBookingDrawer
+        open={showAddBookingModal}
+        onClose={() => setShowAddBookingModal(false)}
+        guests={guests}
+        receipts={receipts}
+        menu={[]}
+        rooms={rooms}
+        onAddGuest={async (guest) => {
+          await onAddGuest?.(guest);
+        }}
+        onCheckoutGuest={onCheckoutGuest}
+        isMultiKeyProperty={isMultiKeyProperty}
+        propertyName={propertyName}
+        propertyPhone={propertyPhone}
+        propertyMapsLink={propertyMapsLink}
+        propertyWhatsappTemplate={propertyWhatsappTemplate}
+        propertyAddress={propertyAddress}
+        propertyInstructions={propertyInstructions}
+        propertyGuestInfo={propertyGuestInfo}
+        propertyUpiId={propertyUpiId}
+        propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+        propertySecurityDeposit={
+          propertySecurityDeposit ? Number(propertySecurityDeposit) : null
+        }
+        kitchenModuleEnabled={kitchenModuleEnabled}
+      />
     </div>
   );
 };

@@ -32,7 +32,7 @@ import {
   GUEST_STATUS_CHECKEDOUT_LEGACY,
 } from '../constants/guestStatus';
 import { fetchRateRulesDB, RateRule } from '../services/api';
-import { GuestManagement } from './GuestManagement';
+import { AddBookingDrawer } from './AddBookingDrawer';
 import { CheckinVerificationModal } from './CheckinVerificationModal';
 import { BookingDetailsModal } from './BookingDetailsModal';
 import { PageHeader, PageHeaderButton } from './PageHeader';
@@ -186,14 +186,6 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [editingRoomName, setEditingRoomName] = useState(roomName || '');
   const [showAddGuestModal, setShowAddGuestModal] = useState(false);
-  // Drives the Add Guest Drawer's own header text below - GuestManagement.tsx
-  // reports its internal "a booking was just created" state up via this
-  // callback (12 Sep 2026, explicit report: "why does the header say Add
-  // Guest" after a save). Reset alongside the drawer's own close handlers so
-  // reopening at least starts the header fresh, even though GuestManagement
-  // itself stays mounted (no remount key on this instance) and so keeps its
-  // own savedBooking/fieldset-disabled state until "Add Another Booking".
-  const [addGuestDrawerSaved, setAddGuestDrawerSaved] = useState(false);
   /**
    * Airbnb-style drag selection on the month calendar (6 Sep 2026, explicit
    * request: "make sure everything we do is also being done for single
@@ -2409,65 +2401,35 @@ export const OperationalDashboard: React.FC<OperationalDashboardProps> = ({
         />
       )}
 
-      {/* Add Guest Drawer */}
-      <Drawer
+      {/* Add Booking Drawer */}
+      <AddBookingDrawer
         open={showAddGuestModal}
-        onClose={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); setAddGuestDrawerSaved(false); }}
-        position="right"
-        className="z-58 w-full sm:max-w-lg md:max-w-xl p-0 bg-white dark:bg-gray-800 shadow-2xl flex flex-col justify-between"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <User className="w-4 h-4" />
-            </div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white m-0">
-              {addGuestDrawerSaved ? t('booking_created_heading', 'Booking Created') : t('add_guest_heading', 'Add Guest')}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => { setShowAddGuestModal(false); setAddBookingPrefillDates(null); setAddGuestDrawerSaved(false); }}
-            className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          <GuestManagement
-            propertySecurityDeposit={propertySecurityDeposit}
-            guests={guests}
-            receipts={receipts}
-            menu={menu}
-            rooms={rooms}
-            onSavedStateChange={setAddGuestDrawerSaved}
-            onAddGuest={async (guest) => {
-              // await + only close on success (23 Aug 2026, ROADMAP.md verification pass) -
-              // onAddGuest now throws on a real backend rejection; closing unconditionally would
-              // hide that error instead of leaving the form open to see and correct it.
-              await onAddGuest?.(guest);
-            }}
-            onCheckoutGuest={onCheckoutGuest || (() => {})}
-            onDispatchTelegram={onDispatchTelegram}
-            activeMenuItemKey="guest_registration"
-            isMultiKeyProperty={!!roomName}
-            selectedRoomSlug={roomName}
-            preSelectRoom={roomName}
-            preSelectCheckinDate={addBookingPrefillDates?.checkin}
-            preSelectCheckoutDate={addBookingPrefillDates?.checkout}
-            onClose={() => {
-              setShowAddGuestModal(false);
-              setAddBookingPrefillDates(null);
-            }}
-            propertyName={propertyName}
-            propertyMapsLink={propertyMapsLink}
-            propertyPhone={propertyPhone}
-            propertyWhatsappTemplate={propertyWhatsappTemplate}
-            propertyUpiId={propertyUpiId}
-            propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
-          />
-        </div>
-      </Drawer>
+        onClose={() => {
+          setShowAddGuestModal(false);
+          setAddBookingPrefillDates(null);
+        }}
+        propertySecurityDeposit={propertySecurityDeposit}
+        guests={guests}
+        receipts={receipts}
+        menu={menu}
+        rooms={rooms}
+        onAddGuest={async (guest) => {
+          await onAddGuest?.(guest);
+        }}
+        onCheckoutGuest={onCheckoutGuest || (() => {})}
+        onDispatchTelegram={onDispatchTelegram}
+        isMultiKeyProperty={!!roomName}
+        selectedRoomSlug={roomName}
+        preSelectRoom={roomName}
+        preSelectCheckinDate={addBookingPrefillDates?.checkin}
+        preSelectCheckoutDate={addBookingPrefillDates?.checkout}
+        propertyName={propertyName}
+        propertyMapsLink={propertyMapsLink}
+        propertyPhone={propertyPhone}
+        propertyWhatsappTemplate={propertyWhatsappTemplate}
+        propertyUpiId={propertyUpiId}
+        propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+      />
 
       {/* All System Alerts Drawer */}
       <Drawer

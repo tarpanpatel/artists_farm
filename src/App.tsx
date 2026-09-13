@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
-import { Drawer as FlowbiteDrawer, DrawerItems } from 'flowbite-react';
+import { Drawer as FlowbiteDrawer } from 'flowbite-react';
 import { Header } from './components/Header';
 import { Navigation, TabType } from './components/Navigation';
 import { Button } from './components/Button';
@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { OperationalDashboard } from './components/OperationalDashboard';
 import { TodayOverview } from './components/TodayOverview';
 import { GuestManagement } from './components/GuestManagement';
+import { AddBookingDrawer } from './components/AddBookingDrawer';
 import { GlobalModal } from './components/GlobalModal';
 import { ToastProvider, useToast } from './components/ToastContext';
 import { ConfirmDialogProvider } from './components/ConfirmDialogContext';
@@ -937,28 +938,14 @@ function AppBody({ preloadedData }: AppBodyProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [isAddBookingModalOpen, setIsAddBookingModalOpen] = useState(false);
-  // Drives the Global Add Booking Drawer's own header text below - same
-  // "GuestManagement reports its internal saved state up" pattern as
-  // OperationalDashboard.tsx's own Add Guest Drawer (12 Sep 2026).
-  const [addBookingDrawerSaved, setAddBookingDrawerSaved] = useState(false);
   // Calendar click-to-select-a-range prefill (added 3 Sep 2026) - only
   // TodayOverview's multi-room calendar routes through this global drawer;
   // OperationalDashboard's own month-grid calendar has its own local drawer
   // and prefill state, wired directly there instead.
   const [addBookingPrefill, setAddBookingPrefill] = useState<{ roomName: string; checkin: string; checkout: string } | null>(null);
-  // Bumped on every open so the Add Booking drawer's GuestManagement remounts with a clean
-  // form. A flowbite Drawer stays mounted at all times, so its child's state outlives a
-  // close - and GuestManagement only calls resetBookingForm() on a SUCCESSFUL save. A failed
-  // save therefore left the previous guest's name, phone, dates and amounts sitting in the
-  // form, and reopening the drawer for a different booking showed them as if they were the
-  // new booking's values. Reported live 9 Sep 2026, alongside the transaction bug that made
-  // saves fail in the first place (php/api/booking_holds.php) - but this half is worth fixing
-  // on its own: no error path should be able to leave a stale booking primed for submission.
-  const [addBookingSession, setAddBookingSession] = useState(0);
 
   const openAddBooking = (prefill?: { roomName: string; checkin: string; checkout: string } | null) => {
     setAddBookingPrefill(prefill || null);
-    setAddBookingSession((n) => n + 1);
     setIsAddBookingModalOpen(true);
   };
   const [isAddExpenseModalOpen, setIsAddExpenseModalOpen] = useState(false);
@@ -3140,72 +3127,54 @@ ${itemsStr}
             action/creation forms open as a right-side drawer site-wide,
             mirroring the same shell BookingDetailsModal.tsx/
             WalkInTabBillModal.tsx already use rather than a one-off). */}
-        <FlowbiteDrawer
+        <AddBookingDrawer
           open={isAddBookingModalOpen}
-          onClose={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); setAddBookingDrawerSaved(false); }}
-          position="right"
-          className="z-60 w-full sm:max-w-lg md:max-w-xl h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
-            <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">
-              {addBookingDrawerSaved ? 'Booking Created' : 'Add Booking'}
-            </h2>
-            <button
-              type="button"
-              onClick={() => { setIsAddBookingModalOpen(false); setAddBookingPrefill(null); setAddBookingDrawerSaved(false); }}
-              className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex items-center justify-center dark:hover:bg-gray-700 dark:hover:text-white cursor-pointer transition-colors shrink-0"
-              aria-label="Close drawer"
-            >
-              <CloseIcon className="w-4 h-4" />
-            </button>
-          </div>
-          <DrawerItems className="flex-1 overflow-y-auto p-4 sm:p-5">
-            <GuestManagement
-              key={addBookingSession}
-              propertySecurityDeposit={(preloadedData.currentProperty as any)?.security_deposit ?? null}
-              guests={guests}
-              receipts={receipts}
-              menu={menu}
-              rooms={preloadedData.currentProperty?.rooms || []}
-              preSelectRoom={addBookingPrefill?.roomName}
-              preSelectCheckinDate={addBookingPrefill?.checkin}
-              preSelectCheckoutDate={addBookingPrefill?.checkout}
-              onSavedStateChange={setAddBookingDrawerSaved}
-              onAddGuest={async (guest) => {
-                await handleAddGuest(guest);
-                // Does NOT close here (31 Aug 2026, second pass). Closing
-                // inside this wrapper runs BEFORE it resolves - which is
-                // BEFORE GuestManagement.tsx's onSubmit gets to its own
-                // resetBookingForm()/showToast('Guest booked successfully!')
-                // right after awaiting this same call. That's close-then-
-                // toast, the exact wrong order, even with no artificial delay
-                // in between - removing the earlier 1s setTimeout fixed the
-                // latency but silently un-fixed the ordering it was also
-                // covering for. onSubmit now calls onClose() itself, right
-                // after showToast fires, so the sequence is always toast-
-                // triggered-then-close, both immediate, no delay either way.
-              }}
-              onCheckoutGuest={handleCheckoutGuest}
-              onDispatchTelegram={dispatchTelegramAlert}
-              activeMenuItemKey="guest_registration"
-              isMultiKeyProperty={preloadedData.isMultiKeyProperty}
-              selectedRoomSlug={preloadedData.currentRoomSlug}
-              onClose={() => {
-                setIsAddBookingModalOpen(false);
-                setAddBookingPrefill(null);
-              }}
-              propertyName={preloadedData.currentProperty?.name || ''}
-              propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
-              propertyPhone={preloadedData.currentProperty?.phone || ''}
-              propertyWhatsappTemplate={preloadedData.currentProperty?.whatsapp_voucher_template
-                          || (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template || ''}
-              propertyMakeBookingTemplate={(preloadedData.currentProperty as any)?.whatsapp_make_booking_template || ''}
-              propertyCancellationPolicy={(preloadedData.currentProperty as any)?.cancellation_policy || ''}
-              propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
-              propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
-            />
-          </DrawerItems>
-        </FlowbiteDrawer>
+          onClose={() => {
+            setIsAddBookingModalOpen(false);
+            setAddBookingPrefill(null);
+          }}
+          guests={guests}
+          receipts={receipts}
+          menu={menu}
+          rooms={preloadedData.currentProperty?.rooms || []}
+          preSelectRoom={addBookingPrefill?.roomName}
+          preSelectCheckinDate={addBookingPrefill?.checkin}
+          preSelectCheckoutDate={addBookingPrefill?.checkout}
+          onAddGuest={async (guest) => {
+            await handleAddGuest(guest);
+          }}
+          onCheckoutGuest={handleCheckoutGuest}
+          onDispatchTelegram={dispatchTelegramAlert}
+          isMultiKeyProperty={preloadedData.isMultiKeyProperty}
+          selectedRoomSlug={preloadedData.currentRoomSlug}
+          propertyName={preloadedData.currentProperty?.name || ''}
+          propertyMapsLink={preloadedData.currentProperty?.google_maps_link || ''}
+          propertyPhone={preloadedData.currentProperty?.phone || ''}
+          propertyWhatsappTemplate={
+            preloadedData.currentProperty?.whatsapp_voucher_template ||
+            (preloadedData.currentProperty as any)?.tenant_whatsapp_voucher_template ||
+            ''
+          }
+          propertyMakeBookingTemplate={
+            (preloadedData.currentProperty as any)?.whatsapp_make_booking_template || ''
+          }
+          propertyCancellationPolicy={
+            (preloadedData.currentProperty as any)?.cancellation_policy || ''
+          }
+          propertyUpiId={preloadedData.currentProperty?.upi_id || ''}
+          propertyUpiQrCodeUrl={preloadedData.currentProperty?.upi_qr_code_url || ''}
+          propertySecurityDeposit={
+            (preloadedData.currentProperty as any)?.security_deposit ?? null
+          }
+          propertyAddress={preloadedData.currentProperty?.address || ''}
+          propertyInstructions={preloadedData.currentProperty?.instructions || ''}
+          propertyGuestInfo={{
+            wifiNetwork: (preloadedData.currentProperty as any)?.wifi_network || '',
+            wifiPassword: (preloadedData.currentProperty as any)?.wifi_password || '',
+            houseManual: (preloadedData.currentProperty as any)?.house_manual || '',
+          }}
+          kitchenModuleEnabled={isModuleEnabled('kitchen')}
+        />
 
         {/* Global Add Expense Drawer Overlay */}
         <FlowbiteDrawer
