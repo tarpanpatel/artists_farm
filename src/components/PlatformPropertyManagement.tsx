@@ -139,7 +139,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
   // Root-admin-visible login credentials per tenant, fetched lazily the first
   // time a tenant row is expanded or edited. Kept separate from `tenants` state since
   // it's a sensitive on-demand lookup, not something to bulk-load upfront.
-  const [tenantCredsMap, setTenantCredsMap] = useState<Record<number, { username: string; passcode: string; mustChangePasscode: boolean } | 'not_found' | null>>({});
+  const [tenantCredsMap, setTenantCredsMap] = useState<Record<number, { username: string; passcode?: string; mustChangePasscode: boolean } | 'not_found' | null>>({});
   const [credsLoadingId, setCredsLoadingId] = useState<number | null>(null);
   const [creatingLoginId, setCreatingLoginId] = useState<number | null>(null);
   const [createLoginError, setCreateLoginError] = useState<{ tenantId: number; message: string } | null>(null);
@@ -718,7 +718,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
           ...prev,
           [tenantId]: {
             username: data.data.username,
-            passcode: data.data.passcode,
+            // Intentionally absent: get_tenant_credentials no longer returns a
+            // passcode (hashed since 13 Sep 2026). The UI renders a reset
+            // affordance instead of a reveal control when this is undefined.
+            passcode: undefined,
             mustChangePasscode: !!Number(data.data.must_change_passcode),
           },
         }));
@@ -831,7 +834,9 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
     }
   };
 
-  const buildTenantWhatsAppShareUrl = (tenant: Tenant, creds: { username: string; passcode: string }) => {
+  // Only reachable while a just-generated passcode is still in memory - the
+  // button is not rendered otherwise (see its call site).
+  const buildTenantWhatsAppShareUrl = (tenant: Tenant, creds: { username: string; passcode?: string }) => {
     const digits = (tenant.phone || '').replace(/\D/g, '');
     const phone = digits.length === 10 ? '91' + digits : digits;
     const message = `Hi ${tenant.name},\n\nHere are your Ground Code login details:\n\nUsername: ${creds.username}\nPasscode: ${creds.passcode}\n\nLog in here: ${window.location.origin}/\n\nDidn't request this? You can ignore this message.`;
@@ -1504,7 +1509,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                     </div>
                   ) : (
                     (() => {
-                      const creds = tenantCredsMap[editingTenant.id] as { username: string; passcode: string; mustChangePasscode: boolean };
+                      const creds = tenantCredsMap[editingTenant.id] as { username: string; passcode?: string; mustChangePasscode: boolean };
                       const isRevealed = revealedPasscodeId === editingTenant.id;
                       return (
                         <div className="space-y-3">
@@ -1534,6 +1539,18 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
 
                             <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                               <p className="text-2xs font-medium text-slate-500 dark:text-slate-400">Passcode</p>
+                              {/* Passcodes are bcrypt hashes as of 13 Sep 2026, so
+                                  there is nothing to reveal for a tenant loaded from
+                                  the server. `creds.passcode` is set ONLY in the
+                                  moment right after Create Login / Reset Passcode
+                                  generated one - that is the single window in which
+                                  it can be read, and the reveal/copy controls below
+                                  belong to that window alone. */}
+                              {!creds.passcode ? (
+                                <p className="mt-1 text-2xs text-slate-500 dark:text-slate-400 leading-snug">
+                                  Encrypted &mdash; cannot be viewed. Use <span className="font-medium text-slate-700 dark:text-slate-300">Reset Passcode</span> below to issue a new one.
+                                </p>
+                              ) : (
                               <div className="flex items-center justify-between mt-1">
                                 <span className="font-mono text-xs font-bold text-slate-900 dark:text-white tracking-wider">
                                   {isRevealed ? creds.passcode : '••••••'}
@@ -1570,6 +1587,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                                   </Popover>
                                 </div>
                               </div>
+                              )}
                             </div>
                           </div>
 
@@ -1614,6 +1632,10 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                               {sendingLoginId === editingTenant.id ? 'Sending...' : 'Email Login'}
                             </Button>
 
+                            {/* Sharing the passcode is only possible in the
+                                window where one was just generated - there is
+                                nothing to send for a stored (hashed) account. */}
+                            {creds.passcode && (
                             <Button
                               type="button"
                               variant="secondary"
@@ -1623,6 +1645,7 @@ export const PlatformPropertyManagement: React.FC<PlatformPropertyManagementProp
                             >
                               WhatsApp
                             </Button>
+                            )}
                           </div>
                         </div>
                       );
