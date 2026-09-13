@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, QrCode, Loader2, CornerDownRight, Share2, X } from './icons/FlowbiteIcons';
+import { IndianRupee, Home, AlertCircle, Plus, Trash2, CheckCircle2, QrCode, Loader2, CornerDownRight, Share2, X, UtensilsCrossed, AlertTriangle, Save } from './icons/FlowbiteIcons';
 import { Guest, BillingReceipt, PayeeEntity } from '../types';
 import { StyledSelect } from './StyledSelect';
 import { DateRangePicker } from './DateRangePicker';
@@ -18,18 +18,21 @@ import { Drawer as FlowbiteDrawer, DrawerItems, Modal } from 'flowbite-react';
 
 interface ReceiptEditModalProps {
   isOpen: boolean;
-  guest: Guest | null;
+  guest?: Guest | null;
   allGuests?: Guest[];
   onClose: () => void;
-  onCheckout: (receipt: BillingReceipt) => void;
+  onCheckout?: (receipt: BillingReceipt) => void;
   onUpdateGuest?: (updatedGuest: Guest) => void;
   isProcessing?: boolean;
-  mode?: 'edit-only' | 'edit-and-checkout';
+  mode?: 'edit-only' | 'edit-and-checkout' | 'audit-modify';
   kitchenModuleEnabled?: boolean;
   propertyGstin?: string;
   propertyName?: string;
   propertyUpiId?: string;
   propertyUpiQrCodeUrl?: string;
+  receipt?: BillingReceipt | null;
+  onUpdateReceipt?: (updatedReceipt: BillingReceipt) => void;
+  menu?: Array<{ id: string | number; name: string; price: number }>;
 }
 
 interface GstRatesConfig {
@@ -93,6 +96,9 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   propertyName = '',
   propertyUpiId = '',
   propertyUpiQrCodeUrl = '',
+  receipt = null,
+  onUpdateReceipt,
+  menu = [],
 }) => {
   const { activeRole } = useAuth();
   const isRootAdmin = activeRole?.toLowerCase().trim() === 'root admin';
@@ -116,6 +122,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   // Base State
   const [editGuestName, setEditGuestName] = useState('');
+  const [editRoomNumber, setEditRoomNumber] = useState('');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [roomCharges, setRoomCharges] = useState(0);
   const [advancePaid, setAdvancePaid] = useState(0);
@@ -123,6 +130,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const [checkoutDate, setCheckoutDate] = useState('');
   const [advanceReceivedBy, setAdvanceReceivedBy] = useState('');
   const [pendingReceivedBy, setPendingReceivedBy] = useState('');
+  const [auditTrailList, setAuditTrailList] = useState<string[]>([]);
 
   const baseCashHandlers = useMemo(() => {
     const list = cashHandlers.length > 0 ? cashHandlers : staff;
@@ -225,6 +233,14 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
   // Fetch Menu items from DB if kitchen module enabled
   useEffect(() => {
+    if (menu && menu.length > 0) {
+      setMenuList(menu.map((m: any) => ({
+        id: String(m.id),
+        name: m.name || m.dishName || 'Item',
+        price: Number(m.price || 0),
+      })));
+      return;
+    }
     if (kitchenModuleEnabled && isOpen) {
       fetchMenuFromDB().then((data) => {
         if (data && Array.isArray(data)) {
@@ -236,7 +252,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         }
       });
     }
-  }, [kitchenModuleEnabled, isOpen]);
+  }, [menu, kitchenModuleEnabled, isOpen]);
 
   // Vendors/third parties with a QR code on file - lets a UPI split row be
   // paid straight into their account instead of always the property's own.
@@ -374,20 +390,60 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     }
   }, [guest, isOpen]);
 
-  if (!isOpen || !guest) return null;
+  // Initialize form with receipt data when modal opens in audit-modify mode
+  useEffect(() => {
+    if (internalMode === 'audit-modify' && receipt && isOpen) {
+      setEditGuestName(receipt.guestName || '');
+      setEditRoomNumber(receipt.roomNumber || '');
+      setCheckinDate(toInputDateFormat(receipt.checkinDate));
+      setCheckoutDate(toInputDateFormat(receipt.checkoutDate));
+      const rent = receipt.roomRent ?? receipt.roomTotal ?? 0;
+      setRoomCharges(rent);
+      setAdvancePaid(receipt.advancePaid ?? 0);
+      if (receipt.foodItems && Array.isArray(receipt.foodItems)) {
+        setIncidentals(receipt.foodItems.map((f, i) => ({
+          id: `food-${i}-${f.name}`,
+          name: f.name,
+          price: f.unitPrice,
+          quantity: f.quantity,
+        })));
+      } else {
+        setIncidentals([]);
+      }
+      if (receipt.adjustments && Array.isArray(receipt.adjustments)) {
+        setAdjustments(receipt.adjustments.map((a, i) => ({
+          id: `adj-${i}`,
+          type: (a.type === 'discount' || a.type.includes('(-)')) ? 'discount' : 'charge',
+          reason: a.label || (a as any).reason || 'Adjustment',
+          amount: Number(a.amount) || 0,
+        })));
+      } else {
+        setAdjustments([]);
+      }
+      setAuditTrailList(receipt.auditTrail ? [...receipt.auditTrail] : []);
+    }
+  }, [internalMode, receipt, isOpen]);
+
+  if (!isOpen || (!guest && !receipt)) return null;
 
   // OTA (Airbnb/Booking.com/etc via Channex) bookings are pre-paid by the
   // channel itself - front desk never actually collects or hands off the
   // advance/pending amount, so "who received it" doesn't apply. Same check
   // BookingDetailsModal.tsx uses.
-  const isOtaBooking = Boolean(guest.otaSource || (guest as any).ota_source);
+  const isOtaBooking = Boolean(guest?.otaSource || (guest as any)?.ota_source);
+
+  const isWalkIn = Boolean(
+    receipt?.sourceType === 'walk_in_tab' ||
+    receipt?.roomNumber === 'Walk-in' ||
+    receipt?.walkInTabId
+  );
 
   // Food / Incidentals Subtotal
   const foodTotal = kitchenModuleEnabled ? incidentals.reduce((sum, i) => sum + i.price * i.quantity, 0) : 0;
 
   // Lodging Pending Due - both roomCharges and advancePaid are editable
   // fields (state), so this recalculates live as either is typed.
-  const lodgingPendingDue = Math.max(0, roomCharges - advancePaid);
+  const lodgingPendingDue = isWalkIn ? 0 : Math.max(0, roomCharges - advancePaid);
 
   // Manual Adjustments Subtotals
   const extraCharges = adjustments.filter(a => a.type === 'charge').reduce((sum, a) => sum + a.amount, 0);
@@ -402,8 +458,8 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   // from the actual lodging charge being billed rather than the guest's
   // stale registration-time roomRate (which may be 0 or long out of date).
   const nightsForGst = (() => {
-    const inD = new Date(checkinDate || guest.checkinDate);
-    const outD = new Date(checkoutDate || getTodayKey());
+    const inD = new Date(checkinDate || guest?.checkinDate || receipt?.checkinDate || getTodayKey());
+    const outD = new Date(checkoutDate || receipt?.checkoutDate || getTodayKey());
     const diff = Math.round((outD.getTime() - inD.getTime()) / 86400000);
     return Math.max(1, diff);
   })();
@@ -429,12 +485,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   const gstSgst = gstAmount / 2;
 
   // Grand Target Due = what's left to collect right now (after the advance).
-  const grandTargetDue = subtotalBeforeGst + gstAmount;
+  const grandTargetDue = subtotalBeforeGst + (internalMode === 'audit-modify' ? (receipt?.gstAmount || 0) : gstAmount);
   // Grand Total = the true, full invoice value for the entire stay - what
   // the guest would have paid start to finish, advance included. Shown
   // separately so "the bill" and "what's still owed today" are never
   // conflated into one number.
-  const grandTotalFullStay = grandTargetDue + advancePaid;
+  const grandTotalFullStay = (isWalkIn ? 0 : roomCharges) + foodTotal + extraCharges - discounts + (internalMode === 'audit-modify' ? (receipt?.gstAmount || 0) : gstAmount);
 
   // Total entered in Split Rows
   const totalSplitSum = splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
@@ -457,18 +513,32 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     const validQty = Math.max(1, itemQty);
 
     setIncidentals(prev => {
-      const existing = prev.find(i => i.id === menuItem.id);
+      const existing = prev.find(i => i.id === menuItem.id || i.name === menuItem.name);
       if (existing) {
-        return prev.map(i => i.id === menuItem.id ? { ...i, quantity: i.quantity + validQty } : i);
+        return prev.map(i => (i.id === menuItem.id || i.name === menuItem.name) ? { ...i, quantity: i.quantity + validQty } : i);
       }
       return [...prev, { id: menuItem.id, name: menuItem.name, price: menuItem.price, quantity: validQty }];
     });
+
+    if (internalMode === 'audit-modify') {
+      setAuditTrailList(prev => [...prev, `Added food item: ${menuItem.name} x${validQty} (₹${menuItem.price * validQty})`]);
+    }
 
     setSelectedMenuId('');
     setItemQty(1);
   };
 
   const handleUpdateIncidentalQty = (id: string, delta: number) => {
+    if (internalMode === 'audit-modify') {
+      const item = incidentals.find(i => i.id === id);
+      if (item) {
+        if (delta > 0) {
+          setAuditTrailList(prev => [...prev, `Increased food item: ${item.name} +${delta}`]);
+        } else {
+          setAuditTrailList(prev => [...prev, `Decreased food item: ${item.name} ${delta}`]);
+        }
+      }
+    }
     setIncidentals(prev =>
       prev
         .map(i => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
@@ -490,13 +560,61 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
     };
 
     setAdjustments(prev => [...prev, newAdj]);
+    if (internalMode === 'audit-modify') {
+      setAuditTrailList(prev => [...prev, `Applied adjustment ${newAdj.type === 'charge' ? 'Extra Incidentals Charge (+)' : 'Discount Rebate (-)'}: ${reason} (₹${Number(adjAmount).toFixed(2)})`]);
+    }
     setAdjAmount('');
     setAdjReasonDiscount('');
     setAdjType('');
   };
 
   const handleRemoveAdjustment = (id: string) => {
+    if (internalMode === 'audit-modify') {
+      const adj = adjustments.find(a => a.id === id);
+      if (adj) {
+        setAuditTrailList(prev => [...prev, `Removed adjustment: ${adj.reason} (₹${adj.amount.toFixed(2)})`]);
+      }
+    }
     setAdjustments(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleSaveReceiptEdit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!receipt) return;
+
+    const isWalkInTab = isWalkIn;
+    const updated: BillingReceipt = {
+      ...receipt,
+      guestName: editGuestName.trim() || receipt.guestName,
+      roomNumber: editRoomNumber.trim() || receipt.roomNumber,
+      checkinDate: checkinDate || receipt.checkinDate,
+      checkoutDate: checkoutDate || receipt.checkoutDate,
+      roomRent: isWalkInTab ? 0 : roomCharges,
+      roomTotal: isWalkInTab ? 0 : roomCharges,
+      advancePaid: isWalkInTab ? 0 : advancePaid,
+      foodTotal,
+      kitchenTotal: foodTotal,
+      miscTotal: extraCharges,
+      discount: discounts,
+      grandTotal: grandTargetDue,
+      foodItems: incidentals.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        unitPrice: i.price,
+        total: i.price * i.quantity,
+      })),
+      adjustments: adjustments.map((a) => ({
+        type: a.type === 'discount' ? 'Discount Rebate (-)' : 'Extra Incidentals Charge (+)',
+        label: a.reason,
+        amount: a.amount,
+      })),
+      auditTrail: auditTrailList,
+    };
+
+    if (onUpdateReceipt) {
+      onUpdateReceipt(updated);
+    }
+    onClose();
   };
 
   // Split Payment Rows Handlers
@@ -597,7 +715,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
     const gstinLine = (gstEnabled && guestGstin) ? `\n🏢 *GSTIN:* ${guestGstin}${guestBillingName ? ` (${guestBillingName})` : ''}` : '';
 
-    return `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guest.guestName}\n🏠 *Room:* ${guest.roomNumber}${gstinLine}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${paymentBreakdown}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`;
+    const guestNameStr = guest?.guestName || receipt?.guestName || '';
+    const roomNumberStr = guest?.roomNumber || receipt?.roomNumber || '';
+
+    return `📶 *GUEST CHECKOUT & BILL SETTLEMENT*\n━━━━━━━━━━━━━━━━\n👤 *Guest:* ${guestNameStr}\n🏠 *Room:* ${roomNumberStr}${gstinLine}\n📅 *Check-In:* ${formatDateDDMMYYYY(checkinDate)}\n📅 *Check-Out:* ${formatDateDDMMYYYY(checkoutDate)}\n🏨 *Accommodation:* ₹${roomCharges.toFixed(2)}\n🍽 *Food/Incidentals:* ₹${foodTotal.toFixed(2)}\n📋 *Adjustments:* ₹${(extraCharges - discounts).toFixed(2)}\n➕ *GST/Tax:* ₹${gstAmount.toFixed(2)}\n💰 *Grand Total Paid:* ₹${grandTargetDue.toFixed(2)}${paymentBreakdown}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━\nThank you for choosing Ground Code Resort! We hope to see you again soon.`;
   };
 
   // Generic OS-level share sheet (navigator.share) rather than a
@@ -622,6 +743,11 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
   };
 
   const handleSaveOrCheckout = () => {
+    if (internalMode === 'audit-modify') {
+      handleSaveReceiptEdit();
+      return;
+    }
+    if (!guest) return;
     if (internalMode === 'edit-only') {
       saveGuestEdits();
       onClose();
@@ -718,10 +844,18 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             </div>
             <div>
               <h2 className="checkout-drawer__title text-base font-semibold text-slate-900 dark:text-white m-0">
-                {internalMode === 'edit-only' ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details') : t('checkout_settlement_heading', 'Checkout and Billing')}
+                {internalMode === 'audit-modify'
+                  ? t('modify_bill_audit_heading', 'Modify Bill & Audit')
+                  : internalMode === 'edit-only'
+                  ? t('edit_booking_billing_heading', 'Edit Guest Booking & Billing Details')
+                  : t('checkout_settlement_heading', 'Checkout and Billing')}
               </h2>
               <p className="checkout-drawer__subtitle text-xs font-semibold text-slate-500 dark:text-slate-400 m-0">
-                Room: {guest.roomNumber}
+                {internalMode === 'audit-modify' && receipt
+                  ? isWalkIn
+                    ? `Table: ${receipt.guestName || receipt.roomNumber}`
+                    : `Room: ${receipt.roomNumber || receipt.guestName}`
+                  : `Room: ${guest?.roomNumber || ''}`}
               </p>
             </div>
           </div>
@@ -742,96 +876,113 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
             <div className="lg:col-span-7 space-y-6">
               
               {/* Accommodation & Booking Dates */}
-              <div className="checkout-card rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-                <div className="checkout-card__header flex items-center gap-2 text-2xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
-                  <Home className="w-4 h-4 text-blue-600" />
-                  <span>{t('accommodation_breakdown_heading', 'Accommodation Invoice Breakdown')}</span>
+              {isWalkIn ? (
+                <div className="bg-amber-50/60 dark:bg-amber-950/20 p-3.5 rounded-lg border border-amber-200 dark:border-amber-900/50 flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                  <UtensilsCrossed className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Walk-in Diner Bill — Dining POS order only (no room tariff).</span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Input
-                      label={t('guest_name_only_label', 'Guest Name')}
-                      type="text"
-                      value={editGuestName}
-                      onChange={(e) => setEditGuestName(e.target.value)}
-                      className="text-xs font-semibold text-slate-900 dark:text-white"
-                    />
+              ) : (
+                <div className="checkout-card rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+                  <div className="checkout-card__header flex items-center gap-2 text-2xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <Home className="w-4 h-4 text-blue-600" />
+                    <span>{t('accommodation_breakdown_heading', 'Accommodation Invoice Breakdown')}</span>
                   </div>
-                  <div>
-                    <Input
-                      label={t('phone_number_label', 'Phone Number')}
-                      type="tel"
-                      value={editPhoneNumber}
-                      onChange={(e) => setEditPhoneNumber(e.target.value)}
-                      className="text-xs font-semibold text-slate-900 dark:text-white"
-                    />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Input
+                        label={t('guest_name_only_label', 'Guest Name')}
+                        type="text"
+                        value={editGuestName}
+                        onChange={(e) => setEditGuestName(e.target.value)}
+                        className="text-xs font-semibold text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      {internalMode === 'audit-modify' ? (
+                        <Input
+                          label={t('room_number_label', 'Room Number')}
+                          type="text"
+                          value={editRoomNumber}
+                          onChange={(e) => setEditRoomNumber(e.target.value)}
+                          className="text-xs font-semibold text-slate-900 dark:text-white"
+                        />
+                      ) : (
+                        <Input
+                          label={t('phone_number_label', 'Phone Number')}
+                          type="tel"
+                          value={editPhoneNumber}
+                          onChange={(e) => setEditPhoneNumber(e.target.value)}
+                          className="text-xs font-semibold text-slate-900 dark:text-white"
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <DateRangePicker
-                  checkinDate={checkinDate}
-                  checkoutDate={checkoutDate}
-                  onCheckinChange={setCheckinDate}
-                  onCheckoutChange={setCheckoutDate}
-                />
-
-                <div>
-                  <Input
-                    label={t('base_lodging_charges_label', 'Base Accommodation Charges (₹)')}
-                    type="number"
-                    value={roomCharges}
-                    onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
-                    onBlur={handleMoneyFieldBlur}
-                    className="text-xs font-semibold text-slate-900 dark:text-white"
+                  <DateRangePicker
+                    checkinDate={checkinDate}
+                    checkoutDate={checkoutDate}
+                    onCheckinChange={setCheckinDate}
+                    onCheckoutChange={setCheckoutDate}
                   />
-                </div>
 
-                <div className="rounded-lg p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center font-semibold gap-2">
-                    <span className="text-slate-700 dark:text-slate-300 shrink-0">{t('advance_paid_label', 'Advance Paid:')}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹</span>
-                      <input
-                        type="number"
-                        value={advancePaid}
-                        onChange={(e) => setAdvancePaid(Math.max(0, parseFloat(e.target.value) || 0))}
-                        onBlur={handleMoneyFieldBlur}
-                        className="summary-line summary-line--advance-paid w-24 text-right text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-400"
-                      />
-                    </div>
+                  <div>
+                    <Input
+                      label={t('base_lodging_charges_label', 'Base Accommodation Charges (₹)')}
+                      type="number"
+                      value={roomCharges}
+                      onChange={(e) => setRoomCharges(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onBlur={handleMoneyFieldBlur}
+                      className="text-xs font-semibold text-slate-900 dark:text-white"
+                    />
                   </div>
-                  {!isOtaBooking && (
-                    <div>
-                      <StyledSelect
-                        label={t('received_by_booking_label', 'Received By (Booking)')}
-                        value={advanceReceivedBy}
-                        onChange={setAdvanceReceivedBy}
-                        placeholder="-- Choose cash handler --"
-                        options={availableCashHandlers}
-                      />
-                    </div>
-                  )}
-                </div>
 
-                <div className="rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
-                  <div className="flex justify-between items-center font-semibold">
-                    <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
-                    <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
-                  </div>
-                  {!isOtaBooking && (
-                    <div>
-                      <StyledSelect
-                        label={t('pending_received_by_label', 'Pending Received By')}
-                        value={pendingReceivedBy}
-                        onChange={handlePendingReceivedByChange}
-                        placeholder="-- Choose cash handler --"
-                        options={availableCashHandlers}
-                      />
+                  <div className="rounded-lg p-3 space-y-2 text-xs border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex justify-between items-center font-semibold gap-2">
+                      <span className="text-slate-700 dark:text-slate-300 shrink-0">{t('advance_paid_label', 'Advance Paid:')}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold text-sm">+₹</span>
+                        <input
+                          type="number"
+                          value={advancePaid}
+                          onChange={(e) => setAdvancePaid(Math.max(0, parseFloat(e.target.value) || 0))}
+                          onBlur={handleMoneyFieldBlur}
+                          className="summary-line summary-line--advance-paid w-24 text-right text-sm font-semibold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-emerald-400"
+                        />
+                      </div>
                     </div>
-                  )}
+                    {!isOtaBooking && internalMode !== 'audit-modify' && (
+                      <div>
+                        <StyledSelect
+                          label={t('received_by_booking_label', 'Received By (Booking)')}
+                          value={advanceReceivedBy}
+                          onChange={setAdvanceReceivedBy}
+                          placeholder="-- Choose cash handler --"
+                          options={availableCashHandlers}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg p-3 space-y-2 text-xs border border-amber-200 dark:border-amber-800">
+                    <div className="flex justify-between items-center font-semibold">
+                      <span className="text-slate-700 dark:text-slate-300">{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
+                      <span className="summary-line summary-line--pending-lodging-due text-amber-700 dark:text-amber-400 text-sm font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
+                    </div>
+                    {!isOtaBooking && internalMode !== 'audit-modify' && (
+                      <div>
+                        <StyledSelect
+                          label={t('pending_received_by_label', 'Pending Received By')}
+                          value={pendingReceivedBy}
+                          onChange={handlePendingReceivedByChange}
+                          placeholder="-- Choose cash handler --"
+                          options={availableCashHandlers}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Food Orders & Incidentals Log (Interactive Dish Insertion if Kitchen Enabled) */}
               {kitchenModuleEnabled && (
@@ -1041,6 +1192,27 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 )}
               </div>
 
+              {/* CHECKOUT MODIFICATIONS AUDIT TRAIL (in audit-modify mode) */}
+              {internalMode === 'audit-modify' && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 p-4 sm:p-6 space-y-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wide border-b border-amber-200 dark:border-amber-800/60 pb-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <span>{t('checkout_modifications_audit_heading', 'Checkout Modifications Audit Trail')}</span>
+                  </div>
+                  <div className="text-[11px] text-amber-800 dark:text-amber-300 font-medium pt-1">
+                    {auditTrailList.length === 0 ? (
+                      <p className="italic text-slate-400">{t('no_last_minute_modifications_message', 'No last-minute modifications recorded for this sheet.')}</p>
+                    ) : (
+                      <ul className="space-y-1 list-disc list-inside">
+                        {auditTrailList.map((log, i) => (
+                          <li key={i}>{log}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Final Checkout Split Settlement Box */}
               <div className="checkout-card--final rounded-lg border-2 border-emerald-500/80 p-4 sm:p-6 space-y-4 shadow-sm">
                 <div className="checkout-card__header--final flex items-center gap-2 text-[10px] font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wide border-b border-emerald-200/60 pb-2">
@@ -1049,10 +1221,12 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 </div>
 
                 <div className="space-y-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <div className="flex justify-between">
-                    <span>{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
-                    <span className="font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
-                  </div>
+                  {!isWalkIn && (
+                    <div className="flex justify-between">
+                      <span>{t('pending_lodging_due_label', 'Pending Accommodation Due:')}</span>
+                      <span className="font-semibold">₹{lodgingPendingDue.toFixed(2)}</span>
+                    </div>
+                  )}
 
                   {kitchenModuleEnabled && (
                     <div className="flex justify-between">
@@ -1075,158 +1249,162 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   )}
 
-                  {/* Apply GST Toggle Switch */}
-                  <div className="flex items-center justify-between border-t border-dashed border-emerald-200 dark:border-emerald-800 pt-2">
-                    <div className="flex items-center gap-2">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={gstEnabled}
-                          onChange={(e) => setGstEnabled(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-8 h-4 bg-slate-300 peer-checked:bg-blue-600 rounded-full peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
-                      </label>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{t('apply_gst_label', 'Apply GST')}</span>
-                    </div>
-                    {gstEnabled && (
-                      <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md">
-                        Acc: {gstAccommodationRate}% | Food: {gstFoodRate}%
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Itemized GST Breakdown */}
-                  {gstEnabled && (
-                    <div className="p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2 text-[11px] text-blue-900 dark:text-blue-200">
-                      <div className="flex justify-between">
-                        <span>Accommodation GST @ {gstAccommodationRate}%:</span>
-                        <span className="font-semibold">₹{gstAccommodationAmount.toFixed(2)}</span>
-                      </div>
-                      {kitchenModuleEnabled && foodTotal > 0 && (
-                        <div className="flex justify-between">
-                          <span>Food GST @ {gstFoodRate}%:</span>
-                          <span className="font-semibold">₹{gstFoodAmount.toFixed(2)}</span>
+                  {internalMode !== 'audit-modify' && (
+                    <>
+                      {/* Apply GST Toggle Switch */}
+                      <div className="flex items-center justify-between border-t border-dashed border-emerald-200 dark:border-emerald-800 pt-2">
+                        <div className="flex items-center gap-2">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={gstEnabled}
+                              onChange={(e) => setGstEnabled(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-8 h-4 bg-slate-300 peer-checked:bg-blue-600 rounded-full peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
+                          </label>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{t('apply_gst_label', 'Apply GST')}</span>
                         </div>
-                      )}
-
-                      <div className="border-t border-dashed border-blue-200 dark:border-blue-700 pt-1 mt-1 flex justify-between font-extrabold text-[11px]">
-                        <span>{t('cgst_sgst_label', 'CGST (50%) / SGST (50%):')}</span>
-                        <span>₹{gstCgst.toFixed(2)} / ₹{gstSgst.toFixed(2)}</span>
+                        {gstEnabled && (
+                          <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md">
+                            Acc: {gstAccommodationRate}% | Food: {gstFoodRate}%
+                          </span>
+                        )}
                       </div>
 
-                      {/* Optional guest/company GSTIN for a proper tax invoice */}
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <Input
-                          type="text"
-                          value={guestGstin}
-                          onChange={(e) => setGuestGstin(e.target.value.toUpperCase())}
-                          placeholder={t('guest_gstin_placeholder', 'Guest/Company GSTIN (optional)')}
-                          className="text-[11px]"
-                        />
-                        <Input
-                          type="text"
-                          value={guestBillingName}
-                          onChange={(e) => setGuestBillingName(e.target.value)}
-                          placeholder={t('billing_name_placeholder', 'Billing Name (optional)')}
-                          className="text-[11px]"
-                        />
-                      </div>
+                      {/* Itemized GST Breakdown */}
+                      {gstEnabled && (
+                        <div className="p-2.5 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2 text-[11px] text-blue-900 dark:text-blue-200">
+                          <div className="flex justify-between">
+                            <span>Accommodation GST @ {gstAccommodationRate}%:</span>
+                            <span className="font-semibold">₹{gstAccommodationAmount.toFixed(2)}</span>
+                          </div>
+                          {kitchenModuleEnabled && foodTotal > 0 && (
+                            <div className="flex justify-between">
+                              <span>Food GST @ {gstFoodRate}%:</span>
+                              <span className="font-semibold">₹{gstFoodAmount.toFixed(2)}</span>
+                            </div>
+                          )}
 
-                      {isRootAdmin && (
-                        <div className="pt-1 border-t border-dashed border-blue-200 dark:border-blue-700">
-                          {!isEditingRates ? (
-                            <button
-                              type="button"
-                              onClick={() => { setRateDraft(gstRates); setIsEditingRates(true); }}
-                              className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 underline cursor-pointer"
-                            >
-                              {t('edit_gst_rates_button', 'Edit GST Rates (Root Admin)')}
-                            </button>
-                          ) : (
-                            <div className="space-y-1.5 pt-1">
-                              <div className="grid grid-cols-2 gap-1.5">
-                                <Input
-                                  label={t('low_tier_max_label', 'Low tier max (₹)')}
-                                  type="number"
-                                  value={rateDraft.accLowMax}
-                                  onChange={(e) => setRateDraft({ ...rateDraft, accLowMax: Number(e.target.value) })}
-                                  labelClassName="text-[10px]"
-                                />
-                                <Input
-                                  label={t('mid_tier_max_label', 'Mid tier max (₹)')}
-                                  type="number"
-                                  value={rateDraft.accMidMax}
-                                  onChange={(e) => setRateDraft({ ...rateDraft, accMidMax: Number(e.target.value) })}
-                                  labelClassName="text-[10px]"
-                                />
-                                <Input
-                                  label={t('low_rate_label', 'Low rate (%)')}
-                                  type="number"
-                                  value={rateDraft.accLowRate}
-                                  onChange={(e) => setRateDraft({ ...rateDraft, accLowRate: Number(e.target.value) })}
-                                  labelClassName="text-[10px]"
-                                />
-                                <Input
-                                  label={t('mid_rate_label', 'Mid rate (%)')}
-                                  type="number"
-                                  value={rateDraft.accMidRate}
-                                  onChange={(e) => setRateDraft({ ...rateDraft, accMidRate: Number(e.target.value) })}
-                                  labelClassName="text-[10px]"
-                                />
-                                <Input
-                                  label={t('high_rate_label', 'High rate (%)')}
-                                  type="number"
-                                  value={rateDraft.accHighRate}
-                                  onChange={(e) => setRateDraft({ ...rateDraft, accHighRate: Number(e.target.value) })}
-                                  labelClassName="text-[10px]"
-                                />
-                                <Input
-                                  label={t('food_rate_label', 'Food rate (%)')}
-                                  type="number"
-                                  value={rateDraft.foodRate}
-                                  onChange={(e) => setRateDraft({ ...rateDraft, foodRate: Number(e.target.value) })}
-                                  labelClassName="text-[10px]"
-                                />
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <button type="button" onClick={() => setIsEditingRates(false)} className="text-[10px] font-semibold text-slate-500 cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                          <div className="border-t border-dashed border-blue-200 dark:border-blue-700 pt-1 mt-1 flex justify-between font-extrabold text-[11px]">
+                            <span>{t('cgst_sgst_label', 'CGST (50%) / SGST (50%):')}</span>
+                            <span>₹{gstCgst.toFixed(2)} / ₹{gstSgst.toFixed(2)}</span>
+                          </div>
+
+                          {/* Optional guest/company GSTIN for a proper tax invoice */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <Input
+                              type="text"
+                              value={guestGstin}
+                              onChange={(e) => setGuestGstin(e.target.value.toUpperCase())}
+                              placeholder={t('guest_gstin_placeholder', 'Guest/Company GSTIN (optional)')}
+                              className="text-[11px]"
+                            />
+                            <Input
+                              type="text"
+                              value={guestBillingName}
+                              onChange={(e) => setGuestBillingName(e.target.value)}
+                              placeholder={t('billing_name_placeholder', 'Billing Name (optional)')}
+                              className="text-[11px]"
+                            />
+                          </div>
+
+                          {isRootAdmin && (
+                            <div className="pt-1 border-t border-dashed border-blue-200 dark:border-blue-700">
+                              {!isEditingRates ? (
                                 <button
                                   type="button"
-                                  disabled={savingRates}
-                                  onClick={async () => {
-                                    setSavingRates(true);
-                                    try {
-                                      const res = await fetch(`/php/api/router.php?action=save_system_settings`, {
-                                        method: 'POST',
-                                        credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json', 'X-User-Role': 'root_admin' },
-                                        body: JSON.stringify({ setting_key: 'gst_rates_config', setting_value: JSON.stringify(rateDraft) }),
-                                      });
-                                      const json = await res.json();
-                                      if (json.status === 'success' || json.success) {
-                                        setGstRates(rateDraft);
-                                        setIsEditingRates(false);
-                                        showToast('GST rates updated', { type: 'success' });
-                                      } else {
-                                        showToast(json.error || json.message || 'Failed to save GST rates', { type: 'error' });
-                                      }
-                                    } catch (err) {
-                                      showToast('Failed to save GST rates', { type: 'error' });
-                                    } finally {
-                                      setSavingRates(false);
-                                    }
-                                  }}
-                                  className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer"
+                                  onClick={() => { setRateDraft(gstRates); setIsEditingRates(true); }}
+                                  className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 underline cursor-pointer"
                                 >
-                                  {savingRates ? 'Saving...' : t('save_rates_button', 'Save Rates')}
+                                  {t('edit_gst_rates_button', 'Edit GST Rates (Root Admin)')}
                                 </button>
-                              </div>
+                              ) : (
+                                <div className="space-y-1.5 pt-1">
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <Input
+                                      label={t('low_tier_max_label', 'Low tier max (₹)')}
+                                      type="number"
+                                      value={rateDraft.accLowMax}
+                                      onChange={(e) => setRateDraft({ ...rateDraft, accLowMax: Number(e.target.value) })}
+                                      labelClassName="text-[10px]"
+                                    />
+                                    <Input
+                                      label={t('mid_tier_max_label', 'Mid tier max (₹)')}
+                                      type="number"
+                                      value={rateDraft.accMidMax}
+                                      onChange={(e) => setRateDraft({ ...rateDraft, accMidMax: Number(e.target.value) })}
+                                      labelClassName="text-[10px]"
+                                    />
+                                    <Input
+                                      label={t('low_rate_label', 'Low rate (%)')}
+                                      type="number"
+                                      value={rateDraft.accLowRate}
+                                      onChange={(e) => setRateDraft({ ...rateDraft, accLowRate: Number(e.target.value) })}
+                                      labelClassName="text-[10px]"
+                                    />
+                                    <Input
+                                      label={t('mid_rate_label', 'Mid rate (%)')}
+                                      type="number"
+                                      value={rateDraft.accMidRate}
+                                      onChange={(e) => setRateDraft({ ...rateDraft, accMidRate: Number(e.target.value) })}
+                                      labelClassName="text-[10px]"
+                                    />
+                                    <Input
+                                      label={t('high_rate_label', 'High rate (%)')}
+                                      type="number"
+                                      value={rateDraft.accHighRate}
+                                      onChange={(e) => setRateDraft({ ...rateDraft, accHighRate: Number(e.target.value) })}
+                                      labelClassName="text-[10px]"
+                                    />
+                                    <Input
+                                      label={t('food_rate_label', 'Food rate (%)')}
+                                      type="number"
+                                      value={rateDraft.foodRate}
+                                      onChange={(e) => setRateDraft({ ...rateDraft, foodRate: Number(e.target.value) })}
+                                      labelClassName="text-[10px]"
+                                    />
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <button type="button" onClick={() => setIsEditingRates(false)} className="text-[10px] font-semibold text-slate-500 cursor-pointer">{t('cancel_button', 'Cancel')}</button>
+                                    <button
+                                      type="button"
+                                      disabled={savingRates}
+                                      onClick={async () => {
+                                        setSavingRates(true);
+                                        try {
+                                          const res = await fetch(`/php/api/router.php?action=save_system_settings`, {
+                                            method: 'POST',
+                                            credentials: 'include',
+                                            headers: { 'Content-Type': 'application/json', 'X-User-Role': 'root_admin' },
+                                            body: JSON.stringify({ setting_key: 'gst_rates_config', setting_value: JSON.stringify(rateDraft) }),
+                                          });
+                                          const json = await res.json();
+                                          if (json.status === 'success' || json.success) {
+                                            setGstRates(rateDraft);
+                                            setIsEditingRates(false);
+                                            showToast('GST rates updated', { type: 'success' });
+                                          } else {
+                                            showToast(json.error || json.message || 'Failed to save GST rates', { type: 'error' });
+                                          }
+                                        } catch (err) {
+                                          showToast('Failed to save GST rates', { type: 'error' });
+                                        } finally {
+                                          setSavingRates(false);
+                                        }
+                                      }}
+                                      className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg transition-colors cursor-pointer"
+                                    >
+                                      {savingRates ? 'Saving...' : t('save_rates_button', 'Save Rates')}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
 
                   {/* Grand Total (full stay, advance included) vs. what's
@@ -1244,107 +1422,97 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-[11px] pt-1">
-                    <span>{t('total_stacked_entered_label', 'Total Stacked Entered:')}</span>
-                    <span className={`summary-line summary-line--total-stacked font-semibold ${isSplitMatching ? 'text-emerald-600' : 'text-red-600'}`}>
-                      ₹{totalSplitSum.toFixed(2)}
-                    </span>
-                  </div>
+                  {internalMode !== 'audit-modify' && (
+                    <div className="flex justify-between items-center text-[11px] pt-1">
+                      <span>{t('total_stacked_entered_label', 'Total Stacked Entered:')}</span>
+                      <span className={`summary-line summary-line--total-stacked font-semibold ${isSplitMatching ? 'text-emerald-600' : 'text-red-600'}`}>
+                        ₹{totalSplitSum.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Split Distribution Matrix */}
-                <div className="space-y-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{t('split_distribution_matrix_heading', 'Split Payment')}</span>
-                    <button
-                      type="button"
-                      onClick={handleAddSplitRow}
-                      className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg cursor-pointer shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> {t('add_row_button', 'Add Row')}
-                    </button>
+                {internalMode === 'audit-modify' ? (
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-[10px] text-slate-500">
+                    <p className="font-semibold uppercase text-slate-400 mb-0.5">{t('original_split_payout_breakdown_heading', 'ORIGINAL SPLIT PAYOUT BREAKDOWN')}</p>
+                    <p className="italic">{receipt?.paymentMethod ? `Paid via ${receipt.paymentMethod}` : t('legacy_payment_route_message', 'Legacy payment route or not recorded.')}</p>
                   </div>
+                ) : (
+                  /* Split Distribution Matrix */
+                  <div className="space-y-2 pt-2 border-t border-emerald-200 dark:border-emerald-800">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">{t('split_distribution_matrix_heading', 'Split Payment')}</span>
+                      <button
+                        type="button"
+                        onClick={handleAddSplitRow}
+                        className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg cursor-pointer shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> {t('add_row_button', 'Add Row')}
+                      </button>
+                    </div>
 
-                  <div className="space-y-2">
-                    {splitRows.map((row) => {
-                      const selectedPayTo = payToOptions.find((p) => p.id === row.payToId);
-                      return (
-                      <div key={row.id} className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            inputMode="decimal"
-                            value={row.amount}
-                            // 24 Aug 2026 bugfix: this used to coerce through
-                            // Number(e.target.value) unconditionally, so an
-                            // emptied field became 0 immediately - React then
-                            // re-renders the controlled input back to "0",
-                            // and the next digit you type lands AFTER that
-                            // stuck zero ("07") instead of replacing it,
-                            // since there was never an actually-empty state
-                            // for backspace to reach. Same '' === '' guard
-                            // already used by the Add Adjustment "Amount"
-                            // field above - let the field genuinely go
-                            // empty while typing; every place that reads
-                            // amount back out already does `Number(...) || 0`.
-                            onChange={(e) => handleUpdateSplitRow(row.id, 'amount', e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
-                            placeholder={t('amount_placeholder', 'Amount (₹)')}
-                            className="flex-1 font-extrabold"
-                          />
-                          <StyledSelect
-                            value={row.mode}
-                            onChange={(val) => handleUpdateSplitRow(row.id, 'mode', val as any)}
-                            options={[
-                              { value: 'Cash', label: 'Cash' },
-                              { value: 'UPI', label: 'UPI' },
-                              { value: 'Card', label: 'Card' },
-                              { value: 'Bank Transfer', label: 'Bank Transfer' },
-                            ]}
-                          />
-                          {splitRows.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSplitRow(row.id)}
-                              className="text-red-500 hover:text-red-700 p-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                    <div className="space-y-2">
+                      {splitRows.map((row) => {
+                        const selectedPayTo = payToOptions.find((p) => p.id === row.payToId);
+                        return (
+                        <div key={row.id} className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              inputMode="decimal"
+                              value={row.amount}
+                              onChange={(e) => handleUpdateSplitRow(row.id, 'amount', e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
+                              placeholder={t('amount_placeholder', 'Amount (₹)')}
+                              className="flex-1 font-extrabold"
+                            />
+                            <StyledSelect
+                              value={row.mode}
+                              onChange={(val) => handleUpdateSplitRow(row.id, 'mode', val as any)}
+                              options={[
+                                { value: 'Cash', label: 'Cash' },
+                                { value: 'UPI', label: 'UPI' },
+                                { value: 'Card', label: 'Card' },
+                                { value: 'Bank Transfer', label: 'Bank Transfer' },
+                              ]}
+                            />
+                            {splitRows.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSplitRow(row.id)}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          {row.mode === 'UPI' && (
+                            <div className="flex items-center gap-2 pl-1">
+                              <StyledSelect
+                                value={row.payToId || ''}
+                                onChange={(val) => { handleUpdateSplitRow(row.id, 'payToId', val); setVisibleQrRowId(null); }}
+                                placeholder={t('pay_to_placeholder', '-- Pay to --')}
+                                className="flex-1"
+                                options={payToOptions.map((p) => ({ value: p.id, label: p.name, group: p.group }))}
+                              />
+                              <button
+                                type="button"
+                                disabled={!selectedPayTo}
+                                onClick={() => setVisibleQrRowId(row.id)}
+                                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+                              >
+                                <QrCode className="w-3.5 h-3.5" /> {t('show_qr_button', 'Show QR')}
+                              </button>
+                            </div>
                           )}
                         </div>
-
-                        {/* UPI rows: choose whose account this goes to (own
-                            staff or a vendor/payee) and reveal their QR to
-                            scan - lets a payment be taken directly into a
-                            vendor's account rather than always the desk's. */}
-                        {row.mode === 'UPI' && (
-                          <div className="flex items-center gap-2 pl-1">
-                            <StyledSelect
-                              value={row.payToId || ''}
-                              onChange={(val) => { handleUpdateSplitRow(row.id, 'payToId', val); setVisibleQrRowId(null); }}
-                              placeholder={t('pay_to_placeholder', '-- Pay to --')}
-                              className="flex-1"
-                              options={payToOptions.map((p) => ({ value: p.id, label: p.name, group: p.group }))}
-                            />
-                            <button
-                              type="button"
-                              disabled={!selectedPayTo}
-                              // Always opens the big modal now (24 Aug 2026) -
-                              // no more inline toggle, so there's nothing
-                              // left to "hide" from this button itself.
-                              onClick={() => setVisibleQrRowId(row.id)}
-                              className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-                            >
-                              <QrCode className="w-3.5 h-3.5" /> {t('show_qr_button', 'Show QR')}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
               </div>
 
@@ -1352,60 +1520,74 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
         </div>
       </div>
 
-        {/* Footer Actions - migrated to the shared <Button> (24 Aug 2026, "quality
-            buttons should be same" report) - these were hand-rolled bg-cyan-600/
-            bg-emerald-600 buttons carrying shadow-md, in direct violation of
-            DESIGN.md's "no button ever has a box-shadow" rule, and using colors
-            outside Button.tsx's canonical palette (cyan isn't a defined variant
-            at all). Every other action button in this modal (Insert, Apply
-            Adjustment) was migrated in the same pass. */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-white dark:bg-gray-800">
-          {internalMode === 'edit-and-checkout' && (
+        {/* Footer Actions */}
+        {internalMode === 'audit-modify' ? (
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-white dark:bg-gray-800">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+            >
+              {t('cancel_button', 'Cancel')}
+            </Button>
             <Button
               type="button"
               variant="primary"
-              size="lg"
-              className="flex-1 font-semibold flex items-center justify-center gap-2"
-              onClick={() => setIsPrintModalOpen(true)}
-              leftIcon={<Share2 className="w-4 h-4 shrink-0" />}
+              onClick={handleSaveReceiptEdit}
+              leftIcon={<Save className="w-4 h-4" />}
             >
-              {t('preview_share_bill_button', 'Preview & Share Bill')}
+              {t('save_modifications_audit_log_button', 'Save Modifications & Audit Log')}
             </Button>
-          )}
+          </div>
+        ) : (
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3 bg-white dark:bg-gray-800">
+            {internalMode === 'edit-and-checkout' && (
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="flex-1 font-semibold flex items-center justify-center gap-2"
+                onClick={() => setIsPrintModalOpen(true)}
+                leftIcon={<Share2 className="w-4 h-4 shrink-0" />}
+              >
+                {t('preview_share_bill_button', 'Preview & Share Bill')}
+              </Button>
+            )}
 
-          <Button
-            type="button"
-            variant="success"
-            size="lg"
-            className="flex-1"
-            onClick={handleSaveOrCheckout}
-            disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
-            leftIcon={isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
-          >
-            {isProcessing
-              ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
-              : internalMode === 'edit-only'
-              ? t('save_booking_changes_button', 'Save Booking Changes')
-              : !isSplitMatching
-              ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
-              : t('checkout_close_booking_button', 'Checkout & Close Booking')
-            }
-          </Button>
-
-          {internalMode === 'edit-only' && (
             <Button
               type="button"
               variant="success"
               size="lg"
               className="flex-1"
-              onClick={handleSaveAndProceedToCheckout}
-              disabled={isProcessing}
-              leftIcon={<CheckCircle2 className="w-4 h-4 shrink-0" />}
+              onClick={handleSaveOrCheckout}
+              disabled={isProcessing || (internalMode === 'edit-and-checkout' && !isSplitMatching)}
+              leftIcon={isProcessing ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0" />}
             >
-              {t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}
+              {isProcessing
+                ? (internalMode === 'edit-only' ? 'Saving Changes...' : 'Processing Checkout...')
+                : internalMode === 'edit-only'
+                ? t('save_booking_changes_button', 'Save Booking Changes')
+                : !isSplitMatching
+                ? `Split Total Must Equal ₹${grandTargetDue.toFixed(2)}`
+                : t('checkout_close_booking_button', 'Checkout & Close Booking')
+              }
             </Button>
-          )}
-        </div>
+
+            {internalMode === 'edit-only' && (
+              <Button
+                type="button"
+                variant="success"
+                size="lg"
+                className="flex-1"
+                onClick={handleSaveAndProceedToCheckout}
+                disabled={isProcessing}
+                leftIcon={<CheckCircle2 className="w-4 h-4 shrink-0" />}
+              >
+                {t('save_and_proceed_checkout_button', 'Save and Proceed to Checkout')}
+              </Button>
+            )}
+          </div>
+        )}
       </FlowbiteDrawer>
 
       {/* Big "Show QR" modal (24 Aug 2026) - the QR used to render inline at a
@@ -1490,7 +1672,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
           <div id="printableReceiptModalContent" className="space-y-3 text-xs">
               <div className="text-center pb-2 border-b border-slate-200">
                 <h3 className="receipt-edit-modal__subtitle font-extrabold text-base text-black uppercase">
-                  {propertyName || (guest as any).propertyName || 'Ground Code RESORT'}
+                  {propertyName || (guest as any)?.propertyName || (receipt as any)?.propertyName || 'Ground Code RESORT'}
                 </h3>
                 <p className="text-[11px] text-black font-medium">
                   {gstEnabled ? t('tax_invoice_label', 'Tax Invoice') : t('consolidated_settlement_label', 'Consolidated Stay & KOT Settlement')}
@@ -1502,7 +1684,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
 
               <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
                 <span>
-                  <b>{t('guest_colon_label', 'Guest:')}</b> {guest.guestName}
+                  <b>{t('guest_colon_label', 'Guest:')}</b> {guest?.guestName || receipt?.guestName || ''}
                 </span>
                 <span>
                   <b>{t('date_colon_label', 'Date:')}</b> {formatDateDDMMYYYY(new Date().toISOString())}
@@ -1516,10 +1698,10 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                   same information. */}
               <div className="flex justify-between text-[11px] border-b border-dashed border-slate-300 pb-2 text-black font-semibold">
                 <span>
-                  <b>{t('check_in_colon_label', 'Check-In:')}</b> {formatDateDDMMYYYY(checkinDate || guest.checkinDate)}
+                  <b>{t('check_in_colon_label', 'Check-In:')}</b> {formatDateDDMMYYYY(checkinDate || guest?.checkinDate || receipt?.checkinDate || '')}
                 </span>
                 <span>
-                  <b>{t('check_out_colon_label', 'Check-Out:')}</b> {formatDateDDMMYYYY(checkoutDate || guest.expectedCheckout || guest.checkoutDate)}
+                  <b>{t('check_out_colon_label', 'Check-Out:')}</b> {formatDateDDMMYYYY(checkoutDate || guest?.expectedCheckout || guest?.checkoutDate || receipt?.checkoutDate || '')}
                 </span>
               </div>
 
@@ -1533,7 +1715,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
               {/* Stay Logistics */}
               <div className="space-y-1">
                 <div className="font-semibold border-l-2 border-slate-400 pl-2 text-black text-xs">
-                  Stay Logistics (Room {guest.roomNumber})
+                  Stay Logistics (Room {guest?.roomNumber || receipt?.roomNumber || ''})
                 </div>
                 <div className="flex justify-between text-black">
                   <span>{t('lodging_contract_charges_label', 'Accommodation Contract Charges:')}</span>
@@ -1647,7 +1829,7 @@ export const ReceiptEditModal: React.FC<ReceiptEditModalProps> = ({
                 payeeName={propertyName || 'Bill Settlement'}
                 amount={grandTargetDue}
                 amountLabel="Grand Total"
-                note={`Bill - ${guest.guestName}`}
+                note={`Bill - ${guest?.guestName || receipt?.guestName || ''}`}
               />
           </div>
 

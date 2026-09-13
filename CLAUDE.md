@@ -22,6 +22,20 @@ This file documents ALL project conventions and rules. Every AI agent must follo
 
 **All design, styling, icon, font, and component-library rules live in `DESIGN.md`** - that's the single source of truth for how things should look, kept in its own file so this always-loaded CLAUDE.md doesn't carry UI detail that most tasks don't need. Read `DESIGN.md` before building or touching any table, modal, tab bar, button, or summary-card UI.
 
+### 🧩 Unified Components & Single Source of Truth Rule (DRY with Conditional Variations) (MANDATORY, added 13 Sep 2026)
+
+**Past, present, and future coding across this entire project must strictly follow the Single Source of Truth principle: NEVER build, clone, or maintain duplicate or parallel components, forms, cards, drawers, or dialogs for different contexts.**
+
+- **No Parallel Clones for Single-Key vs. Multi-Key**:
+  - Components, dashboards, guest lists, and billing cards must never be cloned into separate single-key vs multi-key implementations. 
+  - The exact same component must power both, using `isMultiKeyProperty?: boolean` or `rooms?: Room[]` to conditionally toggle multi-unit specifics (e.g., room badge chips, room filter dropdowns, multi-room timelines).
+- **No Parallel Clones for Operational Modes (e.g., Live Checkout vs. Past Bill Audit)**:
+  - When an operational flow shares cards, financial breakdowns, date pickers, or inputs (such as Live Checkout and Past Bills Modification & Audit), both flows must strictly share a single canonical React component (e.g., `<ReceiptEditModal>`).
+  - Contextual differences (such as cash-handler dropdowns during live checkout vs. change audit trail logs during past receipt review) must be handled conditionally via a clean `mode` prop (`mode="checkout"` vs `mode="audit-modify"`).
+- **Why this is strictly enforced**:
+  - Maintaining separate files inevitably causes visual drift, out-of-sync styling, broken tokens, and duplicate maintenance overhead. 
+  - By sharing the single component, any future update to styling, typography, colors, layout, or design tokens is made **once** and immediately and automatically reflects across all versions without exception (unless explicitly requested by the user to be conditional to one place only).
+
 - **No Icon Swap on Mobile & Delete Trash Can Icon Rule**: Icons for actions (Delete, Edit, View, Settings, etc.) must NEVER change, swap, or degrade between desktop and mobile screen sizes. Specifically, Delete action buttons across all tables, cards, and drawers must ALWAYS use a standard Trash Can icon (`Trash2`) with red styling tokens (`text-red-600 dark:text-red-400`), never a cross/close (`X`) icon.
 
 - **One Loading Spinner Identity, App-Wide (HARD RULE, added 28 Aug 2026 after repeat complaints)** - the user has flagged "why are there 2 different loaders" multiple times across separate sessions; each time only part of the mismatch got fixed, so it kept resurfacing. There must be exactly ONE loading-spinner visual identity used everywhere in this app - a plain CSS border-ring (`border-[3px]`, `border-blue-100 border-t-blue-500` light / `border-slate-800 border-t-blue-400` dark, `rounded-full`), spun via the shared `.loading-screen-spinner-spin` class in `src/custom.css` (0.8s linear - NOT Tailwind's default `animate-spin`, which is 1s and visibly changes speed at a handoff between two loaders using it). Same for the boot-screen logo: `index.html`'s inline `#initial-loader` and `src/components/LoadingScreen.tsx` render the exact same `app-icons/icon-source.png` file at the same 64x64 size with NO wrapping box (no background/border/shadow/padding - a "glass card" frame around it, however subtle, is a second distinct look) and the same pulse timing (`.loading-screen-logo-pulse` in `custom.css`, 2s ease-in-out, opacity 1↔0.6).
