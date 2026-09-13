@@ -59,7 +59,19 @@ export const FinanceProvider: React.FC<FinanceProviderProps> = ({
 
   const addPettyCash = (entry: PettyCashEntry) => {
     setPettyCash((prev) => [entry, ...prev]);
-    addExpenseToDB(entry);
+    // Adopt the server's real id as soon as it comes back (13 Sep 2026).
+    // The optimistic row above carries a temporary client id ('pc-4841'); the
+    // database assigns its own (95). Keeping the temp id meant that editing or
+    // deleting an expense you had just added - the common "fix a typo straight
+    // away" case - sent an id matching no row: the change silently did not
+    // save, while the ledger still posted a revision for it. Reconciling here
+    // keeps the row editable without waiting for a refresh.
+    addExpenseToDB(entry).then((serverId) => {
+      if (serverId === null || serverId === undefined || String(serverId) === String(entry.id)) return;
+      setPettyCash((prev) =>
+        prev.map((e) => (e.id === entry.id ? { ...e, id: String(serverId) } : e))
+      );
+    });
     const currentUserName = currentUser?.name || 'Admin';
     onLogAudit?.(`${currentUserName} recorded petty cash ${entry.type}: ₹${entry.amount} - ${entry.description}`);
   };

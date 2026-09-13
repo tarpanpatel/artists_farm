@@ -235,6 +235,33 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
                 }
                 // Never overwrite accounting history: neutralise the previous
                 // posting, then add the corrected value after the source update.
+                // The id must identify a REAL expense on THIS property before any
+                // of this runs (13 Sep 2026, found by driving the actual UI).
+                //
+                // The client generates a temporary local id ('pc-4841') when it
+                // optimistically adds an expense, and used to keep it for the rest
+                // of the session instead of adopting the server's real id (95).
+                // Editing that expense then sent the temp id, so:
+                //   - `UPDATE ... WHERE id = 'pc-4841'` matched NOTHING, and MySQL
+                //     coerces that string to 0 rather than erroring, so the edit
+                //     silently did not save;
+                //   - but the ledger postings below ran anyway, adding a phantom
+                //     debit for an amount the expense never actually had.
+                // Net result: the expense was unchanged and the P&L was wrong, with
+                // a success toast either way. The client half is fixed too, but this
+                // check is the rail - a request naming an expense that does not
+                // exist must change no money at all.
+                $existsStmt = $pdo->prepare("SELECT id FROM farm_utility_expenses WHERE id = ? AND property_id = ?");
+                $existsStmt->execute([$input['id'], $propertyId]);
+                if (!$existsStmt->fetchColumn()) {
+                    http_response_code(404);
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'That expense no longer exists on this property. Refresh and try again.',
+                    ]);
+                    break;
+                }
+
                 // $propertyId is REQUIRED here (fixed 13 Sep 2026). It was omitted,
                 // so reverseFinancialSource() fell back to its `int $propertyId = 1`
                 // default and searched property 1's ledger for an expense that had
@@ -298,9 +325,25 @@ function handleFinanceRequests($pdo, $request_method, $action, $propertyId) {
         case 'delete_petty_cash':
             if ($request_method === 'POST') {
                 $input = json_decode(file_get_contents('php://input'), true);
-                $id = intval($input['id'] ?? 0);
+                // intval() of a client temp id like 'pc-4841' is 0, which this
+                // already rejected - but an id that parses yet belongs to another
+                // property (or no longer exists) would previously still have posted
+                // a reversal. Confirm the row first; see the fuller note in
+                // update_petty_cash above (13 Sep 2026).
+                $rawId = $input['id'] ?? '';
+                $id = intval($rawId);
                 if (!$id) {
                     echo json_encode(['status' => 'error', 'message' => 'Expense id is required']);
+                    break;
+                }
+                $existsStmt = $pdo->prepare("SELECT id FROM farm_utility_expenses WHERE id = ? AND property_id = ?");
+                $existsStmt->execute([$id, $propertyId]);
+                if (!$existsStmt->fetchColumn()) {
+                    http_response_code(404);
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'That expense no longer exists on this property. Refresh and try again.',
+                    ]);
                     break;
                 }
                 // $propertyId required - see the note in update_petty_cash above.

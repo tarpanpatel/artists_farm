@@ -498,7 +498,15 @@ export async function fetchExpensesFromDB(): Promise<any[]> {
   return [];
 }
 
-export async function addExpenseToDB(entry: any): Promise<boolean> {
+/**
+ * Returns the server-assigned expense id on success, or null on failure.
+ *
+ * It used to return a bare boolean, which is why the caller had no way to learn
+ * the real id and kept its own temporary 'pc-<ts>' one for the rest of the
+ * session - so editing an expense you had just added sent an id no row has.
+ * See addPettyCash in FinanceContext and update_petty_cash's own note.
+ */
+export async function addExpenseToDB(entry: any): Promise<string | number | null> {
   try {
     const res = await apiFetch(`${API_BASE}?action=add_petty_cash`, {
       method: 'POST',
@@ -506,10 +514,11 @@ export async function addExpenseToDB(entry: any): Promise<boolean> {
       body: JSON.stringify(entry),
     });
     const json = await res.json();
-    return json.status === 'success';
+    if (json.status !== 'success') return null;
+    return json.id ?? null;
   } catch (err) {
     console.error('Failed to add expense to DB:', err);
-    return false;
+    return null;
   }
 }
 
