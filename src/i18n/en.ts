@@ -1965,6 +1965,18 @@ export const strings: Record<string, string> = {
   ocr_detected_amount: "Detected Amount:",
   ocr_apply_scanned_details: "Apply Scanned Details",
   ocr_cform_passport_detected: "Passport MRZ Detected",
+
+  // Message Template Reset Confirmation
+  reset_to_default_button: "Reset",
+  confirm_reset_template_title: "Confirm Reset to Default",
+  confirm_reset_voucher_title: "Reset Booking Voucher Message",
+  confirm_reset_make_booking_title: "Reset Make Booking Message",
+  action_not_reversible: "This action cannot be reversed",
+  reset_template_warning_desc: "Once reset, your customized message wording will be permanently cleared and replaced with the default system template.",
+  confirm_reset_voucher_prompt: "Are you sure you want to reset the Guest Booking Confirmation Message to default?",
+  confirm_reset_make_booking_prompt: "Are you sure you want to reset the Make Booking Message to default?",
+  confirm_reset_template_prompt: "Are you sure you want to reset this template to default?",
+  confirm_reset_button: "Reset to Default",
 };
 
 export function t(key: string, fallback?: string, params?: Record<string, string | number>): string {

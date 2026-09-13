@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FieldHelpModeProvider } from './FieldHelpPopover';
 import { Modal } from 'flowbite-react';
 import { useToast } from './ToastContext';
-import { Loader2, CheckCircle2, AlertCircle, MessageCircle, Plus, Trash2, X, Sparkles, FileText, RotateCcw } from './icons/FlowbiteIcons';
+import { Loader2, CheckCircle2, AlertCircle, AlertTriangle, MessageCircle, Plus, Trash2, X, Sparkles, FileText, RotateCcw } from './icons/FlowbiteIcons';
 import { t } from '../i18n/en';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -215,6 +215,20 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
       setMakeBookingTemplate(modalMakeBookingTemplate.trim());
     }
     setShowMakeBookingModal(false);
+  };
+
+  type ResetTarget = 'voucher' | 'make_booking' | 'modal_voucher_root';
+  const [resetConfirmTarget, setResetConfirmTarget] = useState<ResetTarget | null>(null);
+
+  const handleConfirmReset = () => {
+    if (resetConfirmTarget === 'voucher') {
+      setVoucherTemplate('');
+    } else if (resetConfirmTarget === 'make_booking') {
+      setMakeBookingTemplate('');
+    } else if (resetConfirmTarget === 'modal_voucher_root') {
+      setModalTemplate(rootDefaultTemplate);
+    }
+    setResetConfirmTarget(null);
   };
 
   const insertMakeBookingToken = (token: string) => {
@@ -1171,7 +1185,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                     type="button"
                     variant="ghost"
                     size="xs"
-                    onClick={() => setVoucherTemplate('')}
+                    onClick={() => setResetConfirmTarget('voucher')}
                     className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" />
@@ -1225,7 +1239,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                     type="button"
                     variant="ghost"
                     size="xs"
-                    onClick={() => setMakeBookingTemplate('')}
+                    onClick={() => setResetConfirmTarget('make_booking')}
                     className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" />
@@ -1315,7 +1329,13 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
                 type="button"
                 variant="secondary"
                 size="xs"
-                onClick={handleResetToRootDefault}
+                onClick={() => {
+                  if (modalTemplate.trim() && modalTemplate.trim() !== rootDefaultTemplate.trim()) {
+                    setResetConfirmTarget('modal_voucher_root');
+                  } else {
+                    handleResetToRootDefault();
+                  }
+                }}
                 className="flex items-center gap-1 shrink-0 text-slate-700 dark:text-slate-200"
               >
                 <RotateCcw className="w-3 h-3 text-slate-500" />
@@ -1497,6 +1517,80 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({
             >
               {t('apply_changes_button', 'Apply Changes')}
             </Button>
+          </div>
+        </Modal>
+
+        {/* Reset Template Confirmation Modal */}
+        <Modal
+          show={!!resetConfirmTarget}
+          onClose={() => setResetConfirmTarget(null)}
+          size="md"
+          popup
+          className="z-70"
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  {resetConfirmTarget === 'voucher'
+                    ? t('confirm_reset_voucher_title', 'Reset Booking Voucher Message')
+                    : resetConfirmTarget === 'make_booking'
+                    ? t('confirm_reset_make_booking_title', 'Reset Make Booking Message')
+                    : t('confirm_reset_template_title', 'Confirm Reset to Default')}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetConfirmTarget(null)}
+                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                aria-label={t('close_button', 'Close')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="p-3.5 rounded-lg border border-red-200 dark:border-red-800/80 bg-red-50 dark:bg-red-950/40 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-red-800 dark:text-red-200 uppercase tracking-wide">
+                    {t('action_not_reversible', 'This action cannot be reversed')}
+                  </p>
+                  <p className="text-2xs text-red-700 dark:text-red-300 mt-0.5 leading-relaxed">
+                    {t('reset_template_warning_desc', 'Once reset, your customized message wording will be permanently cleared and replaced with the default system template.')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-700 p-3.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                {resetConfirmTarget === 'voucher'
+                  ? t('confirm_reset_voucher_prompt', 'Are you sure you want to reset the Guest Booking Confirmation Message to default?')
+                  : resetConfirmTarget === 'make_booking'
+                  ? t('confirm_reset_make_booking_prompt', 'Are you sure you want to reset the Make Booking Message to default?')
+                  : t('confirm_reset_template_prompt', 'Are you sure you want to reset this template to default?')}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 px-5 py-3 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/50 rounded-b-xl">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setResetConfirmTarget(null)}
+              >
+                {t('cancel_button', 'Cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmReset}
+                leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+              >
+                {t('confirm_reset_button', 'Reset to Default')}
+              </Button>
+            </div>
           </div>
         </Modal>
       </div>
