@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Button, Modal } from 'flowbite-react';
-import { X, Search, History, Eye, Pencil, Trash2, Share2, RefreshCw, AlertCircle, CheckCircle2, Loader2, Plus, Minus } from './icons/FlowbiteIcons';
+import { Drawer as FlowbiteDrawer, DrawerItems, TextInput as FlowbiteTextInput, Modal } from 'flowbite-react';
+import { X, Search, History, Eye, Pencil, Trash2, RefreshCw, AlertCircle, Loader2 } from './icons/FlowbiteIcons';
 import { useToast } from './ToastContext';
 import { t } from '../i18n/en';
-import { fetchWalkInTabHistoryFromDB, updateWalkInTabDB, deleteWalkInTabDB } from '../services/api';
-import { formatDateOrdinal, formatDateDDMMYYYY } from '../utils/dateUtils';
-import { StyledSelect } from './StyledSelect';
-import { Input } from './Input';
+import { fetchWalkInTabHistoryFromDB, deleteWalkInTabDB } from '../services/api';
+import { formatDateOrdinal } from '../utils/dateUtils';
 import { Popover } from './Popover';
-import { getWhatsAppShareUrl } from '../utils/phoneUtils';
-import * as htmlToImage from 'html-to-image';
-import { UpiPaymentBlock } from '../utils/upiQrCode';
+import { Button } from './Button';
 import { MenuItem } from '../types';
+import { WalkInTabBillModal } from './WalkInTabBillModal';
 
 export interface PastWalkInBillItem {
   id: number;
@@ -55,20 +52,9 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Viewing state
-  const [viewingBill, setViewingBill] = useState<PastWalkInBillItem | null>(null);
-  const [isSharingImage, setIsSharingImage] = useState<boolean>(false);
-
-  // Editing state
-  const [editingBill, setEditingBill] = useState<PastWalkInBillItem | null>(null);
-  const [editLabel, setEditLabel] = useState<string>('');
-  const [editPaymentMethod, setEditPaymentMethod] = useState<string>('Cash');
-  const [editDiscount, setEditDiscount] = useState<number>(0);
-  const [editGstEnabled, setEditGstEnabled] = useState<boolean>(false);
-  const [editGstRate, setEditGstRate] = useState<number>(5);
-  const [editItems, setEditItems] = useState<Array<{ menu_item_id?: number; name: string; price: number; quantity: number }>>([]);
-  const [dishSelectValue, setDishSelectValue] = useState<string>('');
-  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+  // Active bill management delegated to unified WalkInTabBillModal
+  const [activeBill, setActiveBill] = useState<PastWalkInBillItem | null>(null);
+  const [modalMode, setModalMode] = useState<'view' | 'audit-modify'>('view');
 
   // Deleting state
   const [deletingBillId, setDeletingBillId] = useState<number | null>(null);
@@ -104,136 +90,6 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
     });
   }, [bills, searchQuery]);
 
-  const menuOptions = useMemo(() => {
-    return (menu || [])
-      .filter((m) => m.available !== false)
-      .map((m) => ({
-        value: String(m.id),
-        label: `${m.name} (₹${Number(m.price).toFixed(2)})`,
-      }));
-  }, [menu]);
-
-  const handleStartEdit = (b: PastWalkInBillItem) => {
-    setEditingBill(b);
-    setEditLabel(b.label || '');
-    setEditPaymentMethod(b.payment_method || 'Cash');
-    setEditDiscount(Number(b.discount) || 0);
-    setEditGstEnabled(Boolean(b.gst_enabled));
-    setEditGstRate(Number(b.gst_rate) || 5);
-    setEditItems(
-      (b.items || []).map((it) => ({
-        menu_item_id: it.menu_item_id,
-        name: it.name,
-        price: Number(it.price) || 0,
-        quantity: Math.max(1, Number(it.quantity) || 1),
-      }))
-    );
-    setDishSelectValue('');
-  };
-
-  const handleItemQuantityChange = (index: number, delta: number) => {
-    setEditItems((prev) => {
-      const next = [...prev];
-      const item = next[index];
-      if (!item) return prev;
-      const newQty = item.quantity + delta;
-      if (newQty <= 0) {
-        return next.filter((_, i) => i !== index);
-      }
-      next[index] = { ...item, quantity: newQty };
-      return next;
-    });
-  };
-
-  const handleRemoveEditItem = (index: number) => {
-    setEditItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddDishToEdit = (menuItemIdStr: string) => {
-    if (!menuItemIdStr) return;
-    const menuItemId = Number(menuItemIdStr);
-    const dish = (menu || []).find((m) => m.id === menuItemId);
-    if (!dish) return;
-
-    setEditItems((prev) => {
-      const existingIdx = prev.findIndex(
-        (it) => (it.menu_item_id && it.menu_item_id === dish.id) || it.name.toLowerCase() === dish.name.toLowerCase()
-      );
-      if (existingIdx >= 0) {
-        const next = [...prev];
-        next[existingIdx] = { ...next[existingIdx], quantity: next[existingIdx].quantity + 1 };
-        return next;
-      }
-      return [
-        ...prev,
-        {
-          menu_item_id: dish.id,
-          name: dish.name,
-          price: Number(dish.price) || 0,
-          quantity: 1,
-        },
-      ];
-    });
-    setDishSelectValue('');
-  };
-
-  const editSubtotal = useMemo(() => {
-    return editItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
-  }, [editItems]);
-
-  const editAfterDiscount = Math.max(0, editSubtotal - editDiscount);
-  const editGstAmount = editGstEnabled ? Math.round(editAfterDiscount * (editGstRate / 100) * 100) / 100 : 0;
-  const editGrandTotal = Math.round((editAfterDiscount + editGstAmount) * 100) / 100;
-
-  const handleSaveEdit = async () => {
-    if (!editingBill) return;
-    if (editItems.length === 0) {
-      showToast('A bill must have at least one dish', { type: 'warning' });
-      return;
-    }
-    setIsSavingEdit(true);
-    try {
-      const res = await updateWalkInTabDB({
-        tabId: editingBill.id,
-        label: editLabel.trim(),
-        paymentMethod: editPaymentMethod,
-        discount: editDiscount,
-        gstEnabled: editGstEnabled,
-        gstRate: editGstRate,
-        items: editItems,
-      });
-
-      if (res.success && res.bill) {
-        showToast('Walk-in bill updated successfully', { type: 'success' });
-        setBills((prev) =>
-          prev.map((b) =>
-            b.id === editingBill.id
-              ? {
-                  ...b,
-                  ...res.bill,
-                  grand_total: res.bill.grandTotal,
-                  payment_method: res.bill.paymentMethod,
-                  discount: res.bill.discount,
-                  gst_enabled: res.bill.gstEnabled,
-                  gst_rate: res.bill.gstRate,
-                  gst_amount: res.bill.gstAmount,
-                  subtotal: res.bill.subtotal,
-                  items: res.bill.items,
-                }
-              : b
-          )
-        );
-        setEditingBill(null);
-      } else {
-        showToast(res.message || 'Failed to update walk-in bill', { type: 'error' });
-      }
-    } catch (err: any) {
-      showToast(err?.message || 'Error updating bill', { type: 'error' });
-    } finally {
-      setIsSavingEdit(false);
-    }
-  };
-
   const handleConfirmDelete = async () => {
     if (!deletingBillId) return;
     setIsDeleting(true);
@@ -253,49 +109,13 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
     }
   };
 
-  const handleShareWhatsApp = (b: PastWalkInBillItem) => {
-    const itemsText = (b.items || [])
-      .map((it: any) => `${it.quantity}x ${it.name} - ₹${Number(it.lineTotal).toFixed(2)}`)
-      .join('\n');
-    const whatsappText = `🧾 *WALK-IN BILL #${b.id}*${b.label ? `\n👤 *${b.label}*` : ''}\n━━━━━━━━━━━━━━━━━━\n${itemsText || 'Kitchen Food Order'}\n━━━━━━━━━━━━━━━━━━\n💵 *Subtotal:* ₹${Number(b.subtotal ?? b.grand_total).toFixed(2)}${Number(b.discount) > 0 ? `\n➖ *Discount:* ₹${Number(b.discount).toFixed(2)}` : ''}${b.gst_enabled ? `\n➕ *GST (${b.gst_rate}%):* ₹${Number(b.gst_amount).toFixed(2)}` : ''}\n💰 *Grand Total:* ₹${Number(b.grand_total).toFixed(2)}${propertyUpiId ? `\n💳 *Pay via UPI:* ${propertyUpiId}` : ''}\n━━━━━━━━━━━━━━━━━━\nThank you!`;
-
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(whatsappText).catch(() => {});
-    }
-    const url = getWhatsAppShareUrl('', whatsappText);
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const handleShareImage = async () => {
-    const node = document.getElementById('pastBillPrintable');
-    if (!node || !viewingBill) return;
-    setIsSharingImage(true);
-    try {
-      const dataUrl = await htmlToImage.toPng(node, { backgroundColor: '#ffffff', pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `walk-in-bill-${viewingBill.id}.png`, { type: 'image/png' });
-      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: t('walk_in_bill_title', 'Walk-in Bill') });
-      } else {
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `walk-in-bill-${viewingBill.id}.png`;
-        link.click();
-      }
-    } catch (err) {
-      showToast(t('share_bill_failed_toast', 'Could not generate the bill image'), { type: 'error' });
-    } finally {
-      setIsSharingImage(false);
-    }
-  };
-
   return (
     <>
       <FlowbiteDrawer
         open={open}
         onClose={onClose}
         position="right"
-        className="past-walkin-bills-drawer z-60 w-full sm:max-w-lg h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
+        className="past-walkin-bills-drawer z-60 w-full sm:max-w-md md:max-w-lg h-full bg-white dark:bg-gray-800 p-0 flex flex-col shadow-2xl transition-transform border-l border-gray-200 dark:border-gray-700"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
@@ -424,29 +244,26 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
                   <div className="flex items-center gap-1.5">
                     <Button
                       size="xs"
-                      color="light"
-                      onClick={() => setViewingBill(b)}
-                      className="text-xs"
+                      variant="secondary"
+                      onClick={() => {
+                        setActiveBill(b);
+                        setModalMode('view');
+                      }}
+                      leftIcon={<Eye className="w-3.5 h-3.5 text-blue-600" />}
                     >
-                      <Eye className="w-3.5 h-3.5 mr-1 text-blue-600" /> View
+                      View
                     </Button>
 
                     <Button
                       size="xs"
-                      color="light"
-                      onClick={() => handleShareWhatsApp(b)}
-                      className="text-xs"
+                      variant="edit"
+                      onClick={() => {
+                        setActiveBill(b);
+                        setModalMode('audit-modify');
+                      }}
+                      leftIcon={<Pencil className="w-3.5 h-3.5" />}
                     >
-                      <Share2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Share
-                    </Button>
-
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => handleStartEdit(b)}
-                      className="text-xs"
-                    >
-                      <Pencil className="w-3.5 h-3.5 mr-1 text-blue-600" /> Edit
+                      Edit
                     </Button>
                   </div>
 
@@ -474,363 +291,24 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
         </DrawerItems>
       </FlowbiteDrawer>
 
-      {/* View Bill Receipt Modal */}
-      {viewingBill && (
-        <Modal
-          show={!!viewingBill}
-          onClose={() => setViewingBill(null)}
-          size="md"
-          popup
-          className="z-70"
-        >
-          <div className="p-5 space-y-4 bg-white dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                Walk-in Bill #{viewingBill.id}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setViewingBill(null)}
-                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1 cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quick Share Buttons */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleShareImage}
-                disabled={isSharingImage}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                {isSharingImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
-                {t('share_bill_png_button', 'Share Bill (PNG)')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleShareWhatsApp(viewingBill)}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 cursor-pointer text-center"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                {t('share_via_whatsapp_button', 'Share via WhatsApp')}
-              </button>
-            </div>
-
-            {/* Printable Receipt Card */}
-            <div id="pastBillPrintable" className="bg-white rounded-lg border border-slate-200 p-4 space-y-3 text-xs text-black">
-              <div className="text-center pb-2 border-b border-slate-200">
-                <h3 className="font-extrabold text-base uppercase">{propertyName || 'Ground Code Resort'}</h3>
-                <p className="font-medium">{viewingBill.gst_enabled ? t('tax_invoice_label', 'Tax Invoice') : t('walk_in_bill_title', 'Walk-in Bill')}</p>
-                {viewingBill.gst_enabled && propertyGstin && <p className="text-2xs">GSTIN: {propertyGstin}</p>}
-              </div>
-
-              <div className="flex justify-between border-b border-dashed border-slate-300 pb-2 font-semibold">
-                <span>{viewingBill.label || t('walk_in_badge', 'Walk-in')}</span>
-                <span>{formatDateDDMMYYYY(viewingBill.billed_at || new Date().toISOString())}</span>
-              </div>
-
-              <div className="space-y-1">
-                {(viewingBill.items || []).map((it: any, idx: number) => (
-                  <div key={idx} className="flex justify-between">
-                    <span>{it.quantity}x {it.name}</span>
-                    <span>₹{Number(it.lineTotal).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-1 border-t border-dashed border-slate-300 pt-2">
-                <div className="flex justify-between">
-                  <span>{t('subtotal_label', 'Subtotal')}</span>
-                  <span>₹{Number(viewingBill.subtotal ?? viewingBill.grand_total).toFixed(2)}</span>
-                </div>
-                {Number(viewingBill.discount) > 0 && (
-                  <div className="flex justify-between">
-                    <span>{t('discount_label', 'Discount')}</span>
-                    <span>-₹{Number(viewingBill.discount).toFixed(2)}</span>
-                  </div>
-                )}
-                {viewingBill.gst_enabled && Number(viewingBill.gst_amount) > 0 && (
-                  <div className="flex justify-between">
-                    <span>{t('cgst_split_label', 'CGST (50% split):')} / SGST</span>
-                    <span>₹{Number(viewingBill.gst_amount).toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-sm pt-1 border-t border-slate-200">
-                  <span>{t('grand_total_label', 'Grand Total')}</span>
-                  <span>₹{Number(viewingBill.grand_total).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-slate-600">
-                  <span>{t('payment_method_label', 'Payment Method')}</span>
-                  <span>{viewingBill.payment_method || 'Cash'}</span>
-                </div>
-              </div>
-
-              {propertyUpiId && (
-                <UpiPaymentBlock
-                  upiId={propertyUpiId}
-                  qrCodeImageUrl={propertyUpiQrCodeUrl}
-                  payeeName={propertyName || 'Ground Code Resort'}
-                  amount={Number(viewingBill.grand_total)}
-                />
-              )}
-            </div>
-
-            <div className="pt-1">
-              <Button
-                color="light"
-                className="w-full"
-                onClick={() => setViewingBill(null)}
-              >
-                {t('done_button', 'Done')}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Edit Bill Modal */}
-      {editingBill && (
-        <Modal
-          show={!!editingBill}
-          onClose={() => setEditingBill(null)}
-          size="lg"
-          popup
-          className="z-70"
-        >
-          <div className="p-5 space-y-4 bg-white dark:bg-gray-800 rounded-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Edit Walk-in Bill #{editingBill.id}
-                </h3>
-                <p className="text-2xs text-gray-500 dark:text-gray-400">
-                  Update items, quantities, pricing, customer details, or payment method.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingBill(null)}
-                className="text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg p-1 cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 font-medium text-gray-900 dark:text-white">
-                    Table / Customer Label
-                  </label>
-                  <Input
-                    type="text"
-                    value={editLabel}
-                    onChange={(e) => setEditLabel(e.target.value)}
-                    placeholder="e.g. Table 1 or Guest Name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 font-medium text-gray-900 dark:text-white">
-                    Payment Method
-                  </label>
-                  <StyledSelect
-                    value={editPaymentMethod}
-                    onChange={(v) => setEditPaymentMethod(String(v))}
-                    options={[
-                      { value: 'Cash', label: 'Cash' },
-                      { value: 'UPI', label: 'UPI' },
-                      { value: 'Card', label: 'Card' },
-                      { value: 'Online', label: 'Online' },
-                      { value: 'Bank Transfer', label: 'Bank Transfer' },
-                    ]}
-                  />
-                </div>
-              </div>
-
-              {/* Dishes Section */}
-              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50/50 dark:bg-gray-850 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
-                  <span className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
-                    Dishes on Bill ({editItems.length})
-                  </span>
-                  <span className="text-2xs font-semibold text-gray-500 dark:text-gray-400">
-                    Subtotal: ₹{editSubtotal.toFixed(2)}
-                  </span>
-                </div>
-
-                {/* Dish Rows */}
-                {editItems.length === 0 ? (
-                  <div className="py-3 text-center text-2xs text-amber-600 dark:text-amber-400 font-medium">
-                    No dishes on this bill. Please add at least one dish below.
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {editItems.map((it, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-2 p-2 rounded bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                            {it.name}
-                          </div>
-                          <div className="text-2xs text-gray-500 dark:text-gray-400">
-                            ₹{Number(it.price).toFixed(2)} each
-                          </div>
-                        </div>
-
-                        {/* Quantity Stepper */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleItemQuantityChange(idx, -1)}
-                            className="w-6 h-6 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors cursor-pointer"
-                            title="Decrease quantity"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="w-6 text-center font-bold text-xs text-gray-900 dark:text-white">
-                            {it.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleItemQuantityChange(idx, 1)}
-                            className="w-6 h-6 rounded flex items-center justify-center bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors cursor-pointer"
-                            title="Increase quantity"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                        </div>
-
-                        {/* Line Total */}
-                        <div className="w-16 text-right font-semibold text-xs text-gray-900 dark:text-white shrink-0">
-                          ₹{(it.price * it.quantity).toFixed(2)}
-                        </div>
-
-                        {/* Remove Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveEditItem(idx)}
-                          className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors cursor-pointer shrink-0"
-                          title="Remove dish"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Add Dish Dropdown */}
-                <div className="pt-1.5 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                  <div className="flex-1">
-                    <StyledSelect
-                      value={dishSelectValue}
-                      onChange={(v) => handleAddDishToEdit(String(v))}
-                      options={[
-                        { value: '', label: '+ Add a dish from menu...' },
-                        ...menuOptions,
-                      ]}
-                      placeholder="+ Add a dish from menu..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Discount and GST */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1 font-medium text-gray-900 dark:text-white">
-                    Discount (₹)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editDiscount || ''}
-                    onChange={(e) => setEditDiscount(Math.max(0, Number(e.target.value) || 0))}
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block mb-1 font-medium text-gray-900 dark:text-white">
-                    GST Rate (%)
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={editGstRate || ''}
-                    onChange={(e) => setEditGstRate(Math.max(0, Number(e.target.value) || 0))}
-                    disabled={!editGstEnabled}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-0.5">
-                <input
-                  type="checkbox"
-                  id="edit-bill-gst-toggle"
-                  checked={editGstEnabled}
-                  onChange={(e) => setEditGstEnabled(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 cursor-pointer"
-                />
-                <label htmlFor="edit-bill-gst-toggle" className="text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                  Apply GST ({editGstRate}%)
-                </label>
-              </div>
-
-              {/* Live Calculation Summary */}
-              <div className="bg-gray-100 dark:bg-gray-750 rounded-lg p-3 space-y-1 text-2xs">
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">₹{editSubtotal.toFixed(2)}</span>
-                </div>
-                {editDiscount > 0 && (
-                  <div className="flex justify-between text-amber-600 dark:text-amber-400">
-                    <span>Discount:</span>
-                    <span>-₹{editDiscount.toFixed(2)}</span>
-                  </div>
-                )}
-                {editGstEnabled && (
-                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>GST ({editGstRate}%):</span>
-                    <span>+₹{editGstAmount.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400 pt-1 border-t border-gray-200 dark:border-gray-600">
-                  <span>Grand Total:</span>
-                  <span>₹{editGrandTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <Button
-                color="light"
-                size="sm"
-                onClick={() => setEditingBill(null)}
-                disabled={isSavingEdit}
-              >
-                Cancel
-              </Button>
-              <Button
-                color="blue"
-                size="sm"
-                onClick={handleSaveEdit}
-                disabled={isSavingEdit || editItems.length === 0}
-              >
-                {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </Modal>
+      {/* Unified WalkInTabBillModal for View & Audit */}
+      {activeBill && (
+        <WalkInTabBillModal
+          bill={activeBill}
+          mode={modalMode}
+          open={!!activeBill}
+          onClose={() => setActiveBill(null)}
+          onUpdateBill={(updated) => {
+            setBills((prev) =>
+              prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b))
+            );
+          }}
+          menu={menu}
+          propertyName={propertyName}
+          propertyGstin={propertyGstin}
+          propertyUpiId={propertyUpiId}
+          propertyUpiQrCodeUrl={propertyUpiQrCodeUrl}
+        />
       )}
 
       {/* Delete Confirmation Modal */}
@@ -854,7 +332,7 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
             </p>
             <div className="flex items-center justify-center gap-2 pt-2">
               <Button
-                color="light"
+                variant="secondary"
                 size="sm"
                 onClick={() => setDeletingBillId(null)}
                 disabled={isDeleting}
@@ -862,12 +340,12 @@ export const PastWalkInBillsDrawer: React.FC<PastWalkInBillsDrawerProps> = ({
                 Cancel
               </Button>
               <Button
-                color="failure"
+                variant="danger"
                 size="sm"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
+                leftIcon={isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               >
-                {isDeleting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 mr-1.5" />}
                 Delete Bill
               </Button>
             </div>
