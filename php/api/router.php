@@ -2210,6 +2210,24 @@ switch ($action) {
     // Scoped to tenant logins only (users.default_tenant_id), since that's
     // the only place we have an email address on file at all.
     case 'request_login_info':
+        // Rate limited on login_user's bucket, and deliberately NON-ENUMERABLE
+        // (both added 13 Sep 2026).
+        //
+        // This is unauthenticated and it used to answer truthfully whether an
+        // account existed - 404 "No account found for that mobile number /
+        // username" versus a success - with no throttle at all. That is a free
+        // user-enumeration oracle: walk a list of mobile numbers and learn
+        // which ones are real Ground Code accounts, then point the (previously
+        // also unthrottled) force_set_passcode guesser at them.
+        //
+        // Every outcome below now returns the SAME generic response, so the
+        // caller learns nothing about whether the account or its email exists.
+        // The real outcome still goes to the error log for support.
+        $rateLimiter = new RateLimiter($pdo);
+        $rateLimiter->checkAndBlock(RateLimiter::getClientIdentifier(), 'login_user');
+
+        $genericLoginInfoReply = 'If an account exists for that mobile number / username, its login details have been emailed to the address on file.';
+
         $input = json_decode(file_get_contents('php://input'), true) ?: [];
         $identifier = trim($input['username'] ?? '');
         if (!$identifier) {
@@ -2229,13 +2247,15 @@ switch ($action) {
             $stmt->execute([$identifier]);
             $user = $stmt->fetch();
 
+            // Same reply whether or not the account exists - see the note above.
             if (!$user) {
-                http_response_code(404);
-                echo json_encode(['success' => false, 'message' => 'No account found for that mobile number / username']);
+                error_log('request_login_info: no account for identifier "' . $identifier . '"');
+                echo json_encode(['success' => true, 'message' => $genericLoginInfoReply]);
                 exit;
             }
             if (empty($user['tenant_email'])) {
-                echo json_encode(['success' => false, 'message' => 'No email is on file for this account. Contact your platform admin to have one added.']);
+                error_log('request_login_info: account "' . $identifier . '" has no tenant email on file');
+                echo json_encode(['success' => true, 'message' => $genericLoginInfoReply]);
                 exit;
             }
 
@@ -2249,15 +2269,16 @@ switch ($action) {
                 . "<p style=\"color:#888;font-size:12px;\">Didn't request this? You can safely ignore this email.</p>";
 
             $emailResult = sendSmtpEmail($pdo, $user['tenant_email'], 'Your Ground Code login details', $body);
-            echo json_encode([
-                'success' => $emailResult['success'],
-                'message' => $emailResult['success']
-                    ? 'Login info sent to your email'
-                    : ('Could not send email: ' . $emailResult['error']),
-            ]);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            // Uniform reply again: a send failure used to echo the SMTP error
+            // back to an anonymous caller, which both leaks mail-server detail
+            // and confirms the account exists. Logged instead.
+            if (empty($emailResult['success'])) {
+                error_log('request_login_info: email send failed for "' . $identifier . '": ' . ($emailResult['error'] ?? 'unknown'));
+            }
+            echo json_encode(['success' => true, 'message' => $genericLoginInfoReply]);
+        } catch (Throwable $e) {
+            error_log('request_login_info failed for "' . $identifier . '": ' . $e->getMessage());
+            echo json_encode(['success' => true, 'message' => $genericLoginInfoReply]);
         }
         exit;
 
