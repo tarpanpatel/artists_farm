@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FieldHelpModeProvider } from './FieldHelpPopover';
 import { Drawer, Modal } from 'flowbite-react';
 import {
   Home, Hotel, Phone, Wallet, Clock, Building, Smartphone, Apple, Monitor, Download,
-  CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle, ExternalLink,
+  CheckCircle2, ArrowRight, ArrowLeft, Loader2, ClipboardList, X, AlertCircle,
   Share, PlusSquare, MoreVertical, Bed, ChefHat,
 } from './icons/FlowbiteIcons';
 import { Button } from './Button';
@@ -13,7 +13,6 @@ import { UpiPaymentBlock, isValidUpiIdSyntax } from '../utils/upiQrCode';
 import { AirbnbListingPicker } from './AirbnbListingPicker';
 import { apiFetch, API_ROOT_BASE } from '../services/api';
 import { useToast } from './ToastContext';
-import { t } from '../i18n/en';
 import { detectInstallPlatform } from '../utils/installPlatform';
 
 export interface WizardProperty {
@@ -186,7 +185,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   const [editPhone, setEditPhone] = useState(existingProperty?.phone || initialPhone);
   const [editGstin, setEditGstin] = useState(existingProperty?.gstin || initialGstin);
   const [editUpiId, setEditUpiId] = useState(existingProperty?.upi_id || initialUpiId);
-  const [editUpiQrCodeUrl, setEditUpiQrCodeUrl] = useState(existingProperty?.upi_qr_code_url || initialUpiQrCodeUrl);
+  const [editUpiQrCodeUrl] = useState(existingProperty?.upi_qr_code_url || initialUpiQrCodeUrl);
   const [editCheckinTime, setEditCheckinTime] = useState(existingProperty?.checkin_time || initialCheckinTime);
   const [editCheckoutTime, setEditCheckoutTime] = useState(existingProperty?.checkout_time || initialCheckoutTime);
   const [editDefaultTariff, setEditDefaultTariff] = useState(
@@ -528,7 +527,7 @@ export const PropertySetupWizard: React.FC<PropertySetupWizardProps> = ({
   }
 
   return (
-    <FieldHelpModeProvider>
+    <FieldHelpModeProvider mode="inline">
       <>
         {/* Persistent top/bottom strip in setup mode */}
         {!isCreateMode && !isDrawerOpen && (
