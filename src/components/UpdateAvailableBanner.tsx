@@ -21,7 +21,15 @@ export const UpdateAvailableBanner: React.FC = () => {
   if (!updateAvailable || dismissed) return null;
 
   return (
-    <div className="update-available-banner fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md pointer-events-none">
+    // Sits ABOVE the mobile bottom nav, not on top of it (13 Sep 2026, caught
+    // on a 390px viewport). At a flat bottom-4 this banner covered the nav
+    // outright - only a sliver of the centre "+" button showed - so while an
+    // update was pending the primary navigation could not be tapped at all,
+    // and the more often we deploy the more often that happens. The offset
+    // matches the nav's real height (h-[calc(4rem+env(safe-area-inset-bottom))])
+    // plus the original 1rem gap, so it clears a notched/home-indicator device
+    // too. md:bottom-4 restores the plain offset once the nav is gone at md.
+    <div className="update-available-banner fixed bottom-[calc(4rem+env(safe-area-inset-bottom,0px)+1rem)] md:bottom-4 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md pointer-events-none">
       <div className="pointer-events-auto flex items-center gap-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-4 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 animate-toast-in">
         <div className="inline-flex items-center justify-center shrink-0 w-8 h-8 text-blue-500 bg-blue-100 rounded-lg dark:bg-blue-800 dark:text-blue-200">
           <RefreshCw className="w-4 h-4 shrink-0" />
